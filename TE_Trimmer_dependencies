@@ -1,0 +1,41 @@
+python                    3.6.12          hffdb5ce_0_cpython    conda-forge
+perl                      5.26.2            h36c2ea0_1008    conda-forge (for pfam_scan.pl)
+r-base                    4.0.3                hd23ff56_6    conda-forge
+
+
+python libraries:
+	biopython                 1.79                     pypi_0    pypi
+	matplotlib                3.3.2                         0    conda-forge
+	multiprocess              0.70.11.1        py36h8f6f2f9_1    conda-forge
+	pandas                    1.1.5            py36h284efc9_0    conda-forge
+	pypdf2                    3.0.1                    pypi_0    pypi
+	numpy                     1.19.5           py36h2aa4a07_1    conda-forge
+	sklearn
+	shutil
+	collections
+	gzip
+	urllib3                   1.26.16                  pypi_0    pypi
+	regex                     2016.06.24               py36_1    bioconda
+	tk                        8.6.10               h21135ba_1    conda-forge
+
+
+
+bedtools                  2.30.0               h7d7f7ad_1    bioconda
+blast                     2.10.1          pl526he19e7b1_3    bioconda
+cd-hit                    4.8.1                hdbcaa40_0    bioconda
+emboss                    6.6.0                h6debe1e_0    bioconda
+hmmer                     3.3.1                he1b5a44_0    bioconda
+mafft                     7.475                h516909a_0    bioconda
+pfam_scan                 1.6                     pl526_2    bioconda/label/cf201901
+repeatmasker              4.1.1                   pl526_1    bioconda
+
+
+
+
+
+
+
+
+
+
+	
