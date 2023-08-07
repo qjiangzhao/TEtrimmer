@@ -10,14 +10,12 @@ python libraries:
 	pandas                    1.1.5            py36h284efc9_0    conda-forge
 	pypdf2                    3.0.1                    pypi_0    pypi
 	numpy                     1.19.5           py36h2aa4a07_1    conda-forge
-	sklearn
-	shutil
-	collections
-	gzip
+	scikit-learn              0.24.0           py36he4fde30_0    conda-forge
 	urllib3                   1.26.16                  pypi_0    pypi
 	regex                     2016.06.24               py36_1    bioconda
 	tk                        8.6.10               h21135ba_1    conda-forge
 	click                     8.0.4                    pypi_0    pypi
+	requests                  2.27.1                   pypi_0    pypi
 
 
 
