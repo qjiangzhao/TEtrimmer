@@ -17,6 +17,7 @@ python libraries:
 	urllib3                   1.26.16                  pypi_0    pypi
 	regex                     2016.06.24               py36_1    bioconda
 	tk                        8.6.10               h21135ba_1    conda-forge
+	click                     8.0.4                    pypi_0    pypi
 
 
 
