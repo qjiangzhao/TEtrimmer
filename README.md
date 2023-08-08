@@ -14,7 +14,7 @@ python ./path_to_TE_Trimmer_folder/bin/main.py --input_file [your_TE_consensus_f
 # Example of graphical user interface-based proof annotation
 python ./path_to_TE_Trimmer_folder/bin/Class_TKinter_proof_annotation.py --te_trimmer_output_dir [your_TE_Trimmer_output_directory/Multiple_sequence_alignment_less] 
 
-Options:
+# Options:
   -i, --input_file TEXT       Input fasta file. TE consensus sequences  [required]
   -o, --output_dir TEXT       Output directory. Default: current directory
   -g, --genome_file TEXT      Provide the genome file path  [required]
