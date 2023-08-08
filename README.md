@@ -3,7 +3,7 @@ TE Trimmer: a tool to replace transposable element manual curation.
 
 Usage:
 
-# See options and explanation
+# Use --help for a detailed list of options
 python ./path_to_TE_Trimmer_folder/bin/main.py --help 
 
 # Example of running TE Trimmer
