@@ -1,5 +1,5 @@
 # TE-Trimmer
-TE Trimmer: a tool to replace transposable element manual curation.
+TE Trimmer: a tool to replace transposable element manual curation. \n
 TE Trimmer won't do TE _de novo_ annotation but use the output from other annotation tools like RepeatModeler, REPET, and EDTA.
 
 Usage:
