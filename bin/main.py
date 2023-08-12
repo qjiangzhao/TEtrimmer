@@ -344,13 +344,13 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     if not os.path.isfile(input_file):
         raise FileNotFoundError(f"The fasta file {input_file} does not exist.")
-    input_file = os.path.dirname(os.path.abspath(input_file))  # get input absolute path
+    input_file = os.path.abspath(input_file)  # get input absolute path
     input_fasta_n = os.path.basename(os.path.abspath(input_file))
 
     # check if genome file exist
     if not os.path.isfile(genome_file):
         raise FileNotFoundError(f"The genome fasta file {genome_file} does not exist.")
-    genome_file = os.path.dirname(os.path.abspath(genome_file))  # get genome absolute path
+    genome_file = os.path.abspath(genome_file)  # get genome absolute path
     genome_n = os.path.basename(os.path.abspath(genome_file))
 
     # If pfam database isn't provided, create pfam database at TE Trimmer software folder,
