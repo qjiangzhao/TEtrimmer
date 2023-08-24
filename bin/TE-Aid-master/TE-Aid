@@ -214,7 +214,7 @@ echo "full length hits transparency: $FULL_ALPHA"
 ## MAIN WRAPPER
 
 # make a genome blastn database, supress warnings if altrady exist
-makeblastdb -in $GENOME -out $GENOME -dbtype 'nucl' &>/dev/null
+# makeblastdb -in $GENOME -out $GENOME -dbtype 'nucl' &>/dev/null
 
 # clean working from possible parasitic orftables
 if [ -f $OUTPUT/TE.blastp.out ]
