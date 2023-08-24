@@ -1,2 +1,3 @@
 2023_08_24 
-Repaired TE-Aid problem. TE-Aid will generate the genome blast database every time it is executed which will cause a problem when TE-Aid is used under multiple threads condition. 
+Repaired TE-Aid problem. TE-Aid will generate the genome blast database every time it is executed which 
+will cause a problem when TE-Aid is used under multiple threads condition. 
