@@ -661,6 +661,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Code block: Run cd-hit-est to merge final consensus sequence and prepare for proof annotation
     #####################################################################################################
 
+#classfication
 
 # The following is necessary to make the script executable, i.e., python myscript.py.
 if __name__ == '__main__':
