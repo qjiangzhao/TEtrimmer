@@ -1,3 +1,27 @@
 2023_08_24 
 Repaired TE-Aid problem. TE-Aid will generate the genome blast database every time when it is executed which 
-will cause a problem when TE-Aid is used under multiple threads condition. 
+will cause a problem when TE-Aid is used under multiple threads condition.
+
+2023_08_27
+TE Trimmer used the whole chromosome name to generate genome length file, new version will only consider the content before the first space of the original chromosome name.
+
+2023_08_28
+Solved TE-Aid permission problem.
+
+2023_08_28
+Closed MSA plot, which solved memory overuse problem
+
+2023_08_29
+Change Progress_file.txt to Finished_sequence_name.txt and Skipped_file.txt to Skipped_sequence_name.txt
+when —continue_analysis is used, but the Finished_sequence_name.txt and Skipped_sequence_name.txt are both empty, TE Trimmer will start a new round analysis.
+
+2023_08_29
+For short TE type like SINE, Helitron, and MITE, TE Trimmer can give different parameters. This will enable TE Trimmer to detect short length elements. But if the query sequence is classified Unknow initially, and it belong to a short length TE element, this won’t be detected by TE Trimmer.
+
+2023_08_29
+Added condition, if the define boundary process is failed, the sequence won’t be wrote into Finished_sequence_name.txt
+
+2023_08_29
+Solved negative processed number problem
+
+
