@@ -11,6 +11,7 @@ from Class_elongate_query import SequenceElongation
 from Class_orf_domain_prediction import prepare_pfam_database
 import click
 import json
+import repeatmodeler_classify
 
 
 # Define directory not empty error, this is used to raise an error then the output folder isn't empty
@@ -661,7 +662,12 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Code block: Run cd-hit-est to merge final consensus sequence and prepare for proof annotation
     #####################################################################################################
 
-#classfication
+    #####################################################################################################
+    # Code block: Run RepeatClassifier in repeatmodeler to classify TE_trimmer consensus sequences
+    #####################################################################################################
+    parent_output_dir = os.path.dirname(output_dir)
+    final_con_file = os.path.join(parent_output_dir, "TE_Trimmer_consensus.fasta")
+    repeatmodeler_classify.classify(final_con_file)
 
 # The following is necessary to make the script executable, i.e., python myscript.py.
 if __name__ == '__main__':
