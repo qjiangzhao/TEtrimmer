@@ -19,8 +19,8 @@ class FastaSequenceSeparator:
 
         with open(self.input_fasta, 'r') as fasta_file:
             for record in SeqIO.parse(fasta_file, 'fasta'):
-                sanitized_id = record.id.replace('/', '_').replace(' ', '_').replace('#', '_').\
-                    replace('-', '_').replace(':', '_')
+                sanitized_id = record.id.replace('__', '_').replace('___', '_').replace('/', '__').replace(' ', '_').\
+                    replace('#', '___').replace('-', '_').replace(':', '_')
                 output_filename = os.path.join(self.output_dir, f"{sanitized_id}.fasta")
                 with open(output_filename, 'w') as output_file:
                     SeqIO.write(record, output_file, 'fasta')

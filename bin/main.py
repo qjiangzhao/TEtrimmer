@@ -634,8 +634,21 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         executor.map(analyze_sequence_helper, analyze_sequence_params)
 
     #####################################################################################################
-    # Code block: Check processed sequence number
+    # Code block: Check processed sequence number and rename final consensus file
     #####################################################################################################
+
+    final_con_file = os.path.join(output_dir, "TE_Trimmer_consensus.fasta")
+
+    # Read the file into memory
+    with open(final_con_file, 'r') as file:
+        file_contents = file.read()
+
+    # Make the replacements
+    file_contents = file_contents.replace('___', '#').replace('__', '/')
+
+    # Write the modified contents back to the file
+    with open(final_con_file, 'w') as file:
+        file.write(file_contents)
 
     # At the end of the program, check if all sequences have been processed
     with open(progress_file, 'r') as file:

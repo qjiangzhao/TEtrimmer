@@ -427,8 +427,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
                 unique_new_name = get_unique_filename(proof_annotation_dir, new_name)
                 try:
                     # Copy the file to the new location with the unique new name
-                    shutil.copy(os.path.join(output_dir, file), os.path.join(proof_annotation_dir, unique_new_name))
-                    os.remove(os.path.join(output_dir, file))
+                    shutil.move(os.path.join(output_dir, file), os.path.join(proof_annotation_dir, unique_new_name))
+
                 except Exception as e:
                     files_moved_successfully = False
 
