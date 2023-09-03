@@ -11,7 +11,6 @@ from Class_elongate_query import SequenceElongation
 from Class_orf_domain_prediction import prepare_pfam_database
 import click
 import json
-import repeatmodeler_classify
 
 
 # Define directory not empty error, this is used to raise an error then the output folder isn't empty
@@ -53,6 +52,7 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
         min_length_elongation = min_el
 
         # TODO add more elements for different length
+        # TODO move the following to a config file or properties of the seq_object?
         elongation_ext_n = 1500
         # Due to DNA element will be much shorter than LTR and LINE elements, set min_length_elongation to 500.
         if "DNA" in seq_name:
@@ -266,6 +266,8 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
         click.echo(f"Error during boundary finding and cropping for sequence: {seq_name}. Error: {str(e)}")
         traceback.print_exc()
         return
+    
+
 
     # After all processing is done, write the name of the file to the progress file
     with open(progress_file, "a") as f:
@@ -566,7 +568,17 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     separate_fasta = FastaSequenceSeparator(input_file, single_file_dir)
     separate_fasta.separate_sequences()  # call this function to separate to single fasta files
 
+    # create dict that stores objects from input file, {seq_name:seq_obj}
+    #TODO print to summary file and update seq, length and TE_type. 
+    seq_dict = separate_fasta.create_seq_obj()
+    # TODO delete the following
+    # The following is for testing creating the object
+    myfile = os.path.join(output_dir, "myfile.txt")
+    with open(myfile, 'w') as f: 
+        for key, value in seq_dict.items(): 
+            f.write('%s:%s\n' % (key, str(value.TE_type)))
     # Calculate the total sequence number in single_file_dir
+
     single_fasta_n = len([f for f in os.listdir(single_file_dir) if f.endswith('.fasta')])
     click.echo(f"{single_fasta_n} sequences are detected from the input file")
 
@@ -662,13 +674,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Code block: Run cd-hit-est to merge final consensus sequence and prepare for proof annotation
     #####################################################################################################
 
-    #####################################################################################################
-    # Code block: Run RepeatClassifier in repeatmodeler to classify TE_trimmer consensus sequences
-    #####################################################################################################
-    parent_output_dir = os.path.dirname(output_dir)
-    final_con_file = os.path.join(parent_output_dir, "TE_Trimmer_consensus.fasta")
-    repeatmodeler_classify.classify(final_con_file)
-
+    
 # The following is necessary to make the script executable, i.e., python myscript.py.
 if __name__ == '__main__':
     main()

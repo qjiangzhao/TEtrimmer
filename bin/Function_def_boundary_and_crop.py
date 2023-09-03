@@ -13,6 +13,7 @@ import re
 import click
 import shutil
 from PyPDF2 import PdfMerger
+from repeatmodeler_classify import classify_single
 
 
 def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=16, window_size=20, gap_threshold=0.8):
@@ -379,10 +380,14 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
 
     # Construct the path for the new folder
     proof_annotation_dir = os.path.join(parent_output_dir, "TE_Trimmer_for_proof_annotation")
+    
+    # Construct the path for the new folder
+    temp_single_consensus_dir = os.path.join(parent_output_dir, "temp_single_consensus")
 
     # Create the directory if it doesn't exist
     if not os.path.exists(proof_annotation_dir):
         os.makedirs(proof_annotation_dir)
+        os.makedirs(temp_single_consensus_dir)
 
     # Because for each query file, several subgroups of multiple sequence alignment will be generated,
     # This function will name them differently
@@ -444,6 +449,19 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
                         sequence = str(final_con).upper()
                         with open(final_con_file, "a") as f:  # 'a' mode for appending
                             f.write(header + "\n" + sequence + "\n")
+                        
+                        
+                        #####################################################################################################
+                        # Code block: Run RepeatClassifier in repeatmodeler to classify TE_trimmer consensus sequences
+                        #####################################################################################################
+                        # Write single consensus sequence to a separate place for RepeatClassifier
+                        # TODO only classify unknown seq
+                        sequence_con_file = os.path.join(temp_single_consensus_dir, str(unique_new_name))
+                        n_sequence_con_file = os.path.join(sequence_con_file, str(unique_new_name))
+                        os.makedirs(sequence_con_file)
+                        with open(n_sequence_con_file, "w") as f:  # 'a' mode for appending
+                            f.write(header + "\n" + sequence + "\n" + ">Add" + "\n" + "T" + "\n")
+                        classify_single(sequence_con_file, n_sequence_con_file)
                     except Exception as e:
                         files_moved_successfully = False
 

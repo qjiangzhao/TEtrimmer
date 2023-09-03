@@ -64,3 +64,24 @@ def plot_classification(output_file, unknown_count, classified_count):
     # Save the pie chart as a PNG file
     plt.savefig(output_file, bbox_inches='tight')
     plt.close()
+
+# Classify single fasta
+def classify_single(dir, consensus_fasta):
+    """
+    Run RepeatClassifier with the provided parameters.
+    """
+    # Construct the RepeatClassifier command
+    os.chdir(dir)
+    stdout = open("stdout.txt", "w")
+    stderr = open("stderr.txt", "w")
+    command = ["RepeatClassifier",
+            #    "-debug",
+               "-consensi", consensus_fasta
+               ]
+    # Run RepeatClassifier using subprocess
+    subprocess.run(command, check=True, stdout= stdout, stderr= stderr)
+    classified_file = f'{consensus_fasta}.classified'
+    for record in SeqIO.parse(classified_file, "fasta"):
+        seq_name = record.id.split("#")[0]
+        seq_TE_type = record.id.split("#")[-1]
+    return seq_name, seq_TE_type
