@@ -46,14 +46,24 @@ class SequenceElongation:
             cluster_MSA_object = MultipleSequenceAlignmentCluster(pattern_alignment, output_dir, min_lines=min_seq_num,
                                                                   max_cluster=1)
 
-            if len(cluster_MSA_object.filtered_cluster_records) == 0:
-                return False
+            # Test if the pattern MAS can be clustered
+            if cluster_MSA_object.if_cluster:
+
+                cluster_MSA_object.apply_kmeans()
+                cluster_MSA_object.generate_cluster_list()
+                cluster_MSA_object.apply_filter_cluster()
+
+                if len(cluster_MSA_object.filtered_cluster_records) == 0:
+
+                    return False
+                else:
+                    # Subset input alignment file, return a list contain all pattern alignment clusters
+                    cluster_intact_alignment_list = cluster_MSA_object.subset_alignment_intact(input_file)
+
+                    return cluster_intact_alignment_list
+            # If the MSA can't be clustered, return True
             else:
-
-                # Subset input alignment file, return a list contain all pattern alignment clusters
-                cluster_intact_alignment_list = cluster_MSA_object.subset_alignment_intact(input_file)
-
-                return cluster_intact_alignment_list
+                return True
         else:
             return True
 

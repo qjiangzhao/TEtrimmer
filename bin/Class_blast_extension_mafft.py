@@ -264,7 +264,7 @@ class SequenceManipulator:
             # Check if the command was successful
             if result.returncode == 0:
                 pass
-                #click.echo(f"HMM profile is successfully made for {os.path.basename(output_hmm_file)}")
+                # click.echo(f"HMM profile is successfully made for {os.path.basename(output_hmm_file)}")
             else:
                 click.echo(f"Error running hmmbuild: {os.path.basename(output_hmm_file)}")
 
@@ -318,16 +318,17 @@ class SequenceManipulator:
             if gap_fraction <= threshold:
                 keep_list.append(col_idx)
                 # Be careful when you want to use len for indexing. Because len start from 1
-                column_mapping[len(keep_list) - 1] = col_idx  # Store the mapping of original MSA index to filtered MSA index
+                column_mapping[
+                    len(keep_list) - 1] = col_idx  # Store the mapping of original MSA index to filtered MSA index
 
         # The index in python won't include the second value. That it is to say the returned end_posit from
         # DefineBoundary() will one more index than the final len(keep_list) -1] for this reason, you have to
         # add one more value
         column_mapping[len(keep_list)] = column_mapping[len(keep_list) - 1] + 1
         # Keep the columns when they meet requirements
-        MSA_mafft_filtered = MSA_mafft[:, keep_list[0]:keep_list[0]+1]
+        MSA_mafft_filtered = MSA_mafft[:, keep_list[0]:keep_list[0] + 1]
         for i in keep_list[1:]:
-            MSA_mafft_filtered += MSA_mafft[:, i:i+1]
+            MSA_mafft_filtered += MSA_mafft[:, i:i + 1]
 
         # Write the filtered MSA to the output file
         with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
@@ -363,10 +364,10 @@ class SequenceManipulator:
             # Check the count of nucleotides in the column
             nt_count = len(col) - gap_count
 
-            # If the column meets the gap requirement and we're not already in a block, start a new one
+            # If the column meets the gap requirement, and we're not already in a block, start a new one
             if (gap_fraction > threshold or nt_count < min_nucleotide) and block_start is None:
                 block_start = col_idx
-            # If the column doesn't meet the gap requirement and we're in a block, end the block
+            # If the column doesn't meet the gap requirement, and we're in a block, end the block
             elif gap_fraction <= threshold and nt_count >= min_nucleotide and block_start is not None:
                 gap_blocks.append((block_start, col_idx))
                 block_start = None
@@ -377,29 +378,45 @@ class SequenceManipulator:
 
         # Filter blocks by conservation score
         delete_blocks = []
-        for block in gap_blocks:
-            col_before = MSA_mafft[:, block[0] - 1] if block[0] > 0 else None
-            col_after = MSA_mafft[:, block[1]] if block[1] < MSA_mafft.get_alignment_length() else None
-            if col_before is not None and self.calc_conservation(col_before) > conservation_threshold and \
-                    col_after is not None and self.calc_conservation(col_after) > conservation_threshold:
-                delete_blocks.append(block)
 
-        # Identify the ranges to keep, which are in between the blocks to delete
-        keep_ranges = [(0, delete_blocks[0][0])]
-        for i in range(len(delete_blocks) - 1):
-            keep_ranges.append((delete_blocks[i][1], delete_blocks[i + 1][0]))
-        keep_ranges.append((delete_blocks[-1][1], MSA_mafft.get_alignment_length()))
+        if gap_blocks:
+            for block in gap_blocks:
+                col_before = MSA_mafft[:, block[0] - 1] if block[0] > 0 else None
+                col_after = MSA_mafft[:, block[1]] if block[1] < MSA_mafft.get_alignment_length() else None
+                if col_before is not None and self.calc_conservation(col_before) > conservation_threshold and \
+                        col_after is not None and self.calc_conservation(col_after) > conservation_threshold:
+                    delete_blocks.append(block)
 
-        # Concatenate the columns in each keep_range to create the final filtered MSA
-        MSA_mafft_filtered = MSA_mafft[:, keep_ranges[0][0]:keep_ranges[0][1]]
-        for keep_range in keep_ranges[1:]:
-            MSA_mafft_filtered += MSA_mafft[:, keep_range[0]:keep_range[1]]
+        # When no gap block is detected, return the original MSA
+        else:
+            # No blocks to delete, return the original MSA. Write file again to convert file name
+            with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
+                AlignIO.write(MSA_mafft, f, 'fasta')
+            return fasta_out_flank_mafft_gap_filter_file
 
-        # Write the filtered MSA to the output file
-        with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
-            AlignIO.write(MSA_mafft_filtered, f, 'fasta')
+        if delete_blocks:
 
-        return fasta_out_flank_mafft_gap_filter_file
+            # Identify the ranges to keep, which are in between the blocks to delete
+            keep_ranges = [(0, delete_blocks[0][0])]
+            for i in range(len(delete_blocks) - 1):
+                keep_ranges.append((delete_blocks[i][1], delete_blocks[i + 1][0]))
+            keep_ranges.append((delete_blocks[-1][1], MSA_mafft.get_alignment_length()))
+
+            # Concatenate the columns in each keep_range to create the final filtered MSA
+            MSA_mafft_filtered = MSA_mafft[:, keep_ranges[0][0]:keep_ranges[0][1]]
+            for keep_range in keep_ranges[1:]:
+                MSA_mafft_filtered += MSA_mafft[:, keep_range[0]:keep_range[1]]
+
+            # Write the filtered MSA to the output file
+            with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
+                AlignIO.write(MSA_mafft_filtered, f, 'fasta')
+
+            return fasta_out_flank_mafft_gap_filter_file
+        else:
+            # No blocks to delete, return the original MSA. Write file again to convert file name
+            with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
+                AlignIO.write(MSA_mafft, f, 'fasta')
+            return fasta_out_flank_mafft_gap_filter_file
 
     def remove_gaps_with_similarity_check(self, input_file, output_dir, gap_threshold=0.8,
                                           simi_check_gap_thre=0.4, similarity_threshold=0.7, min_nucleotide=5):
@@ -511,6 +528,7 @@ class SequenceManipulator:
 
         # Go through each column in the alignment
         for col_idx in range(MSA_mafft.get_alignment_length()):
+
             # Define some metrics for the column
             col = MSA_mafft[:, col_idx]
             gap_count = col.count('-')
@@ -522,11 +540,13 @@ class SequenceManipulator:
             if ((simi_check_gap_thre <= gap_fraction <= gap_threshold and nt_fraction <= similarity_threshold) or
                 gap_fraction > gap_threshold or nt_count < min_nucleotide) and block_start is None:
                 block_start = col_idx
+
             # Check if the column meets the criteria to end a block
             elif simi_check_gap_thre <= gap_fraction <= gap_threshold and nt_fraction > \
                     similarity_threshold and nt_count >= min_nucleotide and block_start is not None:
                 gap_blocks.append((block_start, col_idx))
                 block_start = None
+
             # Check if the block should end due to a column with too few gaps
             elif gap_fraction <= simi_check_gap_thre and nt_count >= min_nucleotide and block_start is not None:
                 gap_blocks.append((block_start, col_idx))
@@ -538,44 +558,148 @@ class SequenceManipulator:
 
         # Identify the blocks that should be deleted based on the conservation of the surrounding columns
         delete_blocks = []
-        for block in gap_blocks:
-            # Check the columns immediately before and after the block
-            col_before = MSA_mafft[:, block[0] - 1] if block[0] > 0 else None
-            col_before_2 = MSA_mafft[:, block[0] - 2] if block[0] > 1 else None
-            col_after = MSA_mafft[:, block[1]] if block[1] < MSA_mafft.get_alignment_length() else None
-            col_after_2 = MSA_mafft[:, block[1] + 1] if block[1] < MSA_mafft.get_alignment_length() - 1 else None
-            # If the surrounding columns are conserved, mark the block for deletion
-            if col_before is not None and (self.calc_conservation(col_before) > conservation_threshold or
-                                           self.calc_conservation(
-                                               col_before_2) > conservation_threshold) and col_after is not None and \
-                    (self.calc_conservation(col_after) > conservation_threshold or
-                     self.calc_conservation(col_after_2) > conservation_threshold):
-                delete_blocks.append(block)
 
-        # Check if "delete_blocks" is empty
-        if not delete_blocks:
-            # No blocks to delete, return the original MSA
+        # Check if gap_blocks is empty
+        if gap_blocks:
+            for block in gap_blocks:
+                # Check the columns divergence before and after the block
+                col_before = MSA_mafft[:, block[0] - 1] if block[0] > 0 else None
+                col_before_2 = MSA_mafft[:, block[0] - 2] if block[0] > 1 else None
+                col_after = MSA_mafft[:, block[1]] if block[1] < MSA_mafft.get_alignment_length() else None
+                col_after_2 = MSA_mafft[:, block[1] + 1] if block[1] < MSA_mafft.get_alignment_length() - 1 else None
+                # If the surrounding columns are conserved, mark the block for deletion
+                if col_before is not None and (self.calc_conservation(col_before) > conservation_threshold or
+                                               self.calc_conservation(
+                                                   col_before_2) > conservation_threshold) and col_after is not None and \
+                        (self.calc_conservation(col_after) > conservation_threshold or
+                         self.calc_conservation(col_after_2) > conservation_threshold):
+                    delete_blocks.append(block)
+        else:
+            # No blocks to delete, return the original MSA. Write file again to convert file name
             with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
                 AlignIO.write(MSA_mafft, f, 'fasta')
             return fasta_out_flank_mafft_gap_filter_file
 
-        # Define the ranges of the MSA that should be kept
-        keep_ranges = [(0, delete_blocks[0][0])]
-        for i in range(len(delete_blocks) - 1):
-            keep_ranges.append((delete_blocks[i][1], delete_blocks[i + 1][0]))
-        keep_ranges.append((delete_blocks[-1][1], MSA_mafft.get_alignment_length()))
+        # Check if "delete_blocks" is empty
+        if delete_blocks:
 
-        # Create a new MSA by concatenating the kept ranges
-        MSA_mafft_filtered = MSA_mafft[:, keep_ranges[0][0]:keep_ranges[0][1]]
-        for keep_range in keep_ranges[1:]:
-            MSA_mafft_filtered += MSA_mafft[:, keep_range[0]:keep_range[1]]
+            # Define the ranges of the MSA that should be kept
+            keep_ranges = [(0, delete_blocks[0][0])]
+            for i in range(len(delete_blocks) - 1):
+                keep_ranges.append((delete_blocks[i][1], delete_blocks[i + 1][0]))
+            keep_ranges.append((delete_blocks[-1][1], MSA_mafft.get_alignment_length()))
 
-        # Write the filtered MSA to a file
-        with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
-            AlignIO.write(MSA_mafft_filtered, f, 'fasta')
+            # Create a new MSA by concatenating the kept ranges
+            MSA_mafft_filtered = MSA_mafft[:, keep_ranges[0][0]:keep_ranges[0][1]]
+            for keep_range in keep_ranges[1:]:
+                MSA_mafft_filtered += MSA_mafft[:, keep_range[0]:keep_range[1]]
 
-        # Return the path to the output file
-        return fasta_out_flank_mafft_gap_filter_file
+            # Write the filtered MSA to a file
+            with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
+                AlignIO.write(MSA_mafft_filtered, f, 'fasta')
+
+            # Return the path to the output file
+            return fasta_out_flank_mafft_gap_filter_file
+
+        else:
+            # No blocks to delete, return the original MSA. Write file again to convert file name
+            with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
+                AlignIO.write(MSA_mafft, f, 'fasta')
+            return fasta_out_flank_mafft_gap_filter_file
+
+    def select_gaps_block_with_similarity_check(self, input_file,
+                                                simi_check_gap_thre=0.4, similarity_threshold=0.8,
+                                                conservation_threshold=0.6, min_nucleotide=10):
+        """
+        Return: A list contain columns numbers used for cluster
+        """
+        # Identify blocks of gaps
+        gap_blocks = []
+
+        # Load the MSA file
+        MSA_mafft = AlignIO.read(input_file, "fasta")
+
+        # Raise an error if the number of sequences is less than 5
+        if len(MSA_mafft) < 5:
+            raise ValueError("Number of sequences is less than 5. Cannot remove gaps.")
+
+        # Define the starting point of a block
+        block_start = None
+
+        # Go through each column in the alignment. Start from 0
+        for col_idx in range(MSA_mafft.get_alignment_length()):
+
+            # Define some metrics for the column
+            col = MSA_mafft[:, col_idx]
+            gap_count = col.count('-')
+            gap_fraction = gap_count / len(col)
+            nt_fraction = self.calc_conservation(col)
+            nt_count = len(col) - gap_count
+
+            # Check if the column meets the criteria to start a new block
+            if simi_check_gap_thre <= gap_fraction and nt_fraction >= similarity_threshold and \
+                    nt_count >= min_nucleotide and block_start is None:
+                block_start = col_idx
+
+            # Stop the gap block when nucleotide similarity is smaller than the threshold
+            elif (simi_check_gap_thre <= gap_fraction and nt_fraction < similarity_threshold and block_start is not None) or \
+                    (nt_count < min_nucleotide and block_start is not None):
+                gap_blocks.append((block_start, col_idx))
+                block_start = None
+
+            # Stop the gap block when the gap number is too less
+            elif gap_fraction < simi_check_gap_thre and block_start is not None:
+                gap_blocks.append((block_start, col_idx))
+                block_start = None
+
+        # Select gap block that with clear gap boundary
+        keep_blocks = []
+
+        # Check if gap_blocks is empty
+        if gap_blocks:
+            for block in gap_blocks:
+                start, end = block  # Assign start and end position of each gap block to start and end
+                # Make sure start and end are not None and the gap block is wider than 50
+                if start and end and end - start > 30:
+                    # If the block starts at the first column, then col_before is None
+                    if start > 0:
+                        # Part of the column before the gap block where the first column of the gap block has gaps
+                        col_before = [MSA_mafft[i, start - 1] for i in range(len(MSA_mafft[:, start])) if
+                                      MSA_mafft[i, start] == '-']
+                        gap_fraction_before = col_before.count('-') / len(col_before)
+
+                    else:
+                        col_before = None
+                        gap_fraction_before = 0  # No gaps in case col_before is None
+
+                    # If the block ends at the last column, then col_after is None
+                    if end < MSA_mafft.get_alignment_length():
+                        # Part of the column after the gap block where the last column of the gap block has gaps
+                        col_after = [MSA_mafft[i, end] for i in range(len(MSA_mafft[:, end - 1])) if
+                                     MSA_mafft[i, end - 1] == '-']
+                        gap_fraction_after = col_after.count('-') / len(col_after)
+
+                    else:
+                        col_after = None
+                        gap_fraction_after = 0  # No gaps in case col_after is None
+
+                    # Using the modified col_before and col_after in your conservation calculation
+                    # gap_fraction_before <= 0.3 will make sure "-" won't be more than 30%
+                    if gap_fraction_before <= 0.3 and gap_fraction_after <= 0.3 and \
+                            col_before is not None and self.calc_conservation(col_before) > conservation_threshold and \
+                            col_after is not None and self.calc_conservation(col_after) > conservation_threshold:
+                        keep_blocks.append(block)
+        else:
+            return False
+
+        # Check if "delete_blocks" is empty
+        if keep_blocks:
+            flat_keep_blocks = [item for start, end in keep_blocks for item in range(start, end)]
+
+            return flat_keep_blocks
+
+        else:
+            return False
 
     def select_start_end_and_join(self, input_file, output_dir, start, end, window_size=50):
         """
@@ -647,6 +771,7 @@ class SequenceManipulator:
     of positional arguments. These arguments will be gathered into a tuple called alignments. This is particularly 
     useful when you don't know beforehand how many arguments will be passed to the function.
     """
+
     def concatenate_alignments(self, *alignments, input_file_name, output_dir):
         """
         Concatenate MSA files, which have same sequence number
@@ -686,7 +811,3 @@ class SequenceManipulator:
             os.chmod(dirpath, mode)
             for filename in filenames:
                 os.chmod(os.path.join(dirpath, filename), mode)
-
-
-
-

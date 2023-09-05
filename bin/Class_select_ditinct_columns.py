@@ -1,5 +1,6 @@
 from Bio import AlignIO
 import os
+from Class_blast_extension_mafft import SequenceManipulator
 
 
 class CleanAndSelectColumn:
@@ -62,6 +63,8 @@ class CleanAndSelectColumn:
         then delete that column
         :return: if_need_cluster: boolean, decide if need clustering
         """
+
+        # Delete highly conserved columns
         columns_to_delete = []
         for i in range(self.alignment_length):
             if any(proportion > threshold for proportion in self.proportions[i].values()):
@@ -72,11 +75,19 @@ class CleanAndSelectColumn:
             if i not in columns_to_delete:
                 columns_to_keep.append(i)
 
+        gap_block_to_keep_object = SequenceManipulator()
+
+        gap_block_to_keep = gap_block_to_keep_object.select_gaps_block_with_similarity_check(self.input_file)
+
+        # Concatenate columns with high divergence and gap block columns
+        if gap_block_to_keep:
+            columns_to_keep = sorted(set(columns_to_keep + gap_block_to_keep))
+
         """
         When alignment length is greater than 1000, the distinct column number have to be more than 100
         otherwise, it will be ten percent of the MSA length but not less than 50
         """
-        min_length = max(50, int(0.1 * self.alignment_length)) if self.alignment_length <= 5000 else 500
+        min_length = max(50, int(0.1 * self.alignment_length)) if self.alignment_length <= 4000 else 400
 
         if len(columns_to_keep) > min_length:  # Set the threshold number to decide if perform cluster
             self.alignment_filtered = self.alignment[:, columns_to_keep[0]:columns_to_keep[0] + 1]

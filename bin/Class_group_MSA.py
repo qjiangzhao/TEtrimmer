@@ -23,7 +23,7 @@ class MultipleSequenceAlignmentCluster:
         """
 
         self.input_align_dis = input_align_dis
-        self.alignment_dis = AlignIO.read(self.input_align_dis, 'fasta') # MSA file only contain distinct columns
+        self.alignment_dis = AlignIO.read(self.input_align_dis, 'fasta')  # MSA file only contain distinct columns
         self.output_dir = output_dir
         self.min_lines = min_lines  # the minimum number of lines for each cluster
         self.max_cluster = max_cluster  # there could have more clusters, use this to define the maximum number
@@ -35,6 +35,7 @@ class MultipleSequenceAlignmentCluster:
         self.kmeans = None
         self.labels = None  # this variable contains cluster number for each sequence
         self.best_k = None  # this is the final cluster number
+        self.if_cluster = True
         self.bed_dfs = []  # define dataframe bed file
         self.cluster_records = []  # define list to store different cluster ids
         self.filtered_cluster_records = []  # define list to store filtered cluster ids
@@ -42,10 +43,7 @@ class MultipleSequenceAlignmentCluster:
         self.standardize_data()
         self.perform_pca()
         self.determine_optimal_clusters()
-        self.apply_kmeans()
-        #self.plot_pca()
-        self.generate_cluster_list()
-        self.apply_filter_cluster()
+
 
     def encode_sequences(self):
         """
@@ -86,9 +84,9 @@ class MultipleSequenceAlignmentCluster:
         Determine the optimal number of clusters using silhouette score
         """
 
-        n_samples = self.principal_components.shape[0]
+        n_sequences = self.principal_components.shape[0]
         min_clusters = 2
-        max_clusters = min(5, n_samples - 1)  # Ensure max_clusters is less than the number of samples
+        max_clusters = min(5, n_sequences - 1)  # Ensure max_clusters is less than the number of samples
 
         # Higher silhouette scores indicate better-defined clusters.
         # define a list to store the silhouette scores for different cluster numbers
@@ -107,6 +105,10 @@ class MultipleSequenceAlignmentCluster:
 
         # find the index of the maximum value in silhouette_scores
         best_index = np.argmax(silhouette_scores)
+
+        # Test if cluster is necessary.
+        if silhouette_scores[best_index] < 0.7:
+            self.if_cluster = False
 
         # use the index to retrieve the corresponding cluster number from 'list_k'
         self.best_k = list_k[best_index]
@@ -220,3 +222,7 @@ class MultipleSequenceAlignmentCluster:
             df.to_csv(output_file, sep='\t', header=False, index=False)
             output_file_list.append(output_file)
         return output_file_list
+
+
+
+

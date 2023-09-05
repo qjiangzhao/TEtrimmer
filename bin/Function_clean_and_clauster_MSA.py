@@ -35,6 +35,7 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, gap_threshold=0.8, c
 
     # Select_divergent_column() function will return a boolean value, true represents need cluster step
     if pattern_alignment.select_divergent_column():
+
         # write_alignment_filtered() function return pattern_alignment absolute path
         pattern_alignment = pattern_alignment.write_alignment_filtered(output_dir)
         """
@@ -44,25 +45,36 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, gap_threshold=0.8, c
         "max_cluster" will define the maximum cluster numbers that will be returned
         this function will return a list contain all cluster file absolute path
         """
-        cluster_MSA = MultipleSequenceAlignmentCluster(pattern_alignment, output_dir, min_lines=min_length_num,
-                                                       max_cluster=cluster_num)
+        cluster_MSA_object = MultipleSequenceAlignmentCluster(pattern_alignment, output_dir, min_lines=min_length_num,
+                                                              max_cluster=cluster_num)
 
-        """
-        Test if cluster number is 0, if so skip this sequence
-        If cluster is 0, that means no cluster has line numbers greater than "min_lines". In this case, it will be hard
-        to still use multiple sequence alignment method to define consensus sequence.
-        that isn't to say this won't be a TE, but with less copy numbers.
-        """
-        if len(cluster_MSA.filtered_cluster_records) == 0:
+        # Test if silhouette_scores is high enough to perform cluster
+        if cluster_MSA_object.if_cluster:
 
-            return False
+            cluster_MSA_object.apply_kmeans()
+            cluster_MSA_object.generate_cluster_list()
+            cluster_MSA_object.apply_filter_cluster()
+
+            """
+            Test if cluster number is 0, if so skip this sequence
+            If cluster is 0, that means no cluster has line numbers greater than "min_lines". In this case, it will be hard
+            to still use multiple sequence alignment method to define consensus sequence.
+            that isn't to say this won't be a TE, but with less copy numbers.
+            """
+            if len(cluster_MSA_object.filtered_cluster_records) == 0:
+
+                return False
+
+            else:
+                # Subset pattern alignment file, return a list contain all pattern alignment clusters
+                cluster_pattern_alignment_list = cluster_MSA_object.subset_alignment_dis()
+
+                # Subset bed file and return a list contain all clustered bed absolute files
+                cluster_bed_files_list = cluster_MSA_object.subset_bed_file(bed_file)
+                return cluster_pattern_alignment_list, cluster_bed_files_list
         else:
-            # Subset pattern alignment file, return a list contain all pattern alignment clusters
-            cluster_pattern_alignment_list = cluster_MSA.subset_alignment_dis()
-            # Subset bed file and return a list contain all clustered bed absolute files
-            cluster_bed_files_list = cluster_MSA.subset_bed_file(bed_file)
+            return True
 
-            return cluster_pattern_alignment_list, cluster_bed_files_list
     else:
         return True
 
