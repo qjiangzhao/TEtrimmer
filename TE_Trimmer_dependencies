@@ -21,7 +21,7 @@ python libraries:
 
 bedtools                  2.30.0               h7d7f7ad_1    bioconda
 blast                     2.10.1          pl526he19e7b1_3    bioconda
-cd-hit                    4.8.1                hdbcaa40_0    bioconda
+cd-hit                    4.8.1                h2e03b76_5    bioconda
 emboss                    6.6.0                h6debe1e_0    bioconda	(use "getorf" for orf prediction)
 hmmer                     3.3.1                he1b5a44_0    bioconda
 mafft                     7.475                h516909a_0    bioconda

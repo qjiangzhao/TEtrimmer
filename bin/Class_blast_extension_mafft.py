@@ -811,3 +811,21 @@ class SequenceManipulator:
             os.chmod(dirpath, mode)
             for filename in filenames:
                 os.chmod(os.path.join(dirpath, filename), mode)
+
+    def cd_hit_est(self, input_file, output_file, thread=10):
+
+        command = [
+            "cd-hit-est",
+            "-i", input_file,
+            "-o", output_file,
+            "-c", "0.8",
+            "-aL", "0.9",
+            "-aS", "0.9",
+            "-M", "2000",
+            "-T", str(thread),
+            "-l", "50",
+            "-d", "0",
+            "-s", "0.9"
+        ]
+
+        subprocess.run(command, check=True)
