@@ -74,12 +74,12 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
             check_extension_win = 50
 
         if "Helitron" in seq_name:
-            min_length_elongation = 70
-            elongation_ext_n = 200
-            ex_step = 100
-            max_extension = 700
-            min_blast_len = 80
-            crop_end_gap_win = 50
+            min_length_elongation = 500
+            elongation_ext_n = 500
+            ex_step = 500
+            max_extension = 3500
+            min_blast_len = 150
+            crop_end_gap_win = 100
             check_extension_win = 50
 
         if "MITE" in seq_name:

@@ -195,10 +195,8 @@ class SequenceManipulator:
         alignment = AlignIO.read(input_file, "fasta")
         summary = AlignInfo.SummaryInfo(alignment)
         # Get consensus sequence
-        consensus_seq_str = summary.dumb_consensus(threshold=threshold, ambiguous=ambiguous).upper()
+        consensus_seq = summary.dumb_consensus(threshold=threshold, ambiguous=ambiguous).upper()
 
-        # Create a SeqRecord
-        consensus_seq = Seq(consensus_seq_str)
         consensus_record = SeqRecord(consensus_seq, id=f"{os.path.basename(input_file)}", description="")
 
         # Write to a FASTA file
