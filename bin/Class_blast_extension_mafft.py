@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 import os
 import click
@@ -653,6 +654,8 @@ class SequenceManipulator:
         # Select gap block that with clear gap boundary
         keep_blocks = []
 
+        print(gap_blocks)
+
         # Check if gap_blocks is empty
         if gap_blocks:
             for block in gap_blocks:
@@ -810,20 +813,66 @@ class SequenceManipulator:
             for filename in filenames:
                 os.chmod(os.path.join(dirpath, filename), mode)
 
-    def cd_hit_est(self, input_file, output_file, thread=10):
+    def cd_hit_est(self, input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9, thread=10):
 
         command = [
             "cd-hit-est",
             "-i", input_file,
             "-o", output_file,
-            "-c", "0.8",
-            "-aL", "0.9",
-            "-aS", "0.9",
-            "-M", "2000",
+            "-c", str(identity_thr),
+            "-aL", str(aL),
+            "-aS", str(aS),
+            "-M", "4000",
             "-T", str(thread),
-            "-l", "50",
+            "-l", "80",
             "-d", "0",
-            "-s", "0.9"
+            "-s", str(s)
         ]
+        try:
+            subprocess.run(command, check=True)
+            return True
+        except subprocess.CalledProcessError:
+            click.echo("Error executing cd-hit-est command.")
+            return False
 
-        subprocess.run(command, check=True)
+    def repeatmasker(self, genome_file, library_file, output_dir, thread=1):
+        """
+        Run RepeatMasker with the provided parameters.
+        """
+        # Construct the RepeatMasker command
+        command = ["RepeatMasker",
+                   genome_file,
+                   "-lib", library_file,
+                   "-pa", str(thread),
+                   "-dir", output_dir,
+                   "-s",    # Slow search; 0-5% more sensitive, 2-3 times slower than default
+                   "-gff",  # Creates an additional Gene Feature Finding format output
+                   "-xm",   # Creates an additional output file in cross_match format (for parsing)
+                   "-a",    # Writes alignments in .align output file
+                   ]
+
+        try:
+            subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True
+        except subprocess.CalledProcessError:
+            print("Error executing RepeatMasker command.")
+            return False
+
+    def remove_files_with_start_pattern(self, input_dir, start_pattern):
+        # Remove files and folder start with give pattern
+        for filename in os.listdir(input_dir):
+            if filename.startswith(start_pattern):
+                file_path = os.path.join(input_dir, filename)
+                if os.path.isfile(file_path):  # This check ensures you're only removing files, not directories
+                    os.remove(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+
+
+
+input_file = "/Users/panstrugamacbook/Documents/PhD_project_files/TE_Trimmer/Select_gap_block_test/LTRRT_106.fasta.blast.bed.uniq.bed.fil.bed_0_0_cl.fa_maf.fa_gap_rm.fa_cl.fa"
+input_file2 = "/Users/panstrugamacbook/Documents/PhD_project_files/TE_Trimmer/Select_gap_block_test/clipboard-alignment_9192798663554344057.fasta"
+test = SequenceManipulator()
+result = test.select_gaps_block_with_similarity_check(input_file)
+
+print(result)

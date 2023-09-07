@@ -38,7 +38,7 @@ def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=16, win
     return cropped_alignment_output_file_no_gap, column_mapping
 
 
-def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name, hmm_dir,
+def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name, hmm,
                            cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000, max_extension=7000,
                            gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=16, crop_end_win=20,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
@@ -426,7 +426,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
                 # Decide on the final unique name before copying
                 unique_new_name = get_unique_filename(proof_annotation_dir, new_name)
                 try:
-                    # Copy the file to the new location with the unique new name
+                    # Move the file to the new location with the unique new name
                     shutil.move(os.path.join(output_dir, file), os.path.join(proof_annotation_dir, unique_new_name))
 
                 except Exception as e:
@@ -436,8 +436,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
                 if re.match(final_msa_pattern, file):
                     try:
                         final_con_object = SequenceManipulator()
-                        final_con_object.generate_hmm_from_msa(os.path.join(proof_annotation_dir, unique_new_name),
-                                                               hmm_dir)
+                        if hmm:  # Generate hmm files when the user want it
+                            hmm_dir = os.path.join(os.path.dirname(output_dir), "HMM_files")
+                            final_con_object.generate_hmm_from_msa(os.path.join(proof_annotation_dir, unique_new_name),
+                                                                   hmm_dir)
                         final_con = final_con_object.con_generater_no_file(
                             os.path.join(proof_annotation_dir, unique_new_name), threshold=cons_threshold)
                         header = ">" + os.path.splitext(unique_new_name)[0]  # Use the filename without extension

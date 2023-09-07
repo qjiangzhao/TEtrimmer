@@ -1,5 +1,6 @@
 import os
 import concurrent.futures
+import shutil
 import traceback
 from Bio import SeqIO
 from Class_separate_fasta import FastaSequenceSeparator
@@ -30,7 +31,7 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
                      top_mas_lines, max_cluster_num, min_el, min_el_dna, min_el_sine, cons_thr, ext_thr, ex_step,
                      max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr,
                      crop_end_gap_win, start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, elongation_dir,
-                     single_fasta_n, hmm_dir, check_extension_win):
+                     single_fasta_n, hmm, check_extension_win, keep_intermediate):
     #####################################################################################################
     # Code block: Elongate query sequence when they are too short
     #####################################################################################################
@@ -121,6 +122,11 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
             with open(skipped_file, "a") as f:
                 f.write(seq_name + "\tno_blast\tblast_equal_0\n")
             click.echo(f"\n{seq_name} is skipped due to blast hit number is 0\n")
+
+            if not keep_intermediate:
+                remove_file_object = SequenceManipulator()
+                remove_file_object.remove_files_with_start_pattern(MSA_dir, seq_name)
+                remove_file_object.remove_files_with_start_pattern(elongation_dir, seq_name)
             return
 
         # check if blast hit number is smaller than "min_seq_num", not include "min_seq_num"
@@ -128,6 +134,11 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
             with open(skipped_file, "a") as f:
                 f.write(seq_name + f"\tblast_less\tblast_smaller_than_{min_seq_num}\n")
             click.echo(f"\n{seq_name} is skipped due to blast hit number is smaller than {min_seq_num}\n")
+
+            if not keep_intermediate:
+                remove_file_object = SequenceManipulator()
+                remove_file_object.remove_files_with_start_pattern(MSA_dir, seq_name)
+                remove_file_object.remove_files_with_start_pattern(elongation_dir, seq_name)
             return  # when blast hit number is smaller than 10, code will execute next fasta file
             # with less hits numbers can also refer to young TE, but less blast hit number will hamper to generate
             # consensus sequence by multiple sequence alignment method.
@@ -177,12 +188,17 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
             with open(skipped_file, "a") as f:
                 f.write(seq_name + f"\tblast_less\tcluster_blast_smaller_than_{min_seq_num}\n")
             click.echo(f"\n{seq_name} is skipped due to sequence number in each cluster is smaller than {min_seq_num}\n")
+
+            if not keep_intermediate:
+                remove_file_object = SequenceManipulator()
+                remove_file_object.remove_files_with_start_pattern(MSA_dir, seq_name)
+                remove_file_object.remove_files_with_start_pattern(elongation_dir, seq_name)
             return
 
         # cluster True means not necessary to cluster MSA
         elif cluster_MSA_result is True:
             find_boundary_result = find_boundary_and_crop(
-                    bed_out_filter_file, genome_file, MSA_dir, pfam_dir, seq_name, hmm_dir,
+                    bed_out_filter_file, genome_file, MSA_dir, pfam_dir, seq_name, hmm,
                     cons_threshold=cons_thr, ext_threshold=ext_thr,
                     ex_step_size=ex_step, max_extension=max_extension,
                     gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
@@ -196,6 +212,11 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
                 with open(skipped_file, "a") as f:
                     f.write(seq_name + f"\tshort\telement is too short for TE Trimmer\n")
                 click.echo(f"\n{seq_name} is skipped due to too short length\n")
+
+                if not keep_intermediate:
+                    remove_file_object = SequenceManipulator()
+                    remove_file_object.remove_files_with_start_pattern(MSA_dir, seq_name)
+                    remove_file_object.remove_files_with_start_pattern(elongation_dir, seq_name)
                 return False
             elif not find_boundary_result:  # This means the errors happen in the function
                 return
@@ -211,24 +232,26 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
                                                                  gap_threshold=0.8, clean_column_threshold=0.15,
                                                                  min_length_num=min_seq_num,
                                                                  cluster_num=max_cluster_num)
+                # inner_cluster_MSA_result is false means this cluster sequence number is too less
                 if inner_cluster_MSA_result is False:
                     continue
                 elif inner_cluster_MSA_result is True:  # Means don't need to cluster
 
                     inner_find_boundary_result = find_boundary_and_crop(
                             cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_name,
-                            hmm_dir, cons_threshold=cons_thr, ext_threshold=ext_thr,
+                            hmm, cons_threshold=cons_thr, ext_threshold=ext_thr,
                             ex_step_size=ex_step, max_extension=max_extension,
                             gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
                             crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
                             crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
                             start_patterns=start_patterns, end_patterns=end_patterns,
                             mini_orf=mini_orf, define_boundary_win=check_extension_win)
+
                     if inner_find_boundary_result == "Short_sequence":
                         continue
                     elif inner_find_boundary_result:
                         all_inner_skipped = False
-                    elif not inner_find_boundary_result:
+                    elif not inner_find_boundary_result:  # This means the errors happen in the function
                         return
 
                 else:  # If need more cluster, clean_and_cluster_MSA will return two values
@@ -237,7 +260,7 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
                     for j in range(len(inner_cluster_bed_files_list)):
                         inner_inner_find_boundary_result = find_boundary_and_crop(
                                 inner_cluster_bed_files_list[j], genome_file, MSA_dir,
-                                pfam_dir, seq_name, hmm_dir,
+                                pfam_dir, seq_name, hmm,
                                 cons_threshold=cons_thr, ext_threshold=ext_thr,
                                 ex_step_size=ex_step, max_extension=max_extension,
                                 gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
@@ -249,7 +272,7 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
                             continue
                         elif inner_inner_find_boundary_result:
                             all_inner_skipped = False
-                        elif not inner_inner_find_boundary_result:
+                        elif not inner_inner_find_boundary_result:  # This means the errors happen in the function
                             return
 
             # Check the flag after the loop. If all inner clusters were skipped, write to skipped_file
@@ -259,6 +282,12 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
                     click.echo(
                         f"\n{seq_name} is skipped due to sequence number in second round each cluster is "
                         f"smaller than {min_seq_num} or the sequence is too short\n")
+
+                # If all this sequence is skipped remove all files contain this name
+                if not keep_intermediate:
+                    remove_file_object = SequenceManipulator()
+                    remove_file_object.remove_files_with_start_pattern(MSA_dir, seq_name)
+                    remove_file_object.remove_files_with_start_pattern(elongation_dir, seq_name)
                 return
 
     except Exception as e:
@@ -272,6 +301,11 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
 
     click.echo(f"Finished {seq_name}")
 
+    # If all this sequence is finished remove all files contain this name
+    if not keep_intermediate:
+        remove_file_object = SequenceManipulator()
+        remove_file_object.remove_files_with_start_pattern(MSA_dir, seq_name)
+        remove_file_object.remove_files_with_start_pattern(elongation_dir, seq_name)
     # Check the sequences numbers in Finished_sequence_name.txt and Skipped_sequence_name.txt
     # and give how many sequences are left
     # Read and count sequences from Finished_sequence_name.txt
@@ -318,6 +352,14 @@ with open(species_config_path, "r") as config_file:
 @click.option('--continue_analysis', default=False, is_flag=True,
               help='If --continue_analysis is provided on the command line, TE Trimmer will continue the analysis '
                    'based on the existing data. Otherwise, it will overlap the existing files. Default: False')
+@click.option('--cd_hit_merge', default=False, is_flag=True,
+              help='If --cd_hit_merge, the input file will be merged first')
+@click.option('--genome_anno', default=False, is_flag=True,
+              help='If to perform final genome TE annotation by RepeatMasker')
+@click.option('--hmm', default=False, is_flag=True,
+              help='If to generate hmm files')
+@click.option('--keep_intermediate', default=False, is_flag=True,
+              help='Use this option if you want to keep the raw files. ATTENTION: Many files will be generated')
 @click.option('--pfam_dir', default=None, type=str,
               help="Pfam database directory. Leave this option when you don't have Pfam database, "
                    "TE Trimmer will download automatically")
@@ -390,13 +432,14 @@ with open(species_config_path, "r") as config_file:
               help='Set the minimum ORF length that will be predicted by TE Trimmer. Default: 200')
 @click.option('--check_extension_win', type=str,
               help='Define check windows size for extension. Deafault: 150')
-@click.option('--num_threads', '-t', type=int,
+@click.option('--num_threads', '-t', default=10, type=int,
               help='Threads numbers used for TE Trimmer. Default: 10')
 # add the key parameters into click options
 def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_blast_len, num_threads, max_msa_lines,
          top_mas_lines, min_seq_num, max_cluster_num, min_el, min_el_dna, min_el_sine, cons_thr, ext_thr, ex_step,
          max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr, crop_end_gap_win,
-         start_patterns, end_patterns, mini_orf, species, check_extension_win):
+         start_patterns, end_patterns, mini_orf, species, check_extension_win, cd_hit_merge, genome_anno, hmm,
+         keep_intermediate):
     """
         TE Trimmer is software that can replace transposable element (TE) manual curation. Two mandatory arguments are
         required. They are TE consensus file and genome file. TE Trimmer can automatically define proper extension size
@@ -518,9 +561,10 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         os.mkdir(MSA_dir)
 
     # make a new folder for HMM file
-    hmm_dir = os.path.join(output_dir, "HMM_files")
-    if not os.path.exists(hmm_dir):
-        os.mkdir(hmm_dir)
+    if hmm:
+        hmm_dir = os.path.join(output_dir, "HMM_files")
+        if not os.path.exists(hmm_dir):
+            os.mkdir(hmm_dir)
 
     # make a new folder for elongation files
     elongation_dir = os.path.join(output_dir, "Elongation_folder")
@@ -560,6 +604,21 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             os.mkdir(pfam_dir)
 
     prepare_pfam_database(pfam_dir)
+
+    #####################################################################################################
+    # Code block: Merge input file and generate single fasta file
+    #####################################################################################################
+
+    # Do cd-hit-est merge when cd_hit_merge is true
+    if cd_hit_merge:
+        click.echo("\nTE Trimmer is merging input sequences, this might take some time.\n")
+        cd_hit_merge_output = os.path.join(output_dir, f"{input_file}_cd_hit.fa")
+        cd_hit_merge_object = SequenceManipulator()
+        # Set lower identity threshold for the query, this can increase sensitive
+        cd_hit_merge_object.cd_hit_est(input_file, cd_hit_merge_output, identity_thr=0.9,
+                                       aL=0.9, aS=0.9, s=0.9, thread=num_threads)
+        input_file = cd_hit_merge_output
+        click.echo("Merge finished.\n")
 
     # separate fasta to single files, if fasta header contain "/" or " " or "#" convert them to "_"
     separate_fasta = FastaSequenceSeparator(input_file, single_file_dir)
@@ -625,8 +684,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         (seq_name, single_file_dir, genome_file, MSA_dir, min_blast_len, min_seq_num, max_msa_lines,
          top_mas_lines, max_cluster_num, min_el, min_el_dna, min_el_sine, cons_thr, ext_thr, ex_step,
          max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr, crop_end_gap_win,
-         start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, elongation_dir, single_fasta_n, hmm_dir,
-         check_extension_win
+         start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, elongation_dir, single_fasta_n, hmm,
+         check_extension_win, keep_intermediate
          ) for seq_name in sequence_names]
 
     # Using a ProcessPoolExecutor to run the function in parallel
@@ -639,6 +698,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     final_con_file = os.path.join(output_dir, "TE_Trimmer_consensus.fasta")
 
+    cd_hit_merge_output_final = None
     if os.path.exists(final_con_file):
 
         # Read the file into memory
@@ -651,6 +711,13 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         # Write the modified contents back to the file
         with open(final_con_file, 'w') as file:
             file.write(file_contents)
+
+        # Do cd-hit-est merge when finish all sequence
+        cd_hit_merge_output_final = os.path.join(output_dir, "TE_Trimmer_consensus_merged.fasta")
+        cd_hit_merge_object = SequenceManipulator()
+        # According to 80-80-80 rule to filter final consensus sequences
+        cd_hit_merge_object.cd_hit_est(final_con_file, cd_hit_merge_output_final, identity_thr=0.8,
+                                       aL=0.8, aS=0.8, s=1, thread=num_threads)
 
     # At the end of the program, check if all sequences have been processed
     with open(progress_file, 'r') as file:
@@ -668,13 +735,37 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     if processed_count == single_fasta_n:
         click.echo(f"All sequences have been processed! {skipped_file_count} sequences are skipped")
 
+        if not keep_intermediate:
+            # Remove all single files when all the sequences are processed
+            shutil.rmtree(single_file_dir)
+
     else:
         remaining = single_fasta_n - processed_count
         click.echo(f"{remaining} sequences have not been processed.")
 
-    #####################################################################################################
-    # Code block: Run cd-hit-est to merge final consensus sequence and prepare for proof annotation
-    #####################################################################################################
+    # Delete MSA_dir and elongation_dir if they are empty
+    if not os.listdir(MSA_dir):
+        os.rmdir(MSA_dir)
+    if not os.listdir(elongation_dir):
+        os.rmdir(elongation_dir)
+
+    # If 95% of the query sequences are processed, RepeatMasker is allowed to be performed
+    if processed_count >= single_fasta_n*0.9:
+        # Run RepeatMasker
+        if genome_anno and cd_hit_merge_output_final:
+            click.echo("TE Trimmer is performing whole genome TE annotation by RepeatMasker")
+            # make a new folder for RepeatMasker output
+            repeatmasker_dir = os.path.join(output_dir, "RepeatMasker_result")
+            if not os.path.exists(repeatmasker_dir):
+                os.mkdir(repeatmasker_dir)
+            genome_anno_object = SequenceManipulator()
+            genome_anno_result = \
+                genome_anno_object.repeatmasker(genome_file, cd_hit_merge_output_final, repeatmasker_dir, thread=num_threads)
+            if genome_anno_result:
+                click.echo("Finished whole genome TE annotation by RepeatMasker")
+
+    else:
+        click.echo("Less than 90% of the query sequences processed, TE Trimmer can't perform whole genome TE annotation")
 
 
 # The following is necessary to make the script executable, i.e., python myscript.py.

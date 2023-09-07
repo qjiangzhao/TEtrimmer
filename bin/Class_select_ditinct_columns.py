@@ -7,7 +7,7 @@ class CleanAndSelectColumn:
     """
     Class to eliminate noise nucleotide and select the diverse columns, which can be used for MSA clustering
     """
-    def __init__(self, input_file, threshold=0.08):
+    def __init__(self, input_file, threshold=0.05):
         """
         :param input_file: str, absolute path of input file
         :param threshold: nucleotide percentage (gap not count) lower than threshold will be converted to "-"
@@ -75,8 +75,13 @@ class CleanAndSelectColumn:
             if i not in columns_to_delete:
                 columns_to_keep.append(i)
 
-        gap_block_to_keep_object = SequenceManipulator()
+        # It is only meaningful to calculate the gap block when there are enough distinct columns.
+        #min_length_to_include_gap_block = max(25, int(0.1 * self.alignment_length)) \
+            #if self.alignment_length <= 1000 else 100
 
+        #if len(columns_to_keep) > min_length_to_include_gap_block:
+
+        gap_block_to_keep_object = SequenceManipulator()
         gap_block_to_keep = gap_block_to_keep_object.select_gaps_block_with_similarity_check(self.input_file)
 
         # Concatenate columns with high divergence and gap block columns
@@ -87,7 +92,7 @@ class CleanAndSelectColumn:
         When alignment length is greater than 1000, the distinct column number have to be more than 100
         otherwise, it will be ten percent of the MSA length but not less than 50
         """
-        min_length = max(50, int(0.1 * self.alignment_length)) if self.alignment_length <= 4000 else 400
+        min_length = max(50, int(0.1 * self.alignment_length)) if self.alignment_length <= 5000 else 500
 
         if len(columns_to_keep) > min_length:  # Set the threshold number to decide if perform cluster
             self.alignment_filtered = self.alignment[:, columns_to_keep[0]:columns_to_keep[0] + 1]
@@ -105,3 +110,7 @@ class CleanAndSelectColumn:
         return output_file
 
 
+input_file = "/Users/panstrugamacbook/Documents/PhD_project_files/TE_Trimmer/Select_gap_block_test/LTRRT_106.fasta.blast.bed.uniq.bed.fil.bed_0_0_cl.fa_maf.fa_gap_rm.fa_cl.fa"
+input_file2 = "/Users/panstrugamacbook/Documents/PhD_project_files/TE_Trimmer/Select_gap_block_test/clipboard-alignment_9192798663554344057.fasta"
+test = CleanAndSelectColumn(input_file)
+test.select_divergent_column()
