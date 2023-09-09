@@ -8,6 +8,7 @@ from Class_check_start_end import StartEndChecker
 from Class_TE_aid import TEAid
 from Class_orf_domain_prediction import PlotPfam, determine_sequence_direction
 from Bio import AlignIO
+import Cialign_plot
 import os
 import re
 import click
@@ -293,7 +294,22 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
                     output_file=cropped_boundary_plot_concatenate
                 )
 
-                # Define the new start and end points for plotting
+                # Define the new start and end points for cropped_boundary_manual_MSA_concatenate
+                # cropped_boundary_manual_MSA_concatenate will be used for CIAlign plot
+                # Get MSA sequence length
+                cropped_boundary_manual_MSA_concatenate_align = AlignIO.read(cropped_boundary_manual_MSA_concatenate, "fasta")
+
+                # get_alignment_length() is a build in function
+                cropped_boundary_manual_MSA_concatenate_length = cropped_boundary_manual_MSA_concatenate_align.get_alignment_length()
+
+                # Use intermediate number to get the new start and end number
+                concat_start_man_intermediate = cropped_boundary_manual_MSA_concatenate_length - concat_end - 1
+                concat_end_man_intermediate = cropped_boundary_manual_MSA_concatenate_length - concat_start - 1
+                concat_start_man = concat_start_man_intermediate
+                concat_end_man = concat_end_man_intermediate
+
+                # Define the new start and end points for cropped_boundary_plot_concatenate
+                # cropped_boundary_plot_concatenate will be used for te_trimmer plot
                 # Get MSA sequence length
                 cropped_boundary_plot_concatenate_align = AlignIO.read(cropped_boundary_plot_concatenate, "fasta")
                 cropped_boundary_plot_concatenate_length = cropped_boundary_plot_concatenate_align.get_alignment_length()
@@ -301,7 +317,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
                 # Use intermediate number to get the new start and end number
                 concat_start_intermediate = cropped_boundary_plot_concatenate_length - concat_end - 1
                 concat_end_intermediate = cropped_boundary_plot_concatenate_length - concat_start - 1
-
                 concat_start = concat_start_intermediate
                 concat_end = concat_end_intermediate
 
@@ -326,7 +341,21 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
     MSA_plot = MSA_plot_object.process(concat_start, concat_end)
 
     #####################################################################################################
-    # Code block: Check by TE-Aid and combine MSA plot with TE-Aid plot
+    # Code block: Plot whole MSA by CIAlign style with start and end point
+    #####################################################################################################
+
+    # Define while MSA plot output file
+    cropped_boundary_manual_MSA_concatenate_plot = f"{cropped_boundary_manual_MSA_concatenate}_plot.pdf"
+
+    # Convert MSA to array
+    cropped_boundary_manual_MSA_concatenate_array, nams = Cialign_plot.FastaToArray(cropped_boundary_manual_MSA_concatenate)
+
+    # Draw the whole MSA
+    Cialign_plot.drawMiniAlignment(cropped_boundary_manual_MSA_concatenate_array,
+                                   nams, cropped_boundary_manual_MSA_concatenate_plot, concat_start_man, concat_end_man)
+
+    #####################################################################################################
+    # Code block: Generate TE-Aid plot
     #####################################################################################################
 
     # so.path.abspath(__file__) will return the current executable python file
@@ -345,7 +374,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
     merger = PdfMerger()
 
     # List with your PDF file paths. Ensure they are not None before adding them to the list.
-    pdf_files = [pdf for pdf in [MSA_plot, orf_domain_plot, TE_aid_plot] if pdf is not None]
+    pdf_files = [pdf for pdf in [MSA_plot, cropped_boundary_manual_MSA_concatenate_plot,
+                                 TE_aid_plot, orf_domain_plot] if pdf is not None]
 
     valid_pdf_count = 0  # Counter to keep track of valid PDFs added
 

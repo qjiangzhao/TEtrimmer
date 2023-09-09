@@ -1,11 +1,34 @@
-#! /usr/bin/env python
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import Cialign_palettes as palettes
 import math
+from PIL import Image
+import os
+import tempfile
+
 matplotlib.use('Agg')
 
+
+def png_to_pdf(png_path, pdf_path):
+    """
+    Convert a PNG file to a PDF.
+
+    Parameters:
+    - png_path (str): Path to the input PNG file.
+    - pdf_path (str): Path for the output PDF file.
+    """
+    # Open the PNG image
+    image = Image.open(png_path)
+
+    # Convert RGBA to RGB
+    if image.mode == 'RGBA':
+        rgb_image = Image.new('RGB', image.size, (255, 255, 255))  # White background
+        rgb_image.paste(image, mask=image.split()[3])  # Paste using alpha channel as mask
+        image = rgb_image
+
+    # Convert and save as PDF
+    image.save(pdf_path, "PDF", resolution=100.0)
 
 def getPalette(palette='CBS'):
     '''
@@ -31,6 +54,7 @@ def getPalette(palette='CBS'):
     if palette.lower() == 'te_trimmer':
         p = palettes.te_trimmer()
     return p
+
 
 def getNtColours(palette='CBS'):
     '''
@@ -68,6 +92,7 @@ def getNtColours(palette='CBS'):
             "V": pal['grey_nt'],
             "X": pal['grey_nt']}
 
+
 def FastaToArray(infile, log=None):
     '''
     Convert an alignment into a numpy array.
@@ -104,8 +129,8 @@ def FastaToArray(infile, log=None):
             if line[0] == ">":
                 sl = len([s.upper() for s in seq])
                 if sl != psl and nseq > 1:
-                    print (nseq, sl, psl)
-                    raise ValueError ("""
+                    print(nseq, sl, psl)
+                    raise ValueError("""
 ERROR: The sequences you provided may not be aligned - all the sequences \
 are not the same length""")
 
@@ -124,14 +149,15 @@ are not the same length""")
                 seq += list(line)
     sl = len([s.upper() for s in seq])
     if sl != psl and nseq > 1:
-        print (nseq, sl, psl)
-        raise ValueError ("""
+        print(nseq, sl, psl)
+        raise ValueError("""
 ERROR: The sequences you provided may not be aligned - all the sequences \
 are not the same length""")
     seqs.append(np.array([s.upper() for s in seq]))
     nams.append(nam)
     arr = np.array(seqs[1:])
-    return arr, nams[1:]
+    return arr, nams
+
 
 def arrNumeric(arr, palette='CBS'):
     '''
@@ -189,100 +215,65 @@ def arrNumeric(arr, palette='CBS'):
     return arr2, cmap
 
 
-def drawMiniAlignment(arr, nams, outfile,
-                      dpi=300, title=None, width=5, height=3, ret=False, orig_nams=[],
+def drawMiniAlignment(arr, nams, outfile, start_point, end_point,
+                      dpi=500, title=None, width=5, height=3, orig_nams=[],
                       keep_numbers=False, force_numbers=False, palette="te_trimmer"):
     '''
     Draws a "mini alignment" image showing a small representation of the
     whole alignment so that gaps and poorly aligned regions are visible.
 
-    Parameters
-    ----------
-    arr: np.array
+    Parameters:
+    - arr: np.array
         The alignment stored as a numpy array
-    nams: list
-        The names of the sequences in the alignment
-    log: logging.Logger
-        The open log file object
-    outfile: str
-        Path to the output file
-    typ: str
-        Either 'aa' - amino acid - or 'nt' - nucleotide
-    dpi: int
-        DPI for the output image
-    title: str
-        Title for the output image
-    width: int
-        Width of the output image
-    height: int
-        Height of the output image
-    markup: bool
-        Should the deleted rows and columns be marked on the output image?
-    markupdict: dict
-        Dictionary where the keys are function names and the values are
-        lists of columns, rows or positions which have been removed
-    ret: bool
-        Return the subplot as a matplotlib object, used to make plots when
-        using this function directly rather than the CIAlign workflow
-    orig_nams: list
-        List of names in the original input plot, used if keep_numbers is
-        switched on to keep the original numbering scheme
-    keep_numbers: bool
-        Number the sequences (rows) based on the original CIAlign input rather
-        than renumbering.
-    palette: str
-        Colour palette, CBS or Bright
-    Returns
-    -------
-    None
+    - outfile: str
+        Path to the output PDF file (No need to give .pdf extension)
+    - ... [rest of your parameters] ...
 
+    Returns:
+    - None
     '''
+
     ali_height, ali_width = np.shape(arr)
 
-    # font size needs to scale with DPI
-    fontsize = 1500 / dpi
-
-    # what is the order of magnitude of the number of sequences (rows)
-    # 0 = 1 - 10 sequences - label every row
-    # 1 = 10 - 100 sequences - label every 10th row
-    # 2+ = 100+ sequences - label every 100th row
-
+    fontsize = 2000 / dpi
     om = math.floor(math.log10(ali_height))
     tickint = 1 if om == 0 or force_numbers else 10 if om == 1 else 100
-
-    # use thinner lines for bigger alignments
     lineweight_h = 10 / ali_height
     lineweight_v = 10 / ali_width
 
     f = plt.figure(figsize=(width, height), dpi=dpi)
     a = f.add_subplot(1, 1, 1)
     a.set_xlim(-0.5, ali_width)
-    a.set_ylim(-0.5, ali_height-0.5)
+    a.set_ylim(-0.5, ali_height - 0.5)
 
-    # generate the numeric version of the array
     arr2, cm = arrNumeric(arr, palette)
-    # display it on the axis
     a.imshow(arr2, cmap=cm, aspect='auto', interpolation='nearest')
 
-    # these are white lines between the bases in the alignment - as the
-    # image is actually solid
-    a.hlines(np.arange(-0.5, ali_height), -0.5,
-             ali_width, lw=lineweight_h, color='white',
-             zorder=100)
-    a.vlines(np.arange(-0.5, ali_width), -0.5,
-             ali_height, lw=lineweight_v, color='white',
-             zorder=100)
+    arrow_length = 13
+    a.annotate('Start crop Point', xy=(start_point, ali_height - 0.5), xytext=(0, arrow_length),
+               textcoords='offset points',
+               arrowprops=dict(facecolor='red', edgecolor='red', width=0.3, headwidth=2, headlength=2),
+               ha='center', color='red', va='bottom', fontsize=3)
+    a.annotate('End crop Point', xy=(end_point, ali_height - 0.5), xytext=(0, arrow_length),
+               textcoords='offset points',
+               arrowprops=dict(facecolor='blue', edgecolor='blue', width=0.3, headwidth=2, headlength=2),
+               ha='center', color='blue', va='bottom', fontsize=3)
 
-    # aesthetics
+    f.subplots_adjust(top=0.85, bottom=0.1, left=0.1, right=0.95)
+    a.hlines(np.arange(-0.5, ali_height), -0.5, ali_width, lw=lineweight_h, color='white', zorder=100)
+    a.vlines(np.arange(-0.5, ali_width), -0.5, ali_height, lw=lineweight_v, color='white', zorder=100)
+
     a.spines['right'].set_visible(False)
     a.spines['top'].set_visible(False)
     a.spines['left'].set_visible(False)
 
     if title:
-        f.suptitle(title, fontsize=fontsize*1.5, y=0.92)
+        f.suptitle(title, fontsize=fontsize * 1.5, y=0.92)
+
     for t in a.get_xticklabels():
         t.set_fontsize(fontsize)
-    a.set_yticks(np.arange(ali_height-1, -1, -tickint))
+
+    a.set_yticks(np.arange(ali_height - 1, -1, -tickint))
     x = 1
     if tickint == 1:
         if keep_numbers:
@@ -291,26 +282,25 @@ def drawMiniAlignment(arr, nams, outfile,
                 if nam in nams:
                     labs.append(x)
                 x += 1
-            a.set_yticklabels(labs,
-                              fontsize=fontsize*0.75)
+            a.set_yticklabels(labs, fontsize=fontsize * 0.75)
         else:
-            a.set_yticklabels(np.arange(1, ali_height+1, tickint),
-                              fontsize=fontsize*0.75)
+            a.set_yticklabels(np.arange(1, ali_height + 1, tickint), fontsize=fontsize * 0.75)
     else:
         a.set_yticklabels(np.arange(0, ali_height, tickint), fontsize=fontsize)
 
-    f.tight_layout()
-    f.savefig(outfile, dpi=dpi, bbox_inches='tight')
-    if ret:
-        return f
+    # Save the plot to a temporary PNG file
+    with tempfile.NamedTemporaryFile(suffix='.png', delete=True) as tmp_file:
+        temp_png = tmp_file.name
+        f.savefig(temp_png, dpi=dpi, bbox_inches='tight')
+
+        # Convert the temporary PNG to the desired PDF file
+        png_to_pdf(temp_png, outfile)
+
+    if os.path.exists(outfile):
+        return outfile
+
     plt.close()
 
 
-input_file = "/Users/panstrugamacbook/Documents/PhD_project_files/TE_Trimmer/Select_gap_block_test/nest_1.fasta.blast.bed.uniq.bed.fil.bed_0_0_cl.fa_maf.fa_gap_rm.fa_cl.fa"
-output_file = "/Users/panstrugamacbook/Documents/PhD_project_files/TE_Trimmer/Cluster_TKlinker/test_cialign"
-test1, test2 = FastaToArray(input_file)
-test3, test4 = arrNumeric(test1)
-print(test3)
-print(test4)
 
-drawMiniAlignment(test1, test2, output_file)
+

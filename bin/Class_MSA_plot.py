@@ -136,7 +136,7 @@ class MSAPainter:
         plt.annotate('Start crop Point', xy=(start_point, -0.5), xytext=(start_point, -3),
                      arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05), ha='center', color='r')
         plt.annotate('End crop Point', xy=(end_point, -0.5), xytext=(end_point, -3),
-                     arrowprops=dict(facecolor='green', edgecolor='green', shrink=0.05), ha='center', color='g')
+                     arrowprops=dict(facecolor='blue', edgecolor='blue', shrink=0.05), ha='center', color='b')
 
         # Use input file name as title
         # title = os.path.basename(self.input_file)

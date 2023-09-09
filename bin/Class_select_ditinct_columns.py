@@ -110,7 +110,3 @@ class CleanAndSelectColumn:
         return output_file
 
 
-input_file = "/Users/panstrugamacbook/Documents/PhD_project_files/TE_Trimmer/Select_gap_block_test/LTRRT_106.fasta.blast.bed.uniq.bed.fil.bed_0_0_cl.fa_maf.fa_gap_rm.fa_cl.fa"
-input_file2 = "/Users/panstrugamacbook/Documents/PhD_project_files/TE_Trimmer/Select_gap_block_test/clipboard-alignment_9192798663554344057.fasta"
-test = CleanAndSelectColumn(input_file)
-test.select_divergent_column()

@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-
-
 def base():
     '''
     Returns the hexadecimal values for black and white

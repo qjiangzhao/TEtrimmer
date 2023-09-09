@@ -654,8 +654,6 @@ class SequenceManipulator:
         # Select gap block that with clear gap boundary
         keep_blocks = []
 
-        print(gap_blocks)
-
         # Check if gap_blocks is empty
         if gap_blocks:
             for block in gap_blocks:
@@ -779,7 +777,7 @@ class SequenceManipulator:
         :param alignments: str, alignments object (not file path) will be concatenated by order.
         :param input_file_name: str, Used for generating output file name
         :param output_dir: str, the absolute output directory
-        :return: the absolute output file path
+        :return: the absolute output file path, the start point and end point of the concatenated MSA
         """
         # Check if at least two alignments are provided
         if len(alignments) < 2:
@@ -869,10 +867,3 @@ class SequenceManipulator:
                     shutil.rmtree(file_path)
 
 
-
-input_file = "/Users/panstrugamacbook/Documents/PhD_project_files/TE_Trimmer/Select_gap_block_test/LTRRT_106.fasta.blast.bed.uniq.bed.fil.bed_0_0_cl.fa_maf.fa_gap_rm.fa_cl.fa"
-input_file2 = "/Users/panstrugamacbook/Documents/PhD_project_files/TE_Trimmer/Select_gap_block_test/clipboard-alignment_9192798663554344057.fasta"
-test = SequenceManipulator()
-result = test.select_gaps_block_with_similarity_check(input_file)
-
-print(result)
