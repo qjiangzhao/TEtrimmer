@@ -6,6 +6,7 @@ import math
 from PIL import Image
 import os
 import tempfile
+import gc
 
 matplotlib.use('Agg')
 
@@ -27,8 +28,17 @@ def png_to_pdf(png_path, pdf_path):
         rgb_image.paste(image, mask=image.split()[3])  # Paste using alpha channel as mask
         image = rgb_image
 
+        # Release RAM memory
+        del rgb_image
+        gc.collect()
+
     # Convert and save as PDF
     image.save(pdf_path, "PDF", resolution=100.0)
+
+    # Close the image and release memory
+    image.close()
+    del image
+    gc.collect()
 
 def getPalette(palette='CBS'):
     '''
@@ -296,10 +306,19 @@ def drawMiniAlignment(arr, nams, outfile, start_point, end_point,
         # Convert the temporary PNG to the desired PDF file
         png_to_pdf(temp_png, outfile)
 
+    # Explicitly close the plot to release resources
+    plt.close()
+    del arr, arr2, nams
+    gc.collect()
+
     if os.path.exists(outfile):
         return outfile
+    else:
+        return False
 
-    plt.close()
+
+
+
 
 
 

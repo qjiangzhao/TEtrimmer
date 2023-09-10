@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import Counter
 from matplotlib.colors import ListedColormap
+import gc
 
 
 class MSAPainter:
@@ -108,17 +109,24 @@ class MSAPainter:
         # Compute figure size: a bit less than number of columns / 5 for width, and number of rows / 3 for height
         # In pandas, the DataFrame.shape attribute returns a tuple representing the dimensionality of the DataFrame.
         # The tuple (r, c), where r represents the number of rows and c the number of columns.
-        figsize = (max(1, self.alignment_df.shape[1] / 6), max(9, self.alignment_df.shape[0] / 3))
+        #figsize = (max(1, self.alignment_df.shape[1] / 6), max(9, self.alignment_df.shape[0] / 3))
+
+        # Set a fixed height per sequence (e.g., 0.4 units per sequence)
+        height_per_sequence = 0.4
+        total_height = self.alignment_df.shape[0] * height_per_sequence
+
+        # Compute figure size
+        figsize = (max(1, self.alignment_df.shape[1] / 6), total_height)
 
         # Plot the heatmap
-        plt.figure(figsize=figsize)
+        plt.figure(figsize=figsize, facecolor='white')
 
         # This function allows you to adjust several parameters that determine the size of the margins
         # left: This adjusts the margin on the left side of the plot. A value of 0.1, for instance,
         # means that the left margin will take up 10% of the total figure width.
         # right: This adjusts the margin on the right side of the plot. A value of 0.95 means that the right
         # margin starts at 95% of the figure width from the left. Essentially, it leaves a 5% margin on the right side.
-        plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.85)
+        plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.8)
         plt.imshow(self.alignment_color_df, aspect='auto', cmap=cmap)
         plt.box(False)  # Removing frame
         plt.xticks([])  # Remove labels
@@ -133,10 +141,13 @@ class MSAPainter:
         ha='center' specifies the horizontal alignment of the text annotation. 
         color='r' sets the color of the text to red.
         """
+
+
         plt.annotate('Start crop Point', xy=(start_point, -0.5), xytext=(start_point, -3),
                      arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05), ha='center', color='r')
         plt.annotate('End crop Point', xy=(end_point, -0.5), xytext=(end_point, -3),
                      arrowprops=dict(facecolor='blue', edgecolor='blue', shrink=0.05), ha='center', color='b')
+
 
         # Use input file name as title
         # title = os.path.basename(self.input_file)
@@ -165,7 +176,7 @@ class MSAPainter:
         self.output_file = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_plot.pdf")
         plt.savefig(self.output_file, format='pdf', dpi=200)
         plt.close()
-
+        gc.collect()  # Release ram memory when finish plotting
 
     def process(self, start_point, end_point):
         self.read_msa()
@@ -176,4 +187,5 @@ class MSAPainter:
         self.plot_msa(start_point, end_point)
 
         return self.output_file
+
 

@@ -26,7 +26,6 @@ class DirectoryNotEmptyError(Exception):
 def analyze_sequence_helper(params):
     return analyze_sequence(*params)
 
-
 def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_len, min_seq_num, max_msa_lines,
                      top_mas_lines, max_cluster_num, min_el, min_el_dna, min_el_sine, cons_thr, ext_thr, ex_step,
                      max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr,
@@ -609,8 +608,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Code block: Merge input file and generate single fasta file
     #####################################################################################################
 
-    # Do cd-hit-est merge when cd_hit_merge is true
-    if cd_hit_merge:
+    # Do cd-hit-est merge when cd_hit_merge is true and continue_analysis is false
+    if cd_hit_merge and not continue_analysis:
         click.echo("\nTE Trimmer is merging input sequences, this might take some time.\n")
         cd_hit_merge_output = os.path.join(output_dir, f"{input_file}_cd_hit.fa")
         cd_hit_merge_object = SequenceManipulator()
