@@ -6,7 +6,6 @@ import math
 from PIL import Image
 import os
 import tempfile
-import gc
 
 matplotlib.use('Agg')
 
@@ -30,7 +29,6 @@ def png_to_pdf(png_path, pdf_path):
 
         # Release RAM memory
         del rgb_image
-        gc.collect()
 
     # Convert and save as PDF
     image.save(pdf_path, "PDF", resolution=100.0)
@@ -38,7 +36,6 @@ def png_to_pdf(png_path, pdf_path):
     # Close the image and release memory
     image.close()
     del image
-    gc.collect()
 
 def getPalette(palette='CBS'):
     '''
@@ -309,7 +306,6 @@ def drawMiniAlignment(arr, nams, outfile, start_point, end_point,
     # Explicitly close the plot to release resources
     plt.close()
     del arr, arr2, nams
-    gc.collect()
 
     if os.path.exists(outfile):
         return outfile

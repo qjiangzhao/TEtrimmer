@@ -3,6 +3,7 @@ import concurrent.futures
 import shutil
 import traceback
 from Bio import SeqIO
+from datetime import datetime
 from Class_separate_fasta import FastaSequenceSeparator
 from Class_blast_extension_mafft import SequenceManipulator
 from Class_bed_filter import BEDFile
@@ -25,6 +26,7 @@ class DirectoryNotEmptyError(Exception):
 
 def analyze_sequence_helper(params):
     return analyze_sequence(*params)
+
 
 def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_len, min_seq_num, max_msa_lines,
                      top_mas_lines, max_cluster_num, min_el, min_el_dna, min_el_sine, cons_thr, ext_thr, ex_step,
@@ -447,6 +449,10 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         python ./path_to_TE_Trimmer_bin/main.py --input_file "your_TE_consensus_file_path" --genome_file "your_genome_file_path"
 
     """
+
+    start_time = datetime.now()
+    print(f"\nTE Trimmer started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+
     click.echo("TE Trimmer is running...... \n"
                "WARNING: This is a beta version, please send bugs to jqian@bio1.rwth-aachen.de ;)\n")
 
@@ -766,8 +772,12 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     else:
         click.echo("Less than 90% of the query sequences processed, TE Trimmer can't perform whole genome TE annotation")
 
+    end_time = datetime.now()
+    duration = end_time - start_time
+    print(f"\nTE Trimmer finished at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+    print(f"TE Trimmer runtime was {duration}")
+
 
 # The following is necessary to make the script executable, i.e., python myscript.py.
 if __name__ == '__main__':
     main()
-

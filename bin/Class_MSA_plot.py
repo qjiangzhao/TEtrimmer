@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import Counter
 from matplotlib.colors import ListedColormap
-import gc
 
 
 class MSAPainter:
@@ -64,8 +63,6 @@ class MSAPainter:
     def replace_bases(self):
         """Replace bases with corresponding integers"""
         self.alignment_color_df = self.alignment_df.replace(self.base_mapping)
-
-        #self.alignment_color_df.to_csv("G:\\TE_manual_curation\\Software_develop\\Test_for_new_gap_and_crop_by_gap\\test_color.csv")
 
     def highlight_columns(self):
         """
@@ -142,7 +139,6 @@ class MSAPainter:
         color='r' sets the color of the text to red.
         """
 
-
         plt.annotate('Start crop Point', xy=(start_point, -0.5), xytext=(start_point, -3),
                      arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05), ha='center', color='r')
         plt.annotate('End crop Point', xy=(end_point, -0.5), xytext=(end_point, -3),
@@ -172,11 +168,14 @@ class MSAPainter:
 
             plt.text(i, j, label, ha='center', va='center', color=text_color, size=13)
 
-         # Save the figure to a file
+        # Save the figure to a file
         self.output_file = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_plot.pdf")
         plt.savefig(self.output_file, format='pdf', dpi=200)
         plt.close()
-        gc.collect()  # Release ram memory when finish plotting
+
+        # Release memory for these dataframes
+        del self.alignment_df
+        del self.alignment_color_df
 
     def process(self, start_point, end_point):
         self.read_msa()

@@ -57,7 +57,8 @@ class TEAid:
 
         if result.stderr:
             pass
-            #click.echo(f"Error encountered: {self.input_file}{result.stderr.decode('utf-8')}")
+
+            #click.echo(f"Error encountered: {self.input_file}\n{result.stderr.decode('utf-8')}")
 
         final_pdf_file = os.path.join(TE_aid_output_dir, f"{os.path.basename(self.input_file)}.c2g.pdf")
 

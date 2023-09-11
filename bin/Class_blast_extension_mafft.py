@@ -180,15 +180,20 @@ class SequenceManipulator:
         """
         fasta_out_flank_mafft_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_maf.fa")
 
-        # Both uppercase and lowercase are accepted and not distinguished by mafft.
-        # Mafft will automatically convert all to lowercase in the output
-        # When shell=True, you can pass the command as a simple string, otherwise, you have to pass by a list
-        # but if you pass by list, ">" won't be recognized as redirection
-        mafft_cmd = f"mafft {input_file} > {fasta_out_flank_mafft_file}"
+        # Construct the command as a list of strings
+        mafft_cmd = ["mafft", "--retree", "1", input_file, "--quiet", "--nuc"]
 
-        # stdout=subprocess.DEVNULL redirects the standard output (stdout) of the command to subprocess.DEVNULL,
-        # effectively discarding it.
-        subprocess.run(mafft_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Execute the command
+        result = subprocess.run(mafft_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        # Check for errors
+        if result.returncode != 0:
+            raise Exception(f"MAFFT failed with error: {input_file}\n{result.stderr.decode('utf-8')}")
+
+        # Write the output to the file
+        with open(fasta_out_flank_mafft_file, 'w') as f:
+            f.write(result.stdout.decode('utf-8'))
+
         return fasta_out_flank_mafft_file
 
     def con_generater(self, input_file, output_dir, threshold=0.8, ambiguous="N"):

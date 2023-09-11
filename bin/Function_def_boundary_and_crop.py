@@ -89,6 +89,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
         # align_sequences() will return extended MSA absolute file
         bed_fasta_mafft_with_gap = bed.align_sequences(bed_fasta, output_dir)
 
+        if not os.path.isfile(bed_fasta_mafft_with_gap):
+            click.echo(f"{bed_file} has problem during mafft extension step")
+            return False
+
         # Remove nucleotide whose proportion is smaller than threshold
         bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(bed_fasta_mafft_with_gap, threshold=0.08)
         bed_fasta_mafft_with_gap_column_clean = bed_fasta_mafft_with_gap_column_clean_object.clean_column(output_dir)
