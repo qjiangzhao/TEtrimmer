@@ -181,7 +181,7 @@ class SequenceManipulator:
         fasta_out_flank_mafft_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_maf.fa")
 
         # Construct the command as a list of strings
-        mafft_cmd = ["mafft", "--retree", "1", input_file, "--quiet", "--nuc"]
+        mafft_cmd = ["mafft", "--quiet", "--nuc", "--retree", "1", input_file]
 
         # Execute the command
         result = subprocess.run(mafft_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

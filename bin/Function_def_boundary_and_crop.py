@@ -307,8 +307,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
                 cropped_boundary_manual_MSA_concatenate_length = cropped_boundary_manual_MSA_concatenate_align.get_alignment_length()
 
                 # Use intermediate number to get the new start and end number
-                concat_start_man_intermediate = cropped_boundary_manual_MSA_concatenate_length - concat_end - 1
-                concat_end_man_intermediate = cropped_boundary_manual_MSA_concatenate_length - concat_start - 1
+                concat_start_man_intermediate = cropped_boundary_manual_MSA_concatenate_length - concat_end_man - 1
+                concat_end_man_intermediate = cropped_boundary_manual_MSA_concatenate_length - concat_start_man - 1
                 concat_start_man = concat_start_man_intermediate
                 concat_end_man = concat_end_man_intermediate
 
@@ -391,7 +391,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
             merger.append(pdf_file)
             valid_pdf_count += 1
         else:
-            click.echo(f"Warning: {pdf_file} does not exist and will not be merged.")
+            click.echo(f"Note: {os.path.basename(pdf_file)} does not exist and will not be merged. This won't affect "
+                       f"the final result")
 
     # Write out the merged PDF file only if there's at least one valid PDF appended
     if valid_pdf_count > 0:
