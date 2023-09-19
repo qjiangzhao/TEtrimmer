@@ -7,6 +7,7 @@ from Class_MSA_plot import MSAPainter
 from Class_check_start_end import StartEndChecker
 from Class_TE_aid import TEAid
 from Class_orf_domain_prediction import PlotPfam, determine_sequence_direction
+from Function_clean_and_clauster_MSA import clean_and_cluster_MSA
 from Bio import AlignIO
 import Cialign_plot
 import os
@@ -80,11 +81,15 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
 
     left_ex = ex_step_size
     right_ex = ex_step_size
+    final_MSA_consistent = False
+    intact_loop_times = 1
 
-    while (if_left_ex or if_right_ex) and (left_ex <= max_extension and right_ex <= max_extension):
+    while (if_left_ex or if_right_ex) and (left_ex <= max_extension and right_ex <= max_extension) \
+            and not final_MSA_consistent and intact_loop_times < 3:
+
         bed = SequenceManipulator()
         # bedtools will makesure the extension won't excess the maximum length of that chromosome
-        bed_fasta = bed.extract_fasta(bed_file, genome_file, output_dir, left_ex, right_ex)
+        bed_fasta, bed_out_flank_file = bed.extract_fasta(bed_file, genome_file, output_dir, left_ex, right_ex)
 
         # align_sequences() will return extended MSA absolute file
         bed_fasta_mafft_with_gap = bed.align_sequences(bed_fasta, output_dir)
@@ -127,42 +132,59 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
 
             return "Short_sequence"
 
-    #####################################################################################################
-    # Code block: Remove gaps and define the start and end position
-    #####################################################################################################
+        #####################################################################################################
+        # Code block: Remove gaps and define the start and end position
+        #####################################################################################################
 
-    # Remove gap block with similarity check
-    # gap_threshold=0.8 means if gap proportion is greater than 80% this column will be regarded as gap column directly
-    # without further nucleotide similarity check
-    bed_fasta_mafft_gap_block_sim = bed.remove_gaps_block_with_similarity_check(
-        bed_fasta_mafft_with_gap_column_clean, output_dir, gap_threshold=0.8, simi_check_gap_thre=gap_threshold,
-        similarity_threshold=gap_nul_thr, conservation_threshold=0.5)
+        if (not if_left_ex and not if_right_ex) or left_ex == max_extension or right_ex == max_extension:
 
-    bed_boundary = DefineBoundary(bed_fasta_mafft_gap_block_sim, threshold=ext_threshold,
-                                  check_window=define_boundary_win, max_X=0.2, if_con_generater=False)
-    bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=300)
+            # Remove gap block with similarity check
+            # gap_threshold=0.8 means if gap proportion is greater than 80% this column will be regarded as gap column directly
+            # without further nucleotide similarity check
+            bed_fasta_mafft_gap_block_sim = bed.remove_gaps_block_with_similarity_check(
+                bed_fasta_mafft_with_gap_column_clean, output_dir, gap_threshold=0.8, simi_check_gap_thre=gap_threshold,
+                similarity_threshold=gap_nul_thr, conservation_threshold=0.5)
 
-    # Because for LINE element bed_fasta_mafft_boundary_crop will be changed. Copy it to the other variable
-    bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_boundary_crop
+            bed_boundary = DefineBoundary(bed_fasta_mafft_gap_block_sim, threshold=ext_threshold,
+                                          check_window=define_boundary_win, max_X=0.2, if_con_generater=False)
+            bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=300)
 
-    if "LINE" in bed_file:
-        # For the high divergence region, more gaps can be found. According to this feature, remove high divergence
-        # region this function is very useful for dealing with LINE elements
-        cropped_MSA_by_gap = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
-                                          window_size=crop_end_gap_win)
+            # Because for LINE element bed_fasta_mafft_boundary_crop will be changed. Copy it to the other variable
+            bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_boundary_crop
 
-        bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
+            if "LINE" in bed_file:
+                # For the high divergence region, more gaps can be found. According to this feature, remove high divergence
+                # region this function is very useful for dealing with LINE elements
+                cropped_MSA_by_gap = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
+                                                  window_size=crop_end_gap_win)
 
-    # Gaps are removed again after crop end process
-    cropped_alignment_output_file_no_gap, column_mapping = crop_end_and_clean_column(bed_fasta_mafft_boundary_crop,
-                                                                                       output_dir,
-                                                                                       crop_end_threshold=crop_end_thr,
-                                                                                       window_size=crop_end_win,
-                                                                                       gap_threshold=0.8)
+                bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
 
-    # Crop end can't define the final boundary, use DefineBoundary again to define start position
-    cropped_boundary = DefineBoundary(cropped_alignment_output_file_no_gap, threshold=0.8, check_window=3, max_X=0)
-    cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
+            # Gaps are removed again after crop end process
+            cropped_alignment_output_file_no_gap, column_mapping = crop_end_and_clean_column(bed_fasta_mafft_boundary_crop,
+                                                                                               output_dir,
+                                                                                               crop_end_threshold=crop_end_thr,
+                                                                                               window_size=crop_end_win,
+                                                                                               gap_threshold=0.8)
+
+            # Crop end can't define the final boundary, use DefineBoundary again to define start position
+            cropped_boundary = DefineBoundary(cropped_alignment_output_file_no_gap, threshold=0.8, check_window=3, max_X=0)
+            cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
+
+            #####################################################################################################
+            # Code block: Check the consistency of the final MSA
+            #####################################################################################################
+            final_MSA_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file, output_dir,
+                                                          clean_column_threshold=0.08,
+                                                          min_length_num=10, cluster_num=2, cluster_col_thr=250
+                                                          )
+            if final_MSA_consistency is False or final_MSA_consistency is True:
+
+                final_MSA_consistent = True
+            else:
+                new_bed_file = final_MSA_consistency[0]
+                os.rename(new_bed_file, bed_file)
+                intact_loop_times = intact_loop_times + 1
 
     #####################################################################################################
     # Code block: For LTR element, check if the cropped MSA starts with give patterns like TGA ACA

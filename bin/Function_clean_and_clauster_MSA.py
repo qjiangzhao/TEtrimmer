@@ -3,8 +3,8 @@ from Class_group_MSA import MultipleSequenceAlignmentCluster
 from Class_blast_extension_mafft import SequenceManipulator
 
 
-def clean_and_cluster_MSA(input_file, bed_file, output_dir, gap_threshold=0.8, clean_column_threshold=0.08,
-                          min_length_num=10, cluster_num=2):
+def clean_and_cluster_MSA(input_file, bed_file, output_dir, clean_column_threshold=0.08,
+                          min_length_num=10, cluster_num=2, cluster_col_thr=500):
     """
     This function will cluster multiple sequence alignment file
     :param input_file: str, The direct fasta file derived from bed file
@@ -23,37 +23,35 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, gap_threshold=0.8, c
     fasta_out_flank_mafft_file = seq_blast.align_sequences(input_file, output_dir)
 
     # Remove gaps. Return absolute path for gap removed alignment file
-    fasta_out_flank_mafft_file_gap_filter, column_mapping = seq_blast.remove_gaps(
-        fasta_out_flank_mafft_file, output_dir, threshold=gap_threshold)
+    fasta_out_flank_mafft_file_gap_filter = seq_blast.remove_gaps_with_similarity_check(
+        fasta_out_flank_mafft_file, output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
+        similarity_threshold=0.85, min_nucleotide=5)
 
     # Extract columns that contain different alignment patter, use this for group separation.
-    # This threshold will be used to rplace nucleotides that are less than threshold with a gap character for each column
+    # This threshold will be used to replace nucleotides that are less than threshold with a gap character for each column
     pattern_alignment = CleanAndSelectColumn(fasta_out_flank_mafft_file_gap_filter, threshold=clean_column_threshold)
 
     # Clean_column() function will help MSA cluster and return the absolute path of column cleaned alignment file
     pattern_alignment.clean_column(output_dir)
 
     # Select_divergent_column() function will return a boolean value, true represents need cluster step
-    if pattern_alignment.select_divergent_column():
+    if pattern_alignment.select_divergent_column(cluster_col_thr=cluster_col_thr, dis_col_threshold=0.8):
 
         # write_alignment_filtered() function return pattern_alignment absolute path
         pattern_alignment = pattern_alignment.write_alignment_filtered(output_dir)
         """
-        MultipleSequenceAlignmentCluster() function requires pattern alignment. It also require bed file for subseting 
+        MultipleSequenceAlignmentCluster() function requires pattern alignment. It also require bed file for subsetting 
         bed file.
         "min_lines" will define the minimum line numbers for each cluster
         "max_cluster" will define the maximum cluster numbers that will be returned
         this function will return a list contain all cluster file absolute path
         """
-        cluster_MSA_object = MultipleSequenceAlignmentCluster(pattern_alignment, output_dir, min_lines=min_length_num,
+        cluster_MSA_object = MultipleSequenceAlignmentCluster(pattern_alignment, output_dir,
+                                                              min_cluster_size=min_length_num,
                                                               max_cluster=cluster_num)
 
         # Test if silhouette_scores is high enough to perform cluster
         if cluster_MSA_object.if_cluster:
-
-            cluster_MSA_object.apply_kmeans()
-            cluster_MSA_object.generate_cluster_list()
-            cluster_MSA_object.apply_filter_cluster()
 
             """
             Test if cluster number is 0, if so skip this sequence
@@ -66,12 +64,10 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, gap_threshold=0.8, c
                 return False
 
             else:
-                # Subset pattern alignment file, return a list contain all pattern alignment clusters
-                cluster_pattern_alignment_list = cluster_MSA_object.subset_alignment_dis()
 
                 # Subset bed file and return a list contain all clustered bed absolute files
                 cluster_bed_files_list = cluster_MSA_object.subset_bed_file(bed_file)
-                return cluster_pattern_alignment_list, cluster_bed_files_list
+                return cluster_bed_files_list
         else:
             return True
 

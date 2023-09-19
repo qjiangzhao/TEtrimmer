@@ -139,6 +139,33 @@ class SequenceManipulator:
                 file.write(f"{line}\n")
         return bed_out_file
 
+    # Calculate average sequence length in the bed file
+    def bed_ave_sequence_len(self, bed_content, start_rank, end_rank):
+        """Compute average length for regions within a specified rank range in BED content."""
+
+        # Extracting lengths from the BED content
+        lengths = []
+        for line in bed_content.strip().split("\n"):
+            parts = line.split("\t")
+            if len(parts) >= 3:
+                start, end = int(parts[1]), int(parts[2])
+                lengths.append(end - start)
+
+        # Sorting lengths in descending order
+        lengths.sort(reverse=True)
+
+        # Checking if there are enough entries for the specified range
+        if len(lengths) < end_rank:
+            return "Not enough entries"
+
+        # Extracting lengths of regions within the specified rank range
+        selected_lengths = lengths[start_rank - 1:end_rank]
+
+        # Calculating average
+        average = sum(selected_lengths) / len(selected_lengths)
+
+        return average
+
     def extract_fasta(self, input_file, genome_file, output_dir, left_ex, right_ex):
         """
         Extracts fasta sequence from the reference genome using bedtools.
@@ -168,7 +195,7 @@ class SequenceManipulator:
         fasta_nucleotide_clean = f"awk '/^>/ {{print}} !/^>/ {{gsub(/[^AGCTagct]/, \"\"); print}}' {fasta_out_flank_file} > {fasta_out_flank_file_nucleotide_clean}"
         subprocess.run(fasta_nucleotide_clean, shell=True, check=True)
 
-        return fasta_out_flank_file_nucleotide_clean
+        return fasta_out_flank_file_nucleotide_clean, bed_out_flank_file_dup
 
     def align_sequences(self, input_file, output_dir):
         """
@@ -615,7 +642,7 @@ class SequenceManipulator:
                                                 simi_check_gap_thre=0.4, similarity_threshold=0.8,
                                                 conservation_threshold=0.6, min_nucleotide=10):
         """
-        Return: A list contain columns numbers used for cluster
+        Return: A list containing column numbers used for cluster
         """
         # Identify blocks of gaps
         gap_blocks = []
@@ -630,9 +657,12 @@ class SequenceManipulator:
         # Define the starting point of a block
         block_start = None
 
+        # Variables to keep track of the gap count in the previous column and the condition met count
+        prev_gap_count = None
+        condition_met_count = 0
+
         # Go through each column in the alignment. Start from 0
         for col_idx in range(MSA_mafft.get_alignment_length()):
-
             # Define some metrics for the column
             col = MSA_mafft[:, col_idx]
             gap_count = col.count('-')
@@ -644,64 +674,81 @@ class SequenceManipulator:
             if simi_check_gap_thre <= gap_fraction and nt_fraction >= similarity_threshold and \
                     nt_count >= min_nucleotide and block_start is None:
                 block_start = col_idx
+                condition_met_count = 0  # Reset the count for a new block
+
+            # Additional check for gap variance
+            elif prev_gap_count is not None and (
+                    gap_count < 0.8 * prev_gap_count or gap_count > 1.2 * prev_gap_count) and block_start is not None:
+                gap_blocks.append((block_start, col_idx, condition_met_count))
+                block_start = None
 
             # Stop the gap block when nucleotide similarity is smaller than the threshold
-            elif (simi_check_gap_thre <= gap_fraction and nt_fraction < similarity_threshold and block_start is not None) or \
+            elif (
+                    simi_check_gap_thre <= gap_fraction and nt_fraction < similarity_threshold and block_start is not None) or \
                     (nt_count < min_nucleotide and block_start is not None):
-                gap_blocks.append((block_start, col_idx))
-                block_start = None
+                # Check the gap count in the next column if it exists
+                next_gap_count = None
+                if col_idx + 1 < MSA_mafft.get_alignment_length():
+                    next_col = MSA_mafft[:, col_idx + 1]
+                    next_gap_count = next_col.count('-')
+
+                # If gap count is not similar to both previous and next columns, stop the block
+                if prev_gap_count is not None and next_gap_count is not None:
+                    if not (0.8 * prev_gap_count <= gap_count <= 1.2 * prev_gap_count and
+                            0.8 * next_gap_count <= gap_count <= 1.2 * next_gap_count):
+                        condition_met_count += 1
 
             # Stop the gap block when the gap number is too less
             elif gap_fraction < simi_check_gap_thre and block_start is not None:
-                gap_blocks.append((block_start, col_idx))
+                gap_blocks.append((block_start, col_idx, condition_met_count))
                 block_start = None
 
-        # Select gap block that with clear gap boundary
+            # Update the gap count of the previous column
+            prev_gap_count = gap_count
+
+        # Process the identified gap blocks
         keep_blocks = []
 
-        # Check if gap_blocks is empty
         if gap_blocks:
             for block in gap_blocks:
-                start, end = block  # Assign start and end position of each gap block to start and end
-                # Make sure start and end are not None and the gap block is wider than 50
-                if start and end and end - start > 30:
-                    # If the block starts at the first column, then col_before is None
+                start, end, block_condition_count = block  # Now also unpacking the block_condition_count
+
+                # Calculate the maximum allowable condition_met_count based on the block length
+                block_length = end - start
+                if block_length < 10:
+                    max_condition_count = 1
+                else:
+                    max_condition_count = min(0.1 * block_length, 50)
+
+                # Check if the condition_met_count exceeds the maximum allowable value for the block
+                if block_condition_count > max_condition_count:
+                    continue
+
+                if start and end and block_length > 10:
                     if start > 0:
-                        # Part of the column before the gap block where the first column of the gap block has gaps
                         col_before = [MSA_mafft[i, start - 1] for i in range(len(MSA_mafft[:, start])) if
                                       MSA_mafft[i, start] == '-']
                         gap_fraction_before = col_before.count('-') / len(col_before)
-
                     else:
                         col_before = None
-                        gap_fraction_before = 0  # No gaps in case col_before is None
+                        gap_fraction_before = 0
 
-                    # If the block ends at the last column, then col_after is None
                     if end < MSA_mafft.get_alignment_length():
-                        # Part of the column after the gap block where the last column of the gap block has gaps
                         col_after = [MSA_mafft[i, end] for i in range(len(MSA_mafft[:, end - 1])) if
                                      MSA_mafft[i, end - 1] == '-']
                         gap_fraction_after = col_after.count('-') / len(col_after)
-
                     else:
                         col_after = None
-                        gap_fraction_after = 0  # No gaps in case col_after is None
+                        gap_fraction_after = 0
 
-                    # Using the modified col_before and col_after in your conservation calculation
-                    # gap_fraction_before <= 0.3 will make sure "-" won't be more than 30%
                     if gap_fraction_before <= 0.3 and gap_fraction_after <= 0.3 and \
                             col_before is not None and self.calc_conservation(col_before) > conservation_threshold and \
                             col_after is not None and self.calc_conservation(col_after) > conservation_threshold:
-                        keep_blocks.append(block)
-        else:
-            return False
+                        keep_blocks.append((start, end))
 
-        # Check if "delete_blocks" is empty
         if keep_blocks:
             flat_keep_blocks = [item for start, end in keep_blocks for item in range(start, end)]
-
             return flat_keep_blocks
-
         else:
             return False
 

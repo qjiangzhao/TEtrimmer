@@ -3,7 +3,7 @@ import concurrent.futures
 import shutil
 import traceback
 from Bio import SeqIO
-from datetime import datetime
+from datetime import datetime, timedelta
 from Class_separate_fasta import FastaSequenceSeparator
 from Class_blast_extension_mafft import SequenceManipulator
 from Class_bed_filter import BEDFile
@@ -15,9 +15,22 @@ import click
 import json
 
 
-# Define directory not empty error, this is used to raise an error then the output folder isn't empty
-class DirectoryNotEmptyError(Exception):
-    pass
+# Define function to check progress file, which will be used for continue analysis
+def check_progress_file(progress_file_path):
+    try:
+        # If the progress file exists, open the file and read the list of completed sequences
+        with open(progress_file_path, 'r') as f:
+            local_completed_sequences = f.readlines()
+
+        # Strip newline characters and remove duplicates
+        local_completed_sequences = list(
+            set([sequence.strip().split('\t')[0] for sequence in local_completed_sequences]))
+
+    except Exception as e:
+        raise Exception(
+            f"An error occurred while reading the progress file {progress_file_path}: {e}")
+    return local_completed_sequences
+
 
 #####################################################################################################
 # Code block: Define analyze_sequence function
@@ -34,7 +47,7 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
                      crop_end_gap_win, start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, elongation_dir,
                      single_fasta_n, hmm, check_extension_win, keep_intermediate):
     #####################################################################################################
-    # Code block: Elongate query sequence when they are too short
+    # Code block: Elongate query sequence when it is too short
     #####################################################################################################
 
     try:
@@ -58,7 +71,7 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
         # Due to DNA element will be much shorter than LTR and LINE elements, set min_length_elongation to 500.
         if "DNA" in seq_name:
             min_length_elongation = min_el_dna
-            elongation_ext_n = 500
+            elongation_ext_n = 800
             ex_step = 500
             max_extension = 3500
             min_blast_len = 150
@@ -169,14 +182,15 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
         # extract fast from bed_out_filter_file
         # return fasta_out_flank_file absolute path
         # because have to group MSA the first round extend for left and right side are both 0
-        fasta_out_flank_file = seq_blast.extract_fasta(bed_out_filter_file, genome_file, MSA_dir, left_ex=0,
-                                                       right_ex=0)
+        fasta_out_flank_file, bed_out_flank_file = seq_blast.extract_fasta(
+            bed_out_filter_file, genome_file, MSA_dir, left_ex=0, right_ex=0)
 
         # Return False when cluster number is 0. Return True when divergent column number is smaller than 100
         # Otherwise it will return the subset bed and alignment file
         cluster_MSA_result = clean_and_cluster_MSA(fasta_out_flank_file, bed_out_filter_file, MSA_dir,
-                                                   gap_threshold=0.8, clean_column_threshold=0.08,
-                                                   min_length_num=min_seq_num, cluster_num=max_cluster_num)
+                                                   clean_column_threshold=0.08,
+                                                   min_length_num=min_seq_num, cluster_num=max_cluster_num,
+                                                   cluster_col_thr=100)
     except Exception as e:
         click.echo(
             f"Error during processing lines, extracting fasta, or clustering MSA for sequence: {seq_name}. Error: {str(e)}")
@@ -223,16 +237,22 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
                 return
 
         else:
-            cluster_pattern_alignment_list, cluster_bed_files_list = cluster_MSA_result
+            cluster_bed_files_list = cluster_MSA_result
 
             # cluster_pattern_alignment_list have the same index with cluster_bed_files_list
             all_inner_skipped = True
-            for i in range(len(cluster_pattern_alignment_list)):
-                inner_cluster_MSA_result = clean_and_cluster_MSA(cluster_pattern_alignment_list[i],
+            for i in range(len(cluster_bed_files_list)):
+
+                # Based on the bed file list, extract fasta file
+                inner_fasta_out_flank_file, inner_bed_out_flank_file = seq_blast.extract_fasta(
+                    cluster_bed_files_list[i], genome_file, MSA_dir, left_ex=0, right_ex=0)
+
+                inner_cluster_MSA_result = clean_and_cluster_MSA(inner_fasta_out_flank_file,
                                                                  cluster_bed_files_list[i], MSA_dir,
-                                                                 gap_threshold=0.8, clean_column_threshold=0.15,
+                                                                 clean_column_threshold=0.08,
                                                                  min_length_num=min_seq_num,
-                                                                 cluster_num=max_cluster_num)
+                                                                 cluster_num=max_cluster_num,
+                                                                 cluster_col_thr=100)
                 # inner_cluster_MSA_result is false means this cluster sequence number is too less
                 if inner_cluster_MSA_result is False:
                     continue
@@ -256,7 +276,7 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
                         return
 
                 else:  # If need more cluster, clean_and_cluster_MSA will return two values
-                    inner_cluster_pattern_alignment_list, inner_cluster_bed_files_list = inner_cluster_MSA_result
+                    inner_cluster_bed_files_list = inner_cluster_MSA_result
 
                     for j in range(len(inner_cluster_bed_files_list)):
                         inner_inner_find_boundary_result = find_boundary_and_crop(
@@ -545,14 +565,13 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     output_dir = os.path.abspath(output_dir)  # get absolute path
 
     # Check if output directory is empty when --continue_analysis is False
-    try:
-        if os.listdir(output_dir) and not continue_analysis:
-            raise DirectoryNotEmptyError
+    if os.listdir(output_dir) and not continue_analysis:
 
-    except DirectoryNotEmptyError:
         click.echo(
-            f"The output directory {output_dir} is not empty. Please empty your output directory or "
+            f"WARNING: The output directory {output_dir} is not empty. Please empty your output directory or "
             f"choose another empty directory\n")
+
+        # Stop the whole program when the output directory is not empty
         return
 
     # make a new folder for single fasta sequence
@@ -614,61 +633,49 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Code block: Merge input file and generate single fasta file
     #####################################################################################################
 
-    # Do cd-hit-est merge when cd_hit_merge is true and continue_analysis is false
-    if cd_hit_merge and not continue_analysis:
-        click.echo("\nTE Trimmer is merging input sequences, this might take some time.\n")
-        cd_hit_merge_output = os.path.join(output_dir, f"{input_file}_cd_hit.fa")
-        cd_hit_merge_object = SequenceManipulator()
-        # Set lower identity threshold for the query, this can increase sensitive
-        cd_hit_merge_object.cd_hit_est(input_file, cd_hit_merge_output, identity_thr=0.9,
-                                       aL=0.9, aS=0.9, s=0.9, thread=num_threads)
-        input_file = cd_hit_merge_output
-        click.echo("Merge finished.\n")
+    # Generate single files when continue_analysis is false
+    if not continue_analysis:
 
-    # separate fasta to single files, if fasta header contain "/" or " " or "#" convert them to "_"
-    separate_fasta = FastaSequenceSeparator(input_file, single_file_dir)
-    separate_fasta.separate_sequences()  # call this function to separate to single fasta files
+        # Do cd-hit-est merge when cd_hit_merge is true and continue_analysis is false
+        if cd_hit_merge:
+            click.echo("\nTE Trimmer is merging input sequences, this might take some time.\n")
+            cd_hit_merge_output = os.path.join(output_dir, f"{input_file}_cd_hit.fa")
+            cd_hit_merge_object = SequenceManipulator()
+            # Set lower identity threshold for the query, this can increase sensitive
+            cd_hit_merge_object.cd_hit_est(input_file, cd_hit_merge_output, identity_thr=0.9,
+                                           aL=0.9, aS=0.9, s=0.9, thread=num_threads)
 
-    # Calculate the total sequence number in single_file_dir
-    single_fasta_n = len([f for f in os.listdir(single_file_dir) if f.endswith('.fasta')])
-    click.echo(f"{single_fasta_n} sequences are detected from the input file")
+            # Convert input_file to merged input_file
+            input_file = cd_hit_merge_output
+            click.echo("Merge finished.\n")
 
-    # create new object just use to check blast database availability
-    test_blast_db = SequenceManipulator()
+        # separate fasta to single files, if fasta header contain "/" or " " or "#" convert them to "_"
+        separate_fasta = FastaSequenceSeparator(input_file, single_file_dir)
+        separate_fasta.separate_sequences()  # call this function to separate to single fasta files
 
-    # check if blast database and genome length files are available, otherwise create genome length file at the
-    # same directory of genome and create blast database at blast_database_dir
-    test_blast_db.check_database(genome_file)
+        # Calculate the total sequence number in single_file_dir
+        single_fasta_n = len([f for f in os.listdir(single_file_dir) if f.endswith('.fasta')])
+        click.echo(f"{single_fasta_n} sequences are detected from the input file.")
 
-    #####################################################################################################
-    # Code block: Start analysis based on the existed files
-    #####################################################################################################
+        # create new object to check blast database availability
+        test_blast_db = SequenceManipulator()
 
-    def check_progress_file(progress_file_path):
+        # check if blast database and genome length files are available, otherwise create them at the
+        # same directory of genome file
+        test_blast_db.check_database(genome_file)
+        sequence_names = [f for f in os.listdir(single_file_dir) if f.endswith(".fasta")]
 
-        try:
-            # If the progress file exists, open the file and read the list of completed sequences
-            with open(progress_file_path, 'r') as f:
-                local_completed_sequences = f.readlines()
-
-            # Strip newline characters and remove duplicates
-            local_completed_sequences = list(set([sequence.strip().split('\t')[0] for sequence in local_completed_sequences]))
-
-        except Exception as e:
-            raise Exception(
-                f"An error occurred while reading the progress file {progress_file_path}: {e}")
-        return local_completed_sequences
-
-    if continue_analysis:
+    else:
 
         # Check if progress_file and skipped_file are both empty
-        if os.path.getsize(progress_file) == 0 and os.path.getsize(skipped_file) == 0:
-            click.echo("\nFinished_sequence_name.txt and Skipped_sequence_name.txt are both empty."
-                       "TE Trimmer will start a new analysis")
-            sequence_names = [f for f in os.listdir(single_file_dir) if f.endswith(".fasta")]
+        if not os.listdir(single_file_dir):
+            click.echo("\nWARNING: TE Trimmer can't do continue analysis, please make sure the output directory is same"
+                       "with your previous analysis.")
+            return
 
         else:
-            click.echo("\nTE Trimmer will continue to analyze based on previous results\n")
+            click.echo("\nTE Trimmer will continue to analyze based on previous results.\n")
+            single_fasta_n = len([f for f in os.listdir(single_file_dir) if f.endswith('.fasta')])
 
             # Check which sequences have already been processed
             progress_sequences = check_progress_file(progress_file)
@@ -678,9 +685,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             # Filter out already complete sequences from the total sequences
             sequence_names = [f for f in os.listdir(single_file_dir) if
                               f.endswith(".fasta") and f not in complete_sequences]
-
-    else:
-        sequence_names = [f for f in os.listdir(single_file_dir) if f.endswith(".fasta")]
 
     #####################################################################################################
     # Code block: Enable multiple threads
@@ -723,6 +727,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         # According to 80-80-80 rule to filter final consensus sequences
         cd_hit_merge_object.cd_hit_est(final_con_file, cd_hit_merge_output_final, identity_thr=0.8,
                                        aL=0.8, aS=0.8, s=1, thread=num_threads)
+
+        #
 
     # At the end of the program, check if all sequences have been processed
     with open(progress_file, 'r') as file:
@@ -774,8 +780,12 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     end_time = datetime.now()
     duration = end_time - start_time
+
+    # Remove microseconds from the duration
+    duration_without_microseconds = timedelta(days=duration.days, seconds=duration.seconds)
+
     print(f"\nTE Trimmer finished at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-    print(f"TE Trimmer runtime was {duration}")
+    print(f"TE Trimmer runtime was {duration_without_microseconds}")
 
 
 # The following is necessary to make the script executable, i.e., python myscript.py.

@@ -14,6 +14,7 @@ class CleanAndSelectColumn:
         """
         self.input_file = input_file
         self.alignment = AlignIO.read(input_file, "fasta")
+        self.alignment_seq_num = len(self.alignment)
         self.proportions = {}
         self.threshold = threshold
         self.alignment_length = self.alignment.get_alignment_length()
@@ -56,18 +57,20 @@ class CleanAndSelectColumn:
             AlignIO.write(self.alignment, f, 'fasta')
         return output_file
 
-    def select_divergent_column(self, threshold=0.7):
+    def select_divergent_column(self, cluster_col_thr=500, dis_col_threshold=0.8):
         """
         Select distinct columns from multiple sequence alignment file, which will be used for clustering
         :param threshold: num (0-1) default 0.8, Check if any nucleotide proportion is greater than threshold,
         then delete that column
         :return: if_need_cluster: boolean, decide if need clustering
         """
+        if self.alignment_seq_num >= 90:
+            dis_col_threshold = 0.85
 
         # Delete highly conserved columns
         columns_to_delete = []
         for i in range(self.alignment_length):
-            if any(proportion > threshold for proportion in self.proportions[i].values()):
+            if any(proportion > dis_col_threshold for proportion in self.proportions[i].values()):
                 columns_to_delete.append(i)
 
         columns_to_keep = []
@@ -92,7 +95,8 @@ class CleanAndSelectColumn:
         When alignment length is greater than 1000, the distinct column number have to be more than 100
         otherwise, it will be ten percent of the MSA length but not less than 50
         """
-        min_length = max(50, int(0.1 * self.alignment_length)) if self.alignment_length <= 5000 else 500
+        min_length = max(50, int(0.05 * self.alignment_length)) if self.alignment_length <= cluster_col_thr / 0.05 \
+            else cluster_col_thr
 
         if len(columns_to_keep) > min_length:  # Set the threshold number to decide if perform cluster
             self.alignment_filtered = self.alignment[:, columns_to_keep[0]:columns_to_keep[0] + 1]
@@ -108,5 +112,4 @@ class CleanAndSelectColumn:
         with open(output_file, 'w') as f:
             AlignIO.write(self.alignment_filtered, f, 'fasta')
         return output_file
-
 

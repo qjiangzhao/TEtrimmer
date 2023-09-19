@@ -43,15 +43,12 @@ class SequenceElongation:
             # write_alignment_filtered() function return pattern_alignment absolute path
             pattern_alignment = pattern_alignment_object.write_alignment_filtered(output_dir)
 
-            cluster_MSA_object = MultipleSequenceAlignmentCluster(pattern_alignment, output_dir, min_lines=min_seq_num,
+            cluster_MSA_object = MultipleSequenceAlignmentCluster(pattern_alignment, output_dir,
+                                                                  min_cluster_size=min_seq_num,
                                                                   max_cluster=1)
 
             # Test if the pattern MAS can be clustered
             if cluster_MSA_object.if_cluster:
-
-                cluster_MSA_object.apply_kmeans()
-                cluster_MSA_object.generate_cluster_list()
-                cluster_MSA_object.apply_filter_cluster()
 
                 if len(cluster_MSA_object.filtered_cluster_records) == 0:
 
@@ -121,8 +118,8 @@ class SequenceElongation:
             # extract fasta from bed_out_filter_file
             # return fasta_out_flank_file absolute path
             # because have to group MSA the first round extend for left and right side are both 0
-            fasta_out_flank_file = seq_blast.extract_fasta(bed_out_filter_file, self.genome_file, self.output_dir,
-                                                           left_ex=self.ext_n, right_ex=self.ext_n)
+            fasta_out_flank_file, bed_out_flank_file = seq_blast.extract_fasta(
+                bed_out_filter_file, self.genome_file, self.output_dir, left_ex=self.ext_n, right_ex=self.ext_n)
 
             # Do multiple sequence alignment
             fasta_out_flank_file_MSA = seq_blast.align_sequences(fasta_out_flank_file, self.output_dir)
