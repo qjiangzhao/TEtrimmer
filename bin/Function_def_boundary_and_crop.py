@@ -183,8 +183,18 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
                 final_MSA_consistent = True
             else:
                 new_bed_file = final_MSA_consistency[0]
-                os.rename(new_bed_file, bed_file)
+                bed_file = new_bed_file
+
+                if intact_loop_times == 1:
+                    os.remove(cropped_boundary_MSA)
+
                 intact_loop_times = intact_loop_times + 1
+
+                if_left_ex = True
+                if_right_ex = True
+
+                left_ex = 0
+                right_ex = 0
 
     #####################################################################################################
     # Code block: For LTR element, check if the cropped MSA starts with give patterns like TGA ACA
