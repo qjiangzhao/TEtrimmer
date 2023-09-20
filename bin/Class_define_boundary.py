@@ -50,7 +50,7 @@ class DefineBoundary():
         # Get consensus sequence and convert to a list element to enable single element mutation
         self.consensus_seq = list(summary.dumb_consensus(threshold=self.threshold, ambiguous=self.ambiguous).upper())
 
-        for i in range(len(self.consensus_seq)): # iterate over columns
+        for i in range(len(self.consensus_seq)):  # iterate over columns
             column = self.alignment[:, i]
             # set(column) get an unordered collection of unique nucleotide for that column
             nucleotide_counts = {nucleotide: column.count(nucleotide) for nucleotide in set(column) if nucleotide in self.nucl}
@@ -129,7 +129,7 @@ class DefineBoundary():
         selected_alignment = MultipleSeqAlignment(selected_alignment)
 
         # Write the cut MSA to a file
-        output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_bou_crop.fa")
+        output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_bc.fa")
 
         with open(output_file, "w") as f:
             AlignIO.write(selected_alignment, f, "fasta")

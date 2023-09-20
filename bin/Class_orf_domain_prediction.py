@@ -152,7 +152,7 @@ class PlotPfam:
         """
         output_orf_file = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_orf.txt")
         self.output_orf_file_name_modified = os.path.join(self.output_dir,
-                                                          f"{os.path.basename(self.input_file)}_orf_modi.txt")
+                                                          f"{os.path.basename(self.input_file)}_orfm.txt")
         self.output_orf_file_name_modified_table = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_orf_modi_t.txt")
 
         get_orf_command = [
@@ -196,8 +196,8 @@ class PlotPfam:
         Run pfam_scan.pl to check orfs against Pfam database
         """
         # Define output file name and the modified pfam output file name.
-        output_pfam_file = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_orf_modi_pfam.txt")
-        self.output_pfam_file_modified = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_orf_modi_pfam_modi.txt")
+        output_pfam_file = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_orfm_pf.txt")
+        self.output_pfam_file_modified = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_orfm_pfm.txt")
 
         # Delete the output file if it already exists
         if os.path.exists(output_pfam_file):

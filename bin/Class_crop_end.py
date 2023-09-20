@@ -126,25 +126,9 @@ class CropEnd:
         return self.cropped_alignment
 
     def write_to_file(self, output_dir):
-        output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_cr_end_.fa")
+        output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_ce.fa")
         with open(output_file, "w") as f:
             AlignIO.write(self.cropped_alignment, f, "fasta")
         return output_file
 
 
-"""
-test_file ="/Users/panstrugamacbook/Documents/PhD_project_files/TE_Trimmer/Test_file/Chr10_5848220..5860212_LTR_Gypsy.fasta.blast.bed.uniq.bed.fil.bed_0_0_cl.fa_maf.fa_gap_rm.fa_pat_MSA.fa"
-output_file = "/Users/panstrugamacbook/Documents/PhD_project_files/TE_Trimmer/Test_file/test_result_3"
-
-output_file_2 = "/Users/panstrugamacbook/Documents/PhD_project_files/TE_Trimmer/Test_file/test_result_4"
-test_object = CropEnd(test_file)
-test_object.pro_calculation()
-result1, result2 = test_object.average_proportion_per_column()
-with open(output_file, "w") as f:
-    f.write(str(list(result1)))
-
-print(result1)
-df = test_object.df
-df.to_csv(output_file_2)
-print(test_object.df)
-"""

@@ -40,6 +40,28 @@ def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=16, win
     return cropped_alignment_output_file_no_gap, column_mapping
 
 
+# Because for each query file, several subgroups of multiple sequence alignment will be generated,
+# This function will name them differently
+def get_unique_filename(base_path, original_name):
+    counter = 0
+    name, ext = os.path.splitext(original_name)
+
+    # If the extension is .anno_fasta, change it to .anno.fasta
+    # This will make sure the right order of the files
+    if ext == ".anno_fasta":
+        ext = ".anno.fasta"
+
+    # Initialize with the original name
+    new_name = f"{name}{ext}"
+
+    # While the constructed name already exists, increment the counter and reconstruct the name
+    while os.path.exists(os.path.join(base_path, new_name)):
+        counter += 1
+        new_name = f"{name}_{counter:02}{ext}"  # Adjusted to use zero-padding
+
+    return new_name
+
+
 def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name, hmm,
                            cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000, max_extension=7000,
                            gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=16, crop_end_win=20,
@@ -438,7 +460,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
     #####################################################################################################
 
     # Create a folder at the same directory with output_dir to store proof annotation files
-
     parent_output_dir = os.path.dirname(output_dir)
 
     # Define final consensus file
@@ -451,26 +472,66 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
     if not os.path.exists(proof_annotation_dir):
         os.makedirs(proof_annotation_dir)
 
-    # Because for each query file, several subgroups of multiple sequence alignment will be generated,
-    # This function will name them differently
-    def get_unique_filename(base_path, original_name):
-        counter = 0
-        name, ext = os.path.splitext(original_name)
+    # Eliminate .fasta from seq_name, this can make sure the right file order when do proof annotation
+    seq_name_name, seq_name_ext = os.path.splitext(seq_name)
 
-        # If the extension is .anno_fasta, change it to .anno.fasta
-        # This will make sure the right order of the files
-        if ext == ".anno_fasta":
-            ext = ".anno.fasta"
+    file_copy_pattern = [
+        (merged_pdf_path, f"{seq_name_name}.pdf"),
+        (cropped_boundary_MSA, f"{seq_name_name}.fasta"),  # Changed to append .fasta
+        (cropped_boundary_manual_MSA_concatenate, f"{seq_name_name}.anno_fasta")
+    ]
 
-        # Initialize with the original name
-        new_name = f"{name}{ext}"
+    files_moved_successfully = True
 
-        # While the constructed name already exists, increment the counter and reconstruct the name
-        while os.path.exists(os.path.join(base_path, new_name)):
-            counter += 1
-            new_name = f"{name}_{counter:02}{ext}"  # Adjusted to use zero-padding
+    for pattern, new_name in file_copy_pattern:
 
-        return new_name
+        # Determine the final unique name before copying
+        unique_new_name = get_unique_filename(proof_annotation_dir, new_name)
+        try:
+            # Move the file to the new location with the unique new name
+            shutil.copy(pattern, os.path.join(proof_annotation_dir, unique_new_name))
+
+        except Exception as e:
+            files_moved_successfully = False
+
+        if pattern == cropped_boundary_MSA:
+
+            # Generate consensus sequence
+            try:
+                final_con_object = SequenceManipulator()
+                if hmm:  # Generate hmm files when the user want it
+                    hmm_dir = os.path.join(os.path.dirname(output_dir), "HMM_files")
+                    final_con_object.generate_hmm_from_msa(cropped_boundary_MSA, hmm_dir)
+
+                # Generate final consensus sequence
+                final_con = final_con_object.con_generater_no_file(cropped_boundary_MSA, threshold=cons_threshold)
+                header = ">" + os.path.splitext(unique_new_name)[0]  # Use the filename without extension
+                sequence = str(final_con).upper()
+                with open(final_con_file, "a") as f:  # 'a' mode for appending
+                    f.write(header + "\n" + sequence + "\n")
+
+            except Exception as e:
+                files_moved_successfully = False
+
+    return files_moved_successfully
+
+"""
+    #####################################################################################################
+    # Code block: Move files modified
+    #####################################################################################################
+
+    # Create a folder at the same directory with output_dir to store proof annotation files
+    parent_output_dir = os.path.dirname(output_dir)
+
+    # Define final consensus file
+    final_con_file = os.path.join(parent_output_dir, "TE_Trimmer_consensus.fasta")
+
+    # Construct the path for the new folder
+    proof_annotation_dir = os.path.join(parent_output_dir, "TE_Trimmer_for_proof_annotation")
+
+    # Create the directory if it doesn't exist
+    if not os.path.exists(proof_annotation_dir):
+        os.makedirs(proof_annotation_dir)
 
     # Eliminate .fasta from seq_name, this can make sure the right file order when do proof annotation
     seq_name_name, seq_name_ext = os.path.splitext(seq_name)
@@ -518,3 +579,4 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
 
     return files_moved_successfully
 
+"""

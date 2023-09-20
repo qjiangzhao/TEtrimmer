@@ -223,3 +223,4 @@ class MultipleSequenceAlignmentCluster:
             df.to_csv(output_file, sep='\t', header=False, index=False)
             output_file_list.append(output_file)
         return output_file_list
+

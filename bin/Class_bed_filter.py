@@ -58,7 +58,7 @@ class BEDFile:
             raise ValueError("top_mas_lines must be equal to or smaller than max_msa_lines.")
 
         random_lines_count = threshold - top_longest_lines_count
-        bed_out_filter_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}.fil.bed" )
+        bed_out_filter_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}f.bed")
 
         if len(self.lines) > threshold:
             top_longest_lines = self.select_top_longest_lines(top_longest_lines_count)

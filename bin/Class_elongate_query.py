@@ -117,7 +117,6 @@ class SequenceElongation:
 
             # extract fasta from bed_out_filter_file
             # return fasta_out_flank_file absolute path
-            # because have to group MSA the first round extend for left and right side are both 0
             fasta_out_flank_file, bed_out_flank_file = seq_blast.extract_fasta(
                 bed_out_filter_file, self.genome_file, self.output_dir, left_ex=self.ext_n, right_ex=self.ext_n)
 
@@ -127,7 +126,7 @@ class SequenceElongation:
             # Remove gap block with similarity check
             fasta_out_flank_file_MSA_gap_block_sim = seq_blast.remove_gaps_block_with_similarity_check(
                 fasta_out_flank_file_MSA, self.output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
-                similarity_threshold=0.7, conservation_threshold=0.6, min_nucleotide=5
+                similarity_threshold=0.7, conservation_threshold=0.4, min_nucleotide=5
             )
 
             # Crop end by gap
@@ -142,6 +141,18 @@ class SequenceElongation:
             crop_end_by_divergence_object.find_positions()
             crop_end_by_divergence_object.crop_alignment()
             crop_end_by_divergence = crop_end_by_divergence_object.write_to_file(self.output_dir)
+
+            # Check if MSA is empty after crop end by gap and divergence
+            consensus_after_crop_end = seq_blast.con_generater_no_file(crop_end_by_divergence, threshold=0.5)
+
+            # Count the number of nucleotides after eliminating 'N'
+            nucleotides_after_elimination = len([char for char in consensus_after_crop_end if char != 'N'])
+            if nucleotides_after_elimination < 20:
+
+                with open(self.skipped_file, "a") as f:
+                    f.write(input_file_name + f"\tshort\telement is too short for TE Trimmer\n")
+                click.echo(f"\n{input_file_name} is skipped due to too short length\n")
+                return False
 
             # Remove gaps
             crop_end_by_divergence_remove_gap = seq_blast.remove_gaps_with_similarity_check(

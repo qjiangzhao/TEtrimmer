@@ -90,7 +90,7 @@ class SequenceManipulator:
         """
 
         # define blast outfile
-        blast_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.blast.o")
+        blast_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b")
         blast_cmd = f"blastn -query {input_file} -db {genome_file} " \
                     f"-outfmt \"6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand\" " \
                     f"-evalue 1e-40 -qcov_hsp_perc 20 | " \
@@ -105,7 +105,7 @@ class SequenceManipulator:
         if self.blast_hits_count >= 1:
             # Define bed outfile
             # Only convert blast to bed file when hits number is greater than 10
-            bed_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.blast.bed")
+            bed_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b.bed")
             bed_cmd = f"awk 'BEGIN{{OFS=\"\\t\"}} !/^#/ {{if ($10~/plus/){{print $2, $8, $9, $1, $3, \"+\"}} " \
                       f"else {{print $2, $9, $8, $1, $3, \"-\"}}}}' < {blast_out_file} > {bed_out_file}"
             subprocess.run(bed_cmd, shell=True, check=True)
@@ -131,7 +131,7 @@ class SequenceManipulator:
                 unique_keys.add(key)
                 unique_entries.append(entry)
 
-        bed_out_file = os.path.join(output_dir, f"{os.path.basename(bed_file)}.uniq.bed")
+        bed_out_file = os.path.join(output_dir, f"{os.path.basename(bed_file)}_u")
 
         with open(bed_out_file, "w") as file:
             for entry in unique_entries:
@@ -233,7 +233,7 @@ class SequenceManipulator:
         consensus_record = SeqRecord(consensus_seq, id=f"{os.path.basename(input_file)}", description="")
 
         # Write to a FASTA file
-        output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_cons.fa")
+        output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_co.fa")
         with open(output_file, "w") as file:
             SeqIO.write(consensus_record, file, "fasta")
 
@@ -330,7 +330,7 @@ class SequenceManipulator:
         """
         keep_list = []
         fasta_out_flank_mafft_gap_filter_file = os.path.join(output_dir,
-                                                             f"{os.path.basename(input_file)}_gap_rm.fa")
+                                                             f"{os.path.basename(input_file)}_g.fa")
         MSA_mafft = AlignIO.read(input_file, "fasta")
 
         column_mapping = {}  # Stores the mapping of column indices from filtered MSA to original MSA
@@ -382,7 +382,7 @@ class SequenceManipulator:
         # The keep_list is a list of tuples containing start and end position for each gap block
         gap_blocks = []
         fasta_out_flank_mafft_gap_filter_file = os.path.join(output_dir,
-                                                             f"{os.path.basename(input_file)}_gap_bl.fa")
+                                                             f"{os.path.basename(input_file)}_gb.fa")
         MSA_mafft = AlignIO.read(input_file, "fasta")
 
         # Initialize the start of the block to None
@@ -468,7 +468,7 @@ class SequenceManipulator:
         """
         keep_list = []
         fasta_out_flank_mafft_gap_filter_file = os.path.join(output_dir,
-                                                             f"{os.path.basename(input_file)}_gap_sim.fa")
+                                                             f"{os.path.basename(input_file)}_gs.fa")
         MSA_mafft = AlignIO.read(input_file, "fasta")
 
         column_mapping = {}  # Stores the mapping of column indices from filtered MSA to original MSA
@@ -545,7 +545,7 @@ class SequenceManipulator:
 
         # Output file name
         fasta_out_flank_mafft_gap_filter_file = os.path.join(output_dir,
-                                                             f"{os.path.basename(input_file)}_gap_bl_sim.fa")
+                                                             f"{os.path.basename(input_file)}_gbs.fa")
 
         # Load the MSA file
         MSA_mafft = AlignIO.read(input_file, "fasta")

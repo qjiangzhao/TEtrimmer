@@ -55,9 +55,9 @@ class CropEndByGap:
         # Convert the list of SeqRecords into a MultipleSeqAlignment
         self.cropped_alignment = MultipleSeqAlignment(self.cropped_alignment)
 
-    # This method writes the cropped alignment to a new file
+    # Write the cropped alignment to a new file
     def write_to_file(self, output_dir):
-        output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_rm_end_gap.fa")
+        output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_ceg.fa")
         with open(output_file, "w") as f:
             AlignIO.write(self.cropped_alignment, f, "fasta")
         return output_file

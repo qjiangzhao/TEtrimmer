@@ -103,4 +103,26 @@ class MultipleSequenceAlignmentCluster:
 
         return output_file_list
 
+    def subset_alignment_intact(self, input_file):
+        """
+        According to clusters, subset input_file to different clusters
+        :param input_file: str, the absolute path of input MSA file, which is used to generate pattern MSA file.
+        :return: a list contains absolute paths of cluster MSA files
+        """
+        output_file_list = []
+
+        alignment_intact = AlignIO.read(input_file, "fasta")
+        for i, cluster in enumerate(self.filtered_cluster_records):
+            output_file = os.path.join(self.output_dir, f"{os.path.basename(input_file)}_g_{i+1}.fa")
+            with open(output_file, 'w') as file:
+                for seq_id in cluster:
+                    record = [seq for seq in alignment_intact if seq.id == seq_id]
+                    if record:
+                        record = record[0]
+                        file.write(f'>{record.id}\n')
+                        file.write(f'{record.seq}\n')
+            output_file_list.append(output_file)
+
+        return output_file_list
+
 

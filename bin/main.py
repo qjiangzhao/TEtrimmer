@@ -73,7 +73,7 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
             min_length_elongation = min_el_dna
             elongation_ext_n = 800
             ex_step = 500
-            max_extension = 3500
+            max_extension = 7000
             min_blast_len = 150
             crop_end_gap_win = 100
             check_extension_win = 50
@@ -92,7 +92,7 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
             min_length_elongation = 500
             elongation_ext_n = 500
             ex_step = 500
-            max_extension = 3500
+            max_extension = 7000
             min_blast_len = 150
             crop_end_gap_win = 100
             check_extension_win = 50
