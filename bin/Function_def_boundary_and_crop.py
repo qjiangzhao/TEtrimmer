@@ -106,8 +106,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
     final_MSA_consistent = False
     intact_loop_times = 1
 
+    # intact_loop_times is the iteration numbers, <3 means iterate 2 times.
     while (if_left_ex or if_right_ex) and (left_ex <= max_extension and right_ex <= max_extension) \
-            and not final_MSA_consistent and intact_loop_times < 3:
+            and not final_MSA_consistent and intact_loop_times < 4:
 
         bed = SequenceManipulator()
         # bedtools will makesure the extension won't excess the maximum length of that chromosome
@@ -200,23 +201,43 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
                                                           clean_column_threshold=0.08,
                                                           min_length_num=10, cluster_num=2, cluster_col_thr=250
                                                           )
+
+            # False means the sequences number in each cluster is smaller than minimum number, normally 10
+            # True means not necessary to do further cluster
             if final_MSA_consistency is False or final_MSA_consistency is True:
 
                 final_MSA_consistent = True
+
+            # else means that further clustering is required
             else:
+
+                # Only use the first cluster for further analysis, which contains the most sequences
                 new_bed_file = final_MSA_consistency[0]
                 bed_file = new_bed_file
 
-                if intact_loop_times == 1:
-                    os.remove(cropped_boundary_MSA)
-
                 intact_loop_times = intact_loop_times + 1
 
+                # Reset extension parameters to enable whole while loop
                 if_left_ex = True
                 if_right_ex = True
 
                 left_ex = 0
                 right_ex = 0
+
+    #####################################################################################################
+    # Code block: Check if the final MSA contains too many ambiguous letter "N"
+    #####################################################################################################
+
+    initial_cons_object = SequenceManipulator()
+    initial_cons = initial_cons_object.con_generater_no_file(cropped_boundary_MSA, threshold=0.7, ambiguous="N")
+
+    # Calculate the proportion of 'N' in the sequence
+    n_proportion = initial_cons.count("N") / len(initial_cons)
+
+    # Check if the proportion is greater than 30%
+    # If 30% of this consensus sequence is "N", stop analysis for this MSA
+    if n_proportion > 0.3:
+        return False
 
     #####################################################################################################
     # Code block: For LTR element, check if the cropped MSA starts with give patterns like TGA ACA
@@ -311,6 +332,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
 
     # Generate consensus sequence for ORF prediction
     orf_cons_object = SequenceManipulator()
+
+    # Use lower threshold to enable give more pfam results
     orf_cons = orf_cons_object.con_generater(cropped_boundary_MSA, output_dir, threshold=0.5)
 
     # Predict orf, scan with Pfam
@@ -504,6 +527,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
                     final_con_object.generate_hmm_from_msa(cropped_boundary_MSA, hmm_dir)
 
                 # Generate final consensus sequence
+                # Comparing initial consensus, the final consensus sequence might have different orientation.
                 final_con = final_con_object.con_generater_no_file(cropped_boundary_MSA, threshold=cons_threshold)
                 header = ">" + os.path.splitext(unique_new_name)[0]  # Use the filename without extension
                 sequence = str(final_con).upper()
@@ -514,69 +538,3 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
                 files_moved_successfully = False
 
     return files_moved_successfully
-
-"""
-    #####################################################################################################
-    # Code block: Move files modified
-    #####################################################################################################
-
-    # Create a folder at the same directory with output_dir to store proof annotation files
-    parent_output_dir = os.path.dirname(output_dir)
-
-    # Define final consensus file
-    final_con_file = os.path.join(parent_output_dir, "TE_Trimmer_consensus.fasta")
-
-    # Construct the path for the new folder
-    proof_annotation_dir = os.path.join(parent_output_dir, "TE_Trimmer_for_proof_annotation")
-
-    # Create the directory if it doesn't exist
-    if not os.path.exists(proof_annotation_dir):
-        os.makedirs(proof_annotation_dir)
-
-    # Eliminate .fasta from seq_name, this can make sure the right file order when do proof annotation
-    seq_name_name, seq_name_ext = os.path.splitext(seq_name)
-
-    file_copy_pattern = [
-        (rf"^{seq_name}.*me_plot.pdf$", f"{seq_name_name}.pdf"),
-        (rf"^{seq_name}.*gap_rm.fa_bou_crop.fa$", f"{seq_name_name}.fasta"),  # Changed to append .fasta
-        (rf"^{seq_name}.*_proof_anno_me.fa$", f"{seq_name_name}.anno_fasta")
-    ]
-
-    final_msa_pattern = rf"^{seq_name}.*gap_rm.fa_bou_crop.fa$"
-
-    files_moved_successfully = True
-
-    files = os.listdir(output_dir)
-    for file in files:
-        for pattern, new_name in file_copy_pattern:
-            if re.match(pattern, file):
-
-                # Decide on the final unique name before copying
-                unique_new_name = get_unique_filename(proof_annotation_dir, new_name)
-                try:
-                    # Move the file to the new location with the unique new name
-                    shutil.move(os.path.join(output_dir, file), os.path.join(proof_annotation_dir, unique_new_name))
-
-                except Exception as e:
-                    files_moved_successfully = False
-
-                # Generate consensus sequence
-                if re.match(final_msa_pattern, file):
-                    try:
-                        final_con_object = SequenceManipulator()
-                        if hmm:  # Generate hmm files when the user want it
-                            hmm_dir = os.path.join(os.path.dirname(output_dir), "HMM_files")
-                            final_con_object.generate_hmm_from_msa(os.path.join(proof_annotation_dir, unique_new_name),
-                                                                   hmm_dir)
-                        final_con = final_con_object.con_generater_no_file(
-                            os.path.join(proof_annotation_dir, unique_new_name), threshold=cons_threshold)
-                        header = ">" + os.path.splitext(unique_new_name)[0]  # Use the filename without extension
-                        sequence = str(final_con).upper()
-                        with open(final_con_file, "a") as f:  # 'a' mode for appending
-                            f.write(header + "\n" + sequence + "\n")
-                    except Exception as e:
-                        files_moved_successfully = False
-
-    return files_moved_successfully
-
-"""

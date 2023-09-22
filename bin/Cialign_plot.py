@@ -9,6 +9,10 @@ import tempfile
 
 matplotlib.use('Agg')
 
+#########################################################################
+# This code is derived from CIAlign https://github.com/KatyBrown/CIAlign
+#########################################################################
+
 
 def png_to_pdf(png_path, pdf_path):
     """
@@ -193,6 +197,7 @@ def arrNumeric(arr, palette='CBS'):
         A colour map with the colours corresponding to each base
         or amino acid
     '''
+
     # turn the array upside down
     arr = np.flip(arr, axis=0)
     D = getNtColours(palette)

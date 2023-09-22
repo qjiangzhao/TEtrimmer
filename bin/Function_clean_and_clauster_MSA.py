@@ -3,7 +3,7 @@ from Class_group_MSA import MultipleSequenceAlignmentCluster
 from Class_blast_extension_mafft import SequenceManipulator
 
 
-def clean_and_cluster_MSA(input_file, bed_file, output_dir, clean_column_threshold=0.08,
+def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, clean_column_threshold=0.08,
                           min_length_num=10, cluster_num=2, cluster_col_thr=500):
     """
     This function will cluster multiple sequence alignment file
@@ -35,7 +35,7 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, clean_column_thresho
     pattern_alignment.clean_column(output_dir)
 
     # Select_divergent_column() function will return a boolean value, true represents need cluster step
-    if pattern_alignment.select_divergent_column(cluster_col_thr=cluster_col_thr, dis_col_threshold=0.8):
+    if pattern_alignment.select_divergent_column(cluster_col_thr=cluster_col_thr, dis_col_threshold=div_column_thr):
 
         # write_alignment_filtered() function return pattern_alignment absolute path
         pattern_alignment = pattern_alignment.write_alignment_filtered(output_dir)

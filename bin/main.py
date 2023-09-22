@@ -13,6 +13,7 @@ from Class_elongate_query import SequenceElongation
 from Class_orf_domain_prediction import prepare_pfam_database
 import click
 import json
+from Software_name import software_name
 
 
 # Define function to check progress file, which will be used for continue analysis
@@ -210,7 +211,7 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
                 remove_file_object.remove_files_with_start_pattern(elongation_dir, seq_name)
             return
 
-        # cluster True means not necessary to cluster MSA
+        # Cluster True means not necessary to cluster MSA, perform find_boundary_and_crop directly
         elif cluster_MSA_result is True:
             find_boundary_result = find_boundary_and_crop(
                     bed_out_filter_file, genome_file, MSA_dir, pfam_dir, seq_name, hmm,
@@ -236,6 +237,7 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
             elif not find_boundary_result:  # This means the errors happen in the function
                 return
 
+        # else means need cluster
         else:
             cluster_bed_files_list = cluster_MSA_result
 
@@ -273,9 +275,9 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
                     elif inner_find_boundary_result:
                         all_inner_skipped = False
                     elif not inner_find_boundary_result:  # This means the errors happen in the function
-                        return
+                        continue
 
-                else:  # If need more cluster, clean_and_cluster_MSA will return two values
+                else:
                     inner_cluster_bed_files_list = inner_cluster_MSA_result
 
                     for j in range(len(inner_cluster_bed_files_list)):
@@ -294,7 +296,7 @@ def analyze_sequence(seq_name, single_file_dir, genome_file, MSA_dir, min_blast_
                         elif inner_inner_find_boundary_result:
                             all_inner_skipped = False
                         elif not inner_inner_find_boundary_result:  # This means the errors happen in the function
-                            return
+                            continue
 
             # Check the flag after the loop. If all inner clusters were skipped, write to skipped_file
             if all_inner_skipped:
@@ -361,26 +363,25 @@ with open(species_config_path, "r") as config_file:
     species_config = json.load(config_file)
 
 
-@click.command(context_settings=dict(max_content_width=100))
+@click.command(context_settings=dict(max_content_width=120))
 @click.option('--input_file', '-i', required=True, type=str,
-              help='Input fasta file. TE consensus sequences')
-@click.option('--output_dir', '-o', default=os.getcwd(), type=str,
-              help='Output directory. Default: current directory')
+              help='TE consensus fasta file. Use the output of RepeatModeler, EDTA, or REPET et al.')
 @click.option('--genome_file', '-g', required=True, type=str,
-              help='Provide the genome file path')
+              help='Genome file path.')
+@click.option('--output_dir', '-o', default=os.getcwd(), type=str,
+              help='Output directory. Default: current directory.')
 @click.option('--species', '-s', required=True, default='fungi', type=click.Choice(species_config.keys()),
-              help='Select the species for which you want to run TE Trimmer')
+              help='Select the species for which you want to run TE Trimmer.')
 @click.option('--continue_analysis', default=False, is_flag=True,
-              help='If --continue_analysis is provided on the command line, TE Trimmer will continue the analysis '
-                   'based on the existing data. Otherwise, it will overlap the existing files. Default: False')
-@click.option('--cd_hit_merge', default=False, is_flag=True,
-              help='If --cd_hit_merge, the input file will be merged first')
+              help='Continue to analysis based on interrupted results.')
+@click.option('--merge', default=False, is_flag=True,
+              help='Merge input file to remove duplicate sequences.')
 @click.option('--genome_anno', default=False, is_flag=True,
-              help='If to perform final genome TE annotation by RepeatMasker')
+              help='Perform genome TE annotation based on TE Trimmer curated database at the end.')
 @click.option('--hmm', default=False, is_flag=True,
-              help='If to generate hmm files')
+              help='Generate HMM files for each consensus sequences.')
 @click.option('--keep_intermediate', default=False, is_flag=True,
-              help='Use this option if you want to keep the raw files. ATTENTION: Many files will be generated')
+              help='Keep all raw files. WARNING: Many files will be produced.')
 @click.option('--pfam_dir', default=None, type=str,
               help="Pfam database directory. Leave this option when you don't have Pfam database, "
                    "TE Trimmer will download automatically")
@@ -459,22 +460,28 @@ with open(species_config_path, "r") as config_file:
 def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_blast_len, num_threads, max_msa_lines,
          top_mas_lines, min_seq_num, max_cluster_num, min_el, min_el_dna, min_el_sine, cons_thr, ext_thr, ex_step,
          max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr, crop_end_gap_win,
-         start_patterns, end_patterns, mini_orf, species, check_extension_win, cd_hit_merge, genome_anno, hmm,
+         start_patterns, end_patterns, mini_orf, species, check_extension_win, merge, genome_anno, hmm,
          keep_intermediate):
     """
-        TE Trimmer is software that can replace transposable element (TE) manual curation. Two mandatory arguments are
-        required. They are TE consensus file and genome file. TE Trimmer can automatically define proper extension size
-        and find the right boundary.
+        ###########################################################
+        TE Trimmer v1.1 (22/SEP/2023)
+        Email: jqian@bio1.rwth-aachen.de
+        https://github.com/qjiangzhao/TE-Trimmer
+        ###########################################################
 
-        python ./path_to_TE_Trimmer_bin/main.py --input_file "your_TE_consensus_file_path" --genome_file "your_genome_file_path"
+        python ./path_to_TE_Trimmer_bin/main.py -i <TE_consensus_file> -o <genome_file>
+
+
+        TE Trimmer is designed to replace transposable element (TE) manual curation. Two mandatory arguments
+        are required including <genome file> and <TE consensus file> from TE annotation software like RepeatModeler, EDTA,
+        and REPET et al. TE Trimmer can do blast, extension, multiple sequence alignment, and defining TE boundaries.
 
     """
 
     start_time = datetime.now()
     print(f"\nTE Trimmer started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
 
-    click.echo("TE Trimmer is running...... \n"
-               "WARNING: This is a beta version, please send bugs to jqian@bio1.rwth-aachen.de ;)\n")
+    click.echo("TE Trimmer is running......)\n")
 
     #####################################################################################################
     # Code block: Define the default options according to the given species
@@ -636,17 +643,17 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Generate single files when continue_analysis is false
     if not continue_analysis:
 
-        # Do cd-hit-est merge when cd_hit_merge is true and continue_analysis is false
-        if cd_hit_merge:
+        # Do cd-hit-est merge when merge is true and continue_analysis is false
+        if merge:
             click.echo("\nTE Trimmer is merging input sequences, this might take some time.\n")
-            cd_hit_merge_output = os.path.join(output_dir, f"{input_file}_cd_hit.fa")
-            cd_hit_merge_object = SequenceManipulator()
+            merge_output = os.path.join(output_dir, f"{input_file}_cd_hit.fa")
+            merge_object = SequenceManipulator()
             # Set lower identity threshold for the query, this can increase sensitive
-            cd_hit_merge_object.cd_hit_est(input_file, cd_hit_merge_output, identity_thr=0.9,
+            merge_object.cd_hit_est(input_file, merge_output, identity_thr=0.9,
                                            aL=0.9, aS=0.9, s=0.9, thread=num_threads)
 
             # Convert input_file to merged input_file
-            input_file = cd_hit_merge_output
+            input_file = merge_output
             click.echo("Merge finished.\n")
 
         # separate fasta to single files, if fasta header contain "/" or " " or "#" convert them to "_"
@@ -670,7 +677,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         # Check if progress_file and skipped_file are both empty
         if not os.listdir(single_file_dir):
             click.echo("\nWARNING: TE Trimmer can't do continue analysis, please make sure the output directory is same"
-                       "with your previous analysis.")
+                       " with your previous analysis.\n")
             return
 
         else:

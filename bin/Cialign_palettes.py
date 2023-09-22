@@ -1,3 +1,7 @@
+#########################################################################
+# This code is derived from CIAlign https://github.com/KatyBrown/CIAlign
+#########################################################################
+
 def base():
     '''
     Returns the hexadecimal values for black and white
