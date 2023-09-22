@@ -4,6 +4,8 @@ from Class_crop_end_by_gap import CropEndByGap
 from Class_crop_end import CropEnd
 from Class_group_MSA import MultipleSequenceAlignmentCluster
 from Class_select_ditinct_columns import CleanAndSelectColumn
+from Function_def_boundary_and_crop import check_self_alignment
+
 import os
 import traceback
 import click
@@ -15,9 +17,10 @@ class SequenceElongation:
     when they are too short
     """
 
-    def __init__(self, input_file, genome_file, output_dir, skipped_file, min_seq_num=10, crop_end_gap_win=150,
+    def __init__(self, seq_obj, genome_file, output_dir, skipped_file, min_seq_num=10, crop_end_gap_win=150,
                  crop_end_gap_thr=0.05, ext_n=1500, blast_min_len=200):
-        self.input_file = input_file
+        self.seq_obj = seq_obj
+        self.input_file = seq_obj.input_fasta
         self.genome_file = genome_file
         self.output_dir = output_dir
         self.skipped_file = skipped_file
@@ -65,32 +68,33 @@ class SequenceElongation:
             seq_blast = SequenceManipulator()  # this class contain many functions to do blast and filter blast result
 
             # run blast for each single fasta file and return a bed file absolute path
-            bed_out_file_dup = seq_blast.blast(self.input_file, self.genome_file,
-                                               self.output_dir, self.blast_min_length)
+            bed_out_file_dup,  blast_hits_count, blast_out_file = seq_blast.blast(self.seq_obj, self.input_file, self.genome_file,
+                                               self.output_dir, self.min_seq_num, self.blast_min_length)
 
         except Exception as e:
-            click.echo(f"Error while running blast for sequence: {input_file_name} elongation. Error: {str(e)}")
+            click.echo(f"Error while running blast for sequence: {input_file_name} 1 elongation. Error: {str(e)}")
             return False
 
         try:
             # check if blast hit number is equal 0, then skip this sequence
-            if seq_blast.blast_hits_count == 0:
+            self.seq_obj.update_blast_hit_n(blast_hits_count)
+            if blast_hits_count == 0:
                 with open(self.skipped_file, "a") as f:
                     f.write(input_file_name + "\tno_blast\telongation_blast_equal_0\n")
-                click.echo(f"\n{input_file_name} is skipped due to blast hit number is 0\n")
-
+                click.echo(f"\n{input_file_name} in elongation is skipped due to blast hit number is 0\n")
                 return False
 
             # check if blast hit number is smaller than 10
-            elif seq_blast.blast_hits_count != 0 and seq_blast.blast_hits_count < 10:
+            elif blast_hits_count != 0 and blast_hits_count < 10:
                 with open(self.skipped_file, "a") as f:
                     f.write(input_file_name + f"\tblast_less\telongation_blast_smaller_than_{self.min_seq_num}\n")
-                click.echo(f"\n{input_file_name} is skipped due to blast hit number is "
-                           f"smaller than {self.min_seq_num}\n")
+                check_low_copy = check_self_alignment(self.seq_obj, self.input_file, self.output_dir, self.genome_file, blast_hits_count, blast_out_file)                
+                click.echo(f"\n{input_file_name} in elongation is skipped due to blast hit number is "
+                           f"smaller than {self.min_seq_num} and check_low_copy is {check_low_copy}\n")
                 return False  # when blast hit number is smaller than 10, code will execute next fasta file
 
         except Exception as e:
-            click.echo(f"Error while checking uniqueness for sequence: {input_file_name} elongation. Error: {str(e)}")
+            click.echo(f"Error while checking uniqueness for sequence: {input_file_name} 2 elongation. Error: {str(e)}")
             return False
 
         try:
@@ -158,8 +162,9 @@ class SequenceElongation:
             if cluster_MSA_result is False:  # When it is False means all clusters' sequence number is less than 10
                 with open(self.skipped_file, "a") as f:
                     f.write(input_file_name + f"\tblast_less\telongation_cluster_blast_smaller_than_{self.min_seq_num}\n")
+                check_low_copy = check_self_alignment(self.seq_obj, self.input_file, self.output_dir, self.genome_file, blast_hits_count, blast_out_file)
                 click.echo(f"\n{input_file_name} is skipped due to sequence number in elongation cluster is "
-                           f"smaller than {self.min_seq_num}\n")
+                           f"smaller than {self.min_seq_num} and check_low_copy is {check_low_copy}\n")
                 return False
 
             # When it is True means not necessary to do clustering. Use the input MSA to generate consensus sequence

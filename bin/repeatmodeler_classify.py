@@ -75,8 +75,7 @@ def classify_single(dir, consensus_fasta):
     stdout = open("stdout.txt", "w")
     stderr = open("stderr.txt", "w")
     command = ["RepeatClassifier",
-            #    "-debug",
-               "-consensi", consensus_fasta
+               "-consensi", consensus_fasta,
                ]
     # Run RepeatClassifier using subprocess
     subprocess.run(command, check=True, stdout= stdout, stderr= stderr)
@@ -84,4 +83,4 @@ def classify_single(dir, consensus_fasta):
     for record in SeqIO.parse(classified_file, "fasta"):
         seq_name = record.id.split("#")[0]
         seq_TE_type = record.id.split("#")[-1]
-    return seq_name, seq_TE_type
+    return seq_TE_type

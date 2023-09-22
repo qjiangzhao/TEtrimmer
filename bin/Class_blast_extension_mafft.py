@@ -10,7 +10,8 @@ from Bio.Align import AlignInfo
 
 class SequenceManipulator:
     def __init__(self):
-        self.blast_hits_count = 0
+        self.pident = False # greater than 80
+        self.coverage = False # greater than 80
 
     def calculate_genome_length(self, genome_file):
         """
@@ -76,7 +77,7 @@ class SequenceManipulator:
             subprocess.run(faidx_cmd, shell=True, check=True)
             print(f"\n")
 
-    def blast(self, input_file, genome_file, output_dir, min_length=150):
+    def blast(self, seq_obj, seq_file, genome_file, output_dir, min_seq_num, min_length=150):
         """
         Runs blastn and saves the results in a bed file.
 
@@ -87,7 +88,9 @@ class SequenceManipulator:
 
         :return: a bed output file name
         """
-
+        input_file = seq_file
+        blast_hits_count = 0
+        bed_out_file = None
         # define blast outfile
         blast_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.blast.o")
         blast_cmd = f"blastn -query {input_file} -db {genome_file} " \
@@ -99,16 +102,18 @@ class SequenceManipulator:
         # Check the number of blast hits
         with open(blast_out_file) as blast_file:
             for _ in blast_file:
-                self.blast_hits_count += 1
+                blast_hits_count += 1
 
-        if self.blast_hits_count >= 1:
+        if blast_hits_count >= 1:
             # Define bed outfile
             # Only convert blast to bed file when hits number is greater than 10
             bed_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.blast.bed")
             bed_cmd = f"awk 'BEGIN{{OFS=\"\\t\"}} !/^#/ {{if ($10~/plus/){{print $2, $8, $9, $1, $3, \"+\"}} " \
                       f"else {{print $2, $9, $8, $1, $3, \"-\"}}}}' < {blast_out_file} > {bed_out_file}"
             subprocess.run(bed_cmd, shell=True, check=True)
-            return bed_out_file
+            
+        # if low copy number, check coverge, length and pident                
+        return bed_out_file, blast_hits_count, blast_out_file
 
     def check_bed_uniqueness(self, output_dir, bed_file):
         """
