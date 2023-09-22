@@ -205,7 +205,7 @@ class SequenceManipulator:
         :param output_dir: str, output file directory
         :return: multiple sequence alignment file absolute path
         """
-        fasta_out_flank_mafft_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_maf.fa")
+        fasta_out_flank_mafft_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_aln.fa")
 
         # Construct the command as a list of strings
         mafft_cmd = ["mafft", "--quiet", "--nuc", "--retree", "1", input_file]
@@ -215,13 +215,33 @@ class SequenceManipulator:
 
         # Check for errors
         if result.returncode != 0:
-            raise Exception(f"MAFFT failed with error: {input_file}\n{result.stderr.decode('utf-8')}")
+            raise Exception(f"MAFFT failed with error: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
 
         # Write the output to the file
         with open(fasta_out_flank_mafft_file, 'w') as f:
             f.write(result.stdout.decode('utf-8'))
 
         return fasta_out_flank_mafft_file
+
+    def muacle_align(self, input_file, output_dir):
+
+        output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_maln.fa")
+        muscle_cmd = ["muscle", "-maxiters", "4", "-in", input_file, "-out", output_file]
+
+        # Execute muscle
+        result = subprocess.run(muscle_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if result.returncode != 0:
+            raise Exception(f"Muscle command failed with error: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
+
+        # Convert the sequences in the output file to lowercase
+        sequences = list(SeqIO.parse(output_file, "fasta"))
+        for seq in sequences:
+            seq.seq = seq.seq.lower()
+        SeqIO.write(sequences, output_file, "fasta")
+
+        return output_file
+
 
     def con_generater(self, input_file, output_dir, threshold=0.8, ambiguous="N"):
         # Read input file

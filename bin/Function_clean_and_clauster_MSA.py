@@ -20,7 +20,7 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, clean_column_thresho
 
     seq_blast = SequenceManipulator()
     # Align_sequences will return the absolute file path of alignment file
-    fasta_out_flank_mafft_file = seq_blast.align_sequences(input_file, output_dir)
+    fasta_out_flank_mafft_file = seq_blast.muacle_align(input_file, output_dir)
 
     # Remove gaps. Return absolute path for gap removed alignment file
     fasta_out_flank_mafft_file_gap_filter = seq_blast.remove_gaps_with_similarity_check(

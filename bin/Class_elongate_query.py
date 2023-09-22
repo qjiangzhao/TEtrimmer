@@ -80,7 +80,7 @@ class SequenceElongation:
             return False
 
         try:
-            # check if blast hit number is equal 0, then skip this sequence
+            # Check if blast hit number is equal 0, then skip this sequence
             if seq_blast.blast_hits_count == 0:
                 with open(self.skipped_file, "a") as f:
                     f.write(input_file_name + "\tno_blast\telongation_blast_equal_0\n")
@@ -88,7 +88,7 @@ class SequenceElongation:
 
                 return False
 
-            # check if blast hit number is smaller than 10
+            # Check if blast hit number is smaller than 10
             elif seq_blast.blast_hits_count != 0 and seq_blast.blast_hits_count < 10:
                 with open(self.skipped_file, "a") as f:
                     f.write(input_file_name + f"\tblast_less\telongation_blast_smaller_than_{self.min_seq_num}\n")
