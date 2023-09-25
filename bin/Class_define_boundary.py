@@ -2,6 +2,7 @@ from Bio.Align import AlignInfo, MultipleSeqAlignment
 from Bio import AlignIO
 import os
 
+
 class DefineBoundary():
 
     def __init__(self, input_file, threshold=0.8, check_window=200, max_X=0.25, if_con_generater=True,

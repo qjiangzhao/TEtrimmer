@@ -137,9 +137,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
 
         bed_fasta_mafft_cop_end_gap = bed_fasta_mafft_object.write_to_file(output_dir)
 
-        # Threshold here means the threshold to generate consensus sequence
+        # Threshold to generate consensus sequence
         bed_boundary = DefineBoundary(bed_fasta_mafft_cop_end_gap, threshold=ext_threshold,
-                                      check_window=define_boundary_win, max_X=0.2, if_con_generater=False)
+                                      check_window=define_boundary_win, max_X=0.3, if_con_generater=False)
 
         if bed_boundary.if_continue:
             if bed_boundary.left_ext:  # boundary.left_ext will become true when more extension is required
@@ -267,7 +267,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
                 cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
 
     #####################################################################################################
-    # Code block: Generate MSA for manual curation
+    # Code block: Generate MSA for CIAlign plot
     #####################################################################################################
 
     cropped_boundary_manual_MSA_object = SequenceManipulator()
@@ -501,7 +501,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
     file_copy_pattern = [
         (merged_pdf_path, f"{seq_name_name}.pdf"),
         (cropped_boundary_MSA, f"{seq_name_name}.fasta"),  # Changed to append .fasta
-        (cropped_boundary_manual_MSA_concatenate, f"{seq_name_name}.anno_fasta")
+        (bed_fasta_mafft_boundary_crop_for_select, f"{seq_name_name}.anno_fasta")
     ]
 
     files_moved_successfully = True

@@ -21,7 +21,7 @@ def proof_annotation(te_trimmer_output_dir, output_dir):
     bin_py_path = os.path.dirname(os.path.abspath(__file__))
 
     # Path to the Aliview program
-    aliview_path = os.path.join(os.path.dirname(bin_py_path), "aliview/aliview")
+    aliview_path = os.path.join(bin_py_path, "aliview/aliview")
 
     # Define output folders
     consensus_folder = os.path.join(output_dir, "consensus_folder")

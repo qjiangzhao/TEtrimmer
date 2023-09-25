@@ -63,7 +63,7 @@ class CropEnd:
                     # When there is a gap, use number 0 replace proportion
                     self.proportions_dict[record.id].append(np.nan)
 
-            # Convert the dictionary to a DataFrame
+        # Convert the dictionary to a DataFrame
         self.df = pd.DataFrame(self.proportions_dict)
         self.df = self.df.transpose()  # transpose the DataFrame so that each row represents a sequence
         self.df.columns = range(1,
