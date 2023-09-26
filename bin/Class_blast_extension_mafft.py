@@ -232,7 +232,8 @@ class SequenceManipulator:
         result = subprocess.run(muscle_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         if result.returncode != 0:
-            raise Exception(f"Muscle command failed with error: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
+            return False
+            # raise Exception(f"Muscle command failed with error: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
 
         # Convert the sequences in the output file to lowercase
         sequences = list(SeqIO.parse(output_file, "fasta"))
