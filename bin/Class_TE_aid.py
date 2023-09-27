@@ -22,27 +22,26 @@ class TEAid:
         self.min_orf = min_orf
         self.full_length_threshold = full_length_threshold
 
-    def run(self):
+    def run(self, low_copy=False):
 
         change_permission_object = SequenceManipulator()
         # Change permissions of the directory and all its content to 755
         # 755 in octal corresponds to rwxr-xr-x
         change_permission_object.change_permissions_recursive(self.TE_aid_dir, 0o755)
 
+        # Define TE_Aid software executable path
         TE_aid = os.path.join(self.TE_aid_dir, "TE-Aid")
 
         # Check if TE_aid exists
         if not os.path.exists(TE_aid):
             raise FileNotFoundError(f"The TE-Aid executable at {TE_aid} does not exist.")
 
-        # Change TE_aid permission
-        # Because I added bash before TE_aid, this can be skipped
-        # os.chmod(TE_aid, 0o755)
-
         # Make a folder to store TE_aid result.
         TE_aid_output_dir = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_TEaid")
         if not os.path.isdir(TE_aid_output_dir):
             os.makedirs(TE_aid_output_dir)
+
+        found_match = False
 
         command = [
             TE_aid,
@@ -53,13 +52,51 @@ class TEAid:
             "-f", str(self.full_length_threshold)
             ]
 
+        # If it is low copy element add -t option to enable to keep self blast file from TE_Aid
+        if low_copy:
+            print(f"{self.input_file} run TE aid low copy")
+            command.extend(["-t"])
+
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         if result.stderr:
             pass
-
             #click.echo(f"Error encountered: {self.input_file}\n{result.stderr.decode('utf-8')}")
 
         final_pdf_file = os.path.join(TE_aid_output_dir, f"{os.path.basename(self.input_file)}.c2g.pdf")
+    
+        if low_copy:
+            # check the presence of self-alignment of terminal repeats in self-blast.pairs.txt 
+            self_blast_txt = os.path.join(TE_aid_output_dir, f"{os.path.basename(self.input_file)}.self-blast.pairs.txt")
+            data_list = []
+            # Read the input file
+            with open(self_blast_txt, "r") as file:
+                # Skip the header line
+                next(file)
+                # Iterate through the lines in the file
+                for line in file:
+                    # Split each line into a list of strings using whitespace as the separator
+                    parts = line.strip().split()[1:]
+                    # Convert the string elements to integers
+                    data = [int(part) for part in parts]
+                    # Append the data list to the data_list
+                    data_list.append(data)
+            
+            # Iterate through the lists
+            for i, lst1 in enumerate(data_list):
+                for j, lst2 in enumerate(data_list):
+                    # check if the beginning and end aligned to itself.
+                    # The length of LTR have to be more than 100 bp. The start point of LTR has to be smaller than 15
+                    if i != j and lst1[0] <= 15 and lst1[1] - lst1[0] >= 100 and lst1[:2] == lst2[2:] and lst1[2:] == lst2[:2]:
+                        found_match = True
+                        break
 
-        return final_pdf_file
+                    # Find the reverse repeat
+                    if i != j and lst1[0] <= 15 and lst1[0] == lst2[3] and lst1[1] == lst2[2] and lst1[2] == lst2[1] and lst1[3] == lst2[0]:
+                        found_match = True
+                        break
+                if found_match:
+                    print("found self-alignment of terminal repeats")
+                    break                
+
+        return final_pdf_file, found_match

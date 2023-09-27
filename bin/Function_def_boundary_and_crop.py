@@ -15,7 +15,41 @@ import re
 import click
 import shutil
 from PyPDF2 import PdfMerger
+from Classification import classify_single
 
+
+def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file):
+    check_80 = check_80_80_80(seq_obj, blast_hits_count, blast_out_file)
+    if check_80:
+        # check self-alignment of terminal repeats  
+        TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
+        # Run TE_aid
+        TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
+        TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
+        print(f"{seq_obj.name} found match {found_match}")
+        seq_obj.update_blast_hit_n(blast_hits_count)
+        check_low_copy = seq_obj.update_low_copy(check_80, found_match)
+    # (Top1,98%, Top2 80%). Right now Top1 80%
+    else:
+        check_low_copy = "Did not run TE aid because blast hit does not meet 80_80_80"
+    return check_low_copy
+
+def check_80_80_80(seq_obj, blast_hits_count, blast_out_file):
+    # check if hits are >80% identify, 80% coverage and 80bp
+    check_80 = False
+    with open(blast_out_file) as blast_file:
+        # check Top 1 hit coverage and pident
+        first_line = blast_file.readline()
+        # print (first_line)
+        # check 80 80 80 rule
+        identify = (float(first_line.split()[2])) > 80
+        coverage = (float(first_line.split()[3]) / seq_obj.old_length) > 0.8
+        length = (float(first_line.split()[3])) > 80
+        if identify and coverage and length:
+            check_80 = True
+        #print(f"{seq_obj.name} blast_hits_count {blast_hits_count} 80_80_80 rule {check_80}")
+    
+    return check_80
 
 def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=16, window_size=20, gap_threshold=0.8):
 
@@ -62,7 +96,7 @@ def get_unique_filename(base_path, original_name):
     return new_name
 
 
-def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name, hmm,
+def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj, hmm,
                            cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000, max_extension=7000,
                            gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=16, crop_end_win=20,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
@@ -92,7 +126,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
     """
     # Check if this is a LINE element, if so decrease the ext_threshold number,
     # because LINE have higher divergence at 5' end
-    if"LINE" in bed_file:
+    seq_name = seq_obj.name
+    if"LINE" in seq_obj.old_TE_type:
         ext_threshold = ext_threshold - 0.2
     if_left_ex = True
     if_right_ex = True
@@ -445,7 +480,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
 
     # Run TE_aid
     TE_aid_object = TEAid(orf_cons, output_dir, genome_file, TE_aid_dir=TE_aid_path)
-    TE_aid_plot = TE_aid_object.run()
+    TE_aid_plot, found_match = TE_aid_object.run()
 
     #####################################################################################################
     # Code block: Merge plot files
@@ -488,30 +523,35 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
     # Define final consensus file
     final_con_file = os.path.join(parent_output_dir, "TE_Trimmer_consensus.fasta")
 
-    # Construct the path for the new folder
+    # Define proof_annotation folder path
     proof_annotation_dir = os.path.join(parent_output_dir, "TE_Trimmer_for_proof_annotation")
+    
+    # Construct the path for the new folder
+    classification_dir = os.path.join(parent_output_dir, "Classification")
 
     # Create the directory if it doesn't exist
     if not os.path.exists(proof_annotation_dir):
         os.makedirs(proof_annotation_dir)
 
-    # Eliminate .fasta from seq_name, this can make sure the right file order when do proof annotation
-    seq_name_name, seq_name_ext = os.path.splitext(seq_name)
+    if not os.path.exists(classification_dir):
+        os.makedirs(classification_dir)
 
+    # Define proof annotation file name
     file_copy_pattern = [
-        (merged_pdf_path, f"{seq_name_name}.pdf"),
-        (cropped_boundary_MSA, f"{seq_name_name}.fasta"),  # Changed to append .fasta
-        (bed_fasta_mafft_boundary_crop_for_select, f"{seq_name_name}.anno_fasta")
+        (merged_pdf_path, f"{seq_name}.pdf"),
+        (cropped_boundary_MSA, f"{seq_name}.fasta"),  # Changed to append .fasta
+        (bed_fasta_mafft_boundary_crop_for_select, f"{seq_name}.anno_fasta")
     ]
 
     files_moved_successfully = True
 
     for pattern, new_name in file_copy_pattern:
 
-        # Determine the final unique name before copying
+        # Determine the final unique name before copying, add 01, 02, 03 .... to the end of name if required
         unique_new_name = get_unique_filename(proof_annotation_dir, new_name)
+
         try:
-            # Move the file to the new location with the unique new name
+            # Copy the file to the new location with the unique new name
             shutil.copy(pattern, os.path.join(proof_annotation_dir, unique_new_name))
 
         except Exception as e:
@@ -528,13 +568,54 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_name
 
                 # Generate final consensus sequence
                 # Comparing initial consensus, the final consensus sequence might have different orientation.
+                # For this reason, generate consensus again
                 final_con = final_con_object.con_generater_no_file(cropped_boundary_MSA, threshold=cons_threshold)
                 header = ">" + os.path.splitext(unique_new_name)[0]  # Use the filename without extension
                 sequence = str(final_con).upper()
+
+                # Create consensus_object and update length, new consensus name will be created in seq_obj
+                # For example self.consensus_name, self.new_length
+                consi_obj = seq_obj.create_consi_obj(os.path.splitext(unique_new_name)[0])
+                consi_obj.set_new_lenth(len(sequence))
+
+                #####################################################################################################
+                # Code block: Run RepeatClassifier in RepeatModeler to classify TE_trimmer consensus sequences
+                #####################################################################################################
+                # Write single consensus sequence to a separate place for RepeatClassifier
+                # only classify unknown seq
+                # TODO classify all
+
+                # check_unknown returns true if unknown is detected
+                # Rename consensus when the final consensus length is much longer or shorter than the query sequence
+                if seq_obj.check_unknown() or abs(consi_obj.new_length - seq_obj.old_length) >= 1000:
+
+                    #click.echo(f"Classifying {unique_new_name} by RepeatClassifier")
+
+                    # Define different folder for each sequence
+                    sequence_con_file = os.path.join(classification_dir, str(unique_new_name))
+                    os.makedirs(sequence_con_file)
+
+                    # Define consensus name path used for classification
+                    n_sequence_con_file = os.path.join(sequence_con_file, str(unique_new_name))
+
+                    with open(n_sequence_con_file, "w") as f:
+
+                        # RepeatClassifier input cannot be single sequence, add >Add to enable to run RepeatClassifier
+                        f.write(header + "\n" + sequence + "\n" + ">Add" + "\n" + "T" + "\n")
+
+                    TE_type = classify_single(n_sequence_con_file)
+
+                    # Only update new_TE_type when classify_single is successfully
+                    if TE_type:
+                        # Update TE_type after RepeatClassifier
+                        consi_obj.set_new_TE_type(TE_type)
+
+                TE_type = consi_obj.get_TE_type_for_file()
                 with open(final_con_file, "a") as f:  # 'a' mode for appending
-                    f.write(header + "\n" + sequence + "\n")
-
+                    f.write(header + "#" + TE_type + "\n" + sequence + "\n")
+                    
             except Exception as e:
+                click.echo(f"Error Generate consensus sequence and create consensus_object: {str(e)}")
                 files_moved_successfully = False
-
+        
     return files_moved_successfully
