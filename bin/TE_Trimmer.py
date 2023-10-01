@@ -147,7 +147,7 @@ def analyze_sequence(seq_obj, single_file_dir, genome_file, MSA_dir, min_blast_l
 
         # Check if blast hit number is smaller than "min_seq_num", not include "min_seq_num"
         elif blast_hits_count != 0 and blast_hits_count < min_seq_num:
-            check_low_copy = check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file)
+            check_low_copy = check_self_alignment(seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
             seq_obj.update_status("skipped", progress_file)
             click.echo(f"\n{seq_name} in main is skipped due to blast hit number is smaller than {min_seq_num} and check_low_copy is {check_low_copy}\n")
 
@@ -198,7 +198,7 @@ def analyze_sequence(seq_obj, single_file_dir, genome_file, MSA_dir, min_blast_l
         # cluster false means no cluster, TE Trimmer will skip this sequence.
         if cluster_MSA_result is False:
 
-            check_low_copy = check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file)
+            check_low_copy = check_self_alignment(seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
             seq_obj.update_status("skipped", progress_file)
             click.echo(f"\n{seq_name} is skipped due to cluster_MSA_result sequence number in each cluster is smaller "
                        f"than {min_seq_num} and check_low_copy is {check_low_copy}\n")
@@ -298,7 +298,7 @@ def analyze_sequence(seq_obj, single_file_dir, genome_file, MSA_dir, min_blast_l
             # Check the flag after the loop. If all inner clusters were skipped, write to skipped_file
             if all_inner_skipped:
 
-                check_low_copy = check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file)
+                check_low_copy = check_self_alignment(seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
                 seq_obj.update_status("skipped", progress_file)
                 click.echo(
                     f"\n{seq_name} is skipped due to sequence number in second round each cluster is "
@@ -637,7 +637,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Check and create progress_file if it doesn't exist
     if not os.path.exists(progress_file):
         with open(progress_file, 'a') as f:
-            f.write("input_name,consensus_name,input_length,blast_hit_n,low_copy,input_TE_type,status,consensus_length,consensus_TE_type_reclassified\n")
+            f.write("input_name,consensus_name,blast_hit_n,cons_MSA_seq_n,input_length,cons_length,"
+                    "input_TE_type,reclassified_type,cons_flank_repeat,low_copy,status\n")
             pass
 
     # If pfam database isn't provided, create pfam database at TE Trimmer software folder,
@@ -663,9 +664,11 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             click.echo("\nTE Trimmer is merging input sequences, this might take some time.\n")
             merge_output = os.path.join(output_dir, f"{input_file}_cd_hit.fa")
             merge_object = SequenceManipulator()
+
             # Set lower identity threshold for the query, this can increase sensitive
+            # Merge step will remove single LTR but nested TEs can mask other TEs
             merge_object.cd_hit_est(input_file, merge_output, identity_thr=0.9,
-                                    aL=0.9, aS=0.9, s=0.9, thread=num_threads)
+                                    aL=0, aS=0.85, s=0, thread=num_threads)
 
             # Convert input_file to merged input_file
             input_file = merge_output
@@ -690,13 +693,14 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     else:
 
-        # Check if progress_file and skipped_file are both empty
+        # Check if the can perform continue analysis
         if not os.listdir(single_file_dir):
             click.echo("\nWARNING: TE Trimmer can't do continue analysis, please make sure the output directory is same"
                        " with your previous analysis.\n")
             return
 
         else:
+
             click.echo("\nTE Trimmer will continue to analyze based on previous results.\n")
 
             # Create seq_list, which contain sequence objects using the single fasta files.

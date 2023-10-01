@@ -19,15 +19,23 @@ from Classification import classify_single
 
 
 def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file):
+
     check_80 = check_80_80_80(seq_obj, blast_hits_count, blast_out_file)
+
     if check_80:
-        # check self-alignment of terminal repeats  
+
+        # Check self-alignment of terminal repeats
         TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
+
         # Run TE_aid
         TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
         TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
         print(f"{seq_obj.name} found match {found_match}")
         seq_obj.update_blast_hit_n(blast_hits_count)
+
+        # Convert found_match to True when LTR or TIR is found
+        if found_match == "LTR" or found_match == "TIR":
+            found_match = True
         check_low_copy = seq_obj.update_low_copy(check_80, found_match)
     # (Top1,98%, Top2 80%). Right now Top1 80%
     else:
@@ -242,6 +250,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             if final_MSA_consistency is False or final_MSA_consistency is True:
 
                 final_MSA_consistent = True
+
+
 
             # else means that further clustering is required
             else:
@@ -480,7 +490,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     # Run TE_aid
     TE_aid_object = TEAid(orf_cons, output_dir, genome_file, TE_aid_dir=TE_aid_path)
-    TE_aid_plot, found_match = TE_aid_object.run()
+    TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
 
     #####################################################################################################
     # Code block: Merge plot files
@@ -577,6 +587,19 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 # For example self.consensus_name, self.new_length
                 consi_obj = seq_obj.create_consi_obj(os.path.splitext(unique_new_name)[0])
                 consi_obj.set_new_lenth(len(sequence))
+
+                # Store consensus sequence input consi_obj
+                #consi_obj.set_cons_seq(sequence)
+
+                # Store MSA sequence number into consi_obj
+                MSA_for_final_cons = AlignIO.read(cropped_boundary_MSA, "fasta")
+                MSA_for_final_cons_seq_n = len(MSA_for_final_cons)
+                consi_obj.set_cons_MSA_n(MSA_for_final_cons_seq_n)
+
+                # Store flank repeat to consi_obj
+                if found_match == "LTR" or found_match == "TIR":
+
+                    consi_obj.set_new_flank_repeat(found_match)
 
                 #####################################################################################################
                 # Code block: Run RepeatClassifier in RepeatModeler to classify TE_trimmer consensus sequences

@@ -952,7 +952,7 @@ class SequenceManipulator:
             "-c", str(identity_thr),
             "-aL", str(aL),
             "-aS", str(aS),
-            "-M", "4000",
+            "-M", "0",
             "-T", str(thread),
             "-l", "80",
             "-d", "0",

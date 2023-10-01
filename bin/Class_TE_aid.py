@@ -51,7 +51,7 @@ class TEAid:
 
         # If it is low copy element add -t option to enable to keep self blast file from TE_Aid
         if low_copy:
-            print(f"{self.input_file} run TE aid low copy")
+            #print(f"{os.path.basename(self.input_file)} run TE aid low copy")
             command.extend(["-t"])
 
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -92,17 +92,17 @@ class TEAid:
                     # The length of LTR can't be longer than 1/5 of query sequence
                     if i != j and lst1[0] <= 15 and 100 <= lst1[1] - lst1[0] <= record_len / 5 \
                             and lst1[:2] == lst2[2:] and lst1[2:] == lst2[:2]:
-                        found_match = True
+                        found_match = "LTR"
                         break
 
                     # Find the reverse repeat
                     # Make sure reverse repeat has to be longer than 20 and can't longer than 1/2 of query sequence
                     if i != j and lst1[0] <= 15 and lst1[0] == lst2[3] and lst1[1] == lst2[2] and lst1[2] == lst2[1] \
                             and lst1[3] == lst2[0] and 20 <= lst1[1] - lst1[0] <= record_len / 2:
-                        found_match = True
+                        found_match = "TIR"
                         break
-                if found_match:
-                    print("found self-alignment of terminal repeats")
+                if found_match == "LTR" or found_match == "TIR":
+                    #print("found self-alignment of terminal repeats")
                     break                
 
         return final_pdf_file, found_match

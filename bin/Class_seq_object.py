@@ -2,6 +2,7 @@ import os
 
 
 class Seq_object:
+
     """
     create object for each input sequence.
     """
@@ -35,15 +36,28 @@ class Seq_object:
 
     # update_status function will write object information to progress file, use it when the analysis is finished
     def update_status(self, new_status, progress_file):
+
         self.status = new_status
         with open(progress_file, "a") as f:
-            # input_name, consensus_name, old_length, blast_hit_n, low_copy, old_TE_type, status, new_length, new_TE_type
+
+            # "input_name,consensus_name, blast_hit_n, cons_MSA_seq_n, input_length, cons_length, "
+            # "input_TE_type, reclassified_type, cons_flank_repeat, low_copy, status\n"
             if len(self.consi_obj_list) > 0:
+
                 for consi_obj in self.consi_obj_list:
                     TE_type = consi_obj.get_TE_type_for_file()
-                    f.write(f"{str(self.name)},{str(consi_obj.consensus_name)}#{str(TE_type)},{str(self.old_length)},{str(self.blast_hit_n)},{str(self.low_copy)},{str(self.old_TE_type)},{str(self.status)},{str(consi_obj.new_length)},{str(consi_obj.new_TE_type)}\n")
+                    f.write(f"{str(self.name)},{str(consi_obj.consensus_name)}#{str(TE_type)},"  # name
+                            f"{str(self.blast_hit_n)},{str(consi_obj.new_TE_MSA_seq_n)},"  # sequence number
+                            f"{str(self.old_length)},{str(consi_obj.new_length)},"  # sequence length
+                            f"{str(self.old_TE_type)},{str(consi_obj.new_TE_type)},"  # TE type
+                            f"{str(consi_obj.new_TE_flank_repeat)},{str(self.low_copy)},{str(self.status)}\n")
             else:
-                f.write(f"{str(self.name)},N/A,{str(self.old_length)},{str(self.blast_hit_n)},{str(self.low_copy)},{str(self.old_TE_type)},{str(self.status)},N/A,N/A\n")
+
+                f.write(f"{str(self.name)},N/A,"  # name
+                        f"{str(self.blast_hit_n)},N/A,"  # sequence number
+                        f"{str(self.old_length)},N/A,"  # sequence length
+                        f"{str(self.old_TE_type)},N/A,"  # TE type
+                        f"N/A,{str(self.low_copy)},{str(self.status)}\n")
 
     def update_low_copy(self, check_80, found_match):
         if check_80 and found_match:
@@ -60,13 +74,28 @@ class ConsensusObject:
         self.consensus_name = consensus_name
         self.new_length = "N/A"
         self.new_TE_type = "N/A"
+        self.new_TE_MSA_seq_n = "N/A"
+        self.new_TE_flank_repeat = "N/A"
+        self.cons_seq = "N/A"
     
     def set_new_lenth(self, new_length):
         self.new_length = new_length
     
     def set_new_TE_type(self, new_TE_type):
         self.new_TE_type = new_TE_type
-    
+
+    # Store multiple sequence alignment sequence number to object
+    def set_cons_MSA_n(self, new_TE_MSA_seq_n):
+        self.new_TE_MSA_seq_n = new_TE_MSA_seq_n
+
+    # Store flank type ("LTR" or "TIR") to object
+    def set_new_flank_repeat(self, flank_repeat):
+        self.new_TE_flank_repeat = flank_repeat
+
+    # Store consensus sequence to object
+    def set_cons_seq(self, cons_seq):
+        self.cons_seq = cons_seq
+
     def get_TE_type_for_file(self):
 
         # For writing the final consensus file, the TE_type can be either the input TE type or the new
