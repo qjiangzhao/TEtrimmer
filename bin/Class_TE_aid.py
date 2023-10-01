@@ -1,7 +1,9 @@
 import subprocess
 import os
+from Bio import SeqIO
 from Class_blast_extension_mafft import SequenceManipulator
 import click
+
 
 class TEAid:
 
@@ -23,11 +25,6 @@ class TEAid:
         self.full_length_threshold = full_length_threshold
 
     def run(self, low_copy=False):
-
-        change_permission_object = SequenceManipulator()
-        # Change permissions of the directory and all its content to 755
-        # 755 in octal corresponds to rwxr-xr-x
-        change_permission_object.change_permissions_recursive(self.TE_aid_dir, 0o755)
 
         # Define TE_Aid software executable path
         TE_aid = os.path.join(self.TE_aid_dir, "TE-Aid")
@@ -66,7 +63,12 @@ class TEAid:
         final_pdf_file = os.path.join(TE_aid_output_dir, f"{os.path.basename(self.input_file)}.c2g.pdf")
     
         if low_copy:
-            # check the presence of self-alignment of terminal repeats in self-blast.pairs.txt 
+
+            # Read input file and get sequence length
+            record = SeqIO.read(self.input_file, "fasta")
+            record_len = len(record.seq)
+
+            # Check the presence of self-alignment of terminal repeats in self-blast.pairs.txt
             self_blast_txt = os.path.join(TE_aid_output_dir, f"{os.path.basename(self.input_file)}.self-blast.pairs.txt")
             data_list = []
             # Read the input file
@@ -85,14 +87,18 @@ class TEAid:
             # Iterate through the lists
             for i, lst1 in enumerate(data_list):
                 for j, lst2 in enumerate(data_list):
-                    # check if the beginning and end aligned to itself.
+                    # Check if the beginning and end aligned to itself.
                     # The length of LTR have to be more than 100 bp. The start point of LTR has to be smaller than 15
-                    if i != j and lst1[0] <= 15 and lst1[1] - lst1[0] >= 100 and lst1[:2] == lst2[2:] and lst1[2:] == lst2[:2]:
+                    # The length of LTR can't be longer than 1/5 of query sequence
+                    if i != j and lst1[0] <= 15 and 100 <= lst1[1] - lst1[0] <= record_len / 5 \
+                            and lst1[:2] == lst2[2:] and lst1[2:] == lst2[:2]:
                         found_match = True
                         break
 
                     # Find the reverse repeat
-                    if i != j and lst1[0] <= 15 and lst1[0] == lst2[3] and lst1[1] == lst2[2] and lst1[2] == lst2[1] and lst1[3] == lst2[0]:
+                    # Make sure reverse repeat has to be longer than 20 and can't longer than 1/2 of query sequence
+                    if i != j and lst1[0] <= 15 and lst1[0] == lst2[3] and lst1[1] == lst2[2] and lst1[2] == lst2[1] \
+                            and lst1[3] == lst2[0] and 20 <= lst1[1] - lst1[0] <= record_len / 2:
                         found_match = True
                         break
                 if found_match:

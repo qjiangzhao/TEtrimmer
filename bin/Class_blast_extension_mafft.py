@@ -116,6 +116,55 @@ class SequenceManipulator:
         # if low copy number, check coverage, length and identity
         return bed_out_file, blast_hits_count, blast_out_file
 
+    def self_blast_find_LTR(self, input_file):
+
+        #TODO: define running directory and delecte temporary database files
+        makeblastdb_cmd = f"makeblastdb -in {input_file} -dbtype nucl -out {input_file} "
+        subprocess.run(makeblastdb_cmd, shell=True, check=True)
+
+        blast_cmd = f"blastn -query {input_file} -db {input_file} " \
+                    f"-outfmt \"6 qseqid qstart qend sstart send \" " \
+                    f"-evalue 0.05"
+
+        # Execute the command
+        result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        # If there is an error, print it
+        if result.returncode != 0:
+            click.echo(f"An error occurred self blast to fine LTR: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
+            return
+        else:
+            blast_out = result.stderr.decode('utf-8')
+
+        # Read input file and get sequence length
+        record = SeqIO.read(input_file, "fasta")
+        record_len = len(record.seq)
+
+        data_list = []
+
+        for line in blast_out:
+            # Split each line into a list of strings using whitespace as the separator
+            parts = line.strip().split()[1:]
+            # Convert the string elements to integers
+            data = [int(part) for part in parts]
+            # Append the data list to the data_list
+            data_list.append(data)
+
+        find_LTR = False
+
+        # Iterate through the lists
+        for i, lst1 in enumerate(data_list):
+            for j, lst2 in enumerate(data_list):
+                # Check if the beginning and end aligned to itself.
+                # The length of LTR have to be more than 100 bp. The start point of LTR has to be smaller than 15
+                # The length of LTR can't be longer than 1/5 of query sequence
+                if i != j and lst1[0] <= 15 and 100 <= lst1[1] - lst1[0] <= record_len / 5 \
+                        and lst1[:2] == lst2[2:] and lst1[2:] == lst2[:2]:
+                    find_LTR = True
+                    break
+
+        return find_LTR
+
     def check_bed_uniqueness(self, output_dir, bed_file):
         """
         Check if bed file contain repeat lines, if so delete to one
@@ -884,10 +933,15 @@ class SequenceManipulator:
         return output_file, concat_start, concat_end
 
     def change_permissions_recursive(self, input_dir, mode):
-        for dirpath, dirnames, filenames in os.walk(input_dir):
-            os.chmod(dirpath, mode)
-            for filename in filenames:
-                os.chmod(os.path.join(dirpath, filename), mode)
+        try:
+            for dirpath, dirnames, filenames in os.walk(input_dir):
+                os.chmod(dirpath, mode)
+                for filename in filenames:
+                    os.chmod(os.path.join(dirpath, filename), mode)
+        except PermissionError:
+            click.echo("TE Trimmer don't have right to change permissions. Pleas use sudo to run TE Trimmer")
+            return False
+        return True
 
     def cd_hit_est(self, input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9, thread=10):
 
@@ -943,5 +997,8 @@ class SequenceManipulator:
                     os.remove(file_path)
                 elif os.path.isdir(file_path):
                     shutil.rmtree(file_path)
+
+
+
 
 

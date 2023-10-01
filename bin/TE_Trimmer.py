@@ -3,7 +3,7 @@ import concurrent.futures
 import shutil
 import traceback
 from Bio import SeqIO
-from datetime import datetime, timedelta
+from datetime import timedelta
 from Class_separate_fasta import FastaSequenceSeparator
 from Class_blast_extension_mafft import SequenceManipulator
 from Class_bed_filter import BEDFile
@@ -478,6 +478,26 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     click.echo("TE Trimmer is running......)\n")
 
     #####################################################################################################
+    # Code block: Change permissions of Aliview and TE_Aid
+    #####################################################################################################
+
+    # Change TE_Aid permission
+    TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
+    change_permission_object = SequenceManipulator()
+    # Change permissions of the directory and all its content to 755
+    # 755 in octal corresponds to rwxr-xr-x
+    change_permission = change_permission_object.change_permissions_recursive(TE_aid_path, 0o755)
+
+    if not change_permission:
+        return
+
+    # Change Aliview permission
+    aliview_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "aliview")
+    # Change permissions of the directory and all its content to 755
+    # 755 in octal corresponds to rwxr-xr-x
+    change_permission_object.change_permissions_recursive(aliview_path, 0o755)
+
+    #####################################################################################################
     # Code block: Define the default options according to the given species
     #####################################################################################################
 
@@ -738,8 +758,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         # According to 80-80-80 rule to filter final consensus sequences
         cd_hit_merge_object.cd_hit_est(final_con_file, cd_hit_merge_output_final, identity_thr=0.8,
                                        aL=0.8, aS=0.8, s=1, thread=num_threads)
-
-        #
 
     # At the end of the program, check if all sequences have been processed
     with open(progress_file, 'r') as file:
