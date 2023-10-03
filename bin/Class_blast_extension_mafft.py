@@ -118,7 +118,6 @@ class SequenceManipulator:
 
     def self_blast_find_LTR(self, input_file):
 
-        #TODO: define running directory and delecte temporary database files
         makeblastdb_cmd = f"makeblastdb -in {input_file} -dbtype nucl -out {input_file} "
         subprocess.run(makeblastdb_cmd, shell=True, check=True)
 

@@ -11,7 +11,6 @@ from Function_clean_and_clauster_MSA import clean_and_cluster_MSA
 from Bio import AlignIO
 import Cialign_plot
 import os
-import re
 import click
 import shutil
 from PyPDF2 import PdfMerger
@@ -20,9 +19,12 @@ from Classification import classify_single
 
 def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file):
 
-    check_80 = check_80_80_80(seq_obj, blast_hits_count, blast_out_file)
+    check_blast_n = check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100)
 
-    if check_80:
+    # At least 2 lines need to meet the requirement
+    if check_blast_n >= 2:
+
+        check_blast = True
 
         # Check self-alignment of terminal repeats
         TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
@@ -30,34 +32,46 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
         # Run TE_aid
         TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
         TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
-        print(f"{seq_obj.name} found match {found_match}")
+        click.echo(f"{seq_obj.name} flank repeat {found_match}")
         seq_obj.update_blast_hit_n(blast_hits_count)
 
         # Convert found_match to True when LTR or TIR is found
         if found_match == "LTR" or found_match == "TIR":
             found_match = True
-        check_low_copy = seq_obj.update_low_copy(check_80, found_match)
-    # (Top1,98%, Top2 80%). Right now Top1 80%
+
+        # Update_low_copy return true when check_80 and found_match are both true
+        check_low_copy = seq_obj.update_low_copy(check_blast, found_match)
+
     else:
-        check_low_copy = "Did not run TE aid because blast hit does not meet 80_80_80"
+        check_low_copy = False
     return check_low_copy
 
-def check_80_80_80(seq_obj, blast_hits_count, blast_out_file):
-    # check if hits are >80% identify, 80% coverage and 80bp
-    check_80 = False
+
+def check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100):
+
+    # Counter for valid lines
+    valid_lines_count = 0
+
     with open(blast_out_file) as blast_file:
-        # check Top 1 hit coverage and pident
-        first_line = blast_file.readline()
-        # print (first_line)
-        # check 80 80 80 rule
-        identify = (float(first_line.split()[2])) > 80
-        coverage = (float(first_line.split()[3]) / seq_obj.old_length) > 0.8
-        length = (float(first_line.split()[3])) > 80
-        if identify and coverage and length:
-            check_80 = True
-        #print(f"{seq_obj.name} blast_hits_count {blast_hits_count} 80_80_80 rule {check_80}")
-    
-    return check_80
+        for line in blast_file:
+            columns = line.split("\t")
+
+            # Extracting values from columns
+            identity_percentage = float(columns[2])
+            hit_length = float(columns[3])
+
+            # Conditions
+            identity_condition = identity_percentage > identity
+            coverage_condition = (hit_length / seq_obj.old_length) > coverage
+            length_condition = hit_length > min_hit_length
+
+            if identity_condition and coverage_condition and length_condition:
+                valid_lines_count += 1
+                if valid_lines_count >= 2:
+                    break
+
+    return valid_lines_count
+
 
 def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=16, window_size=20, gap_threshold=0.8):
 
@@ -606,13 +620,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 #####################################################################################################
                 # Write single consensus sequence to a separate place for RepeatClassifier
                 # only classify unknown seq
-                # TODO classify all
-
                 # check_unknown returns true if unknown is detected
                 # Rename consensus when the final consensus length is much longer or shorter than the query sequence
                 if seq_obj.check_unknown() or abs(consi_obj.new_length - seq_obj.old_length) >= 1000:
-
-                    #click.echo(f"Classifying {unique_new_name} by RepeatClassifier")
 
                     # Define different folder for each sequence
                     sequence_con_file = os.path.join(classification_dir, str(unique_new_name))

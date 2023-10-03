@@ -63,15 +63,20 @@ class FastaSequenceSeparator:
             for filename in os.listdir(self.output_dir):
 
                 file = os.path.join(self.output_dir, filename)
-                with open(file, 'r') as fasta_file:
-                    for record in SeqIO.parse(fasta_file, 'fasta'):
 
-                        # Get sanitized_id from single fasta file name
-                        sanitized_id = os.path.splitext(filename)
+                record = SeqIO.read(file, "fasta")
 
-                        # Note: single fasta file name is different with record.id
-                        te_type = record.id.split("#")[-1]
-                        seq_obj = Seq_object(str(sanitized_id), str(file), len(record.seq), te_type)
-                        seq_list.append(seq_obj)
+                if len(record.id.split("#")) > 1:
+                    sanitized_id = record.id.split("#")[0].replace('/', '_').replace(' ', '_'). \
+                        replace('-', '_').replace(':', '_')
+                    te_type = record.id.split("#")[-1]
+
+                else:
+                    sanitized_id = record.id.replace('/', '_').replace(' ', '_').replace('-', '_').replace(':', '_')
+                    te_type = "Unknown"
+
+                seq_obj = Seq_object(str(sanitized_id), str(file), len(record.seq), te_type)
+                seq_list.append(seq_obj)
+
             print("\nFinish to read in single sequence files generated from previous analysis.\n")
         return seq_list

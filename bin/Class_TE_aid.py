@@ -1,7 +1,6 @@
 import subprocess
 import os
 from Bio import SeqIO
-from Class_blast_extension_mafft import SequenceManipulator
 import click
 
 
@@ -9,7 +8,6 @@ class TEAid:
 
     def __init__(self, input_file, output_dir, genome_file, TE_aid_dir, min_orf=200, full_length_threshold=0.9):
         """
-
         :param input_file: str, absolute path of input file
         :param output_dir: str, absolute directory of output file
         :param genome_file: str, absolute path of genome file
@@ -58,7 +56,7 @@ class TEAid:
 
         if result.stderr:
             pass
-            #click.echo(f"Error encountered: {self.input_file}\n{result.stderr.decode('utf-8')}")
+            # click.echo(f"Error encountered: {self.input_file}\n{result.stderr.decode('utf-8')}")
 
         final_pdf_file = os.path.join(TE_aid_output_dir, f"{os.path.basename(self.input_file)}.c2g.pdf")
     
@@ -70,6 +68,35 @@ class TEAid:
 
             # Check the presence of self-alignment of terminal repeats in self-blast.pairs.txt
             self_blast_txt = os.path.join(TE_aid_output_dir, f"{os.path.basename(self.input_file)}.self-blast.pairs.txt")
+
+            # Sometime TE_Aid won't give self blast result
+            if not os.path.exists(self_blast_txt):
+
+                database_file = os.path.join(TE_aid_output_dir, "Tem_blast_database")
+                makeblastdb_cmd = f"makeblastdb -in {self.input_file} -dbtype nucl -out {database_file}"
+                subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                blast_cmd = f"blastn -query {self.input_file} -db {database_file} " \
+                            f"-outfmt \"6 qseqid qstart qend sstart send \" " \
+                            f"-evalue 0.05"
+
+                # Execute the command
+                result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                # If there is an error, print it
+                if result.returncode != 0:
+                    click.echo(
+                        f"An error occurred self blast: {os.path.basename(self.input_file)}\n{result.stderr.decode('utf-8')}")
+                    return
+                else:
+                    blast_out = result.stdout.decode('utf-8')
+
+                    with open(self_blast_txt, 'w') as f:
+
+                        # Because TE_Aid result have header, give a header to blast result
+                        f.write("qseqid\tqstart\tqend\tsstart\tsend\n")
+                        f.write(blast_out)
+
             data_list = []
             # Read the input file
             with open(self_blast_txt, "r") as file:
@@ -102,7 +129,6 @@ class TEAid:
                         found_match = "TIR"
                         break
                 if found_match == "LTR" or found_match == "TIR":
-                    #print("found self-alignment of terminal repeats")
                     break                
 
         return final_pdf_file, found_match
