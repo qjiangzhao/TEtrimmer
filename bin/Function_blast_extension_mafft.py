@@ -161,6 +161,7 @@ def self_blast_find_LTR(input_file):
                     and lst1[:2] == lst2[2:] and lst1[2:] == lst2[:2]:
                 find_LTR = True
                 break
+        break
 
     return find_LTR
 
@@ -1020,7 +1021,7 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden = 80,
                 query_iden = 100 - perc_div
                 if query_iden > min_iden:
                     row = {
-                        'query_name': str(cols[4]),
+                        'query_name': f"{str(cols[4])}#Unknown",
                         'query_iden': query_iden,
                         'query_match_len': query_match_len,
                         'repeat_name': f"{cols[9]}#{cols[10]}",
@@ -1028,7 +1029,7 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden = 80,
                     }
                     data.append(row)
             repeatmasker_out_df = pd.DataFrame(data)
-            # Find the index of the row with the maximum 'query_match_len' for each 'query_name'
+            # Only keep the top cov, find the index of the row with the maximum 'query_match_len' for each 'query_name'
             max_idx = repeatmasker_out_df.groupby('query_name')['query_match_len'].idxmax()
             # Use the indices to filter the DataFrame
             filter_repeatmasker_out_df = repeatmasker_out_df.loc[max_idx]
@@ -1051,8 +1052,8 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden = 80,
                         updated_type[name] = str(row1['repeat_class'])
                 else:
                     print ("error in finding macth")
-            # reewrite progress file to update
-            progress_file_df.to_csv(progress_file,  na_rep='NaN',sep=',')
+            # rewrite progress file to update
+            progress_file_df.to_csv(progress_file, na_rep='NaN',sep=',', index=False)
             print(f"{len(updated_type)} sequences TE type updated after reclassify using repeatmasker:")
             return updated_type
     
