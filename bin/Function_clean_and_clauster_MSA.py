@@ -1,6 +1,6 @@
 from Class_select_ditinct_columns import CleanAndSelectColumn
 from Class_group_MSA import MultipleSequenceAlignmentCluster
-from Class_blast_extension_mafft import SequenceManipulator
+import Function_blast_extension_mafft
 
 
 def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, clean_column_threshold=0.08,
@@ -18,16 +18,15 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     :return: A list of subset pattern alignment and bed files
     """
 
-    seq_blast = SequenceManipulator()
     # Align_sequences will return the absolute file path of alignment file
-    fasta_out_flank_mafft_file = seq_blast.muacle_align(input_file, output_dir)
+    fasta_out_flank_mafft_file = Function_blast_extension_mafft.muscle_align(input_file, output_dir)
 
     # When muscle goes wrong, use mafft
     if not fasta_out_flank_mafft_file:
-        fasta_out_flank_mafft_file = seq_blast.align_sequences(input_file, output_dir)
+        fasta_out_flank_mafft_file = Function_blast_extension_mafft.align_sequences(input_file, output_dir)
 
     # Remove gaps. Return absolute path for gap removed alignment file
-    fasta_out_flank_mafft_file_gap_filter = seq_blast.remove_gaps_with_similarity_check(
+    fasta_out_flank_mafft_file_gap_filter = Function_blast_extension_mafft.remove_gaps_with_similarity_check(
         fasta_out_flank_mafft_file, output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
         similarity_threshold=0.85, min_nucleotide=5)
 

@@ -1,7 +1,7 @@
 from Class_define_boundary import DefineBoundary
 from Class_crop_end import CropEnd
 from Class_crop_end_by_gap import CropEndByGap
-from Class_blast_extension_mafft import SequenceManipulator
+from Function_blast_extension_mafft import remove_gaps, generate_hmm_from_msa, extract_fasta, remove_gaps_with_similarity_check, remove_gaps_block_with_similarity_check, align_sequences, con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, con_generater, reverse_complement_seq_file
 from Class_select_ditinct_columns import CleanAndSelectColumn
 from Class_MSA_plot import MSAPainter
 from Class_check_start_end import StartEndChecker
@@ -18,12 +18,12 @@ from PyPDF2 import PdfMerger
 from Classification import classify_single
 
 
-def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file):
+def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_out_file):
 
-    check_80 = check_80_80_80(seq_obj, blast_hits_count, blast_out_file)
+    check_80 = check_80_80_80(seq_obj, blast_out_file)
+    low_copy= False
 
     if check_80:
-
         # Check self-alignment of terminal repeats
         TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
 
@@ -31,18 +31,17 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
         TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
         TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
         print(f"{seq_obj.name} found match {found_match}")
-        seq_obj.update_blast_hit_n(blast_hits_count)
 
         # Convert found_match to True when LTR or TIR is found
         if found_match == "LTR" or found_match == "TIR":
-            found_match = True
-        check_low_copy = seq_obj.update_low_copy(check_80, found_match)
+            low_copy = True
+            seq_obj.update_low_copy(low_copy)
     # (Top1,98%, Top2 80%). Right now Top1 80%
     else:
-        check_low_copy = "Did not run TE aid because blast hit does not meet 80_80_80"
-    return check_low_copy
+        low_copy = "Did not run TE aid because blast hit does not meet 80_80_80"
+    return low_copy
 
-def check_80_80_80(seq_obj, blast_hits_count, blast_out_file):
+def check_80_80_80(seq_obj, blast_out_file):
     # check if hits are >80% identify, 80% coverage and 80bp
     check_80 = False
     with open(blast_out_file) as blast_file:
@@ -72,11 +71,9 @@ def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=16, win
     cropped_MSA_output_file = cropped_MSA.write_to_file(output_dir)
 
     # Remove gaps again after crop end step
-    cropped_alignment_output_file_with_gap = SequenceManipulator()
-
     # "column_mapping" is a dictionary the key is gap removed MSA index, the value is the corresponded original
     # MSA index
-    cropped_alignment_output_file_no_gap, column_mapping = cropped_alignment_output_file_with_gap.remove_gaps(
+    cropped_alignment_output_file_no_gap, column_mapping = remove_gaps(
         cropped_MSA_output_file, output_dir, threshold=gap_threshold, min_nucleotide=5)
 
     return cropped_alignment_output_file_no_gap, column_mapping
@@ -104,7 +101,7 @@ def get_unique_filename(base_path, original_name):
     return new_name
 
 
-def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj, hmm,
+def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj, hmm, classify_all, classify_unknown,
                            cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000, max_extension=7000,
                            gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=16, crop_end_win=20,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
@@ -153,12 +150,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     while (if_left_ex or if_right_ex) and (left_ex <= max_extension and right_ex <= max_extension) \
             and not final_MSA_consistent and intact_loop_times < 4:
 
-        bed = SequenceManipulator()
         # bedtools will makesure the extension won't excess the maximum length of that chromosome
-        bed_fasta, bed_out_flank_file = bed.extract_fasta(bed_file, genome_file, output_dir, left_ex, right_ex)
+        bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, left_ex, right_ex)
 
         # align_sequences() will return extended MSA absolute file
-        bed_fasta_mafft_with_gap = bed.align_sequences(bed_fasta, output_dir)
+        bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
 
         if not os.path.isfile(bed_fasta_mafft_with_gap):
             click.echo(f"{bed_file} has problem during mafft extension step")
@@ -169,7 +165,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         bed_fasta_mafft_with_gap_column_clean = bed_fasta_mafft_with_gap_column_clean_object.clean_column(output_dir)
 
         # Remove gaps with similarity check
-        bed_fasta_mafft = bed.remove_gaps_with_similarity_check(bed_fasta_mafft_with_gap_column_clean, output_dir,
+        bed_fasta_mafft = remove_gaps_with_similarity_check(bed_fasta_mafft_with_gap_column_clean, output_dir,
                                                                 gap_threshold=0.6, simi_check_gap_thre=0.4,
                                                                 similarity_threshold=0.7,
                                                                 min_nucleotide=5
@@ -207,7 +203,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             # Remove gap block with similarity check
             # gap_threshold=0.8 means if gap proportion is greater than 80% this column will be regarded as gap column directly
             # without further nucleotide similarity check
-            bed_fasta_mafft_gap_block_sim = bed.remove_gaps_block_with_similarity_check(
+            bed_fasta_mafft_gap_block_sim = remove_gaps_block_with_similarity_check(
                 bed_fasta_mafft_with_gap_column_clean, output_dir, gap_threshold=0.8, simi_check_gap_thre=gap_threshold,
                 similarity_threshold=gap_nul_thr, conservation_threshold=0.5)
 
@@ -273,8 +269,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Code block: Check if the final MSA contains too many ambiguous letter "N"
     #####################################################################################################
 
-    initial_cons_object = SequenceManipulator()
-    initial_cons = initial_cons_object.con_generater_no_file(cropped_boundary_MSA, threshold=0.7, ambiguous="N")
+    initial_cons = con_generater_no_file(cropped_boundary_MSA, threshold=0.7, ambiguous="N")
 
     # Calculate the proportion of 'N' in the sequence
     n_proportion = initial_cons.count("N") / len(initial_cons)
@@ -315,15 +310,14 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Code block: Generate MSA for CIAlign plot
     #####################################################################################################
 
-    cropped_boundary_manual_MSA_object = SequenceManipulator()
 
     # Get 300 columns left the start point
-    cropped_boundary_manual_MSA_left = cropped_boundary_manual_MSA_object.select_window_columns(
+    cropped_boundary_manual_MSA_left = select_window_columns(
         bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.start_post], "left", window_size=300
     )
 
     # Get 300 columns right the end point
-    cropped_boundary_manual_MSA_right = cropped_boundary_manual_MSA_object.select_window_columns(
+    cropped_boundary_manual_MSA_right = select_window_columns(
         bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.end_post], "right", window_size=300
     )
 
@@ -333,7 +327,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # to an alignment object.
     input_file_name = str(os.path.basename(bed_fasta_mafft_boundary_crop)) + "_proof_anno"
     cropped_boundary_MSA_alignment = AlignIO.read(cropped_boundary_MSA, "fasta")
-    cropped_boundary_manual_MSA_concatenate, concat_start_man, concat_end_man = cropped_boundary_manual_MSA_object.concatenate_alignments(
+    cropped_boundary_manual_MSA_concatenate, concat_start_man, concat_end_man = concatenate_alignments(
         cropped_boundary_manual_MSA_left, cropped_boundary_MSA_alignment, cropped_boundary_manual_MSA_right,
         input_file_name=input_file_name, output_dir=output_dir
     )
@@ -345,28 +339,27 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # "sequence_len" represent the length of final cropped MSA
     # Extract the beginning and end columns of cropped MSA then join them by "----------".
     # Return MSA length, which will be used for plotting
-    cropped_boundary_plot_object = SequenceManipulator()
-    cropped_boundary_plot_select_start_end_and_joint, sequence_len = cropped_boundary_plot_object.select_start_end_and_join(
+    cropped_boundary_plot_select_start_end_and_joint, sequence_len = select_start_end_and_join(
         cropped_alignment_output_file_no_gap, output_dir, cropped_boundary.start_post, cropped_boundary.end_post
     )
 
     # "column_mapping" is a dictionary, the key represent cropped nucleotide position. The value represent the
     # original MSA nucleotide position.
     # Get 50 columns left the start point
-    cropped_boundary_plot_left = cropped_boundary_plot_object.select_window_columns(
+    cropped_boundary_plot_left = select_window_columns(
         bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.start_post], "left",
         window_size=50
     )
 
     # Get 50 columns right the end point
-    cropped_boundary_plot_right = cropped_boundary_plot_object.select_window_columns(
+    cropped_boundary_plot_right = select_window_columns(
         bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.end_post], "right",
         window_size=50
     )
 
     # Concatenate MSA
     # The concat_start and concat_end points correspond with cropped_boundary.start_post and cropped_boundary.end_post
-    cropped_boundary_plot_concatenate, concat_start, concat_end = cropped_boundary_plot_object.concatenate_alignments(
+    cropped_boundary_plot_concatenate, concat_start, concat_end = concatenate_alignments(
         cropped_boundary_plot_left, cropped_boundary_plot_select_start_end_and_joint, cropped_boundary_plot_right,
         input_file_name=cropped_boundary_MSA, output_dir=output_dir
     )
@@ -376,10 +369,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     #####################################################################################################
 
     # Generate consensus sequence for ORF prediction
-    orf_cons_object = SequenceManipulator()
 
     # Use lower threshold to enable give more pfam results
-    orf_cons = orf_cons_object.con_generater(cropped_boundary_MSA, output_dir, threshold=0.5)
+    orf_cons = con_generater(cropped_boundary_MSA, output_dir, threshold=0.5)
 
     # Predict orf, scan with Pfam
     orf_domain_plot_object = PlotPfam(orf_cons, output_dir, pfam_database_dir=pfam_dir, mini_orf=mini_orf)
@@ -400,22 +392,21 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             else:
                 # When the direction is wrong, reverse complement the corresponded sequence and MSA
                 # Reverse complement consensus sequence
-                determine_direction_object = SequenceManipulator()
 
                 # The reverse complemented file will overwrite the old file
-                orf_cons = determine_direction_object.reverse_complement_seq_file(
+                orf_cons = reverse_complement_seq_file(
                     input_file=orf_cons, output_file=orf_cons)
 
                 # Reverse complement MSA files
-                cropped_boundary_MSA = determine_direction_object.reverse_complement_seq_file(
+                cropped_boundary_MSA = reverse_complement_seq_file(
                     input_file=cropped_boundary_MSA, output_file=cropped_boundary_MSA
                 )
-                cropped_boundary_manual_MSA_concatenate = determine_direction_object.reverse_complement_seq_file(
+                cropped_boundary_manual_MSA_concatenate = reverse_complement_seq_file(
                     input_file=cropped_boundary_manual_MSA_concatenate,
                     output_file=cropped_boundary_manual_MSA_concatenate
                 )
 
-                cropped_boundary_plot_concatenate = determine_direction_object.reverse_complement_seq_file(
+                cropped_boundary_plot_concatenate = reverse_complement_seq_file(
                     input_file=cropped_boundary_plot_concatenate,
                     output_file=cropped_boundary_plot_concatenate
                 )
@@ -523,6 +514,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     merger.close()
 
+
     #####################################################################################################
     # Code block: Move files
     #####################################################################################################
@@ -532,6 +524,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     # Define final consensus file
     final_con_file = os.path.join(parent_output_dir, "TE_Trimmer_consensus.fasta")
+    final_unknown_con_file = os.path.join(parent_output_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
 
     # Define proof_annotation folder path
     proof_annotation_dir = os.path.join(parent_output_dir, "TE_Trimmer_for_proof_annotation")
@@ -571,15 +564,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
             # Generate consensus sequence
             try:
-                final_con_object = SequenceManipulator()
-                if hmm:  # Generate hmm files when the user want it
-                    hmm_dir = os.path.join(os.path.dirname(output_dir), "HMM_files")
-                    final_con_object.generate_hmm_from_msa(cropped_boundary_MSA, hmm_dir)
 
                 # Generate final consensus sequence
                 # Comparing initial consensus, the final consensus sequence might have different orientation.
                 # For this reason, generate consensus again
-                final_con = final_con_object.con_generater_no_file(cropped_boundary_MSA, threshold=cons_threshold)
+                final_con = con_generater_no_file(cropped_boundary_MSA, threshold=cons_threshold)
                 header = ">" + os.path.splitext(unique_new_name)[0]  # Use the filename without extension
                 sequence = str(final_con).upper()
 
@@ -605,14 +594,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 # Code block: Run RepeatClassifier in RepeatModeler to classify TE_trimmer consensus sequences
                 #####################################################################################################
                 # Write single consensus sequence to a separate place for RepeatClassifier
-                # only classify unknown seq
-                # TODO classify all
-
                 # check_unknown returns true if unknown is detected
                 # Rename consensus when the final consensus length is much longer or shorter than the query sequence
-                if seq_obj.check_unknown() or abs(consi_obj.new_length - seq_obj.old_length) >= 1000:
+                if classify_all or (classify_unknown and (seq_obj.check_unknown() or abs(consi_obj.new_length - seq_obj.old_length))) >= 1000:
 
-                    #click.echo(f"Classifying {unique_new_name} by RepeatClassifier")
+                    # click.echo(f"Classifying {unique_new_name} by RepeatClassifier")
 
                     # Define different folder for each sequence
                     sequence_con_file = os.path.join(classification_dir, str(unique_new_name))
@@ -624,18 +610,30 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                     with open(n_sequence_con_file, "w") as f:
 
                         # RepeatClassifier input cannot be single sequence, add >Add to enable to run RepeatClassifier
-                        f.write(header + "\n" + sequence + "\n" + ">Add" + "\n" + "T" + "\n")
+                        f.write(header + "\n" + sequence + "\n" + ">Dummy" + "\n" + "T" + "\n")
 
                     TE_type = classify_single(n_sequence_con_file)
 
                     # Only update new_TE_type when classify_single is successfully
                     if TE_type:
-                        # Update TE_type after RepeatClassifier
+                        # set TE_type after RepeatClassifier
                         consi_obj.set_new_TE_type(TE_type)
 
-                TE_type = consi_obj.get_TE_type_for_file()
-                with open(final_con_file, "a") as f:  # 'a' mode for appending
-                    f.write(header + "#" + TE_type + "\n" + sequence + "\n")
+                #update final con_TE_type
+                updated_TE_type = consi_obj.get_TE_type_for_file()
+                consi_obj.set_new_TE_type(updated_TE_type)
+                
+                if hmm:  # Generate hmm files when the user want it
+                    hmm_dir = os.path.join(os.path.dirname(output_dir), "HMM_files")
+                    generate_hmm_from_msa(cropped_boundary_MSA, hmm_dir, consi_obj)
+
+                # the unknown TE consensus will be classified again later using successfully classified sequence
+                if "Unknown" in updated_TE_type:
+                    with open(final_unknown_con_file, "a") as f:  # 'a' mode for appending
+                        f.write(header + "\n" + sequence + "\n")
+                else:
+                    with open(final_con_file, "a") as f:  # 'a' mode for appending
+                        f.write(header + "#" + updated_TE_type + "\n" + sequence + "\n")
                     
             except Exception as e:
                 click.echo(f"Error Generate consensus sequence and create consensus_object: {str(e)}")

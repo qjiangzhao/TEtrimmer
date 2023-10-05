@@ -8,20 +8,26 @@ class Seq_object:
     """
 
     def __init__(self, name, path_input_fasta_file, length, TE_type):
-        self.name = name
-        self.input_fasta = path_input_fasta_file
-        self.old_length = length
-        self.old_TE_type = TE_type
+        self.name = str(name)
+        self.input_fasta = str(path_input_fasta_file)
+        self.old_length = int(length)
+        self.old_TE_type = str(TE_type)
         self.low_copy = False
         self.consi_obj_list = []  # an input seq can end up with multiple consensus seq
         self.blast_hit_n = 0
         self.status = "unprocessed"  # "unprocessed","processed", "skipped"
 
-    def get_type(self):
+    def get_seq_name(self):
+        return self.name
+    
+    def get_old_TE_type(self):
         return self.old_TE_type
     
     def get_length(self):
         return self.old_length
+    
+    def get_input_fasta(self):
+        return self.input_fasta
     
     def check_unknown(self):
         if "unknown" in self.old_TE_type.lower():
@@ -53,15 +59,14 @@ class Seq_object:
                             f"{str(consi_obj.new_TE_flank_repeat)},{str(self.low_copy)},{str(self.status)}\n")
             else:
 
-                f.write(f"{str(self.name)},N/A,"  # name
-                        f"{str(self.blast_hit_n)},N/A,"  # sequence number
-                        f"{str(self.old_length)},N/A,"  # sequence length
-                        f"{str(self.old_TE_type)},N/A,"  # TE type
-                        f"N/A,{str(self.low_copy)},{str(self.status)}\n")
+                f.write(f"{str(self.name)},NaN,"  # name
+                        f"{str(self.blast_hit_n)},NaN,"  # sequence number
+                        f"{str(self.old_length)},NaN,"  # sequence length
+                        f"{str(self.old_TE_type)},NaN,"  # TE type
+                        f"NaN,{str(self.low_copy)},{str(self.status)}\n")
 
-    def update_low_copy(self, check_80, found_match):
-        if check_80 and found_match:
-            self.low_copy = True
+    def update_low_copy(self, low_copy):
+        self.low_copy = low_copy
         return self.low_copy
 
     def update_blast_hit_n(self, blast_hit_n):
@@ -71,12 +76,12 @@ class Seq_object:
 class ConsensusObject:
     def __init__(self, parent_seq_object, consensus_name):
         self.parent_seq_object = parent_seq_object
-        self.consensus_name = consensus_name
-        self.new_length = "N/A"
-        self.new_TE_type = "N/A"
-        self.new_TE_MSA_seq_n = "N/A"
-        self.new_TE_flank_repeat = "N/A"
-        self.cons_seq = "N/A"
+        self.consensus_name = str(consensus_name)
+        self.new_length = "NaN"
+        self.new_TE_type = "Unknown"
+        self.new_TE_MSA_seq_n = "NaN"
+        self.new_TE_flank_repeat = "None"
+        self.cons_seq = "NaN"
     
     def set_new_lenth(self, new_length):
         self.new_length = new_length
@@ -95,12 +100,17 @@ class ConsensusObject:
     # Store consensus sequence to object
     def set_cons_seq(self, cons_seq):
         self.cons_seq = cons_seq
-
+    
+    def get_consi_name(self):
+        return self.consensus_name
+    
+    def get_new_TE_type(self):
+        return self.new_TE_type
+    
     def get_TE_type_for_file(self):
-
         # For writing the final consensus file, the TE_type can be either the input TE type or the new
         # classified one if it is newly classified
-        if "N/A" in self.new_TE_type or "Unknow" in self.new_TE_type:
-            return self.parent_seq_object.get_type()
+        if "Unknown" in self.new_TE_type:
+            return self.parent_seq_object.get_old_TE_type()
         else:
             return self.new_TE_type

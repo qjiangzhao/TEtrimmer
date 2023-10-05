@@ -1,7 +1,7 @@
 import subprocess
 import os
 from Bio import SeqIO
-from Class_blast_extension_mafft import SequenceManipulator
+import Function_blast_extension_mafft
 import click
 
 

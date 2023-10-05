@@ -1,4 +1,4 @@
-from Class_blast_extension_mafft import SequenceManipulator
+from Function_blast_extension_mafft import check_bed_uniqueness, blast, con_generater_no_file, remove_gaps_with_similarity_check, extract_fasta, con_generater, align_sequences, remove_gaps_block_with_similarity_check
 from Class_bed_filter import BEDFile
 from Class_crop_end_by_gap import CropEndByGap
 from Class_crop_end import CropEnd
@@ -72,11 +72,9 @@ class SequenceElongation:
         input_file_name = os.path.basename(self.input_file)
 
         try:
-            seq_blast = SequenceManipulator()  # this class contain many functions to do blast and filter blast result
-
             # run blast for each single fasta file and return a bed file absolute path
-            bed_out_file_dup,  blast_hits_count, blast_out_file = seq_blast.blast(self.seq_obj, self.input_file, self.genome_file,
-                                               self.output_dir, self.min_seq_num, self.blast_min_length)
+            bed_out_file_dup,  blast_hits_count, blast_out_file = blast(self.seq_obj, self.input_file, self.genome_file,
+                                               self.output_dir, self.blast_min_length)
 
         except Exception as e:
             click.echo(f"Error while running blast for sequence: {input_file_name} 1 elongation. Error: {str(e)}")
@@ -84,7 +82,6 @@ class SequenceElongation:
 
         try:
             # check if blast hit number is equal 0, then skip this sequence
-            self.seq_obj.update_blast_hit_n(blast_hits_count)
             if blast_hits_count == 0:
                 with open(self.skipped_file, "a") as f:
                     f.write(input_file_name + "\tno_blast\telongation_blast_equal_0\n")
@@ -95,9 +92,8 @@ class SequenceElongation:
             elif blast_hits_count != 0 and blast_hits_count < 10:
                 with open(self.skipped_file, "a") as f:
                     f.write(input_file_name + f"\tblast_less\telongation_blast_smaller_than_{self.min_seq_num}\n")
-                check_low_copy = check_self_alignment(self.seq_obj, self.input_file, self.output_dir, self.genome_file, blast_hits_count, blast_out_file)                
                 click.echo(f"\n{input_file_name} in elongation is skipped due to blast hit number is "
-                           f"smaller than {self.min_seq_num} and check_low_copy is {check_low_copy}\n")
+                           f"smaller than {self.min_seq_num}\n")
                 return False  # when blast hit number is smaller than 10, code will execute next fasta file
 
         except Exception as e:
@@ -106,7 +102,7 @@ class SequenceElongation:
 
         try:
             # remove duplicated lines
-            bed_out_file = seq_blast.check_bed_uniqueness(self.output_dir, bed_out_file_dup)
+            bed_out_file = check_bed_uniqueness(self.output_dir, bed_out_file_dup)
 
             # test bed_out_file line number and extract top longest lines
             # return bed_out_filter_file absolute path
@@ -121,14 +117,14 @@ class SequenceElongation:
 
             # extract fasta from bed_out_filter_file
             # return fasta_out_flank_file absolute path
-            fasta_out_flank_file, bed_out_flank_file = seq_blast.extract_fasta(
+            fasta_out_flank_file, bed_out_flank_file = extract_fasta(
                 bed_out_filter_file, self.genome_file, self.output_dir, left_ex=self.ext_n, right_ex=self.ext_n)
 
             # Do multiple sequence alignment
-            fasta_out_flank_file_MSA = seq_blast.align_sequences(fasta_out_flank_file, self.output_dir)
+            fasta_out_flank_file_MSA = align_sequences(fasta_out_flank_file, self.output_dir)
 
             # Remove gap block with similarity check
-            fasta_out_flank_file_MSA_gap_block_sim = seq_blast.remove_gaps_block_with_similarity_check(
+            fasta_out_flank_file_MSA_gap_block_sim = remove_gaps_block_with_similarity_check(
                 fasta_out_flank_file_MSA, self.output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
                 similarity_threshold=0.7, conservation_threshold=0.4, min_nucleotide=5
             )
@@ -147,7 +143,7 @@ class SequenceElongation:
             crop_end_by_divergence = crop_end_by_divergence_object.write_to_file(self.output_dir)
 
             # Check if MSA is empty after crop end by gap and divergence
-            consensus_after_crop_end = seq_blast.con_generater_no_file(crop_end_by_divergence, threshold=0.5)
+            consensus_after_crop_end = con_generater_no_file(crop_end_by_divergence, threshold=0.5)
 
             # Count the number of nucleotides after eliminating 'N'
             nucleotides_after_elimination = len([char for char in consensus_after_crop_end if char != 'N'])
@@ -159,7 +155,7 @@ class SequenceElongation:
                 return False
 
             # Remove gaps
-            crop_end_by_divergence_remove_gap = seq_blast.remove_gaps_with_similarity_check(
+            crop_end_by_divergence_remove_gap = remove_gaps_with_similarity_check(
                 crop_end_by_divergence, self.output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
                 similarity_threshold=0.7, min_nucleotide=5
             )
@@ -180,18 +176,17 @@ class SequenceElongation:
             if cluster_MSA_result is False:  # When it is False means all clusters' sequence number is less than 10
                 with open(self.skipped_file, "a") as f:
                     f.write(input_file_name + f"\tblast_less\telongation_cluster_blast_smaller_than_{self.min_seq_num}\n")
-                check_low_copy = check_self_alignment(self.seq_obj, self.input_file, self.output_dir, self.genome_file, blast_hits_count, blast_out_file)
                 click.echo(f"\n{input_file_name} is skipped due to sequence number in elongation cluster is "
-                           f"smaller than {self.min_seq_num} and check_low_copy is {check_low_copy}\n")
+                           f"smaller than {self.min_seq_num}\n")
                 return False
 
             # When it is True means not necessary to do clustering. Use the input MSA to generate consensus sequence
             elif cluster_MSA_result is True:
-                output_con = seq_blast.con_generater(crop_end_by_divergence_remove_gap, self.output_dir, threshold=0.7,
+                output_con = con_generater(crop_end_by_divergence_remove_gap, self.output_dir, threshold=0.7,
                                                      ambiguous="N")
             else:
                 # Generate consensus sequence, only use the first cluster for the further analysis
-                output_con = seq_blast.con_generater(str(cluster_MSA_result[0]), self.output_dir, threshold=0.7,
+                output_con = con_generater(str(cluster_MSA_result[0]), self.output_dir, threshold=0.7,
                                                      ambiguous="N")
 
             # Change consensus sequence name, otherwise it will be too long for the further analysis

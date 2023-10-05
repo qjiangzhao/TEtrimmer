@@ -1,6 +1,6 @@
 from Bio import AlignIO
 import os
-from Class_blast_extension_mafft import SequenceManipulator
+from Function_blast_extension_mafft import select_gaps_block_with_similarity_check
 
 
 class CleanAndSelectColumn:
@@ -84,8 +84,7 @@ class CleanAndSelectColumn:
 
         #if len(columns_to_keep) > min_length_to_include_gap_block:
 
-        gap_block_to_keep_object = SequenceManipulator()
-        gap_block_to_keep = gap_block_to_keep_object.select_gaps_block_with_similarity_check(self.input_file)
+        gap_block_to_keep = select_gaps_block_with_similarity_check(self.input_file)
 
         # Concatenate columns with high divergence and gap block columns
         if gap_block_to_keep:

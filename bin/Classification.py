@@ -24,7 +24,7 @@ def classify_single(consensus_fasta):
 
     # Get the first record of classified file
     record = next(SeqIO.parse(classified_file, "fasta"))
-    seq_name = record.id.split("#")[0]
+    # seq_name = record.id.split("#")[0]
     seq_TE_type = record.id.split("#")[-1]
 
     return seq_TE_type
