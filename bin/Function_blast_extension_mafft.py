@@ -1092,13 +1092,13 @@ def update_cons_file(updated_type, unknown_concensus_file, consensus_file):
                 f.write(">"+ header + "#" + te_type + "\n" + sequence + "\n")
 
 # if the seq_obj is low copy, append to consensus_file or final_unknown_con_file file
-def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file):
+def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, classify_all, classify_unknown):
     header = seq_obj.get_seq_name()
     te_type = seq_obj.get_old_TE_type()
     input_fasta = seq_obj.get_input_fasta()
     for record in SeqIO.parse(input_fasta, "fasta"):
         sequence = str(record.seq)
-    if "Unknown" in te_type:
+    if (classify_all or classify_unknown) and "Unknown" in te_type:
         with open(final_unknown_con_file, "a") as f:  # 'a' mode for appending
             f.write(header + "\n" + sequence + "\n")
     else:

@@ -168,7 +168,7 @@ def analyze_sequence(seq_obj, single_file_dir, genome_file, MSA_dir, min_blast_l
             check_low_copy = check_self_alignment(seq_obj, seq_file, MSA_dir, genome_file, blast_out_file)
             if check_low_copy is True:
                 seq_obj.update_status("processed", progress_file)
-                update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file)
+                update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file, classify_all, classify_unknown)
             else:
                 click.echo(f"\n{seq_name} in main is skipped due to check_low_copy is {check_low_copy}\n")
                 handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, elongation_dir)
@@ -223,7 +223,7 @@ def analyze_sequence(seq_obj, single_file_dir, genome_file, MSA_dir, min_blast_l
 
             else:
                 seq_obj.update_status("processed", progress_file)
-                update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file)
+                update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file, classify_all, classify_unknown)
 
             return
 
@@ -314,7 +314,7 @@ def analyze_sequence(seq_obj, single_file_dir, genome_file, MSA_dir, min_blast_l
                 
                 if check_low_copy is True:
                     seq_obj.update_status("processed", progress_file)
-                    update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file)
+                    update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file, classify_all, classify_unknown)
                 else:
                     handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, elongation_dir)
                     click.echo(
@@ -786,10 +786,11 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         if not os.path.exists(temp_repeatmasker_dir):
             os.mkdir(temp_repeatmasker_dir)
         unknown_result = repeatmasker(final_unknown_con_file, final_con_file, temp_repeatmasker_dir, thread=num_threads, classify = True)
+        updated_type = {}
         if unknown_result:
             repeatmasker_out = os.path.join(temp_repeatmasker_dir, "temp_TE_Trimmer_unknown_consensus.fasta.out")
             updated_type = repeatmasker_output_classify(repeatmasker_out, progress_file)
-            update_cons_file(updated_type, final_unknown_con_file, final_con_file)
+        update_cons_file(updated_type, final_unknown_con_file, final_con_file)
         
     
 

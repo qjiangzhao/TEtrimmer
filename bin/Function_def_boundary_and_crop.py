@@ -628,7 +628,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                     generate_hmm_from_msa(cropped_boundary_MSA, hmm_dir, consi_obj)
 
                 # the unknown TE consensus will be classified again later using successfully classified sequence
-                if "Unknown" in updated_TE_type:
+                if (classify_all or classify_unknown) and "Unknown" in updated_TE_type:
                     with open(final_unknown_con_file, "a") as f:  # 'a' mode for appending
                         f.write(header + "\n" + sequence + "\n")
                 else:
