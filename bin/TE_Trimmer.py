@@ -7,7 +7,6 @@ import click
 import concurrent.futures
 import shutil
 import json
-import time
 
 
 # Local imports
@@ -592,8 +591,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     bin_py_path = os.path.dirname(os.path.abspath(__file__))
 
     # check if path exist otherwise create one
-    if not os.path.isdir(output_dir):
-        os.makedirs(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
     output_dir = os.path.abspath(output_dir)  # get absolute path
 
     # Check if output directory is empty when --continue_analysis is False
@@ -783,15 +781,16 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         click.echo(f"Finishing classification of TE type")
         final_unknown_con_file = os.path.join(output_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
         temp_repeatmasker_dir = os.path.join(output_dir, "temp_repeatmasker")
-        if not os.path.exists(temp_repeatmasker_dir):
-            os.mkdir(temp_repeatmasker_dir)
-        unknown_result = repeatmasker(final_unknown_con_file, final_con_file, temp_repeatmasker_dir, thread=num_threads, classify = True)
         updated_type = {}
-        if unknown_result:
-            repeatmasker_out = os.path.join(temp_repeatmasker_dir, "temp_TE_Trimmer_unknown_consensus.fasta.out")
-            updated_type = repeatmasker_output_classify(repeatmasker_out, progress_file)
+        if os.path.exists(final_unknown_con_file) and os.path.exists(final_con_file) :
+            os.makedirs(temp_repeatmasker_dir, exist_ok=True)
+            unknown_result = repeatmasker(final_unknown_con_file, final_con_file, temp_repeatmasker_dir, thread=num_threads, classify = True)
+            if unknown_result:
+                repeatmasker_out = os.path.join(temp_repeatmasker_dir, "temp_TE_Trimmer_unknown_consensus.fasta.out")
+                updated_type = repeatmasker_output_classify(repeatmasker_out, progress_file)
+        else:
+            print ("one of the consensus file does not exist, repeatmasker reclassify does not run")
         update_cons_file(updated_type, final_unknown_con_file, final_con_file)
-        
     
 
     #####################################################################################################
@@ -840,7 +839,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     print(f"\nTE Trimmer finished at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
     print(f"TE Trimmer runtime was {duration_without_microseconds}")
-    printProgressBar(single_fasta_n, single_fasta_n, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    # printProgressBar(single_fasta_n, single_fasta_n, prefix = 'Progress:', suffix = 'Sequences Processed', length = 50)
     
         
 # The following is necessary to make the script executable, i.e., python myscript.py.

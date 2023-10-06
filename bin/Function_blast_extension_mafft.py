@@ -994,17 +994,16 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify = Fal
     
 def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden = 80, min_len = 80, min_cov = 80):
     # Reclassify based on the 80-80-80 rule
-    min_iden = 80  # 80%
-    min_len = 80   # 80bp
-    min_cov = 80   # 80%
-
+    # min_iden = 80  # 80%
+    # min_len = 80   # 80bp
+    # min_cov = 80   # 80%
     # Reads a RepeatMasker output file and stores the data as a df
     data = []
     with open(repeatmasker_out, 'r') as file:
         first_line = file.readline().strip()  # Read and remove leading/trailing whitespaces
             # Check if the first line starts with the specified string
         if first_line.startswith("There were no repetitive sequences detected"):
-            print("There were no repetitive sequences detected in unknown_consensus.fasta")
+            print("There were no repetitive sequences detected in consensus with TE type Unknown")
             return data
         else:
             for line in file:
@@ -1081,16 +1080,17 @@ def handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, 
             f"An error occurred while handling skipped sequence {seq_name}: {e}")
 
 def update_cons_file(updated_type, unknown_concensus_file, consensus_file):
-    with open(unknown_concensus_file, 'r') as fasta_file:
-        for record in SeqIO.parse(fasta_file, 'fasta'):
-            header = record.id
-            sequence = str(record.seq)
-            if header in updated_type:
-                te_type = updated_type[header]
-            else:
-                te_type = "Unknown"
-            with open(consensus_file, 'a')  as f:
-                f.write(">"+ header + "#" + te_type + "\n" + sequence + "\n")
+    if os.path.exists (unknown_concensus_file):
+        with open(unknown_concensus_file, 'r') as fasta_file:
+            for record in SeqIO.parse(fasta_file, 'fasta'):
+                header = record.id
+                sequence = str(record.seq)
+                if header in updated_type:
+                    te_type = updated_type[header]
+                else:
+                    te_type = "Unknown"
+                with open(consensus_file, 'a')  as f:
+                    f.write(">"+ header + "#" + te_type + "\n" + sequence + "\n")
 
 # if the seq_obj is low copy, append to consensus_file or final_unknown_con_file file
 def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, classify_all, classify_unknown):
@@ -1101,7 +1101,7 @@ def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, c
         sequence = str(record.seq)
     if (classify_all or classify_unknown) and "Unknown" in te_type:
         with open(final_unknown_con_file, "a") as f:  # 'a' mode for appending
-            f.write(header + "\n" + sequence + "\n")
+            f.write(">"+ header + "\n" + sequence + "\n")
     else:
         with open(consensus_file, 'a')  as f:
             f.write(">"+ header + "#" + te_type + "\n" + sequence + "\n")

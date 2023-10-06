@@ -35,8 +35,7 @@ class TEAid:
 
         # Make a folder to store TE_aid result.
         TE_aid_output_dir = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_TEaid")
-        if not os.path.isdir(TE_aid_output_dir):
-            os.makedirs(TE_aid_output_dir)
+        os.makedirs(TE_aid_output_dir, exist_ok=True)
 
         found_match = False
 

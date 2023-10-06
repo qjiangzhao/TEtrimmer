@@ -24,8 +24,7 @@ def copy_file(filename, button, target_directory):
         # Show a confirmation window before copying
         if messagebox.askokcancel("Confirmation", f"Do you want to copy '{filename}' to '{target_directory}'?"):
             # Check if the target directory exists. If not, create it.
-            if not os.path.exists(target_directory):
-                os.makedirs(target_directory)
+            os.makedirs(target_directory, exist_ok=True)
 
             # Copy the file to the target directory
             try:

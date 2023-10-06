@@ -53,8 +53,7 @@ def proof_annotation(te_trimmer_output_dir, output_dir):
     def copy_file(filename, button, target_directory):
         def _copy_file(event):
             if messagebox.askokcancel("Confirmation", f"Do you want to copy '{filename}' to '{target_directory}'?"):
-                if not os.path.exists(target_directory):
-                    os.makedirs(target_directory)
+                os.makedirs(target_directory, exist_ok=True)
                 try:
                     shutil.copy(os.path.join(te_trimmer_output_dir, filename), target_directory)
                     button.config(bg='green')

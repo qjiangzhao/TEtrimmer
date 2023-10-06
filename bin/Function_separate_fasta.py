@@ -7,8 +7,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
     """
     separates input file into single fasta file and creates object for each input sequence
     """
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
     seq_list = []
 
     if not continue_analysis:
@@ -29,6 +28,9 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                 else:
                     sanitized_id = record.id.replace('/', '_').replace(' ', '_').replace('-', '_').replace(':', '_')
                     te_type = "Unknown"
+                    # modify header to add #Unknown 
+                    record.id = f"{record.id}#{te_type}"
+                    record.description = record.id
 
                 # Define output file name
                 output_filename = os.path.join(output_dir, f"{sanitized_id}.fasta")

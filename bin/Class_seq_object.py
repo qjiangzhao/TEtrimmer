@@ -55,7 +55,7 @@ class Seq_object:
                     f.write(f"{str(self.name)},{str(consi_obj.consensus_name)}#{str(TE_type)},"  # name
                             f"{str(self.blast_hit_n)},{str(consi_obj.new_TE_MSA_seq_n)},"  # sequence number
                             f"{str(self.old_length)},{str(consi_obj.new_length)},"  # sequence length
-                            f"{str(self.old_TE_type)},{str(consi_obj.new_TE_type)},"  # TE type
+                            f"{str(self.old_TE_type)},{str(consi_obj.get_TE_type_for_file())},"  # TE type
                             f"{str(consi_obj.new_TE_flank_repeat)},{str(self.low_copy)},{str(self.status)}\n")
             else:
 

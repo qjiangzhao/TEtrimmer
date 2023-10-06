@@ -30,11 +30,14 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_out_f
         # Run TE_aid
         TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
         TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
-        print(f"{seq_obj.name} found match {found_match}")
+        # print(f"{seq_obj.name} found match {found_match}")
 
         # Convert found_match to True when LTR or TIR is found
         if found_match == "LTR" or found_match == "TIR":
             low_copy = True
+            # create new consi_obj
+            consi_obj = seq_obj.create_consi_obj(seq_obj.get_seq_name())
+            consi_obj.set_new_flank_repeat(found_match) 
             seq_obj.update_low_copy(low_copy)
     # (Top1,98%, Top2 80%). Right now Top1 80%
     else:
@@ -533,11 +536,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     classification_dir = os.path.join(parent_output_dir, "Classification")
 
     # Create the directory if it doesn't exist
-    if not os.path.exists(proof_annotation_dir):
-        os.makedirs(proof_annotation_dir)
-
-    if not os.path.exists(classification_dir):
-        os.makedirs(classification_dir)
+    os.makedirs(proof_annotation_dir, exist_ok=True)
+    os.makedirs(classification_dir, exist_ok=True)
 
     # Define proof annotation file name
     file_copy_pattern = [
@@ -602,7 +602,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
                     # Define different folder for each sequence
                     sequence_con_file = os.path.join(classification_dir, str(unique_new_name))
-                    os.makedirs(sequence_con_file)
+                    os.makedirs(sequence_con_file, exist_ok=True )
 
                     # Define consensus name path used for classification
                     n_sequence_con_file = os.path.join(sequence_con_file, str(unique_new_name))
