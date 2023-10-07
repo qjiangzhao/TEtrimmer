@@ -96,7 +96,7 @@ class SequenceManipulator:
         blast_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b")
         blast_cmd = f"blastn -query {input_file} -db {genome_file} " \
                     f"-outfmt \"6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand\" " \
-                    f"-evalue 1e-40 -qcov_hsp_perc 20 | " \
+                    f"-evalue 1e-8 -qcov_hsp_perc 20 | " \
                     f"awk -v 'ml={min_length}' 'BEGIN{{OFS=\"\\t\"}} $4 > ml {{print $0}}' >> {blast_out_file}"
         subprocess.run(blast_cmd, shell=True, check=True)
 

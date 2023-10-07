@@ -43,7 +43,6 @@ def check_progress_file(progress_file_path):
 # Code block: Define analyze_sequence function
 #####################################################################################################
 
-
 def analyze_sequence_helper(params):
     return analyze_sequence(*params)
 
@@ -121,9 +120,10 @@ def analyze_sequence(seq_obj, single_file_dir, genome_file, MSA_dir, min_blast_l
 
         # Check if blast hit number is smaller than "min_seq_num", not include "min_seq_num"
         elif blast_hits_count != 0 and blast_hits_count < min_seq_num:
-            check_low_copy = check_self_alignment(seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
+
+            check_low_copy, blast_full_length_n = check_self_alignment(seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
             seq_obj.update_status("skipped", progress_file)
-            click.echo(f"\n{seq_name} is skipped due to blast hit number is smaller than {min_seq_num} and check_low_copy is {check_low_copy}\n")
+            click.echo(f"\n{seq_name} is skipped due to blast hit number is smaller than {min_seq_num} and check low copy is {check_low_copy}\n")
 
             if not keep_intermediate and not check_low_copy:
                 remove_file_object = SequenceManipulator()
@@ -172,10 +172,10 @@ def analyze_sequence(seq_obj, single_file_dir, genome_file, MSA_dir, min_blast_l
         # cluster false means no cluster, TE Trimmer will skip this sequence.
         if cluster_MSA_result is False:
 
-            check_low_copy = check_self_alignment(seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
+            check_low_copy, blast_full_length_n = check_self_alignment(seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
             seq_obj.update_status("skipped", progress_file)
             click.echo(f"\n{seq_name} is skipped due to cluster_MSA_result sequence number in each cluster is smaller "
-                       f"than {min_seq_num} and check_low_copy is {check_low_copy}\n")
+                       f"than {min_seq_num} and check low copy is {check_low_copy}\n")
 
             if not keep_intermediate and not check_low_copy:
                 remove_file_object = SequenceManipulator()
@@ -272,11 +272,11 @@ def analyze_sequence(seq_obj, single_file_dir, genome_file, MSA_dir, min_blast_l
             # Check the flag after the loop. If all inner clusters were skipped, write the progress file
             if all_inner_skipped:
 
-                check_low_copy = check_self_alignment(seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
+                check_low_copy, blast_full_length_n = check_self_alignment(seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
                 seq_obj.update_status("skipped", progress_file)
                 click.echo(
                     f"\n{seq_name} is skipped due to sequence number in second round each cluster is "
-                    f"smaller than {min_seq_num} or the sequence is too short\n")
+                    f"smaller than {min_seq_num} or the sequence is too short and check low copy is {check_low_copy}\n")
 
                 # If all this sequence is skipped remove all files contain this name
                 if not keep_intermediate:
@@ -584,8 +584,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Check and create progress_file if it doesn't exist
     if not os.path.exists(progress_file):
         with open(progress_file, 'a') as f:
-            f.write("input_name,consensus_name,blast_hit_n,cons_MSA_seq_n,input_length,cons_length,"
-                    "input_TE_type,reclassified_type,cons_flank_repeat,low_copy,status\n")
+            f.write("input_name,consensus_name,blast_hit_n,cons_MSA_seq_n,cons_full_blast_n,input_length,cons_length,"
+                    "input_TE_type,reclassified_type,terminal_repeat,low_copy,status\n")
             pass
 
     # If pfam database isn't provided, create pfam database at TE Trimmer software folder,

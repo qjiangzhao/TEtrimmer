@@ -13,16 +13,18 @@ import Cialign_plot
 import os
 import click
 import shutil
+import pandas as pd
 from PyPDF2 import PdfMerger
 from Classification import classify_single
+import traceback
 
 
 def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file):
 
-    check_blast_n = check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100)
+    blast_full_length_n = check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100)
 
     # At least 2 lines need to meet the requirement
-    if check_blast_n >= 2:
+    if blast_full_length_n >= 2:
 
         check_blast = True
 
@@ -32,7 +34,6 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
         # Run TE_aid
         TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
         TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
-        click.echo(f"{seq_obj.name} flank repeat {found_match}")
         seq_obj.update_blast_hit_n(blast_hits_count)
 
         # Convert found_match to True when LTR or TIR is found
@@ -44,33 +45,27 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
 
     else:
         check_low_copy = False
-    return check_low_copy
+    return check_low_copy, blast_full_length_n
 
 
-def check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100):
+def check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100, te_aid_blast=False):
 
-    # Counter for valid lines
-    valid_lines_count = 0
+    # The TE Aid blast output have a header
+    if te_aid_blast:
+        df = pd.read_csv(blast_out_file, sep="\s+")
+    else:
+        df = pd.read_csv(blast_out_file, sep="\s+", header=None)
 
-    with open(blast_out_file) as blast_file:
-        for line in blast_file:
-            columns = line.split("\t")
+    identity_condition = df[2] > identity
+    coverage_condition = df[3] / seq_obj.old_length > coverage
+    length_condition = df[3] > min_hit_length
 
-            # Extracting values from columns
-            identity_percentage = float(columns[2])
-            hit_length = float(columns[3])
+    # Filter the DataFrame
+    filtered_df = df[identity_condition & coverage_condition & length_condition]
 
-            # Conditions
-            identity_condition = identity_percentage > identity
-            coverage_condition = (hit_length / seq_obj.old_length) > coverage
-            length_condition = hit_length > min_hit_length
+    blast_full_length_n = filtered_df.shape[0]
 
-            if identity_condition and coverage_condition and length_condition:
-                valid_lines_count += 1
-                if valid_lines_count >= 2:
-                    break
-
-    return valid_lines_count
+    return blast_full_length_n
 
 
 def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=16, window_size=20, gap_threshold=0.8):
@@ -549,6 +544,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     # Define proof_annotation folder path
     proof_annotation_dir = os.path.join(parent_output_dir, "TE_Trimmer_for_proof_annotation")
+
+    # Define low copy folder
+    low_copy_dir = os.path.join(proof_annotation_dir, "Low_copy_TE")
     
     # Construct the path for the new folder
     classification_dir = os.path.join(parent_output_dir, "Classification")
@@ -556,6 +554,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Create the directory if it doesn't exist
     if not os.path.exists(proof_annotation_dir):
         os.makedirs(proof_annotation_dir)
+
+    if not os.path.exists(low_copy_dir):
+        os.makedirs(low_copy_dir)
 
     if not os.path.exists(classification_dir):
         os.makedirs(classification_dir)
@@ -610,10 +611,15 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 MSA_for_final_cons_seq_n = len(MSA_for_final_cons)
                 consi_obj.set_cons_MSA_n(MSA_for_final_cons_seq_n)
 
-                # Store flank repeat to consi_obj
+                # Store terminal repeat to consi_obj
                 if found_match == "LTR" or found_match == "TIR":
 
                     consi_obj.set_new_flank_repeat(found_match)
+
+                # Store blast full length sequence number into consi_obj
+                # check_blast_full_n is a function in TE_Aid class. TE Trimmer will use the blast result of TE Aid
+                blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj)
+                consi_obj.set_blast_full_n(blast_full_length_n)
 
                 #####################################################################################################
                 # Code block: Run RepeatClassifier in RepeatModeler to classify TE_trimmer consensus sequences
@@ -649,6 +655,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                     
             except Exception as e:
                 click.echo(f"Error Generate consensus sequence and create consensus_object: {str(e)}")
+                click.echo(traceback.format_exc())
                 files_moved_successfully = False
         
     return files_moved_successfully
