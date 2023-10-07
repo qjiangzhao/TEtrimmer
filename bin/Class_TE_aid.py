@@ -1,15 +1,42 @@
 import subprocess
 import os
 from Bio import SeqIO
-import Function_blast_extension_mafft
 import click
+import pandas as pd
+from Class_blast_extension_mafft import SequenceManipulator
+from Function_blast_extension_mafft import blast
+
+
+def check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100, te_aid_blast=False,
+                         if_low_copy=False):
+
+    # The TE Aid blast output have a header
+    if te_aid_blast:
+        df = pd.read_csv(blast_out_file, sep="\s+", skiprows=1, header=None)
+    else:
+        df = pd.read_csv(blast_out_file, sep="\s+", header=None)
+
+    if if_low_copy:
+        seq_length = seq_obj.old_length
+    else:
+        seq_length = seq_obj.new_length
+
+    identity_condition = df[2] > identity
+    coverage_condition = df[3] / seq_length > coverage
+    length_condition = df[3] > min_hit_length
+
+    # Filter the DataFrame
+    filtered_df = df[identity_condition & coverage_condition & length_condition]
+
+    blast_full_length_n = filtered_df.shape[0]
+
+    return blast_full_length_n
 
 
 class TEAid:
 
     def __init__(self, input_file, output_dir, genome_file, TE_aid_dir, min_orf=200, full_length_threshold=0.9):
         """
-
         :param input_file: str, absolute path of input file
         :param output_dir: str, absolute directory of output file
         :param genome_file: str, absolute path of genome file
@@ -51,7 +78,7 @@ class TEAid:
         # If it is low copy element add -t option to enable to keep self blast file from TE_Aid
         if low_copy:
             #print(f"{os.path.basename(self.input_file)} run TE aid low copy")
-            command.extend(["-t"])
+            command.extend(["-T"])
 
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -63,12 +90,45 @@ class TEAid:
     
         if low_copy:
 
+            #####################################################################################################
+            # Code block: Check terminal repeat
+            #####################################################################################################
+
             # Read input file and get sequence length
             record = SeqIO.read(self.input_file, "fasta")
             record_len = len(record.seq)
 
             # Check the presence of self-alignment of terminal repeats in self-blast.pairs.txt
             self_blast_txt = os.path.join(TE_aid_output_dir, f"{os.path.basename(self.input_file)}.self-blast.pairs.txt")
+
+            # Sometime TE_Aid won't give self blast result
+            if not os.path.exists(self_blast_txt):
+
+                database_file = os.path.join(TE_aid_output_dir, "Tem_blast_database")
+                makeblastdb_cmd = f"makeblastdb -in {self.input_file} -dbtype nucl -out {database_file}"
+                subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                blast_cmd = f"blastn -query {self.input_file} -db {database_file} " \
+                            f"-outfmt \"6 qseqid qstart qend sstart send \" " \
+                            f"-evalue 0.05"
+
+                # Execute the command
+                result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                # If there is an error, print it
+                if result.returncode != 0:
+                    click.echo(
+                        f"An error occurred self blast: {os.path.basename(self.input_file)}\n{result.stderr.decode('utf-8')}")
+                    return
+                else:
+                    blast_out = result.stdout.decode('utf-8')
+
+                    with open(self_blast_txt, 'w') as f:
+
+                        # Because TE_Aid result have header, give a header to blast result
+                        f.write("qseqid\tqstart\tqend\tsstart\tsend\n")
+                        f.write(blast_out)
+
             data_list = []
             # Read the input file
             with open(self_blast_txt, "r") as file:
@@ -101,7 +161,40 @@ class TEAid:
                         found_match = "TIR"
                         break
                 if found_match == "LTR" or found_match == "TIR":
-                    #print("found self-alignment of terminal repeats")
-                    break                
+                    break
 
         return final_pdf_file, found_match
+
+    def check_blast_full_n(self, seq_obj):
+
+        # Make a folder to store TE_aid result.
+        TE_aid_output_dir = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_TEaid")
+        if not os.path.isdir(TE_aid_output_dir):
+            os.makedirs(TE_aid_output_dir)
+
+        te_aid_blast_file = os.path.join(TE_aid_output_dir, "blastn.txt")
+
+        # If blast.txt file is found use the TE Aid output directly. Otherwise, do blast
+        if os.path.exists(te_aid_blast_file):
+
+            full_length_n = check_blast_low_copy(seq_obj, te_aid_blast_file, identity=90, coverage=0.9,
+                                                 min_hit_length=100, te_aid_blast=True)
+        else:
+            blast_obj = SequenceManipulator()
+            bed_out_file, blast_hits_count, blast_out_file = blast_obj.blast(self.input_file, self.genome_file,
+                                                                             self.output_dir)
+            full_length_n = check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9,
+                                                 min_hit_length=100, te_aid_blast=False)
+
+        return full_length_n
+
+
+
+
+
+
+
+
+
+
+

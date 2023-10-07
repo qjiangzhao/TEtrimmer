@@ -45,7 +45,8 @@ consensus2genome(query 		=	query,
                  alpha 		=	alpha,
                  full_alpha	=	full_alpha,
                  auto_y 	=	autoy,
-                 bins       =   wdir
+                 bins       =   wdir,
+                 output     =   output
 #                 ,
 #                 cover		=	cover,
 #                 cov_thresh	=	drops

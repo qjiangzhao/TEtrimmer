@@ -46,7 +46,7 @@ class Seq_object:
         self.status = new_status
         with open(progress_file, "a") as f:
 
-            # "input_name,consensus_name, blast_hit_n, cons_MSA_seq_n, input_length, cons_length, "
+            # "input_name,consensus_name, blast_hit_n, cons_MSA_seq_n, cons_full_blast_n, input_length, cons_length, "
             # "input_TE_type, reclassified_type, cons_flank_repeat, low_copy, status\n"
             if len(self.consi_obj_list) > 0:
 
@@ -54,6 +54,7 @@ class Seq_object:
                     TE_type = consi_obj.get_TE_type_for_file()
                     f.write(f"{str(self.name)},{str(consi_obj.consensus_name)}#{str(TE_type)},"  # name
                             f"{str(self.blast_hit_n)},{str(consi_obj.new_TE_MSA_seq_n)},"  # sequence number
+                            f"{str(consi_obj.new_TE_blast_full_length_n)},"  # blast full length number
                             f"{str(self.old_length)},{str(consi_obj.new_length)},"  # sequence length
                             f"{str(self.old_TE_type)},{str(consi_obj.get_TE_type_for_file())},"  # TE type
                             f"{str(consi_obj.new_TE_flank_repeat)},{str(self.low_copy)},{str(self.status)}\n")
@@ -65,8 +66,9 @@ class Seq_object:
                         f"{str(self.old_TE_type)},NaN,"  # TE type
                         f"NaN,{str(self.low_copy)},{str(self.status)}\n")
 
-    def update_low_copy(self, low_copy):
-        self.low_copy = low_copy
+    def update_low_copy(self, check_blast, found_match):
+        if check_blast and found_match:
+            self.low_copy = True
         return self.low_copy
 
     def update_blast_hit_n(self, blast_hit_n):
@@ -81,7 +83,9 @@ class ConsensusObject:
         self.new_TE_type = "Unknown"
         self.new_TE_MSA_seq_n = "NaN"
         self.new_TE_flank_repeat = "None"
+        self.new_TE_blast_full_length_n = "NaN"
         self.cons_seq = "NaN"
+
     
     def set_new_lenth(self, new_length):
         self.new_length = new_length
@@ -94,8 +98,8 @@ class ConsensusObject:
         self.new_TE_MSA_seq_n = new_TE_MSA_seq_n
 
     # Store flank type ("LTR" or "TIR") to object
-    def set_new_flank_repeat(self, flank_repeat):
-        self.new_TE_flank_repeat = flank_repeat
+    def set_new_flank_repeat(self, terminal_repeat):
+        self.new_TE_terminal_repeat = terminal_repeat
 
     # Store consensus sequence to object
     def set_cons_seq(self, cons_seq):
@@ -106,11 +110,17 @@ class ConsensusObject:
     
     def get_new_TE_type(self):
         return self.new_TE_type
-    
+
+    # Store full length blast number
+    def set_blast_full_n(self, blast_full_length_n):
+        self.new_TE_blast_full_length_n = blast_full_length_n
+
     def get_TE_type_for_file(self):
         # For writing the final consensus file, the TE_type can be either the input TE type or the new
         # classified one if it is newly classified
-        if "Unknown" in self.new_TE_type:
-            return self.parent_seq_object.get_old_TE_type()
+
+        if "NaN" in self.new_TE_type or "Unknow" in self.new_TE_type:
+            return self.parent_seq_object.old_TE_type
+
         else:
             return self.new_TE_type

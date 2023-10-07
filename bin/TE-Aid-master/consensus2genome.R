@@ -21,12 +21,16 @@
 
 
 
-consensus2genome=function(query=NULL, db=NULL, evalue=10e-8, FL_thresh=0.9, alpha=0.3, full_alpha=1, auto_y=T, bins=NULL){
+consensus2genome=function(query=NULL, db=NULL, evalue=10e-8, FL_thresh=0.9, alpha=0.3, full_alpha=1, auto_y=T, bins=NULL, output = NULL){
   if(is.null(query)){print('query not specified')}
   if(is.null(db)){print('db not specified')}
   #perform the blast
   blast=read.table(text=system(paste("blastn -query", query, "-db", db , "-evalue", evalue, "-outfmt 6 | sed 's/#/-/g'"), intern = TRUE))
-  write.table(blast, file = "blastn.txt",  quote = F, row.names = F)
+  # Write BLAST results to the output directory
+  output_filepath <- file.path(output, "blastn.txt")
+  write.table(blast, file = output_filepath, quote = FALSE, row.names = FALSE)
+
+
   #TE consensus size
   cons_len=as.numeric(system(paste(bins,"/getlength.sh ",query, sep = ""), intern = TRUE))
   print(paste("consensus length: ", cons_len, "bp", sep = " "))
