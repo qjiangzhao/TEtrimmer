@@ -5,8 +5,7 @@ import click
 from Bio import AlignIO, SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from Bio.Align import MultipleSeqAlignment
-from Bio.Align import AlignInfo
+from Bio.Align import MultipleSeqAlignment, AlignInfo
 import pandas as pd
 
 
@@ -58,8 +57,11 @@ def check_database(genome_file):
         print(f"\nBlast database doesn't exist. Running makeblastdb\n")
 
         makeblastdb_cmd = f"makeblastdb -in {genome_file} -dbtype nucl -out {genome_file} "
-        subprocess.run(makeblastdb_cmd, shell=True, check=True)
-        print(f"\n")
+        result = subprocess.run(makeblastdb_cmd, shell=True, check=True, stderr=subprocess.PIPE)
+        error_output = result.stderr.decode("utf-8")
+
+        if error_output:
+            print(f"Error check_database {error_output}\n")
 
     # Check if genome length files exists, otherwise create it at the same folder with genome file
     length_file = genome_file + ".length"
@@ -72,8 +74,11 @@ def check_database(genome_file):
     if not os.path.isfile(fai_file):
         print(f"\nIndex file {fai_file} not found. Creating it by samtools faidx\n")
         faidx_cmd = f"samtools faidx {genome_file}"
-        subprocess.run(faidx_cmd, shell=True, check=True)
-        print(f"\n")
+        result_fai = subprocess.run(faidx_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        error_output_fai = result_fai.stderr.decode("utf-8")
+
+        if error_output_fai:
+            print(f"Error check_database {error_output_fai}\n")
 
 
 def blast(seq_obj, seq_file, genome_file, output_dir, min_length=150):
@@ -96,7 +101,11 @@ def blast(seq_obj, seq_file, genome_file, output_dir, min_length=150):
                 f"-outfmt \"6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand\" " \
                 f"-evalue 1e-40 -qcov_hsp_perc 20 | " \
                 f"awk -v 'ml={min_length}' 'BEGIN{{OFS=\"\\t\"}} $4 > ml {{print $0}}' >> {blast_out_file}"
-    subprocess.run(blast_cmd, shell=True, check=True)
+    result = subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    error_output = result.stderr.decode("utf-8")
+
+    if error_output:
+        print(f"Error blast {error_output}")
 
     # Check the number of blast hits
     with open(blast_out_file) as blast_file:
@@ -108,65 +117,18 @@ def blast(seq_obj, seq_file, genome_file, output_dir, min_length=150):
         # Only convert blast to bed file when hits number is greater than 10
         bed_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b.bed")
         bed_cmd = f"awk 'BEGIN{{OFS=\"\\t\"}} !/^#/ {{if ($10~/plus/){{print $2, $8, $9, $1, $3, \"+\"}} " \
-                    f"else {{print $2, $9, $8, $1, $3, \"-\"}}}}' < {blast_out_file} > {bed_out_file}"
-        subprocess.run(bed_cmd, shell=True, check=True)
+                  f"else {{print $2, $9, $8, $1, $3, \"-\"}}}}' < {blast_out_file} > {bed_out_file}"
+        result_awk = subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        error_output_awk = result_awk.stderr.decode("utf-8")
+
+        if error_output_awk:
+            print(f"Error blast {error_output_awk}")
         
         # Update blast hit number to sequence object
         seq_obj.update_blast_hit_n(blast_hits_count)
         
     # if low copy number, check coverage, length and identity
     return bed_out_file, blast_hits_count, blast_out_file
-
-
-def self_blast_find_LTR(input_file):
-
-    #TODO: define running directory and delecte temporary database files
-    makeblastdb_cmd = f"makeblastdb -in {input_file} -dbtype nucl -out {input_file} "
-    subprocess.run(makeblastdb_cmd, shell=True, check=True)
-
-    blast_cmd = f"blastn -query {input_file} -db {input_file} " \
-                f"-outfmt \"6 qseqid qstart qend sstart send \" " \
-                f"-evalue 0.05"
-
-    # Execute the command
-    result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    # If there is an error, print it
-    if result.returncode != 0:
-        click.echo(f"An error occurred self blast to fine LTR: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
-        return
-    else:
-        blast_out = result.stderr.decode('utf-8')
-
-    # Read input file and get sequence length
-    record = SeqIO.read(input_file, "fasta")
-    record_len = len(record.seq)
-
-    data_list = []
-
-    for line in blast_out:
-        # Split each line into a list of strings using whitespace as the separator
-        parts = line.strip().split()[1:]
-        # Convert the string elements to integers
-        data = [int(part) for part in parts]
-        # Append the data list to the data_list
-        data_list.append(data)
-
-    find_LTR = False
-
-    # Iterate through the lists
-    for i, lst1 in enumerate(data_list):
-        for j, lst2 in enumerate(data_list):
-            # Check if the beginning and end aligned to it
-            # The length of LTR have to be more than 100 bp. The start point of LTR has to be smaller than 15
-            # The length of LTR can't be longer than 1/5 of query sequence
-            if i != j and lst1[0] <= 15 and 100 <= lst1[1] - lst1[0] <= record_len / 5 \
-                    and lst1[:2] == lst2[2:] and lst1[2:] == lst2[:2]:
-                find_LTR = True
-                break
-        break
-
-    return find_LTR
 
 
 def check_bed_uniqueness(output_dir, bed_file):
@@ -353,14 +315,13 @@ def calc_conservation(col):
     return max_count / total_nucleotides
 
 
-def generate_hmm_from_msa(input_msa_file, output_hmm_dir, consi_obj):
+def generate_hmm_from_msa(input_msa_file, output_hmm_file):
     """
     Generate HMM profile using hmmbuild from a multiple sequence alignment file.
 
     :param input_msa_file: Path to the multiple sequence alignment file (in FASTA or Stockholm format).
     :param output_hmm_file: Path to the output HMM file.
     """
-    output_hmm_file = os.path.join(output_hmm_dir, f"{os.path.basename(input_msa_file)}.hmm")
 
     # Construct the command as a list
     cmd = ["hmmbuild", "--dna", output_hmm_file, input_msa_file]
@@ -370,14 +331,9 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_dir, consi_obj):
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         # Check if the command was successful
-        if result.returncode == 0:
-            # new_name = os.path.join(output_hmm_dir,f"{consi_obj.get_consi_name()}#{consi_obj.get_new_TE_type()}.hmm")
-            # print (new_name)
-            # os.rename(output_hmm_file, new_name)
-            pass
-            # click.echo(f"HMM profile is successfully made for {os.path.basename(output_hmm_file)}")
-        else:
-            click.echo(f"Error running hmmbuild: {os.path.basename(output_hmm_file)}")
+        if result.returncode != 0:
+
+            click.echo(f"Error running hmmbuild: {os.path.basename(output_hmm_file)}\n{result.stderr.decode('utf-8')}")
 
     except FileNotFoundError:
         click.echo("Error: hmmbuild not found. Ensure HMMER is installed and available in the PATH.")
@@ -961,6 +917,8 @@ def change_permissions_recursive(input_dir, mode):
 
 def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9, thread=10):
 
+    click.echo("cd-hit-est is running\n")
+
     command = [
         "cd-hit-est",
         "-i", input_file,
@@ -974,19 +932,25 @@ def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9,
         "-d", "0",
         "-s", str(s)
     ]
-    try:
-        subprocess.run(command, check=True)
-        return True
-    except subprocess.CalledProcessError:
-        click.echo("Error executing cd-hit-est command.")
+
+    result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    error_output = result.stderr.decode("utf-8")
+
+    if error_output:
+
+        click.echo(f"Error executing cd-hit-est command {error_output}\n")
         return False
+
+    else:
+        click.echo("cd-hit-est is finished")
+        return True
 
 
 def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False):
     """
     Run RepeatMasker with the provided parameters.
     """
-    results = False
+
     # Construct the RepeatMasker command
     if classify:
         command = ["RepeatMasker",
@@ -1007,78 +971,86 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
                     "-a",    # Writes alignments in .align output file
                     ]
 
-    try:
-        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        results = True
-        return results
-    except subprocess.CalledProcessError:
-        print("Error executing RepeatMasker command.")
-        return results
+    result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    error_output = result.stderr.decode("utf-8")
+
+    if error_output:
+
+        click.echo(f"Error executing RepeatMasker command{error_output}\n.")
+        return False
+
+    else:
+        return True
 
 
-def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden = 80, min_len = 80, min_cov = 80):
-    # Reclassify based on the 80-80-80 rule
-    # min_iden = 80  # 80%
-    # min_len = 80   # 80bp
-    # min_cov = 80   # 80%
-    # Reads a RepeatMasker output file and stores the data as a df
-    data = []
-    with open(repeatmasker_out, 'r') as file:
-        first_line = file.readline().strip()  # Read and remove leading/trailing whitespaces
-            # Check if the first line starts with the specified string
-        if first_line.startswith("There were no repetitive sequences detected"):
-            print("There were no repetitive sequences detected in consensus with TE type Unknown")
-            return data
-        else:
-            for line in file:
-                # Ignore lines starting with "SW", "score", and empty lines
-                if line.startswith("SW") or line.startswith("score") or line.startswith("   SW") or line.startswith("  SW") or line.strip() == "":
-                    continue
-                # Split each line into columns
-                cols = line.split()
-                # Create a dictionary for each row with the appropriate column names and values
-                query_start =  int(cols[5])
-                query_end = int(cols[6])
-                query_match_len = abs(query_start-query_end)
-                perc_div = float(cols[1])
-                query_iden = 100 - perc_div
-                if query_iden > min_iden:
-                    row = {
-                        'query_name': f"{str(cols[4])}#Unknown",
-                        'query_iden': query_iden,
-                        'query_match_len': query_match_len,
-                        'repeat_name': f"{cols[9]}#{cols[10]}",
-                        'repeat_class': str(cols[10])
-                    }
-                    data.append(row)
-            repeatmasker_out_df = pd.DataFrame(data)
-            # Only keep the top cov, find the index of the row with the maximum 'query_match_len' for each 'query_name'
-            max_idx = repeatmasker_out_df.groupby('query_name')['query_match_len'].idxmax()
-            # Use the indices to filter the DataFrame
-            filter_repeatmasker_out_df = repeatmasker_out_df.loc[max_idx]
-            # read progress_file
-            progress_file_df = pd.read_csv(progress_file, delimiter=',')
-            updated_type = {}
-            for index, row1 in filter_repeatmasker_out_df.iterrows():
-                # each query_name should have exactly one match in progress_file_df as the consensus_name is unique
-                query_match = progress_file_df[progress_file_df['consensus_name'] == row1['query_name']]
-                repeat_match = progress_file_df[progress_file_df['consensus_name'] == row1['repeat_name']]
-                if not query_match.empty and not repeat_match.empty:
-                    query_cov = row1['query_match_len'] / query_match['cons_length'].values[0] * 100
-                    sub_cov = row1['query_match_len'] / repeat_match['cons_length'].values[0] * 100
-                    if query_cov > min_cov and sub_cov > min_cov and query_match['cons_length'].values[0] > min_len:
-                        #update both TE_type and concensus_name in progress_file
-                        name = progress_file_df.at[query_match.index[0], 'consensus_name'].split("#")[0]
-                        print (f"found reclassify for {name}")
-                        progress_file_df.at[query_match.index[0], 'cons_TE_type'] = row1['repeat_class']
-                        progress_file_df.at[query_match.index[0], 'consensus_name'] = f"{name}#{row1['repeat_class']}"
-                        updated_type[name] = str(row1['repeat_class'])
-                else:
-                    print ("error in finding macth")
-            # rewrite progress file to update
-            progress_file_df.to_csv(progress_file, na_rep='NaN',sep=',', index=False)
-            print(f"{len(updated_type)} sequences TE type updated after reclassify using repeatmasker:")
-            return updated_type
+def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=0.8, min_len=80, min_cov=0.8):
+
+    # Read RepeatMasker out file into a DataFrame
+    # The regex '\s+' matches one or more whitespace characters
+    df = pd.read_csv(repeatmasker_out, delim_whitespace=True, header=None, skiprows=3)
+
+    # Rename columns for easier reference
+    df.columns = [
+        'score', 'perc_div', 'perc_del', 'perc_ins', 'query_name',
+        'query_start', 'query_end', 'query_left', 'strand',
+        'repeat_name', 'repeat_class', 'repeat_start',
+        'repeat_end', 'repeat_left', 'ID'
+    ]
+
+    # Filter rows based on query_iden
+    df = df[df['query_div'] <= (1 - min_iden)]
+
+    # Calculate coverage length and add to a column
+    df['cov_len'] = abs(df['query_start'] - df['query_end'])
+
+    # Select dataframe columns
+    df_filter = df[["query_name", "repeat_name", "repeat_class", "cov_len"]]
+
+    # Group by the columns and sum 'cov_len'
+    grouped_df = df_filter.groupby(['query_name', 'repeat_name', 'repeat_class'])['cov_len'].sum().reset_index()
+    grouped_df_filter = grouped_df[grouped_df['cov_len'] >= min_len]
+
+    # Group by 'repeat_name' and get the index of the row with the maximum 'cov_len'
+    idx = grouped_df_filter.groupby('repeat_name')['cov_len'].idxmax()
+
+    # Use these indices to filter the DataFrame
+    max_cov_len_df = grouped_df_filter.loc[idx]
+
+    # Convert max_cov_len_df to a dictionary for faster look-up
+    max_cov_dict = max_cov_len_df.set_index('query_name')['cov_len'].to_dict()
+
+    # Read progress file
+    progress_df = pd.read_csv(progress_file)
+
+    # Dictionary to store consensus_name and its reclassified_type
+    reclassified_dict = {}
+
+    # Iterate over each row in progress_df
+    for index, row in progress_df.iterrows():
+        consensus_name = row['consensus_name']
+        cons_length = row['cons_length']
+        cons_type = row['reclassified_type']
+
+        # Check if consensus_name exists in max_cov_dict and compute the ratio
+        if consensus_name in max_cov_dict:
+            cov_len = max_cov_dict[consensus_name]
+            ratio = cov_len / cons_length
+
+            # Check if ratio meets the threshold
+            if ratio >= min_cov and "Unknown" in cons_type:
+                # Find the corresponding repeat_class for this consensus_name
+                repeat_class = max_cov_len_df[max_cov_len_df['query_name'] == consensus_name]['repeat_class'].iloc[0]
+
+                # Modify the reclassified_type column in progress_df
+                progress_df.at[index, 'reclassified_type'] = repeat_class
+
+                # Update the dictionary with the new reclassified_type
+                reclassified_dict[consensus_name] = repeat_class
+
+    # Save the modified progress_df back to the original file
+    progress_df.to_csv(progress_file, index=False)
+
+    return reclassified_dict
     
 
 def remove_files_with_start_pattern(input_dir, start_pattern):
@@ -1094,6 +1066,7 @@ def remove_files_with_start_pattern(input_dir, start_pattern):
 
 # Define a function to handle sequence skipping and removal of files
 def handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir):
+
     try:
         seq_name = seq_obj.get_seq_name()
         seq_obj.update_status("skipped", progress_file)
@@ -1106,7 +1079,8 @@ def handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, 
 
 
 def update_cons_file(updated_type, unknown_concensus_file, consensus_file):
-    if os.path.exists (unknown_concensus_file):
+
+    if os.path.exists(unknown_concensus_file):
         with open(unknown_concensus_file, 'r') as fasta_file:
             for record in SeqIO.parse(fasta_file, 'fasta'):
                 header = record.id
@@ -1115,23 +1089,67 @@ def update_cons_file(updated_type, unknown_concensus_file, consensus_file):
                     te_type = updated_type[header]
                 else:
                     te_type = "Unknown"
-                with open(consensus_file, 'a')  as f:
-                    f.write(">"+ header + "#" + te_type + "\n" + sequence + "\n")
+                with open(consensus_file, 'a') as f:
+                    f.write(">" + header + "#" + te_type + "\n" + sequence + "\n")
 
 
 # if the seq_obj is low copy, append to consensus_file or final_unknown_con_file file
-def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, classify_all, classify_unknown):
-    header = seq_obj.get_seq_name()
+def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, final_classified_con_file):
+
+    seq_name = seq_obj.get_seq_name()
     te_type = seq_obj.get_old_TE_type()
     input_fasta = seq_obj.get_input_fasta()
-    for record in SeqIO.parse(input_fasta, "fasta"):
-        sequence = str(record.seq)
-    if (classify_all or classify_unknown) and "Unknown" in te_type:
+
+    record = SeqIO.read(input_fasta, "fasta")
+    sequence = str(record.seq)
+
+    if "Unknown" in te_type:
+
         with open(final_unknown_con_file, "a") as f:  # 'a' mode for appending
-            f.write(">"+ header + "\n" + sequence + "\n")
+            f.write(">" + seq_name + "\n" + sequence + "\n")
     else:
-        with open(consensus_file, 'a')  as f:
-            f.write(">"+ header + "#" + te_type + "\n" + sequence + "\n")
+        with open(final_classified_con_file, "a") as f:
+            f.write(">" + seq_name + "#" + te_type + "\n" + sequence + "\n")
+
+        # Write all consensus sequence to final_cons_file.
+    with open(consensus_file, "a") as f:
+        f.write(">" + seq_name + "#" + te_type + "\n" + sequence + "\n")
+
+
+# Classify single fasta
+def classify_single(consensus_fasta):
+    """
+    Run RepeatClassifier with the provided parameters.
+    """
+
+    # Store the current working directory
+    original_dir = os.getcwd()
+
+    # Change the working directory to the directory of the consensus_fasta
+    os.chdir(os.path.dirname(consensus_fasta))
+
+    # Define RepeatClassifier command, the output file will store at the same directory of the consensus_fasta
+    command = ["RepeatClassifier", "-consensi", consensus_fasta]
+
+    # Run RepeatClassifier using subprocess
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # Change the working directory back to the original directory
+    os.chdir(original_dir)
+
+    if result.returncode != 0:
+        click.echo(f"RepeatClassifier error for {os.path.basename(consensus_fasta)}\n{result.stderr.decode('utf-8')}")
+        return False
+
+    classified_file = f'{consensus_fasta}.classified'
+
+    # Get the first record of classified file
+    record = next(SeqIO.parse(classified_file, "fasta"))
+
+    # seq_name = record.id.split("#")[0]
+    seq_TE_type = record.id.split("#")[-1]
+
+    return seq_TE_type
 
 
 

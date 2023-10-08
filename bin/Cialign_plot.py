@@ -41,6 +41,7 @@ def png_to_pdf(png_path, pdf_path):
     image.close()
     del image
 
+
 def getPalette(palette='CBS'):
     '''
     Generates a dictionary which assigns a name to each colour using a colour

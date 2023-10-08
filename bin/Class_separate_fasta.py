@@ -23,7 +23,7 @@ class FastaSequenceSeparator:
         if not continue_analysis:
 
             print(
-                "'/', '-', ':' and ' ' before '#' in input sequence names will be converted to '_'\n")
+                "'/', '-', ':' and ' ' before '#' of input sequence names will be converted to '_'\n")
             detected_pound = False
             with open(self.input_fasta, 'r') as fasta_file:
                 for record in SeqIO.parse(fasta_file, 'fasta'):
@@ -31,9 +31,11 @@ class FastaSequenceSeparator:
                         detected_pound = True
                         sanitized_id = record.id.split("#")[0].replace('/', '_').replace(' ', '_').\
                             replace('-', '_').replace(':', '_')
-                        te_type = record.id.split("#")[-1]
+                        te_type = record.id.split("#")[1]
 
-                    # Check if # is in the seq.id. If # is present, the string before # is the seq_name, and the string after # is the seq_TE_type
+                    # Check if # is in the seq.id. If # is present, the string before # is the seq_name,
+                    # and the string after # is the seq_TE_type
+                    # If # isn't found, use Unknown as TE type
                     # TODO need to check if assigning seq_name in this way will create duplicates
                     else:
                         sanitized_id = record.id.replace('/', '_').replace(' ', '_').replace('-', '_').replace(':', '_')
@@ -52,7 +54,7 @@ class FastaSequenceSeparator:
 
                 if detected_pound:
                     # TODO, user can disable this annotation
-                    print("The string before '#' is denoted as the sequence name, "
+                    print("The input sequence name before '#' is denoted as the sequence name, "
                           "and the string after '#' is denoted as the TE type\n")
 
             print("\nFinish to generate single sequence files.\n")
@@ -79,4 +81,5 @@ class FastaSequenceSeparator:
                 seq_list.append(seq_obj)
 
             print("\nFinish to read in single sequence files generated from previous analysis.\n")
+
         return seq_list

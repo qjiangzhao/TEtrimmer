@@ -7,6 +7,41 @@ from Class_blast_extension_mafft import SequenceManipulator
 from Function_blast_extension_mafft import blast
 
 
+def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file):
+
+    blast_full_length_n = check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100,
+                                               te_aid_blast=False, if_low_copy=True)
+
+    # At least 2 lines need to meet the requirement
+    if blast_full_length_n >= 2:
+
+        check_blast = True
+
+        # Check self-alignment of terminal repeats
+        TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
+
+        # Run TE_aid
+        TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
+        TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
+
+        seq_obj.update_blast_hit_n(blast_hits_count)
+
+        # Convert found_match to True when LTR or TIR is found
+        if found_match == "LTR" or found_match == "TIR":
+            found_match_boolean = True
+        else:
+            found_match_boolean = False
+
+        # Update_low_copy return true when check_80 and found_match are both true
+        check_low_copy = seq_obj.update_low_copy(check_blast, found_match_boolean)
+
+    else:
+        check_low_copy = False
+        found_match = False
+
+    return check_low_copy, blast_full_length_n, found_match
+
+
 def check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100, te_aid_blast=False,
                          if_low_copy=False):
 
@@ -77,7 +112,7 @@ class TEAid:
 
         # If it is low copy element add -t option to enable to keep self blast file from TE_Aid
         if low_copy:
-            #print(f"{os.path.basename(self.input_file)} run TE aid low copy")
+
             command.extend(["-T"])
 
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -165,6 +200,9 @@ class TEAid:
 
         return final_pdf_file, found_match
 
+    #####################################################################################################
+    # Code block: Check blast full length number
+    #####################################################################################################
     def check_blast_full_n(self, seq_obj):
 
         # Make a folder to store TE_aid result.

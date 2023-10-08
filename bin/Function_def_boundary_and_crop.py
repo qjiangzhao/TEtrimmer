@@ -1,73 +1,26 @@
+# Standard library imports
+import os
+import click
+import shutil
+from PyPDF2 import PdfMerger
+import traceback
+from Bio import AlignIO
+
+# Local imports
 from Class_define_boundary import DefineBoundary
 from Class_crop_end import CropEnd
 from Class_crop_end_by_gap import CropEndByGap
-from Function_blast_extension_mafft import remove_gaps, generate_hmm_from_msa, extract_fasta, remove_gaps_with_similarity_check, remove_gaps_block_with_similarity_check, align_sequences, con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, con_generater, reverse_complement_seq_file
+from Function_blast_extension_mafft import remove_gaps, generate_hmm_from_msa, extract_fasta, \
+    remove_gaps_with_similarity_check, remove_gaps_block_with_similarity_check, align_sequences, \
+    con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, \
+    con_generater, reverse_complement_seq_file, classify_single
 from Class_select_ditinct_columns import CleanAndSelectColumn
 from Class_MSA_plot import MSAPainter
 from Class_check_start_end import StartEndChecker
 from Class_TE_aid import TEAid
 from Class_orf_domain_prediction import PlotPfam, determine_sequence_direction
 from Function_clean_and_clauster_MSA import clean_and_cluster_MSA
-from Bio import AlignIO
 import Cialign_plot
-import os
-import click
-import shutil
-import pandas as pd
-from PyPDF2 import PdfMerger
-from Classification import classify_single
-import traceback
-
-
-def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file):
-
-    blast_full_length_n = check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100)
-
-    # At least 2 lines need to meet the requirement
-    if blast_full_length_n >= 2:
-
-        check_blast = True
-
-        # Check self-alignment of terminal repeats
-        TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
-
-        # Run TE_aid
-        TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
-        TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
-
-        seq_obj.update_blast_hit_n(blast_hits_count)
-
-        # Convert found_match to True when LTR or TIR is found
-        if found_match == "LTR" or found_match == "TIR":
-            found_match = True
-
-        # Update_low_copy return true when check_80 and found_match are both true
-        check_low_copy = seq_obj.update_low_copy(check_blast, found_match)
-
-    else:
-        check_low_copy = False
-
-    return check_low_copy, blast_full_length_n
-
-
-def check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100, te_aid_blast=False):
-
-    # The TE Aid blast output have a header
-    if te_aid_blast:
-        df = pd.read_csv(blast_out_file, sep="\s+")
-    else:
-        df = pd.read_csv(blast_out_file, sep="\s+", header=None)
-
-    identity_condition = df[2] > identity
-    coverage_condition = df[3] / seq_obj.old_length > coverage
-    length_condition = df[3] > min_hit_length
-
-    # Filter the DataFrame
-    filtered_df = df[identity_condition & coverage_condition & length_condition]
-
-    blast_full_length_n = filtered_df.shape[0]
-
-    return blast_full_length_n
 
 
 def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=16, window_size=20, gap_threshold=0.8):
@@ -89,28 +42,6 @@ def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=16, win
         cropped_MSA_output_file, output_dir, threshold=gap_threshold, min_nucleotide=5)
 
     return cropped_alignment_output_file_no_gap, column_mapping
-
-
-# Because for each query file, several subgroups of multiple sequence alignment will be generated,
-# This function will name them differently
-def get_unique_filename(base_path, original_name):
-    counter = 0
-    name, ext = os.path.splitext(original_name)
-
-    # If the extension is .anno_fasta, change it to .anno.fasta
-    # This will make sure the right order of the files
-    if ext == ".anno_fasta":
-        ext = ".anno.fasta"
-
-    # Initialize with the original name
-    new_name = f"{name}{ext}"
-
-    # While the constructed name already exists, increment the counter and reconstruct the name
-    while os.path.exists(os.path.join(base_path, new_name)):
-        counter += 1
-        new_name = f"{name}_{counter:02}{ext}"  # Adjusted to use zero-padding
-
-    return new_name
 
 
 def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj, hmm, classify_all, classify_unknown,
@@ -527,7 +458,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     merger.close()
 
     #####################################################################################################
-    # Code block: Move files
+    # Code block: Update sequence object (seq_obj)
     #####################################################################################################
 
     # Create a folder at the same directory with output_dir to store proof annotation files
@@ -535,7 +466,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     # Define final consensus file
     final_con_file = os.path.join(parent_output_dir, "TE_Trimmer_consensus.fasta")
-    final_unknown_con_file = os.path.join(parent_output_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
 
     # Define proof_annotation folder path
     proof_annotation_dir = os.path.join(parent_output_dir, "TE_Trimmer_for_proof_annotation")
@@ -543,116 +473,140 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Define low copy folder
     low_copy_dir = os.path.join(proof_annotation_dir, "Low_copy_TE")
     
-    # Construct the path for the new folder
+    # Construct the path for the Classification folder
     classification_dir = os.path.join(parent_output_dir, "Classification")
+
+    # Define temporary classified and unknown final consensus file, which will be used for reclassification by repeatmasker
+    final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
+    final_classified_con_file = os.path.join(classification_dir, "temp_TE_Triimer_classifed_consensus.fasta")
 
     # Create the directory if it doesn't exist
     os.makedirs(proof_annotation_dir, exist_ok=True)
     os.makedirs(classification_dir, exist_ok=True)
     os.makedirs(low_copy_dir, exist_ok=True)
 
+    # Define unique sequence names
+    consi_n = len(seq_obj.consi_obj_list)
+
+    if consi_n > 1:
+
+        consi_n = consi_n - 1
+        uniq_seq_name = f"{seq_name}_{consi_n:02}"
+
+    else:
+        uniq_seq_name = seq_name
+
+    # Create consensus object
+    consi_obj = seq_obj.create_consi_obj(uniq_seq_name)
+
+    # Generate final consensus sequence
+    # Comparing initial consensus, the final consensus sequence might have different orientation.
+    # For this reason, generate consensus again
+    final_con = con_generater_no_file(cropped_boundary_MSA, threshold=cons_threshold)
+    sequence = str(final_con).upper()
+
+    # Store consensus sequence length into consi_obj
+    consi_obj.set_new_length(len(sequence))
+
+    # Store consensus sequence into consi_obj
+    # consi_obj.set_cons_seq(sequence)
+
+    # Store MSA sequence number into consi_obj
+    MSA_for_final_cons = AlignIO.read(cropped_boundary_MSA, "fasta")
+    MSA_for_final_cons_seq_n = len(MSA_for_final_cons)
+    consi_obj.set_cons_MSA_n(MSA_for_final_cons_seq_n)
+
+    # Store terminal repeat to consi_obj
+    if found_match == "LTR" or found_match == "TIR":
+        consi_obj.set_new_terminal_repeat(found_match)
+
+    # Store blast full length sequence number into consi_obj
+    # check_blast_full_n is a function in TE_Aid class. TE Trimmer will use the blast result of TE Aid
+    blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj)
+    consi_obj.set_blast_full_n(blast_full_length_n)
+
+    #####################################################################################################
+    # Code block: Run RepeatClassifier in RepeatModeler to classify TE_trimmer consensus sequences
+    #####################################################################################################
+
+    # Write single consensus sequence to a separate place for RepeatClassifier
+    # check_unknown returns true if unknown is detected
+    # Classify all elements by RepeatClassify when classify_all is true
+    # Rename consensus when classify_unknown is true and (the final consensus length is much longer or
+    # shorter than the query sequence or TE type is unknown)
+    if classify_all or (
+            classify_unknown and (seq_obj.check_unknown() or abs(consi_obj.new_length - seq_obj.old_length))) >= 1000:
+
+        # Define different folder for each sequence
+        classification_seq_folder = os.path.join(classification_dir, uniq_seq_name)
+        os.makedirs(classification_seq_folder, exist_ok=True)
+
+        # Define consensus file path used for classification
+        classification_seq_file = os.path.join(classification_seq_folder, uniq_seq_name)
+
+        with open(classification_seq_file, "w") as f:
+
+            # RepeatClassifier input cannot be single sequence, add >Add to enable to run RepeatClassifier
+            f.write(">" + uniq_seq_name + "\n" + sequence + "\n" + ">Dummy" + "\n" + "T" + "\n")
+
+        TE_type = classify_single(classification_seq_folder)
+
+        # Only update new_TE_type when classify_single is successfully
+        if TE_type:
+            # Set TE_type after RepeatClassifier
+            consi_obj.set_new_TE_type(TE_type)
+
+    # Update final con_TE_type. get_TE_type_for_file will evaluate if TE_type is Unknown. If so, use the
+    # original TE classification name
+    updated_TE_type = consi_obj.get_TE_type_for_file()
+    consi_obj.set_new_TE_type(updated_TE_type)
+
+    #####################################################################################################
+    # Code block: Move file for proof annotation and HMM
+    #####################################################################################################
+
+    consi_obj.set_proof_annotation_file()
+
     # Define proof annotation file name
     file_copy_pattern = [
-        (merged_pdf_path, f"{seq_name}.pdf"),
-        (cropped_boundary_MSA, f"{seq_name}.fasta"),  # Changed to append .fasta
-        (bed_fasta_mafft_boundary_crop_for_select, f"{seq_name}.anno_fasta")
+        (merged_pdf_path, str(consi_obj.proof_pdf)),
+        (cropped_boundary_MSA, str(consi_obj.proof_fasta)),
+        (bed_fasta_mafft_boundary_crop_for_select, str(consi_obj.proof_anno))
     ]
 
     files_moved_successfully = True
 
     for pattern, new_name in file_copy_pattern:
 
-        # Determine the final unique name before copying, add 01, 02, 03 .... to the end of name if required
-        unique_new_name = get_unique_filename(proof_annotation_dir, new_name)
-
         try:
             # Copy the file to the new location with the unique new name
-            shutil.copy(pattern, os.path.join(proof_annotation_dir, unique_new_name))
+            shutil.copy(pattern, os.path.join(proof_annotation_dir, new_name))
 
         except Exception as e:
+            click.echo(f"Error copying {pattern} to {new_name}: {e}")
             files_moved_successfully = False
 
-        if pattern == cropped_boundary_MSA:
+    if hmm:  # Generate HMM files
 
-            # Generate consensus sequence
-            try:
+        # Define HMM file folder
+        hmm_dir = os.path.join(parent_output_dir, "HMM_files")
+        os.makedirs(hmm_dir, exist_ok=True)
 
-                # Generate final consensus sequence
-                # Comparing initial consensus, the final consensus sequence might have different orientation.
-                # For this reason, generate consensus again
-                final_con = con_generater_no_file(cropped_boundary_MSA, threshold=cons_threshold)
-                header = ">" + os.path.splitext(unique_new_name)[0]  # Use the filename without extension
-                sequence = str(final_con).upper()
+        consi_obj.set_hmm_file()
+        hmm_output_file = os.path.join(hmm_dir, consi_obj.hmm_file)
+        generate_hmm_from_msa(cropped_boundary_MSA, hmm_output_file)
 
-                # Create consensus_object and update length, new consensus name will be created in seq_obj
-                # For example self.consensus_name, self.new_length
-                consi_obj = seq_obj.create_consi_obj(os.path.splitext(unique_new_name)[0])
-                consi_obj.set_new_lenth(len(sequence))
+    # The unknown TE consensus will be classified again later using successfully classified sequence
+    if "Unknown" in updated_TE_type:
 
-                # Store consensus sequence input consi_obj
-                #consi_obj.set_cons_seq(sequence)
+        with open(final_unknown_con_file, "a") as f:  # 'a' mode for appending
+            f.write(">" + uniq_seq_name + "\n" + sequence + "\n")
+    else:
+        with open(final_classified_con_file, "a") as f:
+            f.write(">" + uniq_seq_name + "#" + updated_TE_type + "\n" + sequence + "\n")
 
-                # Store MSA sequence number into consi_obj
-                MSA_for_final_cons = AlignIO.read(cropped_boundary_MSA, "fasta")
-                MSA_for_final_cons_seq_n = len(MSA_for_final_cons)
-                consi_obj.set_cons_MSA_n(MSA_for_final_cons_seq_n)
-
-                # Store terminal repeat to consi_obj
-                if found_match == "LTR" or found_match == "TIR":
-
-                    consi_obj.set_new_flank_repeat(found_match)
-
-                # Store blast full length sequence number into consi_obj
-                # check_blast_full_n is a function in TE_Aid class. TE Trimmer will use the blast result of TE Aid
-                blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj)
-                consi_obj.set_blast_full_n(blast_full_length_n)
-
-                #####################################################################################################
-                # Code block: Run RepeatClassifier in RepeatModeler to classify TE_trimmer consensus sequences
-                #####################################################################################################
-                # Write single consensus sequence to a separate place for RepeatClassifier
-                # check_unknown returns true if unknown is detected
-                # Rename consensus when the final consensus length is much longer or shorter than the query sequence
-                if classify_all or (classify_unknown and (seq_obj.check_unknown() or abs(consi_obj.new_length - seq_obj.old_length))) >= 1000:
-
-                    # Define different folder for each sequence
-                    sequence_con_file = os.path.join(classification_dir, str(unique_new_name))
-                    os.makedirs(sequence_con_file, exist_ok=True )
-
-                    # Define consensus name path used for classification
-                    n_sequence_con_file = os.path.join(sequence_con_file, str(unique_new_name))
-
-                    with open(n_sequence_con_file, "w") as f:
-
-                        # RepeatClassifier input cannot be single sequence, add >Add to enable to run RepeatClassifier
-                        f.write(header + "\n" + sequence + "\n" + ">Dummy" + "\n" + "T" + "\n")
-
-                    TE_type = classify_single(n_sequence_con_file)
-
-                    # Only update new_TE_type when classify_single is successfully
-                    if TE_type:
-                        # set TE_type after RepeatClassifier
-                        consi_obj.set_new_TE_type(TE_type)
-
-                # Update final con_TE_type
-                updated_TE_type = consi_obj.get_TE_type_for_file()
-                consi_obj.set_new_TE_type(updated_TE_type)
-                
-                if hmm:  # Generate hmm files when the user want it
-                    hmm_dir = os.path.join(os.path.dirname(output_dir), "HMM_files")
-                    generate_hmm_from_msa(cropped_boundary_MSA, hmm_dir, consi_obj)
-
-                # the unknown TE consensus will be classified again later using successfully classified sequence
-                if (classify_all or classify_unknown) and "Unknown" in updated_TE_type:
-                    with open(final_unknown_con_file, "a") as f:  # 'a' mode for appending
-                        f.write(header + "\n" + sequence + "\n")
-                else:
-                    with open(final_con_file, "a") as f:  # 'a' mode for appending
-                        f.write(header + "#" + updated_TE_type + "\n" + sequence + "\n")
-                    
-            except Exception as e:
-                click.echo(f"Error Generate consensus sequence and create consensus_object: {str(e)}")
-                click.echo(traceback.format_exc())
-                files_moved_successfully = False
+    # Write all consensus sequence to final_cons_file.
+    with open(final_con_file, "a") as f:
+        f.write(">" + uniq_seq_name + "#" + updated_TE_type + "\n" + sequence + "\n")
         
     return files_moved_successfully
