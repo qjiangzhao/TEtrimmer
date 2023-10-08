@@ -1,6 +1,6 @@
 from Bio import SeqIO
 import os
-from Class_seq_object import Seq_object
+from Class_seq_object import SeqObject
 
 
 def separate_sequences(input_file, output_dir, continue_analysis=False):
@@ -34,7 +34,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
 
                 # Define output file name
                 output_filename = os.path.join(output_dir, f"{sanitized_id}.fasta")
-                seq_obj = Seq_object(str(sanitized_id), str(output_filename), len(record.seq), te_type)
+                seq_obj = SeqObject(str(sanitized_id), str(output_filename), len(record.seq), te_type)
 
                 # Store all input file information (object manner) to seq_list
                 seq_list.append(seq_obj)
@@ -63,7 +63,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                     sanitized_id = os.path.splitext(filename)[0]
                     # Note: single fasta file name is different with record.id
                     te_type = record.id.split("#")[-1]
-                    seq_obj = Seq_object(str(sanitized_id), str(file), len(record.seq), te_type)
+                    seq_obj = SeqObject(str(sanitized_id), str(file), len(record.seq), te_type)
                     seq_list.append(seq_obj)
         print("\nFinish to read in single sequence files generated from previous analysis.\n")
     return seq_list

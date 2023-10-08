@@ -488,9 +488,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Define unique sequence names
     consi_n = len(seq_obj.consi_obj_list)
 
-    if consi_n > 1:
+    if consi_n > 0:
 
-        consi_n = consi_n - 1
+        consi_n = consi_n
         uniq_seq_name = f"{seq_name}_{consi_n:02}"
 
     else:
@@ -535,7 +535,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Rename consensus when classify_unknown is true and (the final consensus length is much longer or
     # shorter than the query sequence or TE type is unknown)
     if classify_all or (
-            classify_unknown and (seq_obj.check_unknown() or abs(consi_obj.new_length - seq_obj.old_length))) >= 1000:
+            classify_unknown and (seq_obj.check_unknown() or abs(consi_obj.new_length - seq_obj.old_length)) >= 1000):
 
         # Define different folder for each sequence
         classification_seq_folder = os.path.join(classification_dir, uniq_seq_name)
@@ -549,7 +549,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             # RepeatClassifier input cannot be single sequence, add >Add to enable to run RepeatClassifier
             f.write(">" + uniq_seq_name + "\n" + sequence + "\n" + ">Dummy" + "\n" + "T" + "\n")
 
-        TE_type = classify_single(classification_seq_folder)
+        TE_type = classify_single(classification_seq_file)
 
         # Only update new_TE_type when classify_single is successfully
         if TE_type:

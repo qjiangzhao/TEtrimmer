@@ -1,7 +1,4 @@
-import os
-
-
-class Seq_object:
+class SeqObject:
 
     """
     create object for each input sequence.
@@ -18,7 +15,6 @@ class Seq_object:
         self.status = "unprocessed"  # "unprocessed","processed", "skipped"
         self.old_terminal_repeat = "None"
         self.old_blast_full_n = "None"
-        self.repeatmakser_classification = "None"
 
     def get_seq_name(self):
         return self.name
@@ -37,9 +33,6 @@ class Seq_object:
 
     def set_old_blast_full_n(self, blast_full_length_n):
         self.old_blast_full_n = blast_full_length_n
-
-    def set_repeatmasker_classification(self, type):
-        self.repeatmakser_classification = type
 
     def check_unknown(self):
         if "unknown" in self.old_TE_type.lower():
@@ -75,7 +68,7 @@ class Seq_object:
 
                 f.write(f"{str(self.name)},{str(self.name)},"  # name
                         f"{str(self.blast_hit_n)},NaN,"  # sequence number
-                        f"{str(self.old_blast_full_n)}"  # blast full length number for low copy elements
+                        f"{str(self.old_blast_full_n)},"  # blast full length number for low copy elements
                         f"{str(self.old_length)},{str(self.old_length)},"  # sequence length
                         f"{str(self.old_TE_type)},{str(self.old_TE_type)},"  # TE type
                         f"{str(self.old_terminal_repeat)},{str(self.low_copy)},{str(self.status)}\n")
@@ -83,7 +76,7 @@ class Seq_object:
 
                 f.write(f"{str(self.name)},NaN,"  # name
                         f"{str(self.blast_hit_n)},NaN,"
-                        f"NaN"  # sequence number
+                        f"NaN,"  # sequence number
                         f"{str(self.old_length)},"  # sequence length
                         f"{str(self.old_TE_type)},NaN,"  # TE type
                         f"NaN,{str(self.low_copy)},{str(self.status)}\n")
@@ -112,7 +105,6 @@ class ConsensusObject:
         self.new_TE_terminal_repeat = "None"
         self.new_TE_blast_full_length_n = "NaN"
         self.cons_seq = "NaN"
-        self.repeatmasker_classification = "None"
 
     def set_new_length(self, new_length):
         self.new_length = new_length
@@ -153,9 +145,6 @@ class ConsensusObject:
 
         proof_TE_type = self.new_TE_type.replace("/", "__")
         self.hmm_file = f"{self.consensus_name}#{proof_TE_type}.hmm"
-
-    def set_repeatmasker_classification(self, type):
-        self.repeatmasker_classification = type
 
     def get_TE_type_for_file(self):
 
