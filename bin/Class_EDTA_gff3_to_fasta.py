@@ -30,7 +30,7 @@ class EDTAGffSequenceExtractor:
 
                 attrs = cols[8].split(";")
                 name_attr = [x for x in attrs if x.startswith("ID=")][0]
-                name = name_attr.split("=")[1].split("__")[0] # __ separator can refer to class modify_EDTA_intact
+                name = name_attr.split("=")[1].split("__")[0]  # __ separator can refer to class modify_EDTA_intact
                 # read genome fasta file
                 genome_seq = SeqIO.parse(self.genome_file, "fasta")
                 # extract sequences

@@ -77,7 +77,7 @@ class SeqObject:
                 f.write(f"{str(self.name)},NaN,"  # name
                         f"{str(self.blast_hit_n)},NaN,"
                         f"NaN,"  # sequence number
-                        f"{str(self.old_length)},"  # sequence length
+                        f"{str(self.old_length)},NaN,"  # sequence length
                         f"{str(self.old_TE_type)},NaN,"  # TE type
                         f"NaN,{str(self.low_copy)},{str(self.status)}\n")
 

@@ -478,7 +478,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     # Define temporary classified and unknown final consensus file, which will be used for reclassification by repeatmasker
     final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
-    final_classified_con_file = os.path.join(classification_dir, "temp_TE_Triimer_classifed_consensus.fasta")
+    final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classifed_consensus.fasta")
 
     # Create the directory if it doesn't exist
     os.makedirs(proof_annotation_dir, exist_ok=True)

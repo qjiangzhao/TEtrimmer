@@ -3,7 +3,6 @@ import os
 from Bio import SeqIO
 import click
 import pandas as pd
-from Class_blast_extension_mafft import SequenceManipulator
 from Function_blast_extension_mafft import blast
 
 
@@ -218,8 +217,7 @@ class TEAid:
             full_length_n = check_blast_low_copy(seq_obj, te_aid_blast_file, identity=90, coverage=0.9,
                                                  min_hit_length=100, te_aid_blast=True)
         else:
-            blast_obj = SequenceManipulator()
-            bed_out_file, blast_hits_count, blast_out_file = blast_obj.blast(self.input_file, self.genome_file,
+            bed_out_file, blast_hits_count, blast_out_file = blast(self.input_file, self.genome_file,
                                                                              self.output_dir)
             full_length_n = check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9,
                                                  min_hit_length=100, te_aid_blast=False)

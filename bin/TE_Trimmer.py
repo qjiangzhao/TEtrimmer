@@ -7,13 +7,13 @@ import click
 import concurrent.futures
 import shutil
 import json
-import csv
+import pandas as pd
 
 # Local imports
 from Function_separate_fasta import separate_sequences
 from Function_blast_extension_mafft import blast, remove_files_with_start_pattern, change_permissions_recursive, \
     repeatmasker, check_database, check_bed_uniqueness, extract_fasta, cd_hit_est, handle_sequence_skipped, \
-    repeatmasker_output_classify, update_cons_file, update_low_copy_cons_file
+    repeatmasker_output_classify, rename_cons_file, update_low_copy_cons_file, rename_files_based_on_dict
 from Class_bed_filter import BEDFile
 from Function_def_boundary_and_crop import find_boundary_and_crop
 from Class_TE_aid import check_self_alignment
@@ -24,24 +24,26 @@ from Class_orf_domain_prediction import prepare_pfam_database
 # Define a function to check progress file, which will be used for continue analysis
 def check_progress_file(progress_file_path):
 
-    skipped_count = 0
-    low_copy_count = 0
-    local_completed_sequences = []
+    # Read the progress file into a pandas DataFrame
+    df = pd.read_csv(progress_file_path)
 
-    # Gather all 'input_name' values using DictReader
-    for row in csv.DictReader(open(progress_file_path, 'r')):
-        local_completed_sequences.append(row['input_name'])
+    # Calculate skipped and low copy element number
+    skipped_count = df[df['status'].str.strip().str.lower() == 'skipped'].shape[0]
+    low_copy_count = df[df['low_copy'].astype(str).str.strip().str.lower() == 'true'].shape[0]
+    unknown_n = df[df['reclassified_type'].str.contains('Unknown', na=False)].shape[0]
+    classifid_n = df[df['reclassified_type'].str.contains('/', na=False)].shape[0]
 
-        # Calculate skipped and low copy element number
-        if row['status'] == 'skipped':
-            skipped_count += 1
-        if row['low_copy'] == 'True':
-            low_copy_count += 1
+    # Calculate classified_pro
+    if classifid_n != 0 and unknown_n != 0:
+        classified_pro = classifid_n / (unknown_n + classifid_n)
+    else:
+        classified_pro = 0  # Set a default value (or any other value you deem appropriate)
 
-    # Remove duplicates for processed file IDs
-    local_completed_sequences = list(set(local_completed_sequences))
+    # Get unique 'input_name' values
+    local_completed_sequences = df['input_name'].unique().tolist()
 
-    return local_completed_sequences, skipped_count, low_copy_count
+    return local_completed_sequences, skipped_count, low_copy_count, classified_pro
+
 
 # Print iterations progress
 def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r"):
@@ -60,20 +62,22 @@ def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + '-' * (length - filledLength)
-    print(f'\r{prefix} |{bar}|{iteration}/{total}={percent}% {suffix}', end = printEnd)
+    click.echo(f'\r{prefix} |{bar}| {iteration}/{total} = {percent}% {suffix}', nl=False)
+
     # Print New Line on Complete
     if iteration == total: 
-        print()
+        click.echo()
 
 #####################################################################################################
 # Code block: Define analyze_sequence function
 #####################################################################################################
 
+
 def analyze_sequence_helper(params):
     return analyze_sequence(*params)
 
 
-def analyze_sequence(seq_obj, single_file_dir, genome_file, MSA_dir, min_blast_len, min_seq_num, max_msa_lines,
+def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, max_msa_lines,
                      top_mas_lines, max_cluster_num, cons_thr, ext_thr, ex_step, classification_dir,
                      max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr,
                      crop_end_gap_win, start_patterns, end_patterns, output_dir, pfam_dir, mini_orf,
@@ -169,6 +173,7 @@ def analyze_sequence(seq_obj, single_file_dir, genome_file, MSA_dir, min_blast_l
         # test bed_out_file line number and extract top longest lines
         # return bed_out_filter_file absolute path
         bed_out_filter = BEDFile(bed_out_file)
+
         # for process_lines() function. threshold represent the maximum number to keep for MSA
         # top_longest_lines_count means the number of sequences with top length
         # for example if threshold = 100, top_longest_lines_count = 50, then 50 sequences will be
@@ -338,7 +343,7 @@ def analyze_sequence(seq_obj, single_file_dir, genome_file, MSA_dir, min_blast_l
         remove_files_with_start_pattern(classification_dir, seq_name)
 
     # Read and count sequences from Finished_sequence_name.txt
-    completed_sequence, skipped_count, low_copy_count = check_progress_file(progress_file)
+    completed_sequence, skipped_count, low_copy_count, classified_pro = check_progress_file(progress_file)
 
     # Calculate the total count
     processed_count = len(completed_sequence)
@@ -456,11 +461,25 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
          start_patterns, end_patterns, mini_orf, species, check_extension_win, merge, genome_anno, hmm,
          keep_intermediate, classify_unknown, classify_all):
     """
-        ###########################################################
-        TE Trimmer v1.1 (22/SEP/2023)
-        Email: jqian@bio1.rwth-aachen.de
+        ##########################################################################################
+
+        TE Trimmer v1.1 (09/OCT/2023)
+
         https://github.com/qjiangzhao/TE-Trimmer
-        ###########################################################
+
+        Developers of TE Trimmer:
+
+        Jiangzhao Qian. Email: jqian@bio1.rwth-aachen.de
+
+        Hang Xue. Email: hang_xue@berkeley.edu
+
+        Funding resource:
+
+        Panstruga's Lab. Website: https://www.bio1.rwth-aachen.de/PlantMolCellBiology/index.html
+
+        RWTH Aachen University
+
+        ##########################################################################################
 
         python ./path_to_TE_Trimmer_bin/main.py -i <TE_consensus_file> -o <genome_file>
 
@@ -602,6 +621,10 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         if not os.path.exists(hmm_dir):
             os.mkdir(hmm_dir)
 
+    # Define proof_annotation folder path
+    proof_annotation_dir = os.path.join(output_dir, "TE_Trimmer_for_proof_annotation")
+    os.makedirs(proof_annotation_dir, exist_ok=True)
+
     if not os.path.isfile(input_file):
         raise FileNotFoundError(f"The fasta file {input_file} does not exist.")
     input_file = os.path.abspath(input_file)  # get input absolute path
@@ -634,7 +657,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # consensus file
     final_con_file = os.path.join(output_dir, "TE_Trimmer_consensus.fasta")
     final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
-    final_classified_con_file = os.path.join(classification_dir, "temp_TE_Triimer_classifed_consensus.fasta")
+    final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classifed_consensus.fasta")
 
     #####################################################################################################
     # Code block: Merge input file and generate single fasta file
@@ -680,7 +703,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             return
 
         else:
-
             click.echo("\nTE Trimmer will continue to analyze based on previous results.\n")
 
             # Create seq_list, which contain sequence objects using the single fasta files.
@@ -688,7 +710,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             single_fasta_n = len(seq_list)
 
             # Check which sequences have already been processed
-            complete_sequences, skipped_count, low_copy_count = check_progress_file(progress_file)
+            complete_sequences, skipped_count, low_copy_count, classified_pro = check_progress_file(progress_file)
 
             # Filter out already complete sequences from the total sequences
             seq_list = [seq for seq in seq_list if seq.name not in complete_sequences]
@@ -699,7 +721,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Code block: Enable multiple threads
     #####################################################################################################
     analyze_sequence_params = [
-        (seq, single_file_dir, genome_file, MSA_dir, min_blast_len, min_seq_num, max_msa_lines,
+        (seq, genome_file, MSA_dir, min_blast_len, min_seq_num, max_msa_lines,
          top_mas_lines, max_cluster_num, cons_thr, ext_thr, ex_step, classification_dir,
          max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, single_fasta_n, hmm,
@@ -718,17 +740,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Code block: Check if all sequences are finished
     #####################################################################################################
 
-    cd_hit_merge_output_final = None
-    if os.path.exists(final_con_file):
-
-        # Do cd-hit-est merge when finish all sequence
-        cd_hit_merge_output_final = os.path.join(output_dir, "TE_Trimmer_consensus_merged.fasta")
-        # According to 80-80-80 rule to filter final consensus sequences
-
-        cd_hit_est(final_con_file, cd_hit_merge_output_final, identity_thr=0.8, aL=0.8, aS=0.8, s=1, thread=num_threads)
-
     # At the end of the program, check if all sequences have been processed
-    completed_sequence, skipped_count, low_copy_count = check_progress_file(progress_file)
+    completed_sequence, skipped_count, low_copy_count, classified_pro = check_progress_file(progress_file)
 
     # Calculate the total count
     processed_count = len(completed_sequence)
@@ -736,37 +749,41 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     if processed_count == single_fasta_n:
         click.echo(f"All sequences have been analysed!\n"
                    f"In the analysed sequences {skipped_count} are skipped.\n"
-                   f"In the analysed sequences {low_copy_count} are identified as low copy TE")
+                   f"In the analysed sequences {low_copy_count} are identified as low copy TE\n"
+                   f"TE Trimmer is doing the final classification, merging, or whole genome annotation step.")
 
     else:
         remaining = single_fasta_n - processed_count
         click.echo(f"{remaining} sequences have not been analysed.")
 
-    t_end_time = datetime.now()
-    print("end time:", t_end_time)
-
     #####################################################################################################
     # Code block: Finish classifying unknown consensus file and writing sequences back to consensus file
     #####################################################################################################
 
-    updated_type = {}
-    temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmakser_classification")
+    if 0.3 <= classified_pro < 0.99:
 
-    if os.path.exists(final_unknown_con_file) and os.path.exists(final_classified_con_file):
+        temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmakser_classification")
 
-        os.makedirs(temp_repeatmasker_dir, exist_ok=True)
-        classification_out = repeatmasker(final_unknown_con_file, final_classified_con_file, temp_repeatmasker_dir,
-                                          thread=num_threads, classify=True)
+        if os.path.exists(final_unknown_con_file) and os.path.exists(final_classified_con_file):
 
-        if classification_out:
+            os.makedirs(temp_repeatmasker_dir, exist_ok=True)
+            classification_out = repeatmasker(final_unknown_con_file, final_classified_con_file, temp_repeatmasker_dir,
+                                              thread=num_threads, classify=True)
 
-            repeatmasker_out = os.path.join(temp_repeatmasker_dir, "temp_TE_Trimmer_unknown_consensus.fasta.out")
-            reclassified_dict = repeatmasker_output_classify(repeatmasker_out, progress_file)
-            print(reclassified_dict)
-    else:
-        click.echo("one of the consensus file does not exist, RepeatMasker reclassify does not run")
+            if classification_out:
 
-    #update_cons_file(updated_type, final_unknown_con_file, final_con_file)
+                repeatmasker_out = os.path.join(temp_repeatmasker_dir, "temp_TE_Trimmer_unknown_consensus.fasta.out")
+                reclassified_dict = repeatmasker_output_classify(repeatmasker_out, progress_file,
+                                                                 min_iden=60, min_len=80, min_cov=0.5)
+
+                # Update final consensus file
+                rename_cons_file(final_con_file, reclassified_dict)
+                rename_files_based_on_dict(proof_annotation_dir, reclassified_dict)
+                if hmm:
+                    rename_files_based_on_dict(hmm_dir, reclassified_dict)
+
+        else:
+            click.echo("one of the consensus file does not exist, RepeatMasker reclassify does not run")
 
     #####################################################################################################
     # Code block: merge consensus_file
@@ -787,7 +804,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     if not os.listdir(classification_dir):
         os.rmdir(classification_dir)
 
-    # If 95% of the query sequences are processed, RepeatMasker is allowed to be performed
+    # If 95% of the query sequences are processed, RepeatMasker is allowed to be performed whole genome annotation
     if processed_count >= single_fasta_n*0.9:
         # Run RepeatMasker
         if genome_anno and cd_hit_merge_output_final:
@@ -809,9 +826,10 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     # Remove microseconds from the duration
     duration_without_microseconds = timedelta(days=duration.days, seconds=duration.seconds)
-    if not keep_intermediate:
+
+    #if not keep_intermediate:
         # Remove all single files when all the sequences are processed
-        shutil.rmtree(single_file_dir)
+        #shutil.rmtree(single_file_dir)
 
     print(f"\nTE Trimmer finished at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
     print(f"TE Trimmer runtime was {duration_without_microseconds}")

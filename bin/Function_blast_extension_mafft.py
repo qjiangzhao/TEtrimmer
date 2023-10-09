@@ -983,7 +983,7 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
         return True
 
 
-def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=0.8, min_len=80, min_cov=0.8):
+def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, min_len=80, min_cov=0.8):
 
     # Read RepeatMasker out file into a DataFrame
     # The regex '\s+' matches one or more whitespace characters
@@ -998,7 +998,7 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=0.8, 
     ]
 
     # Filter rows based on query_iden
-    df = df[df['query_div'] <= (1 - min_iden)]
+    df = df[df['perc_div'] <= (100 - min_iden)]
 
     # Calculate coverage length and add to a column
     df['cov_len'] = abs(df['query_start'] - df['query_end'])
@@ -1011,7 +1011,7 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=0.8, 
     grouped_df_filter = grouped_df[grouped_df['cov_len'] >= min_len]
 
     # Group by 'repeat_name' and get the index of the row with the maximum 'cov_len'
-    idx = grouped_df_filter.groupby('repeat_name')['cov_len'].idxmax()
+    idx = grouped_df_filter.groupby('query_name')['cov_len'].idxmax()
 
     # Use these indices to filter the DataFrame
     max_cov_len_df = grouped_df_filter.loc[idx]
@@ -1034,7 +1034,7 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=0.8, 
         # Check if consensus_name exists in max_cov_dict and compute the ratio
         if consensus_name in max_cov_dict:
             cov_len = max_cov_dict[consensus_name]
-            ratio = cov_len / cons_length
+            ratio = int(cov_len) / int(cons_length)
 
             # Check if ratio meets the threshold
             if ratio >= min_cov and "Unknown" in cons_type:
@@ -1048,10 +1048,55 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=0.8, 
                 reclassified_dict[consensus_name] = repeat_class
 
     # Save the modified progress_df back to the original file
-    progress_df.to_csv(progress_file, index=False)
+    progress_df.to_csv(progress_file, index=False, na_rep='NaN')
 
     return reclassified_dict
-    
+
+
+def rename_cons_file(consensus_file, reclassified_dict):
+    # Define a temporary file for the updated content
+    temp_file = consensus_file + ".tmp"
+
+    with open(consensus_file, 'r') as infile, open(temp_file, 'w') as outfile:
+        for line in infile:
+            if line.startswith('>'):
+                # Extract the sequence name (up to the '#' character)
+                seq_name = line.split('#')[0][1:].strip()  # Remove '>' and split at '#', then take the first part
+
+                # Look up the sequence name in the reclassified_dict and modify the header if found
+                if seq_name in reclassified_dict:
+                    new_type = reclassified_dict[seq_name]
+                    line = f">{seq_name}#{new_type}\n"
+
+            outfile.write(line)
+
+    # Use shutil.move to replace the original file with the temporary file
+    shutil.move(temp_file, consensus_file)
+
+
+def rename_files_based_on_dict(directory, reclassified_dict):
+    # List all files in the directory
+    files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+
+    # For each file, check and rename if necessary
+    for filename in files:
+        # Extract the part before #
+        consensus_name = filename.split('#')[0]
+        for key, value in reclassified_dict.items():
+            if consensus_name == key:
+                # Extract the part after # and before the first .
+                te_type = filename.split('#')[1].split('.')[0].replace('__', '/')
+
+                # If it doesn't match the value in the dictionary, rename the file
+                if te_type != value:
+                    new_te_type = value.replace('/', '__')
+                    new_filename = filename.replace(te_type.replace('/', '__'), new_te_type)
+                    old_file_path = os.path.join(directory, filename)
+                    new_file_path = os.path.join(directory, new_filename)
+
+                    # Use shutil.move to rename the file
+                    shutil.move(old_file_path, new_file_path)
+
 
 def remove_files_with_start_pattern(input_dir, start_pattern):
     # Remove files and folder start with give pattern
