@@ -585,8 +585,7 @@ def remove_gaps_block_with_similarity_check(input_file, output_dir, gap_threshol
     gap_blocks = []
 
     # Output file name
-    fasta_out_flank_mafft_gap_filter_file = os.path.join(output_dir,
-                                                            f"{os.path.basename(input_file)}_gbs.fa")
+    fasta_out_flank_mafft_gap_filter_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_gbs.fa")
 
     # Load the MSA file
     MSA_mafft = AlignIO.read(input_file, "fasta")
@@ -1074,7 +1073,7 @@ def rename_cons_file(consensus_file, reclassified_dict):
     shutil.move(temp_file, consensus_file)
 
 
-def rename_files_based_on_dict(directory, reclassified_dict):
+def rename_files_based_on_dict(directory, reclassified_dict, seq_name=False):
     # List all files in the directory
     files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
 
@@ -1094,8 +1093,17 @@ def rename_files_based_on_dict(directory, reclassified_dict):
                     old_file_path = os.path.join(directory, filename)
                     new_file_path = os.path.join(directory, new_filename)
 
-                    # Use shutil.move to rename the file
-                    shutil.move(old_file_path, new_file_path)
+                    # If seq_name is True, rename the sequence header in the FASTA file
+                    if seq_name:
+                        record = SeqIO.read(old_file_path, 'fasta')
+                        record.id = f"{seq_name}#{value}"
+                        record.description = ""  # Clear the description to avoid duplication
+                        SeqIO.write(record, new_file_path, 'fasta')
+                        # Delete the old file
+                        os.remove(old_file_path)
+                    else:
+                        # Use shutil.move to rename the file
+                        shutil.move(old_file_path, new_file_path)
 
 
 def remove_files_with_start_pattern(input_dir, start_pattern):
@@ -1139,10 +1147,12 @@ def update_cons_file(updated_type, unknown_concensus_file, consensus_file):
 
 
 # if the seq_obj is low copy, append to consensus_file or final_unknown_con_file file
-def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, final_classified_con_file):
+def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, final_classified_con_file, proof_dir,
+                              te_aid_pdf):
 
     seq_name = seq_obj.get_seq_name()
     te_type = seq_obj.get_old_TE_type()
+    te_type_modified = te_type.replace("/", "__")
     input_fasta = seq_obj.get_input_fasta()
 
     record = SeqIO.read(input_fasta, "fasta")
@@ -1159,6 +1169,13 @@ def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, f
         # Write all consensus sequence to final_cons_file.
     with open(consensus_file, "a") as f:
         f.write(">" + seq_name + "#" + te_type + "\n" + sequence + "\n")
+
+    low_copy_single_fasta_file = os.path.join(proof_dir, f"{seq_name}#{te_type_modified}.fa")
+    low_copy_te_aid_pdf_file = os.path.join(proof_dir, f"{seq_name}#{te_type_modified}.pdf")
+
+    shutil.copy(input_fasta, low_copy_single_fasta_file)
+    shutil.copy(te_aid_pdf, low_copy_te_aid_pdf_file)
+
 
 
 # Classify single fasta

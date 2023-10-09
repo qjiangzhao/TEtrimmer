@@ -35,16 +35,17 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
         check_low_copy = seq_obj.update_low_copy(check_blast, found_match_boolean)
 
     else:
+        TE_aid_plot = None
         check_low_copy = False
         found_match = False
 
-    return check_low_copy, blast_full_length_n, found_match
+    return check_low_copy, blast_full_length_n, found_match, TE_aid_plot
 
 
 def check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100, te_aid_blast=False,
                          if_low_copy=False):
 
-    # The TE Aid blast output have a header
+    # The TE Aid blast output file have a header
     if te_aid_blast:
         df = pd.read_csv(blast_out_file, sep="\s+", skiprows=1, header=None)
     else:

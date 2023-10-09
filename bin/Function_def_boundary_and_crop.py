@@ -470,9 +470,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Define proof_annotation folder path
     proof_annotation_dir = os.path.join(parent_output_dir, "TE_Trimmer_for_proof_annotation")
 
-    # Define low copy folder
-    low_copy_dir = os.path.join(proof_annotation_dir, "Low_copy_TE")
-    
     # Construct the path for the Classification folder
     classification_dir = os.path.join(parent_output_dir, "Classification")
 
@@ -483,7 +480,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Create the directory if it doesn't exist
     os.makedirs(proof_annotation_dir, exist_ok=True)
     os.makedirs(classification_dir, exist_ok=True)
-    os.makedirs(low_copy_dir, exist_ok=True)
 
     # Define unique sequence names
     consi_n = len(seq_obj.consi_obj_list)

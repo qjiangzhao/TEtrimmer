@@ -82,7 +82,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                      max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr,
                      crop_end_gap_win, start_patterns, end_patterns, output_dir, pfam_dir, mini_orf,
                      single_fasta_n, hmm, check_extension_win, keep_intermediate, progress_file,
-                     classify_unknown, classify_all, final_con_file, final_unknown_con_file, final_classified_con_file):
+                     classify_unknown, classify_all, final_con_file, final_unknown_con_file,
+                     final_classified_con_file, low_copy_dir):
 
     #####################################################################################################
     # Code block: Elongate query sequence when it is too short
@@ -144,16 +145,16 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         # Check if blast hit number is smaller than "min_seq_num", not include "min_seq_num"
         elif blast_hits_count != 0 and blast_hits_count < min_seq_num:
 
-            check_low_copy, blast_full_length_n, found_match = check_self_alignment(seq_obj, seq_file, MSA_dir,
-                                                                                    genome_file, blast_hits_count,
-                                                                                    blast_out_file)
+            check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
+                seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
             if check_low_copy is True:
 
                 # Update terminal repeat and blast full length number
                 seq_obj.set_old_terminal_repeat(found_match)
                 seq_obj.set_old_blast_full_n(blast_full_length_n)
                 seq_obj.update_status("processed", progress_file)
-                update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file, final_classified_con_file)
+                update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
+                                          final_classified_con_file, low_copy_dir, TE_aid_plot)
             else:
                 click.echo(f"\n{seq_name} in main is skipped due to check_low_copy is {check_low_copy}\n")
 
@@ -204,16 +205,17 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         # cluster false means no cluster, TE Trimmer will skip this sequence.
         if cluster_MSA_result is False:
 
-            check_low_copy, blast_full_length_n, found_match = check_self_alignment(seq_obj, seq_file, MSA_dir,
-                                                                                    genome_file, blast_hits_count,
-                                                                                    blast_out_file)
+            check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
+                seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
+
             if check_low_copy is True:
 
                 # Update terminal repeat and blast full length number
                 seq_obj.set_old_terminal_repeat(found_match)
                 seq_obj.set_old_blast_full_n(blast_full_length_n)
                 seq_obj.update_status("processed", progress_file)
-                update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file, final_classified_con_file)
+                update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
+                                          final_classified_con_file, low_copy_dir, TE_aid_plot)
 
             else:
                 click.echo(
@@ -309,9 +311,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
             # Check the flag after the loop. If all inner clusters were skipped, write the progress file
             if all_inner_skipped:
-                check_low_copy, blast_full_length_n, found_match = check_self_alignment(seq_obj, seq_file, MSA_dir,
-                                                                                        genome_file, blast_hits_count,
-                                                                                        blast_out_file)
+                check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
+                    seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
 
                 if check_low_copy is True:
 
@@ -319,7 +320,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     seq_obj.set_old_terminal_repeat(found_match)
                     seq_obj.set_old_blast_full_n(blast_full_length_n)
                     seq_obj.update_status("processed", progress_file)
-                    update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file, final_classified_con_file)
+                    update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
+                                              final_classified_con_file, low_copy_dir, TE_aid_plot)
                 else:
                     handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir)
                     click.echo(
@@ -473,7 +475,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
         Hang Xue. Email: hang_xue@berkeley.edu
 
-        Funding resource:
+        Funding source:
 
         Panstruga's Lab. Website: https://www.bio1.rwth-aachen.de/PlantMolCellBiology/index.html
 
@@ -625,6 +627,10 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     proof_annotation_dir = os.path.join(output_dir, "TE_Trimmer_for_proof_annotation")
     os.makedirs(proof_annotation_dir, exist_ok=True)
 
+    # Define low copy folder
+    low_copy_dir = os.path.join(proof_annotation_dir, "Low_copy_TE")
+    os.makedirs(low_copy_dir, exist_ok=True)
+
     if not os.path.isfile(input_file):
         raise FileNotFoundError(f"The fasta file {input_file} does not exist.")
     input_file = os.path.abspath(input_file)  # get input absolute path
@@ -726,7 +732,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
          max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, single_fasta_n, hmm,
          check_extension_win, keep_intermediate, progress_file, classify_unknown, classify_all,
-         final_con_file, final_unknown_con_file, final_classified_con_file
+         final_con_file, final_unknown_con_file, final_classified_con_file, low_copy_dir
          ) for seq in seq_list]
 
     # Using a ProcessPoolExecutor to run the function in parallel
@@ -775,10 +781,12 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                 repeatmasker_out = os.path.join(temp_repeatmasker_dir, "temp_TE_Trimmer_unknown_consensus.fasta.out")
                 reclassified_dict = repeatmasker_output_classify(repeatmasker_out, progress_file,
                                                                  min_iden=60, min_len=80, min_cov=0.5)
+                click.echo(f"{len(reclassified_dict)} TE elements were re-classified by final classification module")
 
                 # Update final consensus file
                 rename_cons_file(final_con_file, reclassified_dict)
                 rename_files_based_on_dict(proof_annotation_dir, reclassified_dict)
+                rename_files_based_on_dict(low_copy_dir, reclassified_dict, seq_name=True)
                 if hmm:
                     rename_files_based_on_dict(hmm_dir, reclassified_dict)
 
