@@ -493,7 +493,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     """
 
     start_time = datetime.now()
-    print(f"\nTE Trimmer started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+    print(f"\nTE Trimmer started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+          f"Note: For PC user, 10GB RAM is required for 6 threads.\n"
+          f"      For cluster user, 200GB RAM is required for 40 threads")
 
     #####################################################################################################
     # Code block: Change permissions of Aliview and TE_Aid
@@ -641,7 +643,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     genome_file = os.path.abspath(genome_file)  # get genome absolute path
 
     # Define the progress_file, finished seq IDs will be stored here
-    progress_file = os.path.join(output_dir, "Finished_sequence_name.txt")
+    progress_file = os.path.join(output_dir, "Finished_sequence_recording.txt")
     # Check and create progress_file if it doesn't exist
     if not os.path.exists(progress_file):
         with open(progress_file, 'a') as f:
@@ -766,32 +768,40 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Code block: Finish classifying unknown consensus file and writing sequences back to consensus file
     #####################################################################################################
 
-    if 0.3 <= classified_pro < 0.99:
+    # Final RepeatMasker classification isn't necessary, skip it when errors are there
+    try:
+        if 0.3 <= classified_pro < 0.99:
 
-        temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmakser_classification")
+            temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmakser_classification")
 
-        if os.path.exists(final_unknown_con_file) and os.path.exists(final_classified_con_file):
+            if os.path.exists(final_unknown_con_file) and os.path.exists(final_classified_con_file):
 
-            os.makedirs(temp_repeatmasker_dir, exist_ok=True)
-            classification_out = repeatmasker(final_unknown_con_file, final_classified_con_file, temp_repeatmasker_dir,
-                                              thread=num_threads, classify=True)
+                os.makedirs(temp_repeatmasker_dir, exist_ok=True)
+                classification_out = repeatmasker(final_unknown_con_file, final_classified_con_file, temp_repeatmasker_dir,
+                                                  thread=num_threads, classify=True)
 
-            if classification_out:
+                if classification_out:
 
-                repeatmasker_out = os.path.join(temp_repeatmasker_dir, "temp_TE_Trimmer_unknown_consensus.fasta.out")
-                reclassified_dict = repeatmasker_output_classify(repeatmasker_out, progress_file,
-                                                                 min_iden=60, min_len=80, min_cov=0.5)
-                click.echo(f"{len(reclassified_dict)} TE elements were re-classified by final classification module")
+                    repeatmasker_out = os.path.join(temp_repeatmasker_dir, "temp_TE_Trimmer_unknown_consensus.fasta.out")
+                    reclassified_dict = repeatmasker_output_classify(repeatmasker_out, progress_file,
+                                                                     min_iden=60, min_len=80, min_cov=0.5)
+                    if reclassified_dict:
 
-                # Update final consensus file
-                rename_cons_file(final_con_file, reclassified_dict)
-                rename_files_based_on_dict(proof_annotation_dir, reclassified_dict)
-                rename_files_based_on_dict(low_copy_dir, reclassified_dict, seq_name=True)
-                if hmm:
-                    rename_files_based_on_dict(hmm_dir, reclassified_dict)
+                        click.echo(f"{len(reclassified_dict)} TE elements were re-classified by final classification module")
 
-        else:
-            click.echo("one of the consensus file does not exist, RepeatMasker reclassify does not run")
+                        # Update final consensus file
+                        rename_cons_file(final_con_file, reclassified_dict)
+                        rename_files_based_on_dict(proof_annotation_dir, reclassified_dict)
+                        rename_files_based_on_dict(low_copy_dir, reclassified_dict, seq_name=True)
+                        if hmm:
+                            rename_files_based_on_dict(hmm_dir, reclassified_dict)
+
+            else:
+                click.echo("One of the consensus file does not exist, RepeatMasker reclassify does not run, "
+                           "This won't affect the final consensus sequences.")
+    except Exception as e:
+        click.echo("The final TE classification is skipped, this won't affect the TE consensus result.")
+        pass
 
     #####################################################################################################
     # Code block: merge consensus_file

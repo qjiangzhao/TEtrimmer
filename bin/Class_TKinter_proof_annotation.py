@@ -22,6 +22,9 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     if output_dir is None:
         output_dir = os.path.dirname(te_trimmer_proof_annotation_dir)
 
+    low_copy_dir = os.path.join(te_trimmer_proof_annotation_dir, "Low_copy_TE")
+    os.makedirs(low_copy_dir, exist_ok=True)
+
     # so.path.abspath(__file__) will return the current executable python file
     bin_py_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -98,7 +101,6 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
 
             if is_low_copy:
                 file_path = os.path.join(te_trimmer_proof_annotation_dir, "Low_copy_TE", filename)
-                print(file_path)
             else:
                 file_path = os.path.join(te_trimmer_proof_annotation_dir, filename)
 
@@ -198,7 +200,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
         fileMenu.add_command(label=f"{i + 1}-{end}", command=lambda i=i, end=end: load_files(i, end))
 
     low_copy_menu = Menu(menubar, tearoff=0)
-    menubar.add_cascade(label="Low copy", menu=low_copy_menu)
+    menubar.add_cascade(label="Low copy TE", menu=low_copy_menu)
     low_copy_sorted_files = sorted(os.listdir(os.path.join(te_trimmer_proof_annotation_dir, "Low_copy_TE")))
     for i in range(0, len(low_copy_sorted_files), 1000):
         end = min(i + 1000, len(low_copy_sorted_files))

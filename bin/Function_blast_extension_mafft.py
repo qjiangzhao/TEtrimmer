@@ -7,6 +7,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Align import MultipleSeqAlignment, AlignInfo
 import pandas as pd
+import pandas.errors
 
 
 def calculate_genome_length(genome_file):
@@ -953,10 +954,11 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
     # Construct the RepeatMasker command
     if classify:
         command = ["RepeatMasker",
-                    genome_file,
-                    "-lib", library_file,
-                    "-s",    # Slow search; 0-5% more sensitive, 2-3 times slower than default
-                    "-dir", output_dir
+                   genome_file,
+                   "-lib", library_file,
+                   "-s",    # Slow search; 0-5% more sensitive, 2-3 times slower than default
+                   "-dir", output_dir,
+                   "-pa", str(thread)
                     ]
     else: 
         command = ["RepeatMasker",
@@ -986,7 +988,10 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, m
 
     # Read RepeatMasker out file into a DataFrame
     # The regex '\s+' matches one or more whitespace characters
-    df = pd.read_csv(repeatmasker_out, delim_whitespace=True, header=None, skiprows=3)
+    try:
+        df = pd.read_csv(repeatmasker_out, delim_whitespace=True, header=None, skiprows=3)
+    except pandas.errors.EmptyDataError:
+        return False
 
     # Rename columns for easier reference
     df.columns = [

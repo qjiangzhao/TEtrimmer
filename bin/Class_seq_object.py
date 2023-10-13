@@ -107,14 +107,14 @@ class ConsensusObject:
         self.cons_seq = "NaN"
 
     def set_new_length(self, new_length):
-        self.new_length = new_length
+        self.new_length = int(new_length)
     
     def set_new_TE_type(self, new_TE_type):
         self.new_TE_type = new_TE_type
 
     # Store multiple sequence alignment sequence number to object
     def set_cons_MSA_n(self, new_TE_MSA_seq_n):
-        self.new_TE_MSA_seq_n = new_TE_MSA_seq_n
+        self.new_TE_MSA_seq_n = int(new_TE_MSA_seq_n)
 
     # Store flank type ("LTR" or "TIR") to object
     def set_new_terminal_repeat(self, terminal_repeat):
@@ -132,7 +132,7 @@ class ConsensusObject:
 
     # Store full length blast number
     def set_blast_full_n(self, blast_full_length_n):
-        self.new_TE_blast_full_length_n = blast_full_length_n
+        self.new_TE_blast_full_length_n = int(blast_full_length_n)
 
     def set_proof_annotation_file(self):
 
