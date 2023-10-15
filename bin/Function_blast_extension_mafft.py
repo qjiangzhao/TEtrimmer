@@ -248,10 +248,10 @@ def align_sequences(input_file, output_dir):
     return fasta_out_flank_mafft_file
 
 
-def muscle_align(input_file, output_dir):
+def muscle_align(input_file, output_dir, ite_times=4):
 
     output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_maln.fa")
-    muscle_cmd = ["muscle", "-maxiters", "4", "-in", input_file, "-out", output_file]
+    muscle_cmd = ["muscle", "-maxiters", str(ite_times), "-in", input_file, "-out", output_file]
 
     # Execute muscle
     result = subprocess.run(muscle_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -769,7 +769,7 @@ def select_gaps_block_with_similarity_check(input_file,
             if start and end and block_length > 10:
                 if start > 0:
                     col_before = [MSA_mafft[i, start - 1] for i in range(len(MSA_mafft[:, start])) if
-                                    MSA_mafft[i, start] == '-']
+                                  MSA_mafft[i, start] == '-']
                     gap_fraction_before = col_before.count('-') / len(col_before)
                 else:
                     col_before = None
@@ -777,7 +777,7 @@ def select_gaps_block_with_similarity_check(input_file,
 
                 if end < MSA_mafft.get_alignment_length():
                     col_after = [MSA_mafft[i, end] for i in range(len(MSA_mafft[:, end - 1])) if
-                                    MSA_mafft[i, end - 1] == '-']
+                                 MSA_mafft[i, end - 1] == '-']
                     gap_fraction_after = col_after.count('-') / len(col_after)
                 else:
                     col_after = None
@@ -1125,8 +1125,8 @@ def remove_files_with_start_pattern(input_dir, start_pattern):
 # Define a function to handle sequence skipping and removal of files
 def handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir):
 
+    seq_name = seq_obj.get_seq_name()
     try:
-        seq_name = seq_obj.get_seq_name()
         seq_obj.update_status("skipped", progress_file)
         if not keep_intermediate:
             remove_files_with_start_pattern(MSA_dir, seq_name)

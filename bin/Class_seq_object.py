@@ -52,7 +52,7 @@ class SeqObject:
         with open(progress_file, "a") as f:
 
             # "input_name,consensus_name, blast_hit_n, cons_MSA_seq_n, cons_full_blast_n, input_length, cons_length, "
-            # "input_TE_type, reclassified_type, cons_flank_repeat, low_copy, status\n"
+            # "input_TE_type, reclassified_type, cons_flank_repeat, evaluation, low_copy, status\n"
             if len(self.consi_obj_list) > 0:
 
                 for consi_obj in self.consi_obj_list:
@@ -62,7 +62,8 @@ class SeqObject:
                             f"{str(consi_obj.new_TE_blast_full_length_n)},"  # blast full length number
                             f"{str(self.old_length)},{str(consi_obj.new_length)},"  # sequence length
                             f"{str(self.old_TE_type)},{str(consi_obj.get_TE_type_for_file())},"  # TE type
-                            f"{str(consi_obj.new_TE_terminal_repeat)},{str(self.low_copy)},{str(self.status)}\n")
+                            f"{str(consi_obj.new_TE_terminal_repeat)},{str(self.low_copy)},"
+                            f"{str(consi_obj.get_evaluation())},{str(self.status)}\n")  # Evaluation
 
             elif self.low_copy:
 
@@ -71,7 +72,8 @@ class SeqObject:
                         f"{str(self.old_blast_full_n)},"  # blast full length number for low copy elements
                         f"{str(self.old_length)},{str(self.old_length)},"  # sequence length
                         f"{str(self.old_TE_type)},{str(self.old_TE_type)},"  # TE type
-                        f"{str(self.old_terminal_repeat)},{str(self.low_copy)},{str(self.status)}\n")
+                        f"{str(self.old_terminal_repeat)},{str(self.low_copy)},"
+                        f"NaN,{str(self.status)}\n")
             else:
 
                 f.write(f"{str(self.name)},NaN,"  # name
@@ -79,7 +81,8 @@ class SeqObject:
                         f"NaN,"  # sequence number
                         f"{str(self.old_length)},NaN,"  # sequence length
                         f"{str(self.old_TE_type)},NaN,"  # TE type
-                        f"NaN,{str(self.low_copy)},{str(self.status)}\n")
+                        f"NaN,{str(self.low_copy)},"
+                        f"NaN,{str(self.status)}\n")
 
     def update_low_copy(self, check_blast, found_match):
         if check_blast and found_match:
@@ -105,6 +108,8 @@ class ConsensusObject:
         self.new_TE_terminal_repeat = "None"
         self.new_TE_blast_full_length_n = "NaN"
         self.cons_seq = "NaN"
+        self.cons_pfam = False
+        self.cons_evaluation = "Need_check"
 
     def set_new_length(self, new_length):
         self.new_length = int(new_length)
@@ -123,7 +128,16 @@ class ConsensusObject:
     # Store consensus sequence to object
     def set_cons_seq(self, cons_seq):
         self.cons_seq = cons_seq
-    
+
+    def set_cons_pfam(self, if_pfam):
+        self.cons_pfam = if_pfam
+
+    def set_cons_evaluation(self, level):
+        self.cons_evaluation = str(level)
+
+    def get_evaluation(self):
+        return self.cons_evaluation
+
     def get_consi_name(self):
         return self.consensus_name
     

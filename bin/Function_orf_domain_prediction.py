@@ -17,20 +17,23 @@ def check_and_download(directory, filename, url):
     :param url: str, url address will be used to download file when file isn't found in the given folder
     :return: boolean, True represent file don't found but successfully downloaded. False file is found
     """
-    # Check if the URL is valid
-    try:
-        response = requests.get(url, stream=True)
-        response.raise_for_status()  # Raise an exception if the GET request was unsuccessful
-    except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
-        click.echo(f"Failed to reach the server at {url}. Please check the URL.")
-        click.echo("Error:", str(e))
-        return
 
     file_path = os.path.join(directory, filename)
 
     # If Pfam database can't be found download it
     if not os.path.isfile(file_path):
-        click.echo(f"{filename} not found. Downloading... This might take some time. Please be patient")
+
+        click.echo(f"\n{filename} not found. Downloading... This might take some time. Please be patient\n")
+
+        # Check if the URL is valid
+        try:
+            response = requests.get(url, stream=True)
+            response.raise_for_status()  # Raise an exception if the GET request was unsuccessful
+        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
+            click.echo(f"\nFailed to reach the server at {url} for PFMA database downloading\n")
+            click.echo(f"Error:, {str(e)}")
+            return
+
         gz_file_path = file_path + ".gz"  # Give a defined name for the file will be downloaded
         urllib.request.urlretrieve(url, gz_file_path)
 
@@ -41,7 +44,7 @@ def check_and_download(directory, filename, url):
 
         # Delete gz file after extraction
         os.remove(gz_file_path)
-        click.echo(f"{filename} downloaded and unzipped.")
+        click.echo(f"\n{filename} is downloaded and unzipped.\n")
 
     # Check if download is successful
     if os.path.isfile(file_path):
@@ -50,6 +53,7 @@ def check_and_download(directory, filename, url):
         click.echo(f"{filename} found. Pfam can't be downloaded by TE Trimmer. Please check your internet connection "
                    f"or download Pfam by yourself")
         return False
+
 
 def check_pfam_index_files(directory):
     """
@@ -72,6 +76,7 @@ def check_pfam_index_files(directory):
                 pass
         return False
 
+
 def prepare_pfam_database(pfam_database_dir):
     pfam_hmm_url = r"https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz"
     pfam_dat_url = r"https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.dat.gz"
@@ -86,17 +91,25 @@ def prepare_pfam_database(pfam_database_dir):
                 try:
                     subprocess.run(hmmpress_pfam_command, check=True)
                 except FileNotFoundError:
-                    click.echo("hmmpress command not found. Please ensure that hmmpress is installed and "
-                               "available in your PATH.")
+                    click.echo("\nhmmpress command not found. Please ensure that hmmpress is installed and "
+                               "available in your PATH.\n")
+                    return False
+        else:
+            return False
+
     except Exception as e:
         click.echo(f"Error while downloading or preparing Pfam-A.hmm: {str(e)}")
-        return
+        return False
 
     try:
-        check_and_download(pfam_database_dir, r"Pfam-A.hmm.dat", pfam_dat_url)
+        if check_and_download(pfam_database_dir, r"Pfam-A.hmm.dat", pfam_dat_url):
+            return True
+        else:
+            return False
+
     except Exception as e:
         click.echo(f"Error while downloading Pfam-A.hmm.dat: {str(e)}")
-        return
+        return False
 
 
 def determine_sequence_direction(filename):

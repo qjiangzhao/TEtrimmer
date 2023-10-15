@@ -9,7 +9,7 @@ import pandas as pd
 
 class MultipleSequenceAlignmentCluster:
 
-    def __init__(self, input_file, output_dir, min_cluster_size=10, max_cluster=2):
+    def __init__(self, input_file, output_dir, min_cluster_size=10, max_cluster=False):
 
         self.input_file = input_file
         self.output_dir = output_dir
@@ -53,12 +53,12 @@ class MultipleSequenceAlignmentCluster:
                 best_cluster_assignments = cluster_assignments
                 best_cluster_num = n_clusters
 
+        # If the best silhouette score is smaller than 0.6, it isn't necessary to perform further clustering
         if best_silhouette_score < 0.6:
 
             self.if_cluster = False
 
         else:
-
             cluster_recording_list = []
 
             for i in range(best_cluster_num):
@@ -78,6 +78,10 @@ class MultipleSequenceAlignmentCluster:
 
             # Sort the filtered_groups by the number of lines in each group, in descending order
             self.filtered_cluster_records.sort(key=len, reverse=True)
+
+            # If max_cluster is set, retain only the top max_cluster clusters
+            if self.max_cluster:
+                self.filtered_cluster_records = self.filtered_cluster_records[:self.max_cluster]
 
     def subset_bed_file(self, input_file):
         """

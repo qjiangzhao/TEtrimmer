@@ -60,8 +60,10 @@ class CleanAndSelectColumn:
     def select_divergent_column(self, cluster_col_thr=500, dis_col_threshold=0.8):
         """
         Select distinct columns from multiple sequence alignment file, which will be used for clustering
-        :param threshold: num (0-1) default 0.8, Check if any nucleotide proportion is greater than threshold,
+        :param dis_col_threshold: num (0-1) default 0.8, Check if any nucleotide proportion is greater than threshold,
         then delete that column
+        :param cluster_col_thr: int default 500, if sequence length longer than cluster_col_thr * 20, the minimum
+        column number that required for clustering will be sequence_length * 0.05
         :return: if_need_cluster: boolean, decide if need clustering
         """
         if self.alignment_seq_num >= 90:

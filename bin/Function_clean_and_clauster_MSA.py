@@ -4,7 +4,7 @@ import Function_blast_extension_mafft
 
 
 def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, clean_column_threshold=0.08,
-                          min_length_num=10, cluster_num=2, cluster_col_thr=500):
+                          min_length_num=10, cluster_num=2, cluster_col_thr=500, muscle_ite_times=4, fast_mode=False):
     """
     This function will cluster multiple sequence alignment file
     :param input_file: str, The direct fasta file derived from bed file
@@ -19,7 +19,14 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     """
 
     # Align_sequences will return the absolute file path of alignment file
-    fasta_out_flank_mafft_file = Function_blast_extension_mafft.muscle_align(input_file, output_dir)
+    if fast_mode:
+        muscle_ite_times = 2
+    try:
+        fasta_out_flank_mafft_file = Function_blast_extension_mafft.muscle_align(input_file, output_dir,
+                                                                                 ite_times=muscle_ite_times)
+    except Exception as e:
+        fasta_out_flank_mafft_file = False
+        pass
 
     # When muscle goes wrong, use mafft
     if not fasta_out_flank_mafft_file:
@@ -58,16 +65,15 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
 
             """
             Test if cluster number is 0, if so skip this sequence
-            If cluster is 0, that means no cluster has line numbers greater than "min_lines". In this case, it will be hard
-            to still use multiple sequence alignment method to define consensus sequence.
-            that isn't to say this won't be a TE, but with less copy numbers.
+            If cluster is 0, that means no cluster has line numbers greater than "min_lines". In this case, 
+            it will be hard to still use multiple sequence alignment method to define consensus sequence.
+            that isn't to say this won't be a TE, but with less copy numbers. Low copy TE will also be checked later
             """
             if len(cluster_MSA_object.filtered_cluster_records) == 0:
 
                 return False
 
             else:
-
                 # Subset bed file and return a list contain all clustered bed absolute files
                 cluster_bed_files_list = cluster_MSA_object.subset_bed_file(bed_file)
                 return cluster_bed_files_list

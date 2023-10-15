@@ -5,7 +5,6 @@ from datetime import timedelta, datetime
 import multiprocessing as mp
 import click
 import concurrent.futures
-import shutil
 import json
 import pandas as pd
 
@@ -18,12 +17,11 @@ from Class_bed_filter import BEDFile
 from Function_def_boundary_and_crop import find_boundary_and_crop
 from Class_TE_aid import check_self_alignment
 from Function_clean_and_clauster_MSA import clean_and_cluster_MSA
-from Class_orf_domain_prediction import prepare_pfam_database
+from Function_orf_domain_prediction import prepare_pfam_database
 
 
 # Define a function to check progress file, which will be used for continue analysis
 def check_progress_file(progress_file_path):
-
     # Read the progress file into a pandas DataFrame
     df = pd.read_csv(progress_file_path)
 
@@ -65,8 +63,9 @@ def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=
     click.echo(f'\r{prefix} |{bar}| {iteration}/{total} = {percent}% {suffix}', nl=False)
 
     # Print New Line on Complete
-    if iteration == total: 
+    if iteration == total:
         click.echo()
+
 
 #####################################################################################################
 # Code block: Define analyze_sequence function
@@ -83,8 +82,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                      crop_end_gap_win, start_patterns, end_patterns, output_dir, pfam_dir, mini_orf,
                      single_fasta_n, hmm, check_extension_win, keep_intermediate, progress_file,
                      classify_unknown, classify_all, final_con_file, final_unknown_con_file,
-                     final_classified_con_file, low_copy_dir):
-
+                     final_classified_con_file, low_copy_dir, fast_mode, error_files):
     #####################################################################################################
     # Code block: Elongate query sequence when it is too short
     #####################################################################################################
@@ -126,7 +124,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
         # run blast for each single fasta file and return a bed file absolute path
         bed_out_file_dup, blast_hits_count, blast_out_file = blast(seq_obj, seq_file, genome_file, MSA_dir,
-                                                                             min_length=min_blast_len)
+                                                                   min_length=min_blast_len)
 
     except Exception as e:
         click.echo(f"Error while running blast for sequence: {seq_name}. Main Error: {str(e)}")
@@ -194,7 +192,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         cluster_MSA_result = clean_and_cluster_MSA(fasta_out_flank_file, bed_out_filter_file, MSA_dir,
                                                    clean_column_threshold=0.08,
                                                    min_length_num=min_seq_num, cluster_num=max_cluster_num,
-                                                   cluster_col_thr=100)
+                                                   cluster_col_thr=100, fast_mode=fast_mode)
     except Exception as e:
         click.echo(
             f"Error during processing lines, extracting fasta, or clustering MSA for sequence: {seq_name}. Error: {str(e)}")
@@ -228,15 +226,15 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         # Cluster True means not necessary to cluster MSA, perform find_boundary_and_crop directly
         elif cluster_MSA_result is True:
             find_boundary_result = find_boundary_and_crop(
-                    bed_out_filter_file, genome_file, MSA_dir, pfam_dir, seq_obj, hmm,
-                    classify_all, classify_unknown,
-                    cons_threshold=cons_thr, ext_threshold=ext_thr,
-                    ex_step_size=ex_step, max_extension=max_extension,
-                    gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
-                    crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
-                    crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
-                    start_patterns=start_patterns, end_patterns=end_patterns, mini_orf=mini_orf,
-                    define_boundary_win=check_extension_win
+                bed_out_filter_file, genome_file, MSA_dir, pfam_dir, seq_obj, hmm,
+                classify_all, classify_unknown, error_files,
+                cons_threshold=cons_thr, ext_threshold=ext_thr,
+                ex_step_size=ex_step, max_extension=max_extension,
+                gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
+                crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
+                crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
+                start_patterns=start_patterns, end_patterns=end_patterns, mini_orf=mini_orf,
+                define_boundary_win=check_extension_win, fast_mode=fast_mode
             )
             if find_boundary_result == "Short_sequence":
                 click.echo(f"\n{seq_name} is skipped due to too short length\n")
@@ -265,21 +263,21 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                                                                  clean_column_threshold=0.08,
                                                                  min_length_num=min_seq_num,
                                                                  cluster_num=max_cluster_num,
-                                                                 cluster_col_thr=100)
+                                                                 cluster_col_thr=100, fast_mode=fast_mode)
                 # inner_cluster_MSA_result is false means this cluster sequence number is too less
                 if inner_cluster_MSA_result is False:
                     continue
                 elif inner_cluster_MSA_result is True:  # Means don't need to cluster
 
                     inner_find_boundary_result = find_boundary_and_crop(
-                            cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
-                            hmm, classify_all, classify_unknown, cons_threshold=cons_thr, ext_threshold=ext_thr,
-                            ex_step_size=ex_step, max_extension=max_extension,
-                            gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
-                            crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
-                            crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
-                            start_patterns=start_patterns, end_patterns=end_patterns,
-                            mini_orf=mini_orf, define_boundary_win=check_extension_win)
+                        cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
+                        hmm, classify_all, classify_unknown, error_files, cons_threshold=cons_thr,
+                        ext_threshold=ext_thr, ex_step_size=ex_step, max_extension=max_extension,
+                        gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
+                        crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
+                        crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
+                        start_patterns=start_patterns, end_patterns=end_patterns,
+                        mini_orf=mini_orf, define_boundary_win=check_extension_win, fast_mode=fast_mode)
 
                     if inner_find_boundary_result == "Short_sequence":
                         continue
@@ -293,15 +291,15 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
                     for j in range(len(inner_cluster_bed_files_list)):
                         inner_inner_find_boundary_result = find_boundary_and_crop(
-                                inner_cluster_bed_files_list[j], genome_file, MSA_dir,
-                                pfam_dir, seq_obj, hmm, classify_all, classify_unknown,
-                                cons_threshold=cons_thr, ext_threshold=ext_thr,
-                                ex_step_size=ex_step, max_extension=max_extension,
-                                gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
-                                crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
-                                crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
-                                start_patterns=start_patterns, end_patterns=end_patterns,
-                                mini_orf=mini_orf, define_boundary_win=check_extension_win)
+                            inner_cluster_bed_files_list[j], genome_file, MSA_dir,
+                            pfam_dir, seq_obj, hmm, classify_all, classify_unknown, error_files,
+                            cons_threshold=cons_thr, ext_threshold=ext_thr,
+                            ex_step_size=ex_step, max_extension=max_extension,
+                            gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
+                            crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
+                            crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
+                            start_patterns=start_patterns, end_patterns=end_patterns,
+                            mini_orf=mini_orf, define_boundary_win=check_extension_win, fast_mode=fast_mode)
                         if inner_inner_find_boundary_result == "Short_sequence":
                             continue
                         elif inner_inner_find_boundary_result:
@@ -340,7 +338,6 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
     # If all this sequence is finished remove all files contain this name
     if not keep_intermediate:
-
         remove_files_with_start_pattern(MSA_dir, seq_name)
         remove_files_with_start_pattern(classification_dir, seq_name)
 
@@ -354,6 +351,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
     rest_sequence = single_fasta_n - processed_count
 
     printProgressBar(processed_count, single_fasta_n, prefix='Progress:', suffix='Complete', length=50)
+
 
 #####################################################################################################
 # Code block: Import json species_config file and define the default parameters
@@ -386,6 +384,8 @@ with open(species_config_path, "r") as config_file:
               help='Generate HMM files for each consensus sequences.')
 @click.option('--keep_intermediate', default=False, is_flag=True,
               help='Keep all raw files. WARNING: Many files will be produced.')
+@click.option('--fast_mode', default=False, is_flag=True,
+              help='Use less running time but lower accuracy and specificity')
 @click.option('--pfam_dir', default=None, type=str,
               help="Pfam database directory. Leave this option when you don't have Pfam database, "
                    "TE Trimmer will download automatically")
@@ -461,7 +461,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
          top_mas_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ex_step,
          max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, mini_orf, species, check_extension_win, merge, genome_anno, hmm,
-         keep_intermediate, classify_unknown, classify_all):
+         keep_intermediate, fast_mode, classify_unknown, classify_all):
     """
         ##########################################################################################
 
@@ -481,6 +481,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
         RWTH Aachen University
 
+        Many thanks to Dr. Stefan Kusch
+
         ##########################################################################################
 
         python ./path_to_TE_Trimmer_bin/main.py -i <TE_consensus_file> -o <genome_file>
@@ -493,9 +495,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     """
 
     start_time = datetime.now()
-    print(f"\nTE Trimmer started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
-          f"Note: For PC user, 10GB RAM is required for 6 threads.\n"
-          f"      For cluster user, 200GB RAM is required for 40 threads")
+    print(f"\nTE Trimmer started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
 
     #####################################################################################################
     # Code block: Change permissions of Aliview and TE_Aid
@@ -542,6 +542,13 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     if max_cluster_num is None:
         max_cluster_num = default_values.get("max_cluster_num")
+
+        # Convert string "False" to boolean
+        if max_cluster_num == "False":
+            max_cluster_num = False
+
+        if fast_mode:
+            max_cluster_num = 2
 
     if ext_thr is None:
         ext_thr = default_values.get("ext_thr")
@@ -596,7 +603,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     # Check if output directory is empty when --continue_analysis is False
     if os.listdir(output_dir) and not continue_analysis:
-
         click.echo(
             f"WARNING: The output directory {output_dir} is not empty. Please empty your output directory or "
             f"choose another empty directory\n")
@@ -647,9 +653,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Check and create progress_file if it doesn't exist
     if not os.path.exists(progress_file):
         with open(progress_file, 'a') as f:
-
             f.write("input_name,consensus_name,blast_hit_n,cons_MSA_seq_n,cons_full_blast_n,input_length,cons_length,"
-                    "input_TE_type,reclassified_type,terminal_repeat,low_copy,status\n")
+                    "input_TE_type,reclassified_type,terminal_repeat,low_copy,evaluation,status\n")
 
     # If pfam database isn't provided, create pfam database at TE Trimmer software folder,
     # the database will be downloaded into there.
@@ -659,13 +664,32 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         pfam_dir = os.path.join(os.path.dirname(bin_py_path), "pfam_database")
         if not os.path.exists(pfam_dir):
             os.mkdir(pfam_dir)
+    try:
+        if_pfam = prepare_pfam_database(pfam_dir)
 
-    prepare_pfam_database(pfam_dir)
+        if not if_pfam:  # Check if if_pfam is False
+            raise ValueError("PFAM database preparation failed.")  # Raise an exception to be caught below
+    except Exception as e:
+        click.echo(f"Note: Can't download PFAM database from internet, please use your own PFAM database\n"
+                   f"For example: --pfam_dir <your_PFAM_directory>\n"
+                   f"Your PFAM directory should contain: \n"
+                   f"Pfam-A.hmm\n"
+                   f"Pfam-A.hmm.h3f\n"
+                   f"Pfam-A.hmm.h3m\n"
+                   f"Pfam-A.hmm.dat\n"
+                   f"Pfam-A.hmm.h3i\n"
+                   f"Pfam-A.hmm.h3p\n\n"
+                   f"PFAM prediction will be used to determine the direction of TEs, it is necessary to make it run\n")
+        return
 
-    # consensus file
+    # Define consensus files. temp files will be used for the final RepeatMasker classification
     final_con_file = os.path.join(output_dir, "TE_Trimmer_consensus.fasta")
     final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
     final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classifed_consensus.fasta")
+
+    # Define error files to store not mandatory function errors including RepeatClassified classification,
+    # RepeatMasker classification, PFAM scanning, muscle alignment
+    error_files = os.path.join(MSA_dir, "error_file.txt")
 
     #####################################################################################################
     # Code block: Merge input file and generate single fasta file
@@ -681,7 +705,14 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
             # Set lower identity threshold for the query, this can increase sensitive
             # Merge step will remove single LTR but nested TEs can mask other TEs
-            cd_hit_est(input_file, merge_output, identity_thr=0.9, aL=0, aS=0.85, s=0, thread=num_threads)
+            cd_iden_thr = 0.9
+            cd_alin_s = 0.85
+
+            if fast_mode:
+                cd_iden_thr = 0.8
+                cd_alin_s = 0.8
+
+            cd_hit_est(input_file, merge_output, identity_thr=cd_iden_thr, aL=0, aS=cd_alin_s, s=0, thread=num_threads)
 
             # Convert input_file to merged input_file
             input_file = merge_output
@@ -705,7 +736,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     else:
         # Check if the can perform continue analysis
         if not os.listdir(single_file_dir):
-            
+
             click.echo("\nWARNING: TE Trimmer can't do continue analysis, please make sure the output directory is same"
                        " with your previous analysis.\n")
             return
@@ -722,8 +753,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
             # Filter out already complete sequences from the total sequences
             seq_list = [seq for seq in seq_list if seq.name not in complete_sequences]
-            click.echo(f"\n{single_fasta_n - len(seq_list)} sequences has been processed previously. "
-                       f"TE Trimmer will continue to analyze based on previous results\n")
+            click.echo(f"\n{single_fasta_n - len(seq_list)} sequences has been processed previously.\n")
 
     #####################################################################################################
     # Code block: Enable multiple threads
@@ -734,15 +764,15 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
          max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, single_fasta_n, hmm,
          check_extension_win, keep_intermediate, progress_file, classify_unknown, classify_all,
-         final_con_file, final_unknown_con_file, final_classified_con_file, low_copy_dir
+         final_con_file, final_unknown_con_file, final_classified_con_file, low_copy_dir, fast_mode, error_files
          ) for seq in seq_list]
 
     # Using a ProcessPoolExecutor to run the function in parallel
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_threads) as executor:
-         executor.map(analyze_sequence_helper, analyze_sequence_params)
+        executor.map(analyze_sequence_helper, analyze_sequence_params)
     # multiprocessing
-    #with mp.Pool(processes=10) as p:
-        #p.starmap(analyze_sequence, analyze_sequence_params)
+    # with mp.Pool(processes=10) as p:
+    # p.starmap(analyze_sequence, analyze_sequence_params)
 
     #####################################################################################################
     # Code block: Check if all sequences are finished
@@ -768,6 +798,10 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Code block: Finish classifying unknown consensus file and writing sequences back to consensus file
     #####################################################################################################
 
+    # Suppress RepeatMasker final classification under fast_mode
+    if fast_mode:
+        classified_pro = 0.01
+
     # Final RepeatMasker classification isn't necessary, skip it when errors are there
     try:
         if 0.3 <= classified_pro < 0.99:
@@ -777,17 +811,20 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             if os.path.exists(final_unknown_con_file) and os.path.exists(final_classified_con_file):
 
                 os.makedirs(temp_repeatmasker_dir, exist_ok=True)
-                classification_out = repeatmasker(final_unknown_con_file, final_classified_con_file, temp_repeatmasker_dir,
+                classification_out = repeatmasker(final_unknown_con_file, final_classified_con_file,
+                                                  temp_repeatmasker_dir,
                                                   thread=num_threads, classify=True)
 
                 if classification_out:
 
-                    repeatmasker_out = os.path.join(temp_repeatmasker_dir, "temp_TE_Trimmer_unknown_consensus.fasta.out")
+                    repeatmasker_out = os.path.join(temp_repeatmasker_dir,
+                                                    "temp_TE_Trimmer_unknown_consensus.fasta.out")
                     reclassified_dict = repeatmasker_output_classify(repeatmasker_out, progress_file,
                                                                      min_iden=60, min_len=80, min_cov=0.5)
                     if reclassified_dict:
 
-                        click.echo(f"{len(reclassified_dict)} TE elements were re-classified by final classification module")
+                        click.echo(
+                            f"{len(reclassified_dict)} TE elements were re-classified by final classification module")
 
                         # Update final consensus file
                         rename_cons_file(final_con_file, reclassified_dict)
@@ -800,7 +837,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                 click.echo("One of the consensus file does not exist, RepeatMasker reclassify does not run, "
                            "This won't affect the final consensus sequences.")
     except Exception as e:
-        click.echo("The final TE classification is skipped, this won't affect the TE consensus result.")
+        with open(error_files, "a") as f:
+            f.write("Final RepeatMasker classification is wrong.\n" + str(e) + '\n')
+        click.echo("Note: The final TE classification is skipped, this won't affect the TE consensus result.")
         pass
 
     #####################################################################################################
@@ -809,7 +848,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     cd_hit_merge_output_final = None
     if os.path.exists(final_con_file):
-
         # Do cd-hit-est merge when finish all sequence
         cd_hit_merge_output_final = os.path.join(output_dir, "TE_Trimmer_consensus_merged.fasta")
         # According to 80-80-80 rule to filter final consensus sequences
@@ -822,22 +860,29 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     if not os.listdir(classification_dir):
         os.rmdir(classification_dir)
 
-    # If 95% of the query sequences are processed, RepeatMasker is allowed to be performed whole genome annotation
-    if processed_count >= single_fasta_n*0.9:
-        # Run RepeatMasker
-        if genome_anno and cd_hit_merge_output_final:
-            click.echo("TE Trimmer is performing whole genome TE annotation by RepeatMasker")
-            # make a new folder for RepeatMasker output
-            repeatmasker_dir = os.path.join(output_dir, "RepeatMasker_result")
-            if not os.path.exists(repeatmasker_dir):
-                os.mkdir(repeatmasker_dir)
-            genome_anno_result = \
-                repeatmasker(genome_file, cd_hit_merge_output_final, repeatmasker_dir, thread=num_threads)
-            if genome_anno_result:
-                click.echo("Finished whole genome TE annotation by RepeatMasker")
+    try:
+        # If 95% of the query sequences are processed, RepeatMasker is allowed to be performed whole genome annotation
+        if processed_count >= single_fasta_n * 0.9:
+            # Run RepeatMasker
+            if genome_anno and cd_hit_merge_output_final:
+                click.echo("TE Trimmer is performing whole genome TE annotation by RepeatMasker")
+                # make a new folder for RepeatMasker output
+                repeatmasker_dir = os.path.join(output_dir, "RepeatMasker_result")
+                if not os.path.exists(repeatmasker_dir):
+                    os.mkdir(repeatmasker_dir)
+                genome_anno_result = \
+                    repeatmasker(genome_file, cd_hit_merge_output_final, repeatmasker_dir, thread=num_threads)
+                if genome_anno_result:
+                    click.echo("Finished whole genome TE annotation by RepeatMasker")
 
-    else:
-        click.echo("Less than 90% of the query sequences processed, TE Trimmer can't perform whole genome TE annotation")
+        else:
+            click.echo(
+                "Less than 90% of the query sequences processed, TE Trimmer can't perform whole genome TE annotation")
+    except Exception as e:
+        with open(error_files, "a") as f:
+            f.write("Genome TE annotation error.\n" + str(e) + '\n')
+            click.echo("Final genome annotation can't be performed. This won't affect the TE consensus library.")
+            pass
 
     end_time = datetime.now()
     duration = end_time - start_time
@@ -845,15 +890,15 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Remove microseconds from the duration
     duration_without_microseconds = timedelta(days=duration.days, seconds=duration.seconds)
 
-    #if not keep_intermediate:
-        # Remove all single files when all the sequences are processed
-        #shutil.rmtree(single_file_dir)
+    # if not keep_intermediate:
+    # Remove all single files when all the sequences are processed
+    # shutil.rmtree(single_file_dir)
 
     print(f"\nTE Trimmer finished at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
     print(f"TE Trimmer runtime was {duration_without_microseconds}")
     # printProgressBar(single_fasta_n, single_fasta_n, prefix = 'Progress:', suffix = 'Sequences Processed', length = 50)
-    
-        
+
+
 # The following is necessary to make the script executable, i.e., python myscript.py.
 if __name__ == '__main__':
     main()

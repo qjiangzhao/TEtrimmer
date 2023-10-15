@@ -18,7 +18,7 @@ from Class_select_ditinct_columns import CleanAndSelectColumn
 from Class_MSA_plot import MSAPainter
 from Class_check_start_end import StartEndChecker
 from Class_TE_aid import TEAid
-from Class_orf_domain_prediction import PlotPfam, determine_sequence_direction
+from Function_orf_domain_prediction import PlotPfam, determine_sequence_direction
 from Function_clean_and_clauster_MSA import clean_and_cluster_MSA
 import Cialign_plot
 
@@ -45,10 +45,10 @@ def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=16, win
 
 
 def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj, hmm, classify_all, classify_unknown,
-                           cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000, max_extension=7000,
+                           error_files, cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000, max_extension=7000,
                            gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=16, crop_end_win=20,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
-                           mini_orf=200, define_boundary_win=150):
+                           mini_orf=200, define_boundary_win=150, fast_mode=False):
     """
     :param bed_file: str, bed file directory
     :param genome_file: str, genome directory
@@ -87,11 +87,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     left_ex = ex_step_size
     right_ex = ex_step_size
     final_MSA_consistent = False
-    intact_loop_times = 1
+    intact_loop_times = 0
 
     # intact_loop_times is the iteration numbers, <3 means iterate 2 times.
     while (if_left_ex or if_right_ex) and (left_ex <= max_extension and right_ex <= max_extension) \
-            and not final_MSA_consistent and intact_loop_times < 4:
+            and not final_MSA_consistent and intact_loop_times < 3:
 
         # bedtools will makesure the extension won't excess the maximum length of that chromosome
         bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, left_ex, right_ex)
@@ -144,8 +144,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         if (not if_left_ex and not if_right_ex) or left_ex == max_extension or right_ex == max_extension:
 
             # Remove gap block with similarity check
-            # gap_threshold=0.8 means if gap proportion is greater than 80% this column will be regarded as gap column directly
-            # without further nucleotide similarity check
+            # gap_threshold=0.8 means if gap proportion is greater than 80% this column will be regarded as
+            # gap column directly without further nucleotide similarity check
             bed_fasta_mafft_gap_block_sim = remove_gaps_block_with_similarity_check(
                 bed_fasta_mafft_with_gap_column_clean, output_dir, gap_threshold=0.8, simi_check_gap_thre=gap_threshold,
                 similarity_threshold=gap_nul_thr, conservation_threshold=0.5)
@@ -166,47 +166,46 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
 
             # Gaps are removed again after crop end process
-            cropped_alignment_output_file_no_gap, column_mapping = crop_end_and_clean_column(bed_fasta_mafft_boundary_crop,
-                                                                                               output_dir,
-                                                                                               crop_end_threshold=crop_end_thr,
-                                                                                               window_size=crop_end_win,
-                                                                                               gap_threshold=0.8)
+            cropped_alignment_output_file_no_gap, column_mapping = crop_end_and_clean_column(
+                bed_fasta_mafft_boundary_crop, output_dir, crop_end_threshold=crop_end_thr,
+                window_size=crop_end_win, gap_threshold=0.8)
 
             # Crop end can't define the final boundary, use DefineBoundary again to define start position
-            cropped_boundary = DefineBoundary(cropped_alignment_output_file_no_gap, threshold=0.8, check_window=3, max_X=0)
+            cropped_boundary = DefineBoundary(cropped_alignment_output_file_no_gap, threshold=0.8,
+                                              check_window=3, max_X=0)
             cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
 
             #####################################################################################################
             # Code block: Check the consistency of the final MSA
             #####################################################################################################
-            final_MSA_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file, output_dir,
-                                                          clean_column_threshold=0.08,
-                                                          min_length_num=10, cluster_num=2, cluster_col_thr=250
-                                                          )
 
-            # False means the sequences number in each cluster is smaller than minimum number, normally 10
-            # True means not necessary to do further cluster
-            if final_MSA_consistency is False or final_MSA_consistency is True:
+            if not fast_mode:
 
-                final_MSA_consistent = True
+                final_MSA_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file, output_dir,
+                                                              clean_column_threshold=0.08, min_length_num=10,
+                                                              cluster_num=2, cluster_col_thr=250, fast_mode=fast_mode
+                                                              )
 
+                # False means the sequences number in each cluster is smaller than minimum number, normally 10
+                # True means not necessary to do further cluster
+                if final_MSA_consistency is False or final_MSA_consistency is True:
 
+                    final_MSA_consistent = True
 
-            # else means that further clustering is required
-            else:
+                # else means that further clustering is required
+                else:
+                    # Only use the first cluster for further analysis, which contains the most sequences
+                    new_bed_file = final_MSA_consistency[0]
+                    bed_file = new_bed_file
 
-                # Only use the first cluster for further analysis, which contains the most sequences
-                new_bed_file = final_MSA_consistency[0]
-                bed_file = new_bed_file
+                    intact_loop_times = intact_loop_times + 1
 
-                intact_loop_times = intact_loop_times + 1
+                    # Reset extension parameters to enable whole while loop
+                    if_left_ex = True
+                    if_right_ex = True
 
-                # Reset extension parameters to enable whole while loop
-                if_left_ex = True
-                if_right_ex = True
-
-                left_ex = 0
-                right_ex = 0
+                    left_ex = 0
+                    right_ex = 0
 
     #####################################################################################################
     # Code block: Check if the final MSA contains too many ambiguous letter "N"
@@ -252,7 +251,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     #####################################################################################################
     # Code block: Generate MSA for CIAlign plot
     #####################################################################################################
-
 
     # Get 300 columns left the start point
     cropped_boundary_manual_MSA_left = select_window_columns(
@@ -321,6 +319,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     # "run_getorf()" function will return True when any ORF are detected. Otherwise, it will be False
     orf_domain_plot = None
+    if_pfam_domain = False
     if orf_domain_plot_object.run_getorf():
 
         # "run_pfam_scan()" will return True when pfam domains are found, otherwise it will return False
@@ -521,6 +520,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj)
     consi_obj.set_blast_full_n(blast_full_length_n)
 
+    # Store pfam prediction to consi_obj
+    if if_pfam_domain:
+        consi_obj.set_cons_pfam(if_pfam_domain)
+
     #####################################################################################################
     # Code block: Run RepeatClassifier in RepeatModeler to classify TE_trimmer consensus sequences
     #####################################################################################################
@@ -530,27 +533,39 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Classify all elements by RepeatClassify when classify_all is true
     # Rename consensus when classify_unknown is true and (the final consensus length is much longer or
     # shorter than the query sequence or TE type is unknown)
-    if classify_all or (
-            classify_unknown and (seq_obj.check_unknown() or abs(consi_obj.new_length - seq_obj.old_length)) >= 1000):
+    # fast_mode will supress RepeatClassifier step
+    # Classification isn't mandatory, skip this step when error is encountered
+    try:
+        if fast_mode:
+            classify_all = False
+            classify_unknown = False
 
-        # Define different folder for each sequence
-        classification_seq_folder = os.path.join(classification_dir, uniq_seq_name)
-        os.makedirs(classification_seq_folder, exist_ok=True)
+        if classify_all or (
+                classify_unknown and (seq_obj.check_unknown() or abs(consi_obj.new_length - seq_obj.old_length)) >= 1000):
 
-        # Define consensus file path used for classification
-        classification_seq_file = os.path.join(classification_seq_folder, uniq_seq_name)
+            # Define different folder for each sequence
+            classification_seq_folder = os.path.join(classification_dir, uniq_seq_name)
+            os.makedirs(classification_seq_folder, exist_ok=True)
 
-        with open(classification_seq_file, "w") as f:
+            # Define consensus file path used for classification
+            classification_seq_file = os.path.join(classification_seq_folder, uniq_seq_name)
 
-            # RepeatClassifier input cannot be single sequence, add >Add to enable to run RepeatClassifier
-            f.write(">" + uniq_seq_name + "\n" + sequence + "\n" + ">Dummy" + "\n" + "T" + "\n")
+            with open(classification_seq_file, "w") as f:
 
-        TE_type = classify_single(classification_seq_file)
+                # RepeatClassifier input cannot be single sequence, add >Add to enable to run RepeatClassifier
+                f.write(">" + uniq_seq_name + "\n" + sequence + "\n" + ">Dummy" + "\n" + "T" + "\n")
 
-        # Only update new_TE_type when classify_single is successfully
-        if TE_type:
-            # Set TE_type after RepeatClassifier
-            consi_obj.set_new_TE_type(TE_type)
+            TE_type = classify_single(classification_seq_file)
+
+            # Only update new_TE_type when classify_single is successfully
+            if TE_type:
+                # Set TE_type after RepeatClassifier
+                consi_obj.set_new_TE_type(TE_type)
+    except Exception as e:
+        with open(error_files, "a") as f:
+            f.write("RepeatClassifier classification error\n" + str(e) + '\n')
+        click.echo("Note: Classification isn't working. This won't affect final consensus sequences.")
+        pass
 
     # Update final con_TE_type. get_TE_type_for_file will evaluate if TE_type is Unknown. If so, use the
     # original TE classification name
@@ -604,5 +619,33 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Write all consensus sequence to final_cons_file.
     with open(final_con_file, "a") as f:
         f.write(">" + uniq_seq_name + "#" + updated_TE_type + "\n" + sequence + "\n")
-        
+
+    ###############################################################################################################
+    # Code block: Output evaluation (perfect, good, intermediate, need_proof_annotation)
+    ###############################################################################################################
+
+    #               Terminal_repeat    Classified    MSA_sequence_number    Blast_full_length_number    if_PFAM
+    # Perfect:      True               True          >=30                   >=5                         True
+    # Good:         True               Not_required  >=25                   >=3                         Not_required
+    # Intermediate  Not_required       Not_required  >=20                   >=3                         Not_required
+    # Need check    Not_required       Not_required  Not_required           Not_required                Not_required
+    if (consi_obj.new_TE_terminal_repeat != "None" and
+            consi_obj.new_TE_type != "NaN" and "unknown" not in consi_obj.new_TE_type.lower() and
+            consi_obj.new_TE_MSA_seq_n >= 30 and
+            consi_obj.new_TE_blast_full_length_n >= 5 and
+            consi_obj.cons_pfam):
+        consi_obj.set_cons_evaluation("Perfect")
+
+    elif (consi_obj.new_TE_terminal_repeat != "None" and
+          consi_obj.new_TE_MSA_seq_n >= 25 and
+          consi_obj.new_TE_blast_full_length_n >= 3):
+        consi_obj.set_cons_evaluation("Good")
+
+    elif (consi_obj.new_TE_MSA_seq_n >= 20 and
+          consi_obj.new_TE_blast_full_length_n >= 3):
+        consi_obj.set_cons_evaluation("Intermediate")
+
+    else:
+        consi_obj.set_cons_evaluation("Need_check")
+
     return files_moved_successfully
