@@ -54,10 +54,6 @@ Options:
                  extend the multiple sequence alignment to determine the limits of the consensus sequence. The lower
                  the value of <ext_thr>, the longer the extensions on both ends. Reduce <ext_thr> if TE Trimmer fails
                  to determine the correct ends of repeat elements. Default: 0.7
-Sequence identity threshold used for extending the consensus sequence at each position (column)
-                 than <ext_thr> will be assigned the value X. Lower thresholds allow for longer extensions on each side of the
-                 multiple sequence alignment. Any position below this threshold will be assigned the value <X> in the
-                 consensus sequence. Default: 0.7
  --ext_step INTEGER        Number of nucleotides to be added to the left and right ends of the multiple sequence
                  alignment. TE_Trimmer will iteratively add <ex_step number> of nucleotides until
                  finding the boundary. Default: 1000
