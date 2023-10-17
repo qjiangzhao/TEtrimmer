@@ -22,32 +22,33 @@ TE Trimmer is designed to replace transposable element (TE) manual curation. Two
 
 Options:
 ```
- -i, --input_file TEXT      TE consensus fasta file. Use the output of RepeatModeler, EDTA, or REPET et al.
+ -i, --input_file STRING      Path to TE consensus file (FASTA format). Use the output from RepeatModeler, EDTA, or REPET et al.
                  [required]
- -g, --genome_file TEXT     Genome file path. [required]
- -o, --output_dir TEXT      Output directory. Default: current directory.
+ -g, --genome_file STRING     Path to genome FASTA file. [required]
+ -o, --output_dir STRING      Output directory. Default: current working directory.
  -s, --species [fungi|plant|animal|powdery_mildew]
-                 Select the species for which you want to run TE Trimmer. [required]
- --continue_analysis       Continue to analysis based on interrupted results.
- --merge             Merge input file to remove duplicate sequences.
- --genome_anno          Perform genome TE annotation based on TE Trimmer curated database at the end.
- --hmm              Generate HMM files for each consensus sequences.
+                 Select the type of organism for which you want to run TE Trimmer. [required]
+ --continue_analysis       Continue analysis after interruption.
+ --dedup             Remove duplicate sequences in input file.
+ --genome_anno          Perform genome TE annotation using the TE Trimmer curated database. Requires RepeatMasker.
+ --hmm              Generate HMM files for each consensus sequence.
  --keep_intermediate       Keep all raw files. WARNING: Many files will be produced.
- --fast_mode           Use less running time but lower accuracy and specificity
- --pfam_dir TEXT         Pfam database directory. Leave this option when you don't have Pfam database, TE
-                 Trimmer will download automatically
+ --fast_mode           Reduce running time but at the cost of lower accuracy and specificity.
+ --pfam_dir STRING         PFAM database directory. Omit this option if you do not have a local PFAM database - TE
+                 Trimmer will download the database automatically in this case.
  --cons_thr FLOAT        Threshold used for the final consensus sequence generation. Default: 0.8
- --max_msa_lines INTEGER     Set the maximum sequences number for multiple sequence alignment. Default: 100
- --top_mas_lines INTEGER     When the sequence number of multiple sequence alignment (MSA) is greater than
-                 "max_mas_lines". It will order sequences by length and choose "top_msa_lines" number
-                 of sequences. Then randomly choose the rest number of sequences Default: 100
+ --max_msa_lines INTEGER     Set the maximum sequence number for multiple sequence alignment. Default: 100
+ --top_msa_lines INTEGER     When the sequence number of multiple sequence alignment (MSA) is greater than
+                 <max_msa_lines>, TE Trimmer will sort sequences by length and choose <top_msa_lines> number
+                 of sequences. Then, TE Trimmer will randomly select sequences from all remaining BLAST hits until
+                 <max_msa_lines> sequences are found for the multiple sequence alignment. Default: 100
  --min_seq_num INTEGER      The minimum sequence number for each multiple sequence alignment. Default: 10
- --min_blast_len INTEGER     The minimum hit sequence length for blast. Default: 150
+ --min_blast_len INTEGER     The minimum sequence length for BLAST hits. Default: 150
  --max_cluster_num INTEGER    The maximum cluster number for each multiple sequence alignment. Each multiple
                  sequence alignment can be divided into different clusters. TE Trimmer will sort
-                 cluster by sequence number and choosethe top --max_cluster_num of clusters for the
+                 clusters by sequence number and choose the top --max_cluster_num of clusters for
                  further analysis. Default: 2
- --ext_thr FLOAT         threshold used for define the extension extent. The smaller number means it become
+ --ext_thr FLOAT         Threshold used for defining the BLAST match extension extent. The smaller number means it become
                  easier to have a final longer extension for each side of the sequence. Default: 0.7
  --ex_step INTEGER        Number of nucleotides will be added to the left or right side of multiple sequence
                  alignment. TE_Trimmer will iteratively add --ex_step number of nucleotide until
