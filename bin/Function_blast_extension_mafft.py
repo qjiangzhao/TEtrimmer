@@ -82,11 +82,11 @@ def check_database(genome_file):
             print(f"Error check_database {error_output_fai}\n")
 
 
-def blast(seq_obj, seq_file, genome_file, output_dir, min_length=150):
+def blast(seq_file, genome_file, output_dir, min_length=150, seq_obj=None):
     """
     Runs blastn and saves the results in a bed file.
 
-    :param input_file: str, path to input fasta file
+    :param seq_file: str, path to input fasta file
     :param genome_file: str, path to genome file
     :param output_dir: str, prefix for output files
     :param min_length: num default 150, minimum alignment length
@@ -124,9 +124,10 @@ def blast(seq_obj, seq_file, genome_file, output_dir, min_length=150):
 
         if error_output_awk:
             print(f"Error blast {error_output_awk}")
-        
-        # Update blast hit number to sequence object
-        seq_obj.update_blast_hit_n(blast_hits_count)
+
+        # Update blast hit number to sequence object when seq_obj is supplied
+        if seq_obj is not None:
+            seq_obj.update_blast_hit_n(blast_hits_count)
         
     # if low copy number, check coverage, length and identity
     return bed_out_file, blast_hits_count, blast_out_file
@@ -917,8 +918,6 @@ def change_permissions_recursive(input_dir, mode):
 
 def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9, thread=10):
 
-    click.echo("cd-hit-est is running\n")
-
     command = [
         "cd-hit-est",
         "-i", input_file,
@@ -942,7 +941,6 @@ def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9,
         return False
 
     else:
-        click.echo("cd-hit-est is finished")
         return True
 
 
@@ -1079,6 +1077,7 @@ def rename_cons_file(consensus_file, reclassified_dict):
 
 
 def rename_files_based_on_dict(directory, reclassified_dict, seq_name=False):
+
     # List all files in the directory
     files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
 
@@ -1123,10 +1122,14 @@ def remove_files_with_start_pattern(input_dir, start_pattern):
 
 
 # Define a function to handle sequence skipping and removal of files
-def handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir):
+def handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir,
+                            found_match=None, blast_full_length_n=None):
 
     seq_name = seq_obj.get_seq_name()
     try:
+        if found_match is not None and blast_full_length_n is not None:
+            seq_obj.set_old_terminal_repeat(found_match)
+            seq_obj.set_old_blast_full_n(blast_full_length_n)
         seq_obj.update_status("skipped", progress_file)
         if not keep_intermediate:
             remove_files_with_start_pattern(MSA_dir, seq_name)
@@ -1180,7 +1183,6 @@ def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, f
 
     shutil.copy(input_fasta, low_copy_single_fasta_file)
     shutil.copy(te_aid_pdf, low_copy_te_aid_pdf_file)
-
 
 
 # Classify single fasta

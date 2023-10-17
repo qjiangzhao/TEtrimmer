@@ -23,7 +23,7 @@ from Function_clean_and_clauster_MSA import clean_and_cluster_MSA
 import Cialign_plot
 
 
-def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=16, window_size=20, gap_threshold=0.8):
+def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=0.8, window_size=20, gap_threshold=0.8):
 
     # Window_size means the checked nucleotide number each time
     # Threshold means the sum of nucleotide proportion in window_size must greater than that
@@ -180,7 +180,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             #####################################################################################################
 
             if not fast_mode:
-
                 final_MSA_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file, output_dir,
                                                               clean_column_threshold=0.08, min_length_num=10,
                                                               cluster_num=2, cluster_col_thr=250, fast_mode=fast_mode
@@ -189,7 +188,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 # False means the sequences number in each cluster is smaller than minimum number, normally 10
                 # True means not necessary to do further cluster
                 if final_MSA_consistency is False or final_MSA_consistency is True:
-
                     final_MSA_consistent = True
 
                 # else means that further clustering is required
@@ -310,7 +308,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     #####################################################################################################
 
     # Generate consensus sequence for ORF prediction
-
     # Use lower threshold to enable give more pfam results
     orf_cons = con_generater(cropped_boundary_MSA, output_dir, threshold=0.5)
 
@@ -472,19 +469,29 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Construct the path for the Classification folder
     classification_dir = os.path.join(parent_output_dir, "Classification")
 
-    # Define temporary classified and unknown final consensus file, which will be used for reclassification by repeatmasker
-    final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
-    final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classifed_consensus.fasta")
+    # Define different levels of proof annotation folder
+    perfect_proof = os.path.join(proof_annotation_dir, "Perfect_annotation")
+    good_proof = os.path.join(proof_annotation_dir, "Good_annotation")
+    intermediate_proof = os.path.join(proof_annotation_dir, "Intermediate_annotation")
+    need_check_proof = os.path.join(proof_annotation_dir, "Need_check_annotation")
 
     # Create the directory if it doesn't exist
     os.makedirs(proof_annotation_dir, exist_ok=True)
     os.makedirs(classification_dir, exist_ok=True)
+    os.makedirs(perfect_proof, exist_ok=True)
+    os.makedirs(good_proof, exist_ok=True)
+    os.makedirs(intermediate_proof, exist_ok=True)
+    os.makedirs(need_check_proof, exist_ok=True)
+
+    # Define temporary classified and unknown final consensus file, which will be used for
+    # reclassification by RepeatMasker
+    final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
+    final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classified_consensus.fasta")
 
     # Define unique sequence names
     consi_n = len(seq_obj.consi_obj_list)
 
     if consi_n > 0:
-
         consi_n = consi_n
         uniq_seq_name = f"{seq_name}_{consi_n:02}"
 
@@ -528,7 +535,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Code block: Run RepeatClassifier in RepeatModeler to classify TE_trimmer consensus sequences
     #####################################################################################################
 
-    # Write single consensus sequence to a separate place for RepeatClassifier
+    # This classification is different with the final RepeatMasker classification
     # check_unknown returns true if unknown is detected
     # Classify all elements by RepeatClassify when classify_all is true
     # Rename consensus when classify_unknown is true and (the final consensus length is much longer or
@@ -572,6 +579,34 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     updated_TE_type = consi_obj.get_TE_type_for_file()
     consi_obj.set_new_TE_type(updated_TE_type)
 
+    ###############################################################################################################
+    # Code block: Output evaluation (perfect, good, intermediate, need_proof_annotation)
+    ###############################################################################################################
+
+    #               Terminal_repeat    Classified    MSA_sequence_number    Blast_full_length_number    if_PFAM
+    # Perfect:      True               True          >=30                   >=5                         True
+    # Good:         True               Not_required  >=25                   >=3                         Not_required
+    # Intermediate  Not_required       Not_required  >=20                   >=3                         Not_required
+    # Need check    Not_required       Not_required  Not_required           Not_required                Not_required
+    if (consi_obj.new_TE_terminal_repeat != "False" and
+            consi_obj.new_TE_type != "NaN" and "unknown" not in consi_obj.new_TE_type.lower() and
+            consi_obj.new_TE_MSA_seq_n >= 30 and
+            consi_obj.new_TE_blast_full_length_n >= 5 and
+            consi_obj.cons_pfam):
+        consi_obj.set_cons_evaluation("Perfect")
+
+    elif (consi_obj.new_TE_terminal_repeat != "False" and
+          consi_obj.new_TE_MSA_seq_n >= 25 and
+          consi_obj.new_TE_blast_full_length_n >= 3):
+        consi_obj.set_cons_evaluation("Good")
+
+    elif (consi_obj.new_TE_MSA_seq_n >= 20 and
+          consi_obj.new_TE_blast_full_length_n >= 2):
+        consi_obj.set_cons_evaluation("Intermediate")
+
+    else:
+        consi_obj.set_cons_evaluation("Need_check")
+
     #####################################################################################################
     # Code block: Move file for proof annotation and HMM
     #####################################################################################################
@@ -588,10 +623,18 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     files_moved_successfully = True
 
     for pattern, new_name in file_copy_pattern:
-
         try:
+            if consi_obj.cons_evaluation == "Perfect":
+                destination_dir = perfect_proof
+            elif consi_obj.cons_evaluation == "Good":
+                destination_dir = good_proof
+            elif consi_obj.cons_evaluation == "Intermediate":
+                destination_dir = intermediate_proof
+            else:
+                destination_dir = need_check_proof
+
             # Copy the file to the new location with the unique new name
-            shutil.copy(pattern, os.path.join(proof_annotation_dir, new_name))
+            shutil.copy(pattern, os.path.join(destination_dir, new_name))
 
         except Exception as e:
             click.echo(f"Error copying {pattern} to {new_name}: {e}")
@@ -607,9 +650,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         hmm_output_file = os.path.join(hmm_dir, consi_obj.hmm_file)
         generate_hmm_from_msa(cropped_boundary_MSA, hmm_output_file)
 
-    # The unknown TE consensus will be classified again later using successfully classified sequence
+    # The unknown TE consensus will be classified again later by using successfully classified sequence
     if "Unknown" in updated_TE_type:
-
         with open(final_unknown_con_file, "a") as f:  # 'a' mode for appending
             f.write(">" + uniq_seq_name + "\n" + sequence + "\n")
     else:
@@ -619,33 +661,5 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Write all consensus sequence to final_cons_file.
     with open(final_con_file, "a") as f:
         f.write(">" + uniq_seq_name + "#" + updated_TE_type + "\n" + sequence + "\n")
-
-    ###############################################################################################################
-    # Code block: Output evaluation (perfect, good, intermediate, need_proof_annotation)
-    ###############################################################################################################
-
-    #               Terminal_repeat    Classified    MSA_sequence_number    Blast_full_length_number    if_PFAM
-    # Perfect:      True               True          >=30                   >=5                         True
-    # Good:         True               Not_required  >=25                   >=3                         Not_required
-    # Intermediate  Not_required       Not_required  >=20                   >=3                         Not_required
-    # Need check    Not_required       Not_required  Not_required           Not_required                Not_required
-    if (consi_obj.new_TE_terminal_repeat != "None" and
-            consi_obj.new_TE_type != "NaN" and "unknown" not in consi_obj.new_TE_type.lower() and
-            consi_obj.new_TE_MSA_seq_n >= 30 and
-            consi_obj.new_TE_blast_full_length_n >= 5 and
-            consi_obj.cons_pfam):
-        consi_obj.set_cons_evaluation("Perfect")
-
-    elif (consi_obj.new_TE_terminal_repeat != "None" and
-          consi_obj.new_TE_MSA_seq_n >= 25 and
-          consi_obj.new_TE_blast_full_length_n >= 3):
-        consi_obj.set_cons_evaluation("Good")
-
-    elif (consi_obj.new_TE_MSA_seq_n >= 20 and
-          consi_obj.new_TE_blast_full_length_n >= 3):
-        consi_obj.set_cons_evaluation("Intermediate")
-
-    else:
-        consi_obj.set_cons_evaluation("Need_check")
 
     return files_moved_successfully

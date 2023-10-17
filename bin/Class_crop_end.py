@@ -12,7 +12,7 @@ class CropEnd:
     Crop each single sequence end of MSA by the nucleotide divergence.
     """
 
-    def __init__(self, input_file, threshold=16, window_size=20):
+    def __init__(self, input_file, threshold=0.8, window_size=20):
         """
         :param input_file: str, path to the multiple sequence alignment
         :param threshold: default 16, nucleotides number inside the check window whose proportion greater than 80%
@@ -99,13 +99,13 @@ class CropEnd:
             # Find start position
             for i in range(len(row) - self.window_size + 1):
                 window = row[i:i+self.window_size]
-                if window.sum() > self.threshold:
+                if window.sum() > self.window_size * self.threshold:
                     self.position_dict[index][0] = i
                     break
             # Find end position
             for i in range(len(row) - 1, self.window_size - 2, -1):
                 window = row[i-self.window_size+1:i+1]
-                if window.sum() > self.threshold:
+                if window.sum() > self.window_size * self.threshold:
                     self.position_dict[index][1] = i+1  # add 1 to make the position 1-indexed
                     break
 

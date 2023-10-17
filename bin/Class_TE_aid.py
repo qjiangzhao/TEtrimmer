@@ -8,12 +8,11 @@ from Function_blast_extension_mafft import blast
 
 def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file):
 
-    blast_full_length_n = check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100,
-                                               te_aid_blast=False, if_low_copy=True)
+    blast_full_length_n = check_blast_full_length(seq_obj, blast_out_file, identity=85, coverage=0.8, min_hit_length=100,
+                                                  te_aid_blast=False, if_low_copy=True)
 
     # At least 2 lines need to meet the requirement
     if blast_full_length_n >= 2:
-
         check_blast = True
 
         # Check self-alignment of terminal repeats
@@ -42,8 +41,8 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
     return check_low_copy, blast_full_length_n, found_match, TE_aid_plot
 
 
-def check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100, te_aid_blast=False,
-                         if_low_copy=False):
+def check_blast_full_length(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100, te_aid_blast=False,
+                            if_low_copy=False):
 
     # The TE Aid blast output file have a header
     if te_aid_blast:
@@ -54,6 +53,7 @@ def check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9, min
     if if_low_copy:
         seq_length = seq_obj.old_length
     else:
+        # When check not low copy elements, seq_obj will be consi_obj
         seq_length = seq_obj.new_length
 
     identity_condition = df[2] > identity
@@ -87,7 +87,6 @@ class TEAid:
         self.full_length_threshold = full_length_threshold
 
     def run(self, low_copy=False):
-
         # Define TE_Aid software executable path
         TE_aid = os.path.join(self.TE_aid_dir, "TE-Aid")
 
@@ -112,7 +111,6 @@ class TEAid:
 
         # If it is low copy element add -t option to enable to keep self blast file from TE_Aid
         if low_copy:
-
             command.extend(["-T"])
 
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -138,7 +136,6 @@ class TEAid:
 
             # Sometime TE_Aid won't give self blast result
             if not os.path.exists(self_blast_txt):
-
                 database_file = os.path.join(TE_aid_output_dir, "Tem_blast_database")
                 makeblastdb_cmd = f"makeblastdb -in {self.input_file} -dbtype nucl -out {database_file}"
                 subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -214,14 +211,13 @@ class TEAid:
 
         # If blast.txt file is found use the TE Aid output directly. Otherwise, do blast
         if os.path.exists(te_aid_blast_file):
-
-            full_length_n = check_blast_low_copy(seq_obj, te_aid_blast_file, identity=90, coverage=0.9,
-                                                 min_hit_length=100, te_aid_blast=True)
+            full_length_n = check_blast_full_length(seq_obj, te_aid_blast_file, identity=90, coverage=0.9,
+                                                    min_hit_length=100, te_aid_blast=True)
         else:
             bed_out_file, blast_hits_count, blast_out_file = blast(self.input_file, self.genome_file,
-                                                                             self.output_dir)
-            full_length_n = check_blast_low_copy(seq_obj, blast_out_file, identity=90, coverage=0.9,
-                                                 min_hit_length=100, te_aid_blast=False)
+                                                                   self.output_dir)
+            full_length_n = check_blast_full_length(seq_obj, blast_out_file, identity=90, coverage=0.9,
+                                                    min_hit_length=100, te_aid_blast=False)
 
         return full_length_n
 

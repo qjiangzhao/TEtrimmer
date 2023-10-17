@@ -11,11 +11,11 @@ class DefineBoundary():
         self.input_file = input_file
         self.alignment = None
         self.check_window = check_window
-        self.max_X=max_X
+        self.max_X = max_X
         self.if_con_generater=True
         self.consensus_seq = []
         self.nucl = ["A", "G", "C", "T", "a", "g", "c", "t"]
-        self.ambiguous = "X"
+        self.ambiguous = "N"
         self.start_post = None
         self.end_post = None
         self.right_ext = False

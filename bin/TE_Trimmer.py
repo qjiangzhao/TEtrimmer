@@ -7,6 +7,7 @@ import click
 import concurrent.futures
 import json
 import pandas as pd
+from Bio import SeqIO
 
 # Local imports
 from Function_separate_fasta import separate_sequences
@@ -123,8 +124,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             check_extension_win = 50
 
         # run blast for each single fasta file and return a bed file absolute path
-        bed_out_file_dup, blast_hits_count, blast_out_file = blast(seq_obj, seq_file, genome_file, MSA_dir,
-                                                                   min_length=min_blast_len)
+        bed_out_file_dup, blast_hits_count, blast_out_file = blast(seq_file, genome_file, MSA_dir,
+                                                                   min_length=min_blast_len, seq_obj=seq_obj)
 
     except Exception as e:
         click.echo(f"Error while running blast for sequence: {seq_name}. Main Error: {str(e)}")
@@ -134,17 +135,16 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
         # Check if blast hit number is equal 0, then skip this sequence
         if blast_hits_count == 0:
-
-            click.echo(f"\n{seq_name} in main is skipped due to blast hit number is 0\n")
+            click.echo(f"\n{seq_name} is skipped due to blast hit number is 0\n")
             handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir)
 
             return
 
         # Check if blast hit number is smaller than "min_seq_num", not include "min_seq_num"
         elif blast_hits_count != 0 and blast_hits_count < min_seq_num:
-
             check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
                 seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
+
             if check_low_copy is True:
 
                 # Update terminal repeat and blast full length number
@@ -154,10 +154,12 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                 update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
                                           final_classified_con_file, low_copy_dir, TE_aid_plot)
             else:
-                click.echo(f"\n{seq_name} in main is skipped due to check_low_copy is {check_low_copy}\n")
+                click.echo(f"\n{seq_name} is skipped due to blast hit number is smaller than {min_seq_num} "
+                           f"and check_low_copy is {check_low_copy}\n")
 
                 # handle_sequence_skipped will update skipped status
-                handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir)
+                handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir,
+                                        found_match, blast_full_length_n)
 
             return  # when blast hit number is smaller than 10, code will execute next fasta file
 
@@ -202,7 +204,6 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
     try:
         # cluster false means no cluster, TE Trimmer will skip this sequence.
         if cluster_MSA_result is False:
-
             check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
                 seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
 
@@ -217,9 +218,10 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
             else:
                 click.echo(
-                    f"\n{seq_name} is skipped due to cluster_MSA_result sequence number in each cluster is smaller "
+                    f"\n{seq_name} is skipped due to sequence number in each cluster is smaller "
                     f"than {min_seq_num} and check_low_copy is {check_low_copy}\n")
-                handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir)
+                handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir,
+                                        found_match, blast_full_length_n)
 
             return
 
@@ -321,10 +323,11 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
                                               final_classified_con_file, low_copy_dir, TE_aid_plot)
                 else:
-                    handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir)
+                    handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir,
+                                            found_match, blast_full_length_n)
                     click.echo(
                         f"\n{seq_name} is skipped due to sequence number in second round each cluster is "
-                        f"smaller than {min_seq_num} or the sequence is too short\n")
+                        f"smaller than {min_seq_num} or the sequence is too short and check_low_copy is {check_low_copy}\n")
 
                 return
 
@@ -372,7 +375,7 @@ with open(species_config_path, "r") as config_file:
               help='Genome file path.')
 @click.option('--output_dir', '-o', default=os.getcwd(), type=str,
               help='Output directory. Default: current directory.')
-@click.option('--species', '-s', required=True, default='fungi', type=click.Choice(species_config.keys()),
+@click.option('--species', '-s', default='fungi', type=click.Choice(species_config.keys()),
               help='Select the species for which you want to run TE Trimmer.')
 @click.option('--continue_analysis', default=False, is_flag=True,
               help='Continue to analysis based on interrupted results.')
@@ -424,12 +427,12 @@ with open(species_config_path, "r") as config_file:
                    'Default: 0.7')
 @click.option('--crop_end_win', type=int,
               help='Window size used for crop end process. Coupled with --crop_end_thr option. Default: 20')
-@click.option('--crop_end_thr', type=int,
+@click.option('--crop_end_thr', type=float,
               help='Crop end function will convert each nucleotide in MSA into proportion number. This function will '
                    'check from the beginning and end of each sequence from MSA by iteratively choosing a slide window '
                    'and sum up the proportion numbers. It will stop until the summary of proportion is larger than '
-                   '--crop_end_thr. The nucleotide do not match --crop_end_thr will be converted to -. The recommended '
-                   'number is 0.8 * --crop_end_win. Default: 16')
+                   '(--crop_end_thr * --crop_end_win). The nucleotide do not match --crop_end_thr will be converted '
+                   'to -. Default: 0.8')
 @click.option('--crop_end_gap_win', type=int,
               help='Define window size used to crop end by gap, coupled with --crop_end_gap_thr option. Default: 150')
 @click.option('--crop_end_gap_thr', type=float,
@@ -485,7 +488,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
         ##########################################################################################
 
-        python ./path_to_TE_Trimmer_bin/main.py -i <TE_consensus_file> -o <genome_file>
+        python ./path_to_TE_Trimmer_bin/TE_Trimmer.py -i <TE_consensus_file> -o <genome_file>
 
 
         TE Trimmer is designed to replace transposable element (TE) manual curation. Two mandatory arguments
@@ -639,6 +642,16 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     low_copy_dir = os.path.join(proof_annotation_dir, "Low_copy_TE")
     os.makedirs(low_copy_dir, exist_ok=True)
 
+    # Define proof annotation evaluation folders
+    perfect_proof = os.path.join(proof_annotation_dir, "Perfect_annotation")
+    good_proof = os.path.join(proof_annotation_dir, "Good_annotation")
+    intermediate_proof = os.path.join(proof_annotation_dir, "Intermediate_annotation")
+    need_check_proof = os.path.join(proof_annotation_dir, "Need_check_annotation")
+    os.makedirs(perfect_proof, exist_ok=True)
+    os.makedirs(good_proof, exist_ok=True)
+    os.makedirs(intermediate_proof, exist_ok=True)
+    os.makedirs(need_check_proof, exist_ok=True)
+
     if not os.path.isfile(input_file):
         raise FileNotFoundError(f"The fasta file {input_file} does not exist.")
     input_file = os.path.abspath(input_file)  # get input absolute path
@@ -685,7 +698,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Define consensus files. temp files will be used for the final RepeatMasker classification
     final_con_file = os.path.join(output_dir, "TE_Trimmer_consensus.fasta")
     final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
-    final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classifed_consensus.fasta")
+    final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classified_consensus.fasta")
 
     # Define error files to store not mandatory function errors including RepeatClassified classification,
     # RepeatMasker classification, PFAM scanning, muscle alignment
@@ -736,7 +749,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     else:
         # Check if the can perform continue analysis
         if not os.listdir(single_file_dir):
-
             click.echo("\nWARNING: TE Trimmer can't do continue analysis, please make sure the output directory is same"
                        " with your previous analysis.\n")
             return
@@ -805,30 +817,30 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Final RepeatMasker classification isn't necessary, skip it when errors are there
     try:
         if 0.3 <= classified_pro < 0.99:
-
             temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmakser_classification")
 
             if os.path.exists(final_unknown_con_file) and os.path.exists(final_classified_con_file):
-
                 os.makedirs(temp_repeatmasker_dir, exist_ok=True)
                 classification_out = repeatmasker(final_unknown_con_file, final_classified_con_file,
                                                   temp_repeatmasker_dir,
                                                   thread=num_threads, classify=True)
 
                 if classification_out:
-
                     repeatmasker_out = os.path.join(temp_repeatmasker_dir,
                                                     "temp_TE_Trimmer_unknown_consensus.fasta.out")
                     reclassified_dict = repeatmasker_output_classify(repeatmasker_out, progress_file,
                                                                      min_iden=60, min_len=80, min_cov=0.5)
                     if reclassified_dict:
-
                         click.echo(
                             f"{len(reclassified_dict)} TE elements were re-classified by final classification module")
 
                         # Update final consensus file
                         rename_cons_file(final_con_file, reclassified_dict)
                         rename_files_based_on_dict(proof_annotation_dir, reclassified_dict)
+                        rename_files_based_on_dict(perfect_proof, reclassified_dict)
+                        rename_files_based_on_dict(good_proof, reclassified_dict)
+                        rename_files_based_on_dict(intermediate_proof, reclassified_dict)
+                        rename_files_based_on_dict(need_check_proof, reclassified_dict)
                         rename_files_based_on_dict(low_copy_dir, reclassified_dict, seq_name=True)
                         if hmm:
                             rename_files_based_on_dict(hmm_dir, reclassified_dict)
@@ -843,15 +855,152 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         pass
 
     #####################################################################################################
-    # Code block: merge consensus_file
+    # Code block: merge consensus_file to remove duplications
     #####################################################################################################
 
-    cd_hit_merge_output_final = None
-    if os.path.exists(final_con_file):
-        # Do cd-hit-est merge when finish all sequence
-        cd_hit_merge_output_final = os.path.join(output_dir, "TE_Trimmer_consensus_merged.fasta")
-        # According to 80-80-80 rule to filter final consensus sequences
-        cd_hit_est(final_con_file, cd_hit_merge_output_final, identity_thr=0.8, aL=0.8, aS=0.8, s=1, thread=num_threads)
+    try:
+        # Do first round cd-hit-est
+        cd_hit_merge_output_round1 = os.path.join(classification_dir, "TE_Trimmer_consensus_merged_round1.fasta")
+        cd_hit_merge_output_round1_clstr = f"{cd_hit_merge_output_round1}.clstr"
+
+        # Round 1 merge only require that the alignment coverage for the shorter sequence is greater than 0.8
+        # and the similarity is greater than 0.85
+        cd_hit_est(final_con_file, cd_hit_merge_output_round1, identity_thr=0.85, aS=0.8, s=0, thread=num_threads)
+
+        # Read progress file
+        progress_df = pd.read_csv(progress_file)
+
+        # Create a dictionary with sequence names as keys
+        sequence_info = {}
+        for index, row in progress_df.iterrows():
+            sequence_name = row["consensus_name"]
+            evaluation = row["evaluation"] if pd.notna(row["evaluation"]) else "Unknown"  # Default value for NaN
+            te_type = row["reclassified_type"] if pd.notna(row["reclassified_type"]) else "Unknown"
+            length = row["cons_length"] if pd.notna(row["cons_length"]) else 0  # Default value for NaN
+            sequence_info[sequence_name] = {"evaluation": evaluation, "type": te_type, "length": length}
+
+        # Parse cd-hit-est result
+        clusters = {}
+        current_cluster = []
+        with open(cd_hit_merge_output_round1_clstr, "r") as f:
+            for line in f:
+                if line.startswith(">Cluster"):
+                    cluster_name = line.strip().replace(" ", "")  # Remove the empty space in the cluster name
+                    if current_cluster:  # If the current_cluster isn't empty
+                        clusters[cluster_name] = current_cluster
+                        current_cluster = []
+                else:
+                    seq_info = line.split(">")[1].split("...")[0].split("#")[0]
+                    current_cluster.append(seq_info)
+            if current_cluster:
+                clusters[cluster_name] = current_cluster
+
+        # Check if "Perfect" and "Good" level sequences are included inside cluster and choose the longest one
+        best_sequences = []  # Define list to store Perfect or Good sequence names
+
+        # Define list to store sequence in clusters that don't contain Perfect or Good sequences
+        sequence_for_round2 = []
+        for cluster_name, sequences in clusters.items():
+            best_seq = None
+            best_length = 0
+            for seq in sequences:
+                if seq in sequence_info:
+                    evaluation = sequence_info[seq]["evaluation"]
+                    length = sequence_info[seq]["length"]
+                    if evaluation in ["Perfect", "Good"] and length > best_length:
+                        best_length = length
+                        best_seq = seq
+            if best_seq:
+                best_sequences.append(best_seq)
+            else:
+                sequence_for_round2.extend(clusters[cluster_name])  # extend() will make a flat a list
+
+        # Read the original consensus file
+        consensus_sequences = SeqIO.parse(final_con_file, "fasta")
+
+        # Define temporary file to store Perfect or Good sequences
+        temp_consensus_round1 = os.path.join(classification_dir, "temp_consensus_round1.fasta")
+
+        # Define temporary file to store rest sequence for round2 cd-hit-est
+        temp_consensus_round2_input = os.path.join(classification_dir, "temp_consensus_round2_input.fasta")
+
+        # Write sequences to files
+        with open(temp_consensus_round1, "w") as high_quality_file, \
+                open(temp_consensus_round2_input, 'w') as round2_file:
+
+            for seq_record in consensus_sequences:
+
+                # Sequence names in best_sequences and sequence_for_round2 dont' contain classification
+                seq_id = seq_record.id.split("#")[0]
+
+                if seq_id in best_sequences:
+                    SeqIO.write(seq_record, high_quality_file, "fasta")
+                elif seq_id in sequence_for_round2:
+                    SeqIO.write(seq_record, round2_file, 'fasta')
+
+        # Do second round cd-hit-est based on temp_consensus_round2_input
+        cd_hit_merge_output_round2 = os.path.join(classification_dir, "TE_Trimmer_consensus_merged_round2.fasta")
+
+        # Round 2 merge require that the alignment coverage for the long and short sequence are both greater than 0.8
+        # and the similarity is greater than 0.85
+        cd_hit_est(temp_consensus_round2_input, cd_hit_merge_output_round2, identity_thr=0.85, aL=0.8, aS=0.8, s=0.8,
+                   thread=num_threads)
+
+        # Define merged file
+        cd_hit_est_final_merged = os.path.join(output_dir, "TE_Trimmer_consensus_merged.fasta")
+
+        # Combine the two files into merged file
+        with open(temp_consensus_round1, 'r') as file1, \
+                open(cd_hit_merge_output_round2, 'r') as file2, \
+                open(cd_hit_est_final_merged, 'w') as combined_file:
+            # Write contents of the first file
+            for line in file1:
+                combined_file.write(line)
+
+            # Write contents of the second file
+            for line in file2:
+                combined_file.write(line)
+
+        # Find sequence names that aren't included inside in cd_hit_est_final_merged file
+        # Parse the sequences in the original and merged files
+        original_sequences = SeqIO.parse(final_con_file, "fasta")
+        merged_sequences = SeqIO.parse(cd_hit_est_final_merged, "fasta")
+
+        # Extract sequence IDs from both files and store to set
+        original_ids = {seq_record.id.split("#")[0] for seq_record in original_sequences}
+        merged_ids = {seq_record.id.split("#")[0] for seq_record in merged_sequences}
+
+        # Find the difference between the two sets to get sequence names not included in the merged file
+        missing_ids = original_ids - merged_ids
+        click.echo(missing_ids)
+
+        # Based on missing_ids delete files in proof annotation folder and HMM folder
+        for missing_id in missing_ids:
+            evaluation_leve = sequence_info[missing_id]["evaluation"]
+            if evaluation_leve == "Perfect":
+                remove_files_with_start_pattern(perfect_proof, missing_id)
+            elif evaluation_leve == "Good":
+                remove_files_with_start_pattern(good_proof, missing_id)
+            elif evaluation_leve == "Intermediate":
+                remove_files_with_start_pattern(intermediate_proof, missing_id)
+            elif evaluation_leve == "Need_check":
+                remove_files_with_start_pattern(need_check_proof, missing_id)
+            else:
+                remove_files_with_start_pattern(low_copy_dir, missing_id)
+
+        if hmm:
+            remove_files_with_start_pattern(hmm_dir, missing_ids)
+
+    except Exception as e:
+        with open(error_files, "a") as f:
+            f.write("Final cd-hit-est merge error.\n" + str(e) + '\n')
+            click.echo("The fianl cd-hit-est merge step can't be performed. Please remove duplicated sequence"
+                       " by yourself")
+            pass
+
+    #####################################################################################################
+    # Code block: Whole genome TE annotation
+    #####################################################################################################
 
     # Delete MSA_dir and Classification if they are empty
     if not os.listdir(MSA_dir):
@@ -861,17 +1010,23 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         os.rmdir(classification_dir)
 
     try:
-        # If 95% of the query sequences are processed, RepeatMasker is allowed to be performed whole genome annotation
+        # If 90% of the query sequences are processed, RepeatMasker is allowed to be performed whole genome annotation
         if processed_count >= single_fasta_n * 0.9:
             # Run RepeatMasker
-            if genome_anno and cd_hit_merge_output_final:
+            if genome_anno:
                 click.echo("TE Trimmer is performing whole genome TE annotation by RepeatMasker")
+
+                if os.path.exists(cd_hit_est_final_merged):
+                    repeatmakser_lib = cd_hit_est_final_merged
+                else:
+                    repeatmakser_lib = final_con_file
+
                 # make a new folder for RepeatMasker output
                 repeatmasker_dir = os.path.join(output_dir, "RepeatMasker_result")
                 if not os.path.exists(repeatmasker_dir):
                     os.mkdir(repeatmasker_dir)
                 genome_anno_result = \
-                    repeatmasker(genome_file, cd_hit_merge_output_final, repeatmasker_dir, thread=num_threads)
+                    repeatmasker(genome_file, repeatmakser_lib, repeatmasker_dir, thread=num_threads)
                 if genome_anno_result:
                     click.echo("Finished whole genome TE annotation by RepeatMasker")
 
@@ -896,7 +1051,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     print(f"\nTE Trimmer finished at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
     print(f"TE Trimmer runtime was {duration_without_microseconds}")
-    # printProgressBar(single_fasta_n, single_fasta_n, prefix = 'Progress:', suffix = 'Sequences Processed', length = 50)
 
 
 # The following is necessary to make the script executable, i.e., python myscript.py.

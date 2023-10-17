@@ -13,8 +13,8 @@ class SeqObject:
         self.consi_obj_list = []  # an input seq can end up with multiple consensus seq
         self.blast_hit_n = 0
         self.status = "unprocessed"  # "unprocessed","processed", "skipped"
-        self.old_terminal_repeat = "None"
-        self.old_blast_full_n = "None"
+        self.old_terminal_repeat = "False"
+        self.old_blast_full_n = "NaN"
 
     def get_seq_name(self):
         return self.name
@@ -58,7 +58,7 @@ class SeqObject:
                 for consi_obj in self.consi_obj_list:
 
                     f.write(f"{str(self.name)},{str(consi_obj.consensus_name)},"  # name
-                            f"{str(self.blast_hit_n)},{str(consi_obj.new_TE_MSA_seq_n)},"  # sequence number
+                            f"{str(self.blast_hit_n)},{str(int(consi_obj.new_TE_MSA_seq_n))},"  # sequence number
                             f"{str(consi_obj.new_TE_blast_full_length_n)},"  # blast full length number
                             f"{str(self.old_length)},{str(consi_obj.new_length)},"  # sequence length
                             f"{str(self.old_TE_type)},{str(consi_obj.get_TE_type_for_file())},"  # TE type
@@ -75,13 +75,12 @@ class SeqObject:
                         f"{str(self.old_terminal_repeat)},{str(self.low_copy)},"
                         f"NaN,{str(self.status)}\n")
             else:
-
-                f.write(f"{str(self.name)},NaN,"  # name
+                f.write(f"{str(self.name)},{str(self.name)},"  # name
                         f"{str(self.blast_hit_n)},NaN,"
-                        f"NaN,"  # sequence number
-                        f"{str(self.old_length)},NaN,"  # sequence length
-                        f"{str(self.old_TE_type)},NaN,"  # TE type
-                        f"NaN,{str(self.low_copy)},"
+                        f"{str(self.old_blast_full_n)},"  
+                        f"{str(self.old_length)},{str(self.old_length)},"  # sequence length
+                        f"{str(self.old_TE_type)},{str(self.old_TE_type)},"  # TE type
+                        f"{str(self.old_terminal_repeat)},{str(self.low_copy)},"
                         f"NaN,{str(self.status)}\n")
 
     def update_low_copy(self, check_blast, found_match):
@@ -105,7 +104,7 @@ class ConsensusObject:
         self.new_length = "NaN"
         self.new_TE_type = "NaN"
         self.new_TE_MSA_seq_n = "NaN"
-        self.new_TE_terminal_repeat = "None"
+        self.new_TE_terminal_repeat = "False"
         self.new_TE_blast_full_length_n = "NaN"
         self.cons_seq = "NaN"
         self.cons_pfam = False
