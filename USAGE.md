@@ -48,8 +48,14 @@ Options:
                  sequence alignment can be divided into different clusters. TE Trimmer will sort
                  clusters by sequence number and choose the top <max_cluster_num> of clusters for
                  further analysis. Default: 2
- --ext_thr FLOAT         Sequence identity threshold used for extending the consensus sequence at each position (column)
-                 of the multiple sequence alignment. Lower thresholds allow for longer extensions on each side of the
+ --ext_thr FLOAT            Sequence similarity threshold used for defining start and end of the consensus sequence,
+                 based on the multiple sequence alignment. Nucleotides in each position with a similarity proportion
+                 smaller than <ext_thr> will be assigned the value N. If no N values are found, the algorithm will
+                 extend the multiple sequence alignment to determine the limits of the consensus sequence. The lower
+                 the value of <ext_thr>, the longer the extensions on both ends. Reduce <ext_thr> if TE Trimmer fails
+                 to determine the correct ends of repeat elements. Default: 0.7
+Sequence identity threshold used for extending the consensus sequence at each position (column)
+                 than <ext_thr> will be assigned the value X. Lower thresholds allow for longer extensions on each side of the
                  multiple sequence alignment. Any position below this threshold will be assigned the value <X> in the
                  consensus sequence. Default: 0.7
  --ext_step INTEGER        Number of nucleotides to be added to the left and right ends of the multiple sequence
