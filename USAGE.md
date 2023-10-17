@@ -11,11 +11,14 @@ Panstruga's Lab. Website: https://www.bio1.rwth-aachen.de/PlantMolCellBiology/in
 RWTH Aachen University
 Many thanks to Dr. Stefan Kusch
 ##########################################################################################
+```ShellSession
 python ./path_to_TE_Trimmer_bin/main.py -i <TE_consensus_file> -o <genome_file>
+```
 
 TE Trimmer is designed to replace transposable element (TE) manual curation. Two mandatory arguments are required including <genome file> and <TE consensus file> from TE annotation software like RepeatModeler, EDTA, and REPET et al. TE Trimmer can do blast, extension, multiple sequence alignment, and defining TE boundaries.
 
 Options:
+```
  -i, --input_file TEXT      TE consensus fasta file. Use the output of RepeatModeler, EDTA, or REPET et al.
                  [required]
  -g, --genome_file TEXT     Genome file path. [required]
@@ -85,3 +88,4 @@ Options:
  --classify_all         Use RepeatClassfier to classify every consensus sequence. WARNING: it will take
                  longer. Default: False
  --help             Show this message and exit.
+```
