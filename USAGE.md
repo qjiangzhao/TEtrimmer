@@ -7,8 +7,9 @@ Jiangzhao Qian. Email: jqian@bio1.rwth-aachen.de
 Hang Xue. Email: hang_xue@berkeley.edu
 
 Funding source:
-Panstruga's Lab. Website: https://www.bio1.rwth-aachen.de/PlantMolCellBiology/index.html
+Panstruga Lab. Website: https://www.bio1.rwth-aachen.de/PlantMolCellBiology/index.html
 RWTH Aachen University
+
 Many thanks to Dr. Stefan Kusch
 ##########################################################################################
 
@@ -17,7 +18,7 @@ General usage:
 python ./path_to_TE_Trimmer_bin/TE_Trimmer.py -i <TE_consensus_file> -o <genome_file>
 ```
 
-TE Trimmer is designed to replace transposable element (TE) manual curation. Two mandatory arguments are required including <genome file> and <TE consensus file> from TE annotation software like RepeatModeler, EDTA, and REPET et al. TE Trimmer can do blast, extension, multiple sequence alignment, and defining TE boundaries.
+TE Trimmer is designed to replace transposable element (TE) manual curation. Two mandatory arguments are required, which are <genome file> and <TE consensus file> from TE annotation software like RepeatModeler, EDTA, and REPET et al. TE Trimmer can perform BLAST searches, extend matching sequence regions, multiple sequence alignment, and define TE boundaries.
 
 Options:
 ```
@@ -60,7 +61,7 @@ Options:
                  --gap_nul_thr option. Default: 0.7
  --crop_end_win INTEGER     Window size used for crop end process. Coupled with --crop_end_thr option. Default:
                  20
- --crop_end_thr INTEGER     Crop end function will convert each nucleotide in MSA into proportion number. This
+ --crop_end_thr FLOAT     Crop end function will convert each nucleotide in MSA into proportion number. This
                  function will check from the beginning and end of each sequence from MSA by
                  iteratively choosing a slide window and sum up the proportion numbers. It will stop
                  until the summary of proportion is larger than --crop_end_thr. The nucleotide do not
