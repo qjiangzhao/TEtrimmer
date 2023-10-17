@@ -4,10 +4,10 @@ TE Trimmer: a tool to replace transposable element manual curation. TE Trimmer w
 Usage:
 
 # Use --help for a detailed list of options
-python ./path_to_TE_Trimmer_folder/bin/main.py --help 
+python ./path_to_TE_Trimmer_folder/bin/TE_Trimmer.py --help 
 
 # Example of running TE Trimmer
-python ./path_to_TE_Trimmer_folder/bin/main.py --input_file [your_TE_consensus_file_path] \
+python ./path_to_TE_Trimmer_folder/bin/TE_Trimmer.py --input_file [your_TE_consensus_file_path] \
                                                --genome_file [your_genome_file_path] \
                                                --output_dir [output_directory]
                                                
