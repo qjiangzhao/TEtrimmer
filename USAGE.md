@@ -55,8 +55,8 @@ Options:
                  the value of <ext_thr>, the longer the extensions on both ends. Reduce <ext_thr> if TE Trimmer fails
                  to determine the correct ends of repeat elements. Default: 0.7
  --ext_step INTEGER        Number of nucleotides to be added to the left and right ends of the multiple sequence
-                 alignment. TE_Trimmer will iteratively add <ex_step number> of nucleotides until
-                 finding the boundary. Default: 1000
+                 alignment. TE_Trimmer will iteratively add <ex_step> number of nucleotides until finding the 
+                 boundary. Default: 1000
  --max_extension INTEGER     The maximum extension in nucleotides at both ends of the multiple sequence alignment. 
                  Default: 7000
  --gap_thr FLOAT         If multiple sequence alignment positions (columns) have a gap proportion larger than <gap_thr>
@@ -67,7 +67,7 @@ Options:
  --crop_end_win INTEGER     Window size used for the end-cropping process. Used with the --crop_end_thr option. Default:
                  20
  --crop_end_thr FLOAT     The crop end function will convert each nucleotide in the multiple sequence alignment into a
-                 proportion value. This function will iteratively choose a slide window and sum up the proportion numbers 
+                 proportion value. This function will iteratively choose a sliding window and sum up the proportion numbers 
                  at each end of each sequence of the MSA. The algorithm will continue until the sum of proportions at the
                  respective end of the MSA is larger than <crop_end_thr>. Nucleotides in the consensus sequence below
                  <crop_end_thr> will be converted to -. The recommended value is 0.8 * <crop_end_win>. Default: 16
@@ -81,13 +81,13 @@ Options:
                  beginning of the consensus sequence for these patterns. If the pattern is not found, it will extend the
                  search of <start_patterns> to up to 15 nucleotides from the beginning of the consensus sequence, and
                  redefine the start of the consensus element if the pattern is found. Note: The user can provide multiple
-                 LTR start patterns in a comma-separated list, like: TG,TA,TC (No spaces; the order of patterns determines
+                 LTR start patterns in a comma-separated list, like: TG,TA,TC (no spaces; the order of patterns determines
                  the priority for the search). Default: TG
  --end_patterns STRING       LTR elements always end with a conserved sequence pattern. TE Trimmer searches the 
                  end of the consensus sequence for these patterns. If the pattern is not found, it will extend the
                  search of <start_patterns> to up to 15 nucleotides from the end of the consensus sequence, and
                  redefine the end of the consensus element if the pattern is found. Note: The user can provide multiple
-                 LTR end patterns in a comma-separated list, like: CA,TA,GA (No spaces; the order of patterns determines
+                 LTR end patterns in a comma-separated list, like: CA,TA,GA (no spaces; the order of patterns determines
                  the priority for the search). Default: CA
  --mini_orf INTEGER       Define the minimum ORF length that will be predicted by TE Trimmer. Default: 200
  --check_extension_win INTEGER   Define window size for extension. Deafault: 150
@@ -96,5 +96,5 @@ Options:
                  classfied or is unknown. Default: False
  --classify_all         Use RepeatClassfier to classify every consensus sequence. WARNING: This may take a long
                  time. Default: False
- --help             Show this message and exit.
+ --help          Show this message and exit.
 ```
