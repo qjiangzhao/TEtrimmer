@@ -128,7 +128,7 @@ def blast(seq_file, genome_file, output_dir, min_length=150, seq_obj=None):
         # Update blast hit number to sequence object when seq_obj is supplied
         if seq_obj is not None:
             seq_obj.update_blast_hit_n(blast_hits_count)
-        
+
     # if low copy number, check coverage, length and identity
     return bed_out_file, blast_hits_count, blast_out_file
 
@@ -205,7 +205,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex):
     fasta_out_flank_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_{left_ex}_{right_ex}.fa")
 
     fasta_out_flank_file_nucleotide_clean = os.path.join(output_dir,
-                                                            f"{os.path.basename(input_file)}_{left_ex}_{right_ex}_cl.fa")
+                                                         f"{os.path.basename(input_file)}_{left_ex}_{right_ex}_cl.fa")
 
     bed_cmd = f"bedtools slop -s -i {input_file} -g {genome_file}.length -l {left_ex} -r {right_ex} > {bed_out_flank_file_dup}"
     subprocess.run(bed_cmd, shell=True, check=True)
@@ -250,7 +250,6 @@ def align_sequences(input_file, output_dir):
 
 
 def muscle_align(input_file, output_dir, ite_times=4):
-
     output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_maln.fa")
     muscle_cmd = ["muscle", "-maxiters", str(ite_times), "-in", input_file, "-out", output_file]
 
@@ -334,7 +333,6 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file):
 
         # Check if the command was successful
         if result.returncode != 0:
-
             click.echo(f"Error running hmmbuild: {os.path.basename(output_hmm_file)}\n{result.stderr.decode('utf-8')}")
 
     except FileNotFoundError:
@@ -370,7 +368,7 @@ def remove_gaps(input_file, output_dir, threshold=0.8, min_nucleotide=5):
     """
     keep_list = []
     fasta_out_flank_mafft_gap_filter_file = os.path.join(output_dir,
-                                                            f"{os.path.basename(input_file)}_g.fa")
+                                                         f"{os.path.basename(input_file)}_g.fa")
     MSA_mafft = AlignIO.read(input_file, "fasta")
 
     column_mapping = {}  # Stores the mapping of column indices from filtered MSA to original MSA
@@ -423,7 +421,7 @@ def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_thresh
     # The keep_list is a list of tuples containing start and end position for each gap block
     gap_blocks = []
     fasta_out_flank_mafft_gap_filter_file = os.path.join(output_dir,
-                                                            f"{os.path.basename(input_file)}_gb.fa")
+                                                         f"{os.path.basename(input_file)}_gb.fa")
     MSA_mafft = AlignIO.read(input_file, "fasta")
 
     # Initialize the start of the block to None
@@ -492,7 +490,7 @@ def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_thresh
 
 
 def remove_gaps_with_similarity_check(input_file, output_dir, gap_threshold=0.8,
-                                        simi_check_gap_thre=0.4, similarity_threshold=0.7, min_nucleotide=5):
+                                      simi_check_gap_thre=0.4, similarity_threshold=0.7, min_nucleotide=5):
     """
     Remove gaps when gap percentage is bigger than threshold. Remove columns when nucleotide number is less than 5.
     When gap percentage is equal or bigger than "simi_check_gap_thre". It will calculate most abundant nucleotide
@@ -510,7 +508,7 @@ def remove_gaps_with_similarity_check(input_file, output_dir, gap_threshold=0.8,
     """
     keep_list = []
     fasta_out_flank_mafft_gap_filter_file = os.path.join(output_dir,
-                                                            f"{os.path.basename(input_file)}_gs.fa")
+                                                         f"{os.path.basename(input_file)}_gs.fa")
     MSA_mafft = AlignIO.read(input_file, "fasta")
 
     column_mapping = {}  # Stores the mapping of column indices from filtered MSA to original MSA
@@ -642,10 +640,10 @@ def remove_gaps_block_with_similarity_check(input_file, output_dir, gap_threshol
             col_after_2 = MSA_mafft[:, block[1] + 1] if block[1] < MSA_mafft.get_alignment_length() - 1 else None
             # If the surrounding columns are conserved, mark the block for deletion
             if col_before is not None and (calc_conservation(col_before) > conservation_threshold or
-                                            calc_conservation(
-                                                col_before_2) > conservation_threshold) and col_after is not None and \
+                                           calc_conservation(
+                                               col_before_2) > conservation_threshold) and col_after is not None and \
                     (calc_conservation(col_after) > conservation_threshold or
-                        calc_conservation(col_after_2) > conservation_threshold):
+                     calc_conservation(col_after_2) > conservation_threshold):
                 delete_blocks.append(block)
     else:
         # No blocks to delete, return the original MSA. Write file again to convert file name
@@ -796,7 +794,7 @@ def select_gaps_block_with_similarity_check(input_file,
         return False
 
 
-def select_start_end_and_join( input_file, output_dir, start, end, window_size=50):
+def select_start_end_and_join(input_file, output_dir, start, end, window_size=50):
     """
     Select start and end columns of MSA
     :param input_file: str, absolute input file path
@@ -862,6 +860,7 @@ def select_window_columns(input_file, output_dir, start_point, direction, window
     # Return the new alignment
     return selected_alignment
 
+
 """
 The asterisk (*) before alignments in the function definition is used to allow the function to accept any number 
 of positional arguments. These arguments will be gathered into a tuple called alignments. This is particularly 
@@ -917,7 +916,6 @@ def change_permissions_recursive(input_dir, mode):
 
 
 def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9, thread=10):
-
     command = [
         "cd-hit-est",
         "-i", input_file,
@@ -954,21 +952,21 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
         command = ["RepeatMasker",
                    genome_file,
                    "-lib", library_file,
-                   "-s",    # Slow search; 0-5% more sensitive, 2-3 times slower than default
+                   "-s",  # Slow search; 0-5% more sensitive, 2-3 times slower than default
                    "-dir", output_dir,
                    "-pa", str(thread)
-                    ]
-    else: 
+                   ]
+    else:
         command = ["RepeatMasker",
-                    genome_file,
-                    "-lib", library_file,
-                    "-pa", str(thread),
-                    "-dir", output_dir,
-                    "-s",    # Slow search; 0-5% more sensitive, 2-3 times slower than default
-                    "-gff",  # Creates an additional Gene Feature Finding format output
-                    "-xm",   # Creates an additional output file in cross_match format (for parsing)
-                    "-a",    # Writes alignments in .align output file
-                    ]
+                   genome_file,
+                   "-lib", library_file,
+                   "-pa", str(thread),
+                   "-dir", output_dir,
+                   "-s",  # Slow search; 0-5% more sensitive, 2-3 times slower than default
+                   "-gff",  # Creates an additional Gene Feature Finding format output
+                   "-xm",  # Creates an additional output file in cross_match format (for parsing)
+                   "-a",  # Writes alignments in .align output file
+                   ]
 
     result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     error_output = result.stderr.decode("utf-8")
@@ -983,7 +981,6 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
 
 
 def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, min_len=80, min_cov=0.8):
-
     # Read RepeatMasker out file into a DataFrame
     # The regex '\s+' matches one or more whitespace characters
     try:
@@ -1077,7 +1074,6 @@ def rename_cons_file(consensus_file, reclassified_dict):
 
 
 def rename_files_based_on_dict(directory, reclassified_dict, seq_name=False):
-
     # List all files in the directory
     files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
 
@@ -1122,15 +1118,17 @@ def remove_files_with_start_pattern(input_dir, start_pattern):
 
 
 # Define a function to handle sequence skipping and removal of files
-def handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir,
-                            found_match=None, blast_full_length_n=None):
-
+def handle_sequence_skipped_and_low_copy(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir,
+                                         found_match=None, blast_full_length_n=None, low_copy=False):
     seq_name = seq_obj.get_seq_name()
     try:
         if found_match is not None and blast_full_length_n is not None:
             seq_obj.set_old_terminal_repeat(found_match)
             seq_obj.set_old_blast_full_n(blast_full_length_n)
-        seq_obj.update_status("skipped", progress_file)
+        if low_copy:
+            seq_obj.update_status("processed", progress_file)
+        else:
+            seq_obj.update_status("skipped", progress_file)
         if not keep_intermediate:
             remove_files_with_start_pattern(MSA_dir, seq_name)
             remove_files_with_start_pattern(classification_dir, seq_name)
@@ -1140,7 +1138,6 @@ def handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, 
 
 
 def update_cons_file(updated_type, unknown_concensus_file, consensus_file):
-
     if os.path.exists(unknown_concensus_file):
         with open(unknown_concensus_file, 'r') as fasta_file:
             for record in SeqIO.parse(fasta_file, 'fasta'):
@@ -1154,10 +1151,9 @@ def update_cons_file(updated_type, unknown_concensus_file, consensus_file):
                     f.write(">" + header + "#" + te_type + "\n" + sequence + "\n")
 
 
-# if the seq_obj is low copy, append to consensus_file or final_unknown_con_file file
+# if the seq_obj is low copy, append to consensus_file and final_unknown_con_file used for classification
 def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, final_classified_con_file, proof_dir,
                               te_aid_pdf):
-
     seq_name = seq_obj.get_seq_name()
     te_type = seq_obj.get_old_TE_type()
     te_type_modified = te_type.replace("/", "__")
@@ -1219,9 +1215,3 @@ def classify_single(consensus_fasta):
     seq_TE_type = record.id.split("#")[-1]
 
     return seq_TE_type
-
-
-
-
-
-

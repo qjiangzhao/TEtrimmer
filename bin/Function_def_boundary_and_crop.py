@@ -570,9 +570,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 consi_obj.set_new_TE_type(TE_type)
     except Exception as e:
         with open(error_files, "a") as f:
-            f.write("RepeatClassifier classification error\n" + str(e) + '\n')
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"RepeatClassifier classification error\n")
+            f.write(tb_content + '\n\n')
         click.echo("Note: Classification isn't working. This won't affect final consensus sequences.")
-        pass
 
     # Update final con_TE_type. get_TE_type_for_file will evaluate if TE_type is Unknown. If so, use the
     # original TE classification name
@@ -637,6 +639,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             shutil.copy(pattern, os.path.join(destination_dir, new_name))
 
         except Exception as e:
+            with open(error_files, "a") as f:
+                # Get the traceback content as a string
+                tb_content = traceback.format_exc()
+                f.write(f"Copy file error for {pattern}\n")
+                f.write(tb_content + '\n\n')
             click.echo(f"Error copying {pattern} to {new_name}: {e}")
             files_moved_successfully = False
 
