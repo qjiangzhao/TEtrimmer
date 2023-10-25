@@ -941,7 +941,6 @@ def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9,
     else:
         return True
 
-
 def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False):
     """
     Run RepeatMasker with the provided parameters.
@@ -1118,7 +1117,7 @@ def remove_files_with_start_pattern(input_dir, start_pattern):
 
 
 # Define a function to handle sequence skipping and removal of files
-def handle_sequence_skipped_and_low_copy(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir,
+def handle_sequence_skipped_and_low_copy(seq_obj, progress_file, debug, MSA_dir, classification_dir,
                                          found_match=None, blast_full_length_n=None, low_copy=False):
     seq_name = seq_obj.get_seq_name()
     try:
@@ -1129,7 +1128,7 @@ def handle_sequence_skipped_and_low_copy(seq_obj, progress_file, keep_intermedia
             seq_obj.update_status("processed", progress_file)
         else:
             seq_obj.update_status("skipped", progress_file)
-        if not keep_intermediate:
+        if not debug:
             remove_files_with_start_pattern(MSA_dir, seq_name)
             remove_files_with_start_pattern(classification_dir, seq_name)
     except Exception as e:

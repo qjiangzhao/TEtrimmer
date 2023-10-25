@@ -81,7 +81,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                      top_mas_lines, max_cluster_num, cons_thr, ext_thr, ex_step, classification_dir,
                      max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr,
                      crop_end_gap_win, start_patterns, end_patterns, output_dir, pfam_dir, mini_orf,
-                     single_fasta_n, hmm, check_extension_win, keep_intermediate, progress_file,
+                     single_fasta_n, hmm, check_extension_win, debug, progress_file,
                      classify_unknown, classify_all, final_con_file, final_unknown_con_file,
                      final_classified_con_file, low_copy_dir, fast_mode, error_files):
 
@@ -142,7 +142,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         # Check if blast hit number is equal 0, then skip this sequence
         if blast_hits_count == 0:
             click.echo(f"\n{seq_name} is skipped due to blast hit number is 0\n")
-            handle_sequence_skipped_and_low_copy(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir)
+            handle_sequence_skipped_and_low_copy(seq_obj, progress_file, debug, MSA_dir, classification_dir)
             return
 
         # Check if blast hit number is smaller than "min_seq_num", not include "min_seq_num"
@@ -153,7 +153,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             if check_low_copy is True:
 
                 # Update terminal repeat and blast full length number, remove low copy intermediate files
-                handle_sequence_skipped_and_low_copy(seq_obj, progress_file, keep_intermediate, MSA_dir,
+                handle_sequence_skipped_and_low_copy(seq_obj, progress_file, debug, MSA_dir,
                                                      classification_dir, found_match=found_match,
                                                      blast_full_length_n=blast_full_length_n, low_copy=True)
 
@@ -165,7 +165,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                            f"and check_low_copy is {check_low_copy}\n")
 
                 # handle_sequence_skipped will update skipped status
-                handle_sequence_skipped_and_low_copy(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir,
+                handle_sequence_skipped_and_low_copy(seq_obj, progress_file, debug, MSA_dir, classification_dir,
                                                      found_match, blast_full_length_n)
 
             return  # when blast hit number is smaller than 10, code will execute next fasta file
@@ -224,7 +224,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
             if check_low_copy is True:
                 # Update terminal repeat and blast full length number, remove low copy intermediate files
-                handle_sequence_skipped_and_low_copy(seq_obj, progress_file, keep_intermediate, MSA_dir,
+                handle_sequence_skipped_and_low_copy(seq_obj, progress_file, debug, MSA_dir,
                                                      classification_dir, found_match=found_match,
                                                      blast_full_length_n=blast_full_length_n, low_copy=True)
                 update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
@@ -234,7 +234,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                 click.echo(
                     f"\n{seq_name} is skipped due to sequence number in each cluster is smaller "
                     f"than {min_seq_num} and check_low_copy is {check_low_copy}\n")
-                handle_sequence_skipped_and_low_copy(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir,
+                handle_sequence_skipped_and_low_copy(seq_obj, progress_file, debug, MSA_dir, classification_dir,
                                                      found_match, blast_full_length_n)
             return
 
@@ -254,7 +254,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             if find_boundary_result == "Short_sequence":
                 click.echo(f"\n{seq_name} is skipped due to too short length\n")
 
-                handle_sequence_skipped_and_low_copy(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir)
+                handle_sequence_skipped_and_low_copy(seq_obj, progress_file, debug, MSA_dir, classification_dir)
 
                 return False
 
@@ -330,13 +330,13 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                 if check_low_copy is True:
 
                     # Update terminal repeat and blast full length number, remove low copy intermediate files
-                    handle_sequence_skipped_and_low_copy(seq_obj, progress_file, keep_intermediate, MSA_dir,
+                    handle_sequence_skipped_and_low_copy(seq_obj, progress_file, debug, MSA_dir,
                                                          classification_dir, found_match=found_match,
                                                          blast_full_length_n=blast_full_length_n, low_copy=True)
                     update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
                                               final_classified_con_file, low_copy_dir, TE_aid_plot)
                 else:
-                    handle_sequence_skipped_and_low_copy(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir,
+                    handle_sequence_skipped_and_low_copy(seq_obj, progress_file, debug, MSA_dir, classification_dir,
                                                          found_match, blast_full_length_n)
                     click.echo(
                         f"\n{seq_name} is skipped due to sequence number in second round each cluster is "
@@ -357,7 +357,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
     seq_obj.update_status("processed", progress_file)
 
     # If all this sequence is finished remove all files contain this name
-    if not keep_intermediate:
+    if not debug:
         remove_files_with_start_pattern(MSA_dir, seq_name)
         remove_files_with_start_pattern(classification_dir, seq_name)
 
@@ -402,8 +402,8 @@ with open(species_config_path, "r") as config_file:
               help='Perform genome TE annotation based on TE Trimmer curated database at the end.')
 @click.option('--hmm', default=False, is_flag=True,
               help='Generate HMM files for each consensus sequences.')
-@click.option('--keep_intermediate', default=False, is_flag=True,
-              help='Keep all raw files. WARNING: Many files will be produced.')
+@click.option('--debug', default=False, is_flag=True,
+              help='Open debug mode. This will keep all raw files. WARNING: Many files will be produced.')
 @click.option('--fast_mode', default=False, is_flag=True,
               help='Use less running time but lower accuracy and specificity')
 @click.option('--pfam_dir', default=None, type=str,
@@ -481,7 +481,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
          top_mas_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ex_step,
          max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, mini_orf, species, check_extension_win, merge, genome_anno, hmm,
-         keep_intermediate, fast_mode, classify_unknown, classify_all):
+         debug, fast_mode, classify_unknown, classify_all):
     """
         ##########################################################################################
 
@@ -799,7 +799,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
          top_mas_lines, max_cluster_num, cons_thr, ext_thr, ex_step, classification_dir,
          max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, single_fasta_n, hmm,
-         check_extension_win, keep_intermediate, progress_file, classify_unknown, classify_all,
+         check_extension_win, debug, progress_file, classify_unknown, classify_all,
          final_con_file, final_unknown_con_file, final_classified_con_file, low_copy_dir, fast_mode, error_files
          ) for seq in seq_list]
 
@@ -1080,7 +1080,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Remove microseconds from the duration
     duration_without_microseconds = timedelta(days=duration.days, seconds=duration.seconds)
 
-    # if not keep_intermediate:
+    # if not debug:
     # Remove all single files when all the sequences are processed
     # shutil.rmtree(single_file_dir)
 
