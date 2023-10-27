@@ -4,8 +4,12 @@ import subprocess
 from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar
 import click
 from functools import partial
+import platform
 
 copy_history = []
+
+# Detect OS
+os_type = platform.system()
 
 @click.command()
 @click.option('--te_trimmer_proof_annotation_dir', '-i', required=True, type=str,
@@ -78,7 +82,14 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
             if filename.lower().endswith(('.fa', '.fasta')):
                 subprocess.run([aliview_path, os.path.join(source_dir, filename)])
             elif filename.lower().endswith('.pdf'):
-                subprocess.run(['gio', 'open', os.path.join(source_dir, filename)])
+                if os_type == "Linux":
+                    subprocess.run(['xdg-open', os.path.join(source_dir, filename)])
+                elif os_type == "Darwin":  # macOS
+                    subprocess.run(['open', os.path.join(source_dir, filename)])
+                elif os_type == "Windows":
+                    os.startfile(os.path.join(source_dir, filename))
+                else:
+                    subprocess.run(['xdg-open', os.path.join(source_dir, filename)])
             button.config(bg='yellow')
 
         return _open_file
@@ -94,6 +105,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                 try:
                     shutil.copy(file_path, target_directory)
                     button.config(bg='green')
+                    button.update_idletasks()
                     if len(copy_history) >= 100:
                         copy_history.pop(0)
                     copy_history.append((os.path.join(target_directory, filename), target_directory, button))
@@ -123,11 +135,20 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
         for widget in frame.winfo_children():
             widget.destroy()
 
-    global initial_label
+    global logo_label
+    global text_label
+
+    log_text = "████████╗███████╗    ████████╗██████╗ ██╗███╗   ███╗███╗   ███╗███████╗██████╗\n"\
+               "╚══██╔══╝██╔════╝    ╚══██╔══╝██╔══██╗██║████╗ ████║████╗ ████║██╔════╝██╔══██╗\n"\
+               "   ██║   █████╗         ██║   ██████╔╝██║██╔████╔██║██╔████╔██║█████╗  ██████╔╝\n"\
+               "   ██║   ██╔══╝         ██║   ██╔══██╗██║██║╚██╔╝██║██║╚██╔╝██║██╔══╝  ██╔══██╗\n"\
+               "   ██║   ███████╗       ██║   ██║  ██║██║██║ ╚═╝ ██║██║ ╚═╝ ██║███████╗██║  ██║\n"\
+               "   ╚═╝   ╚══════╝       ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝\n"\
+
 
     initial_text = "TE Trimmer proof annotation assistant tool\n\n" \
                    "Introduction:\n\n" \
-                   "We highly recommend to do proof annotation for 'Intermediate_annotation' and 'Need_check_annotation" \
+                   "We highly recommend to do proof annotation for 'Recommend_check_annotation' and 'Need_check_annotation" \
                    " ,which can dramatically increase your TE annotation quality.\n\n"\
                    "1, Click the buttons in the menu bar, which corresponds to the different annotation status.\n\n" \
                    "2, All files in the chose folder (button) will be displayed.\n\n" \
@@ -146,16 +167,29 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                    "8, For low copy element, check the pdf file and decide if to include it into the final consensus " \
                    "library. Note: low copy element do not have multiple sequence alignment file"
 
-    # Define initial text content
-    initial_label = Label(canvas, text=initial_text, bg='white', font=('Arial', 15),
-                          justify='left', wraplength=1100)
-    initial_label.pack(pady=20)
+    # Display ASCII logo with 'Courier' font
+    if os_type == "Linux":
+        logo_font = ('DejaVu Sans Mono', 10)
+    elif os_type == "Darwin":  # macOS
+        logo_font = ('Courier', 10)
+    else:
+        logo_font = ('Courier', 10)
+    logo_label = Label(canvas, text=log_text, bg='white', font=logo_font, justify='left', wraplength=1100)
+    logo_label.pack(pady=10)
+
+    # Display the explanatory text with 'Arial' font
+    text_label = Label(canvas, text=initial_text, bg='white', font=('Arial', 15), justify='left', wraplength=1100)
+    text_label.pack(pady=10)
 
     def destroy_initial_label():
-        global initial_label
-        if initial_label:
-            initial_label.destroy()
-            initial_label = None
+        global logo_label
+        if logo_label:
+            logo_label.destroy()
+            logo_label = None
+        global text_label
+        if text_label:
+            text_label.destroy()
+            text_label = None
 
     def load_files_with_destroy(start, end, path):
         destroy_initial_label()
@@ -196,7 +230,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     menubar = Menu(root)
     root.config(menu=menubar)
 
-    annotation_folders = ["Perfect_annotation", "Good_annotation", "Intermediate_annotation", "Need_check_annotation", "Low_copy_TE"]
+    annotation_folders = ["Perfect_annotation", "Good_annotation", "Recommend_check_annotation", "Need_check_annotation", "Low_copy_TE"]
 
     for annotation in annotation_folders:
         annotationMenu = Menu(menubar, tearoff=0)
@@ -208,7 +242,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                                                        "Error", "Please use the correct input directory."
                                                        " Five folder should be contained in your input path, "
                                                        "including 'Perfect_annotation', 'Good_annotation', "
-                                                       "'Intermediate_annotation', 'need_check_annotation', "
+                                                       "'Recommend_check_annotation', 'need_check_annotation', "
                                                        "and 'Low_copy_TE'"))
             continue
         sorted_files_annotation = sorted(os.listdir(annotation_path))

@@ -8,7 +8,6 @@ import concurrent.futures
 import json
 import pandas as pd
 from Bio import SeqIO
-from Software_name import software_name
 
 # Local imports
 from Function_separate_fasta import separate_sequences
@@ -678,7 +677,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Define proof annotation evaluation folders
     perfect_proof = os.path.join(proof_annotation_dir, "Perfect_annotation")
     good_proof = os.path.join(proof_annotation_dir, "Good_annotation")
-    intermediate_proof = os.path.join(proof_annotation_dir, "Intermediate_annotation")
+    intermediate_proof = os.path.join(proof_annotation_dir, "Recommend_check_annotation")
     need_check_proof = os.path.join(proof_annotation_dir, "Need_check_annotation")
     os.makedirs(perfect_proof, exist_ok=True)
     os.makedirs(good_proof, exist_ok=True)
@@ -1027,7 +1026,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                 remove_files_with_start_pattern(perfect_proof, missing_id)
             elif evaluation_leve == "Good":
                 remove_files_with_start_pattern(good_proof, missing_id)
-            elif evaluation_leve == "Intermediate":
+            elif evaluation_leve == "Reco_check":
                 remove_files_with_start_pattern(intermediate_proof, missing_id)
             elif evaluation_leve == "Need_check":
                 remove_files_with_start_pattern(need_check_proof, missing_id)
