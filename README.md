@@ -1,7 +1,36 @@
-# Introduction
-TE Trimmer: a tool to replace transposable element manual curation. TE Trimmer won't do TE _de novo_ annotation but use the output from other annotation tools like RepeatModeler, REPET, and EDTA.
+## Content
+- [Introduction](#Introduction)
+- [Installation](#Installation)
+- [Usage](#Usage)
+- - [Test](#Test)
+- - [Inputs](#Inputs)
+- - [Outputs](#Outputs)
+- - [Proof annotation](#Proof-annotation)
+
+## Introduction
+Many tools have been developed for *de novo* transposable element (TE) identification. But manual 
+curation is still required for high quality TE annotation by experts. TE Trimmer is designed to replace and assistant
+TE manual curation. 
+![image](https://private-user-images.githubusercontent.com/75024559/278702015-5f01f336-f9bd-4827-89e4-7b1b055b7e3f.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTEiLCJleHAiOjE2OTg0MjQxMjcsIm5iZiI6MTY5ODQyMzgyNywicGF0aCI6Ii83NTAyNDU1OS8yNzg3MDIwMTUtNWYwMWYzMzYtZjliZC00ODI3LTg5ZTQtN2IxYjA1NWI3ZTNmLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFJV05KWUFYNENTVkVINTNBJTJGMjAyMzEwMjclMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjMxMDI3VDE2MjM0N1omWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTliZWY1ODkzOWU0Yzc4NDA1ZjY1MDY0NDYzMGJmZDMzN2IwYmZiMWQwYWMwNWFlZTQ0NGNhNmFmMGJhMWIxMWEmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0.pdVoWAxEymwxSfrFfZwlIw1mDvD7GQ5sgjL2Ya-xGWs)
+
+
+## Installation
+
 
 ## Usage:
+### Test
+
+### Inputs
+
+### Outputs
+
+### Proof annotation
+
+## Benchmark
+
+## Acknowledgements
+
+
 
 ## Use --help for a detailed list of options
 python ./path_to_TE_Trimmer_folder/bin/main.py** --help 
@@ -20,8 +49,6 @@ python ./path_to_TE_Trimmer_folder/bin/Class_TKinter_proof_annotation.py --te_tr
 - list
 
 [link](https://github.com/qjiangzhao)
-
-![image](https://github.com/account)
 
 
 |col1|col2|col3|
