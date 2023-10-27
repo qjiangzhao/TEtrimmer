@@ -587,7 +587,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     #               Terminal_repeat    Classified    MSA_sequence_number    Blast_full_length_number    if_PFAM
     # Perfect:      True               True          >=30                   >=5                         True
-    # Good:         True               Not_required  >=25                   >=3                         Not_required
+    # Good:         True               Not_required  >=10                   >=3                         Not_required
     # Intermediate  Not_required       Not_required  >=20                   >=3                         Not_required
     # Need check    Not_required       Not_required  Not_required           Not_required                Not_required
     if (consi_obj.new_TE_terminal_repeat != "False" and
@@ -598,7 +598,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         consi_obj.set_cons_evaluation("Perfect")
 
     elif (consi_obj.new_TE_terminal_repeat != "False" and
-          consi_obj.new_TE_MSA_seq_n >= 25 and
+          consi_obj.new_TE_MSA_seq_n >= 10 and
           consi_obj.new_TE_blast_full_length_n >= 3):
         consi_obj.set_cons_evaluation("Good")
 

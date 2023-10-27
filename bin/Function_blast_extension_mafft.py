@@ -1117,23 +1117,37 @@ def remove_files_with_start_pattern(input_dir, start_pattern):
 
 
 # Define a function to handle sequence skipping and removal of files
-def handle_sequence_skipped_and_low_copy(seq_obj, progress_file, debug, MSA_dir, classification_dir,
-                                         found_match=None, blast_full_length_n=None, low_copy=False):
+def handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir, classification_dir,
+                             found_match=None, blast_full_length_n=None):
     seq_name = seq_obj.get_seq_name()
     try:
         if found_match is not None and blast_full_length_n is not None:
             seq_obj.set_old_terminal_repeat(found_match)
             seq_obj.set_old_blast_full_n(blast_full_length_n)
-        if low_copy:
             seq_obj.update_status("processed", progress_file)
-        else:
-            seq_obj.update_status("skipped", progress_file)
+
         if not debug:
             remove_files_with_start_pattern(MSA_dir, seq_name)
             remove_files_with_start_pattern(classification_dir, seq_name)
     except Exception as e:
-        raise Exception(
-            f"An error occurred while handling skipped sequence {seq_name}: {e}")
+        click.echo(f"\nAn error occurred while handling low copy sequence {seq_name}:\n {e}\n")
+
+
+def handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir, plot_skip=False,
+                            te_aid_plot=None, skip_proof_dir=None):
+    seq_name = seq_obj.get_seq_name()
+    try:
+        seq_obj.update_status("skipped", progress_file)
+        if plot_skip and te_aid_plot is not None and skip_proof_dir is not None:
+            te_aid_skipped_plot = os.path.join(skip_proof_dir, f"{seq_name}_TE_Aid.pdf")
+            shutil.copy(te_aid_plot, te_aid_skipped_plot)
+
+        if not debug:
+            remove_files_with_start_pattern(MSA_dir, seq_name)
+            remove_files_with_start_pattern(classification_dir, seq_name)
+
+    except Exception as e:
+        click.echo(f"\nAn error occurred while handling skipped sequence {seq_name}:\n {e}\n")
 
 
 def update_cons_file(updated_type, unknown_concensus_file, consensus_file):
@@ -1174,7 +1188,7 @@ def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, f
         f.write(">" + seq_name + "#" + te_type + "\n" + sequence + "\n")
 
     low_copy_single_fasta_file = os.path.join(proof_dir, f"{seq_name}#{te_type_modified}.fa")
-    low_copy_te_aid_pdf_file = os.path.join(proof_dir, f"{seq_name}#{te_type_modified}.pdf")
+    low_copy_te_aid_pdf_file = os.path.join(proof_dir, f"{seq_name}#{te_type_modified}_TE_Aid.pdf")
 
     shutil.copy(input_fasta, low_copy_single_fasta_file)
     shutil.copy(te_aid_pdf, low_copy_te_aid_pdf_file)
