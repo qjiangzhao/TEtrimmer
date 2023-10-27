@@ -6,7 +6,7 @@
 - - [Inputs](#Inputs)
 - - [Outputs](#Outputs)
 - - [Proof annotation](#Proof-annotation)
--[Flowchart](#Flowchart)
+- [Flowchart](#Flowchart)
 
 ## Introduction
 Many tools have been developed for *de novo* transposable element (TE) identification. But manual 
