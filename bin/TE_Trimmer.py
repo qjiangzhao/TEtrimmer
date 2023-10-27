@@ -390,7 +390,7 @@ with open(species_config_path, "r") as config_file:
                   ██║   ███████╗       ██║   ██║  ██║██║██║ ╚═╝ ██║██║ ╚═╝ ██║███████╗██║  ██║
                   ╚═╝   ╚══════╝       ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝
                   
-                Version: v1.1 (09/OCT/2023) 
+                Version: v1.1 (27/OCT/2023) 
 
                 Github: https://github.com/qjiangzhao/TE-Trimmer
 
