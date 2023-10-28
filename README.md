@@ -1,4 +1,4 @@
-## Content
+## Contents
 - [Introduction](#Introduction)
 - [Installation](#Installation)
 - [Usage](#Usage)
@@ -11,15 +11,16 @@
 ## Introduction
 Many tools have been developed for *de novo* transposable element (TE) identification. But manual 
 curation is still required for high quality TE annotation by experts. TE Trimmer is designed to replace and assistant
-TE manual curation. 
+TE manual curation. You can find more details for TE Trimmer [flowchart](#Flowchart).
 
 
 ## Installation
-You can find dependencies requirement from [here](https://github.com/qjiangzhao/TE-Trimmer/blob/Jiangzhao_TE_trimmer/TE_Trimmer_dependencies). 
-We will pack TE Trimmer to Conda and Docker package.
+You can find required dependencies from [here](https://github.com/qjiangzhao/TE-Trimmer/blob/Jiangzhao_TE_trimmer/TE_Trimmer_dependencies). 
+We will develop Conda and Docker packages for TE Trimmer.
 
 ## Usage:
-Use --help to see all options
+Use --help to access all options
+
 ```commandline
 python {path to TE Trimmer}/TE_Trimmer.py --help
 ```
@@ -40,22 +41,40 @@ python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
                                           --genome_file {genome file} \
                                           --output_dir {output directory}
 ```
+If you want to continue analysis based on previous unfinished result:
+```commandline
+python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
+                                          --genome_file {genome file} \
+                                          --output_dir {directory contains previous unfinished result} \
+                                          -ca
+```
+If you want to remove duplicate sequences in input file (cd-hit-est is used):
+```commandline
+python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
+                                          --genome_file {genome file} \
+                                          --output_dir {output directory} \
+                                          --dedup
+```
 More options are available:
 ```commandline
-  -ca, --continue_analysis        Continue to analysis after interruption.
-  --dedup                         Remove duplicate sequences in input file.
-  --genome_anno                   Perform genome TE annotation using the TE Trimmer curated database. Requires
-                                  RepeatMasker.
+  --genome_anno                   Perform genome TE annotation using the TE Trimmer curated database. Requires RepeatMasker.
   --hmm                           Generate HMM files for each consensus sequences.
   --debug                         Open debug mode. This will keep all raw files. WARNING: Many files will be produced.
   --fast_mode                     Reduce running time but at the cost of lower accuracy and specificity.
   --plot_skip                     Perform TE_Aid plot for skipped elements
-  --pfam_dir TEXT                 Pfam database directory. Omit this option if you do not have a local PFAM database.
-                                  TE Trimmer will download the database automatically in this case.
+  --pfam_dir TEXT                 Pfam database directory. Omit this if you do not have a local PFAM database. TE Trimmer will download the database automatically.
   --cons_thr FLOAT                Threshold used for the final consensus sequence generation. Default: 0.8
-
+  --mini_orf INTEGER              Define the minimum ORF length that will be predicted by TE Trimmer. Default: 200
+  --classify_unknown              Use RepeatClassifier to classify the consensus sequence if the input sequence is not
+                                  classified or is unknown.
+  --classify_all                  Use RepeatClassifier to classify every consensus sequence.  WARNING: it will take
+                                  longer time.
+  -t, --num_threads INTEGER       Threads numbers used for TE Trimmer. Default: 10
 ```
 ### Outputs
+
+
+
 
 ### Proof annotation
 

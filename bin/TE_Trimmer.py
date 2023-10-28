@@ -440,6 +440,8 @@ with open(species_config_path, "r") as config_file:
                    'TE Trimmer will download the database automatically in this case.')
 @click.option('--cons_thr', type=float,
               help='Threshold used for the final consensus sequence generation. Default: 0.8')
+@click.option('--mini_orf', type=int,
+              help='Define the minimum ORF length that will be predicted by TE Trimmer. Default: 200')
 @click.option('--max_msa_lines', type=int,
               help='Set the maximum sequences number for multiple sequence alignment. Default: 100')
 @click.option('--top_mas_lines', type=int,
@@ -448,7 +450,8 @@ with open(species_config_path, "r") as config_file:
                    'of sequences. Then, TE Trimmer will randomly select sequences from all remaining BLAST hits until '
                    '<--max_msa_lines> sequences are found for the multiple sequence alignment. Default: 70')
 @click.option('--min_seq_num', type=int,
-              help='The minimum sequence number for each multiple sequence alignment. Default: 10')
+              help='The minimum sequence number for each multiple sequence alignment. Note: can not smaller than 10. '
+                   'Default: 10')
 @click.option('--min_blast_len', type=int,
               help='The minimum sequence length for blast hits. Default: 150')
 @click.option('--max_cluster_num', type=int,
@@ -506,16 +509,13 @@ with open(species_config_path, "r") as config_file:
                    'if the pattern is found. Note: The user can provide multiple LTR end patterns in a '
                    'comma-separated list, like: CA,TA,GA (no spaces; the order of patterns determines '
                    'the priority for the search). Default: CA')
-@click.option('--mini_orf', type=int,
-              help='Define the minimum ORF length that will be predicted by TE Trimmer. Default: 200')
 @click.option('--num_threads', '-t', default=10, type=int,
               help='Threads numbers used for TE Trimmer. Default: 10')
 @click.option('--classify_unknown', default=False, is_flag=True,
               help='Use RepeatClassifier to classify the consensus sequence if the input sequence is not classified or '
-                   'is unknown. Default: False')
+                   'is unknown.')
 @click.option('--classify_all', default=False, is_flag=True,
-              help='Use RepeatClassifier to classify every consensus sequence.  WARNING: it will take longer time. '
-                   'Default: False')
+              help='Use RepeatClassifier to classify every consensus sequence.  WARNING: it will take longer time.')
 def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_blast_len, num_threads, max_msa_lines,
          top_mas_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ext_step, plot_skip,
          max_ext, gap_thr, gap_nul_thr, crop_end_div_thr, crop_end_div_win, crop_end_gap_thr, crop_end_gap_win,
@@ -564,6 +564,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     if min_seq_num is None:
         min_seq_num = default_values.get("min_seq_num")
+        if min_seq_num < 10:
+            min_seq_num = 10
 
     if min_blast_len is None:
         min_blast_len = default_values.get("min_blast_len")
