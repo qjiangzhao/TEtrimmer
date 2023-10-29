@@ -3,6 +3,7 @@
 - [Installation](#Installation)
 - [Usage](#Usage)
 - - [Test](#Test)
+- - [Hardware requirement](#Hardware-requirement)
 - - [Inputs](#Inputs)
 - - [Outputs](#Outputs)
 - - [Proof annotation](#Proof-annotation)
@@ -24,6 +25,25 @@ Use --help to access all options
 ```commandline
 python {path to TE Trimmer}/TE_Trimmer.py --help
 ```
+### Hardware requirement
+- System: Linux, macOS
+- RAM:
+- - For HPC Linux user, enough RAM has to be assigned. We highly recommend to run it on HPC with at least 40 threads.
+
+| Threads | RAM    |
+|---------|--------|
+| 40      | 250 GB |
+| 100     | 500 GB |
+
+- - For PC macOS user, because Virtual Memory can be used. You can simply use 20 threads to push the CPU to its limits. We did
+test on Macbook Pro (2020 M1 chip 16 GB) and compared with HPC, you can find the running time here:
+
+| Query sequence number | Platform       | Threads | RAM                    | Running time |
+|-----------------------|----------------|---------|------------------------|--------------| 
+| 1700                  | Macbook Pro M1 | 20      | 16 GB + Virtual Memory | 60 hours     |
+| 1700                  | HPC            | 40      | 250 GB                 | 7 hours      | 
+
+- - We haven't tested it on WLS of Windows, it should be feasible to run TE Trimmer on it too. 
 
 ### Test
 Test file is still not available.
@@ -37,23 +57,30 @@ For this reason, you have to run RepeatModeler or other TE annotation software f
 Example:
 
 ```commandline
+# The {output directory} must be empty.
+# Please 
 python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
                                           --genome_file {genome file} \
-                                          --output_dir {output directory}
+                                          --output_dir {output directory} \
+                                          --num_threads 10
+                                          
 ```
-If you want to continue analysis based on previous unfinished result:
+If you want to continue the analysis based on previous unfinished result:
 ```commandline
 python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
                                           --genome_file {genome file} \
                                           --output_dir {directory contains previous unfinished result} \
-                                          -ca
+                                          --num_threads 10 \
+                                          --continue_analysis
 ```
-If you want to remove duplicate sequences in input file (cd-hit-est is used):
+If you want to remove duplicate sequences in the input file:
 ```commandline
 python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
                                           --genome_file {genome file} \
                                           --output_dir {output directory} \
+                                          --num_threads 10 \
                                           --dedup
+                                          
 ```
 More options are available:
 ```commandline
