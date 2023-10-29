@@ -34,7 +34,7 @@ RAM:
 | Threads | RAM    |
 |---------|--------|
 | 40      | 250 GB |
-| 100     | 500 GB |
+| 100     | 600 GB |
 
 - For PC macOS user, because Virtual Memory can be used. You can simply use 20 threads to push the CPU to its limits. We did
 test on Macbook Pro (2020 M1 chip 16 GB) and compared with HPC, you can find the running time here:
@@ -65,7 +65,7 @@ python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
                                           --num_threads 10
                                           
 ```
-If you want to continue the analysis based on previous unfinished result:
+If you want to **continue the analysis based on previous unfinished result**:
 ```commandline
 python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
                                           --genome_file {genome file} \
@@ -73,7 +73,7 @@ python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
                                           --num_threads 10 \
                                           --continue_analysis
 ```
-If you want to remove duplicate sequences in the input file:
+If you want to **remove duplicate sequences** in the input file:
 ```commandline
 python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
                                           --genome_file {genome file} \
@@ -97,32 +97,43 @@ More options are available:
 ```
 ### Outputs
 - 📁**Classification** - Folder used for TEs classification  
-- 📁**Multiple_sequence_alignment** - This folder contain all the raw files. < --debug > will keep all raw files here.
+- 📁**Multiple_sequence_alignment** - This folder contain all the raw files. All raw files will be kept when < --debug > is enables..
 - 📁**Single_fasta_files** - All sequences in the input file will be separated to single fasta file and be stored here.
 - 📁**TE_Trimmer_for_proof_annotation** - Folder contains files used for proof annotation. 
   - 📁**Perfect_annotation** - For each sequence, three files are corresponded with it (anno.fa; fa; pdf)
   - - 📄TE_name.anno.fa - Multiple sequence alignment file before cleaning
   - - 📄TE_name.fa - Multiple sequence alignment file after cleaning.
-  - - 📄TE_name.pdf - Plot file used to evaluate output
+  - - 📄TE_name.pdf - Plot file used to evaluate output.
   - 📁**Good_annotation** 
   - 📁**Recommend_check_annotation**
   - 📁**Need_check_annotation**
-  - 📁**Low_copy_TE** - Contains low copy TEs
-  - 📁**Skipped_TE** - Contains TE_Aid plots for all skipped TEs. Only available when < --plot_skip > in enabled.
+  - 📁**Low_copy_TE** - Contains low copy TEs.
+  - 📁**Skipped_TE** - Contains TE_Aid plots for all skipped TEs. Only visible when < --plot_skip > is enabled.
 - 📁**HMM** - Folder used to store Hidden Markov Model file. Only visible when < --hmm > is enabled.
-- 📄**Finished_sequence_recording.txt** - Report file 
-- 📄**TE_Trimmer_consensus.fasta** - Consensus library file before de-duplication
-- 📄**TE_Trimmer_consensus_merged.fasta** - Consensus library file after de-duplication
+- 📄**Finished_sequence_recording.txt** - Report file. 
+- 📄**TE_Trimmer_consensus.fasta** - TE consensus library file before de-duplication.
+- 📄**TE_Trimmer_consensus_merged.fasta** - TE consensus library file after de-duplication.
 - 📄**error_file.txt** - Error file to store all error messages. 
 
 ### Proof annotation
-
+You can use this graphical user interface tool to assistant your proof annotation. We highly recommend to do proof 
+annotation for the TEs in "Recommend_check_annotation" and "Need_check_annotation" folder to achieve high quality TE
+consensus library. 
+```commandline
+# To start the proof annotation GUI tool
+python {path to TE Trimmer}/Proof_annotation_GUI.py -i {path to TE_Trimmer_for_proof_annotation folder} \
+                                                    -o {output directory}
+```
+You can follow the instruction to perform the proof annotation. 
+![TE_Trimmer_interface1](https://www.dropbox.com/scl/fi/mynrf8mokblq9egslpsti/Screenshot-2023-10-29-at-12.19.27.png?rlkey=pozzit1llyteux2rhwxnxnn99&dl=1)
+This is all files in "Perfect annotation" folder (Click "Perfect annotation" button in the menu bar to show this.)
+![TE_Trimmer_interfact2](https://www.dropbox.com/scl/fi/4nh0u7xvirieb68c5knnw/Screenshot-2023-10-29-at-12.20.14.png?rlkey=m2nfsevhriennsp5vf9s766zr&dl=1)
 ## Benchmark
 
 ## Acknowledgements
 
 ## Flowchart
-![image](https://private-user-images.githubusercontent.com/75024559/278702015-5f01f336-f9bd-4827-89e4-7b1b055b7e3f.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTEiLCJleHAiOjE2OTg0MjQxMjcsIm5iZiI6MTY5ODQyMzgyNywicGF0aCI6Ii83NTAyNDU1OS8yNzg3MDIwMTUtNWYwMWYzMzYtZjliZC00ODI3LTg5ZTQtN2IxYjA1NWI3ZTNmLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFJV05KWUFYNENTVkVINTNBJTJGMjAyMzEwMjclMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjMxMDI3VDE2MjM0N1omWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTliZWY1ODkzOWU0Yzc4NDA1ZjY1MDY0NDYzMGJmZDMzN2IwYmZiMWQwYWMwNWFlZTQ0NGNhNmFmMGJhMWIxMWEmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0.pdVoWAxEymwxSfrFfZwlIw1mDvD7GQ5sgjL2Ya-xGWs)
+![image](https://www.dropbox.com/scl/fi/4s0sd2e0ndic62pyt22dt/TE_Trimmer_vertical_flowchart.png?rlkey=ixwbo1p7h05xhz80nh2j47y2o&dl=1)
 
 
 
