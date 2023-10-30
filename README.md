@@ -95,24 +95,24 @@ More options are available:
                                   longer time.
 ```
 ### Outputs
-- 📁**Classification** - This folder is used for TEs classification.  
-- 📁**Multiple_sequence_alignment** - All raw files will be kept in this folder when < --debug > is enables.
-- 📁**Single_fasta_files** - All sequences in the input file will be separated to single fasta files and be stored here.
-- 📁**TE_Trimmer_for_proof_annotation** - This folder contains files used for proof annotation. 
-  - 📁**Perfect_annotation** - For each sequence, three files are associate with it (anno.fa; fa; pdf)
-    - 📄TE_name.anno.fa - Multiple sequence alignment file before cleaning.
-    - 📄TE_name.fa - Multiple sequence alignment file after cleaning.
-    - 📄TE_name.pdf - Plot file used to evaluate output.
+- 📁**Classification** - *This folder is used for TEs classification.*  
+- 📁**Multiple_sequence_alignment** - *All raw files will be kept in this folder when < --debug > is enables.*
+- 📁**Single_fasta_files** - *All sequences in the input file will be separated to single fasta files and be stored here.*
+- 📁**TE_Trimmer_for_proof_annotation** - *This folder contains files used for proof annotation.* 
+  - 📁**Perfect_annotation** - *For each sequence, three files are associate with it (anno.fa; fa; pdf).*
+    - 📄**TE_name.anno.fa** - *Multiple sequence alignment file before cleaning.*
+    - 📄**TE_name.fa** - *Multiple sequence alignment file after cleaning.*
+    - 📄**TE_name.pdf** - *Plot file used to evaluate output.*
   - 📁**Good_annotation** 
   - 📁**Recommend_check_annotation**
   - 📁**Need_check_annotation**
-  - 📁**Low_copy_TE** - This folder contains low copy TEs.
-  - 📁**Skipped_TE** - Contains TE_Aid plots for all skipped TEs. Only visible when < --plot_skip > is enabled.
-- 📁**HMM** - This folder is used to store Hidden Markov Model file. Only visible when < --hmm > is enabled.
-- 📄**Finished_sequence_recording.txt** - Report file. 
-- 📄**TE_Trimmer_consensus.fasta** - TE consensus library file before de-duplication.
-- 📄**TE_Trimmer_consensus_merged.fasta** - TE consensus library file after de-duplication.
-- 📄**error_file.txt** - Error file to store all error messages. 
+  - 📁**Low_copy_TE** - *This folder contains low copy TEs.*
+  - 📁**Skipped_TE** - *Contains TE_Aid plots for all skipped TEs. Only visible when < --plot_skip > is enabled.*
+- 📁**HMM** - *This folder is used to store Hidden Markov Model file. Only visible when < --hmm > is enabled.*
+- 📄**Finished_sequence_recording.txt** - *Report file.* 
+- 📄**TE_Trimmer_consensus.fasta** - *TE consensus library file before de-duplication.*
+- 📄**TE_Trimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
+- 📄**error_file.txt** - *Error file to store all error messages, only visible when error is found.*
 
 ### Proof annotation
 You can use this graphical user interface tool to assistant your proof annotation. We highly recommend to do proof 
