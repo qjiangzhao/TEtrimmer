@@ -473,7 +473,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Define different levels of proof annotation folder
     perfect_proof = os.path.join(proof_annotation_dir, "Perfect_annotation")
     good_proof = os.path.join(proof_annotation_dir, "Good_annotation")
-    intermediate_proof = os.path.join(proof_annotation_dir, "Intermediate_annotation")
+    intermediate_proof = os.path.join(proof_annotation_dir, "Recommend_check_annotation")
     need_check_proof = os.path.join(proof_annotation_dir, "Need_check_annotation")
 
     # Create the directory if it doesn't exist
@@ -570,9 +570,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 consi_obj.set_new_TE_type(TE_type)
     except Exception as e:
         with open(error_files, "a") as f:
-            f.write("RepeatClassifier classification error\n" + str(e) + '\n')
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"RepeatClassifier classification error\n")
+            f.write(tb_content + '\n\n')
         click.echo("Note: Classification isn't working. This won't affect final consensus sequences.")
-        pass
 
     # Update final con_TE_type. get_TE_type_for_file will evaluate if TE_type is Unknown. If so, use the
     # original TE classification name
@@ -580,14 +582,14 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     consi_obj.set_new_TE_type(updated_TE_type)
 
     ###############################################################################################################
-    # Code block: Output evaluation (perfect, good, intermediate, need_proof_annotation)
+    # Code block: Output evaluation (perfect, good, Reco_check, need_check)
     ###############################################################################################################
 
     #               Terminal_repeat    Classified    MSA_sequence_number    Blast_full_length_number    if_PFAM
     # Perfect:      True               True          >=30                   >=5                         True
-    # Good:         True               Not_required  >=25                   >=3                         Not_required
-    # Intermediate  Not_required       Not_required  >=20                   >=3                         Not_required
-    # Need check    Not_required       Not_required  Not_required           Not_required                Not_required
+    # Good:         True               Not_required  >=15                   >=3                         Not_required
+    # Reco_check    Not_required       Not_required  >=20                   >=2                         Not_required
+    # Need_check    Not_required       Not_required  Not_required           Not_required                Not_required
     if (consi_obj.new_TE_terminal_repeat != "False" and
             consi_obj.new_TE_type != "NaN" and "unknown" not in consi_obj.new_TE_type.lower() and
             consi_obj.new_TE_MSA_seq_n >= 30 and
@@ -596,13 +598,13 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         consi_obj.set_cons_evaluation("Perfect")
 
     elif (consi_obj.new_TE_terminal_repeat != "False" and
-          consi_obj.new_TE_MSA_seq_n >= 25 and
+          consi_obj.new_TE_MSA_seq_n >= 15 and
           consi_obj.new_TE_blast_full_length_n >= 3):
         consi_obj.set_cons_evaluation("Good")
 
     elif (consi_obj.new_TE_MSA_seq_n >= 20 and
           consi_obj.new_TE_blast_full_length_n >= 2):
-        consi_obj.set_cons_evaluation("Intermediate")
+        consi_obj.set_cons_evaluation("Reco_check")
 
     else:
         consi_obj.set_cons_evaluation("Need_check")
@@ -628,7 +630,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 destination_dir = perfect_proof
             elif consi_obj.cons_evaluation == "Good":
                 destination_dir = good_proof
-            elif consi_obj.cons_evaluation == "Intermediate":
+            elif consi_obj.cons_evaluation == "Reco_check":
                 destination_dir = intermediate_proof
             else:
                 destination_dir = need_check_proof
@@ -637,6 +639,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             shutil.copy(pattern, os.path.join(destination_dir, new_name))
 
         except Exception as e:
+            with open(error_files, "a") as f:
+                # Get the traceback content as a string
+                tb_content = traceback.format_exc()
+                f.write(f"Copy file error for {pattern}\n")
+                f.write(tb_content + '\n\n')
             click.echo(f"Error copying {pattern} to {new_name}: {e}")
             files_moved_successfully = False
 
@@ -645,7 +652,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         # Define HMM file folder
         hmm_dir = os.path.join(parent_output_dir, "HMM_files")
         os.makedirs(hmm_dir, exist_ok=True)
-
         consi_obj.set_hmm_file()
         hmm_output_file = os.path.join(hmm_dir, consi_obj.hmm_file)
         generate_hmm_from_msa(cropped_boundary_MSA, hmm_output_file)

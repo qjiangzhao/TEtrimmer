@@ -6,19 +6,17 @@ import pandas as pd
 from Function_blast_extension_mafft import blast
 
 
-def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file):
+def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=False):
 
-    blast_full_length_n = check_blast_full_length(seq_obj, blast_out_file, identity=85, coverage=0.8, min_hit_length=100,
-                                                  te_aid_blast=False, if_low_copy=True)
+    blast_full_length_n = check_blast_full_length(seq_obj, blast_out_file, identity=85, coverage=0.8,
+                                                  min_hit_length=100, te_aid_blast=False, if_low_copy=True)
+    TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
 
     # At least 2 lines need to meet the requirement
     if blast_full_length_n >= 2:
         check_blast = True
 
         # Check self-alignment of terminal repeats
-        TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
-
-        # Run TE_aid
         TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
         TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
 
@@ -34,7 +32,12 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
         check_low_copy = seq_obj.update_low_copy(check_blast, found_match_boolean)
 
     else:
-        TE_aid_plot = None
+        if plot_skip:
+            # Plot skipped elements if it is required
+            TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
+            TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
+        else:
+            TE_aid_plot = None
         check_low_copy = False
         found_match = False
 
@@ -57,12 +60,11 @@ def check_blast_full_length(seq_obj, blast_out_file, identity=90, coverage=0.9, 
         seq_length = seq_obj.new_length
 
     identity_condition = df[2] > identity
-    coverage_condition = df[3] / seq_length > coverage
+    coverage_condition = df[3] / seq_length >= coverage
     length_condition = df[3] > min_hit_length
 
     # Filter the DataFrame
     filtered_df = df[identity_condition & coverage_condition & length_condition]
-
     blast_full_length_n = filtered_df.shape[0]
 
     return blast_full_length_n
@@ -142,7 +144,7 @@ class TEAid:
 
                 blast_cmd = f"blastn -query {self.input_file} -db {database_file} " \
                             f"-outfmt \"6 qseqid qstart qend sstart send \" " \
-                            f"-evalue 0.05"
+                            f"-evalue 0.05"  # Set higher evalue for self-blast
 
                 # Execute the command
                 result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -209,7 +211,7 @@ class TEAid:
 
         te_aid_blast_file = os.path.join(TE_aid_output_dir, "blastn.txt")
 
-        # If blast.txt file is found use the TE Aid output directly. Otherwise, do blast
+        # If blast.txt file is found use the TE Aid output directly. Otherwise, do blast. This can save resource
         if os.path.exists(te_aid_blast_file):
             full_length_n = check_blast_full_length(seq_obj, te_aid_blast_file, identity=90, coverage=0.9,
                                                     min_hit_length=100, te_aid_blast=True)

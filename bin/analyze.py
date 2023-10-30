@@ -11,8 +11,9 @@ from Bio import SeqIO
 
 # Local imports
 from Function_blast_extension_mafft import blast, remove_files_with_start_pattern, change_permissions_recursive, \
-    repeatmasker, check_database, check_bed_uniqueness, extract_fasta, cd_hit_est, handle_sequence_skipped, \
-    repeatmasker_output_classify, rename_cons_file, update_low_copy_cons_file, rename_files_based_on_dict
+    repeatmasker, check_database, check_bed_uniqueness, extract_fasta, cd_hit_est, handle_sequence_low_copy, \
+    handle_sequence_skipped, repeatmasker_output_classify, rename_cons_file, update_low_copy_cons_file, \
+    rename_files_based_on_dict
 # from Class_bed_filter import BEDFile
 import bedfilter
 from boundarycrop import find_boundary_and_crop
@@ -86,9 +87,9 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                      top_mas_lines, max_cluster_num, cons_thr, ext_thr, ex_step, classification_dir,
                      max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr,
                      crop_end_gap_win, start_patterns, end_patterns, output_dir, pfam_dir, mini_orf,
-                     single_fasta_n, hmm, check_extension_win, keep_intermediate, progress_file,
+                     single_fasta_n, hmm, check_extension_win, debug, progress_file,
                      classify_unknown, classify_all, final_con_file, final_unknown_con_file,
-                     final_classified_con_file, low_copy_dir, fast_mode, error_files):
+                     final_classified_con_file, low_copy_dir, fast_mode, error_files, plot_skip, skipped_dir):
     #####################################################################################################
     # Code block: Elongate query sequence when it is too short
     #####################################################################################################
@@ -133,6 +134,11 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                                                                    min_length=min_blast_len, seq_obj=seq_obj)
 
     except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"Error while running blast for sequence: {seq_name}\n")
+            f.write(tb_content + '\n\n')
         click.echo(f"Error while running blast for sequence: {seq_name}. Main Error: {str(e)}")
         return
 
@@ -141,21 +147,23 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         # Check if blast hit number is equal 0, then skip this sequence
         if blast_hits_count == 0:
             click.echo(f"\n{seq_name} is skipped due to blast hit number is 0\n")
-            handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir)
+            handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir)
 
             return
 
         # Check if blast hit number is smaller than "min_seq_num", not include "min_seq_num"
         elif blast_hits_count != 0 and blast_hits_count < min_seq_num:
             check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
-                seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
+                seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=plot_skip)
 
             if check_low_copy is True:
 
-                # Update terminal repeat and blast full length number
-                seq_obj.set_old_terminal_repeat(found_match)
-                seq_obj.set_old_blast_full_n(blast_full_length_n)
-                seq_obj.update_status("processed", progress_file)
+                # Update terminal repeat and blast full length number, remove low copy intermediate files
+                handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir,
+                                         classification_dir, found_match=found_match,
+                                         blast_full_length_n=blast_full_length_n)
+
+                # Integrate low copy element sequence into consensus file
                 update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
                                           final_classified_con_file, low_copy_dir, TE_aid_plot)
             else:
@@ -163,13 +171,18 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                            f"and check_low_copy is {check_low_copy}\n")
 
                 # handle_sequence_skipped will update skipped status
-                handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir,
-                                        found_match, blast_full_length_n)
+                handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
+                                        plot_skip=plot_skip,te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
 
             return  # when blast hit number is smaller than 10, code will execute next fasta file
 
     except Exception as e:
-        click.echo(f"Error while checking uniqueness for sequence: {seq_name}. Error: {str(e)}")
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"\nError while checking low copy for sequence: {seq_name}\n")
+            f.write(tb_content + '\n\n')
+        click.echo(f"\nError while checking low copy for sequence: {seq_name}. Error: {str(e)}\n")
         return
 
     try:
@@ -201,23 +214,26 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                                                    min_length_num=min_seq_num, cluster_num=max_cluster_num,
                                                    cluster_col_thr=100, fast_mode=fast_mode)
     except Exception as e:
-        click.echo(
-            f"Error during processing lines, extracting fasta, or clustering MSA for sequence: {seq_name}. Error: {str(e)}")
-        traceback.print_exc()
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"Error when group MSA: {seq_name}\n")
+            f.write(tb_content + '\n\n')
+        click.echo(f"\nError when group MSA for sequence: {seq_name}. Error: {str(e)}\n")
         return
 
     try:
         # cluster false means no cluster, TE Trimmer will skip this sequence.
         if cluster_MSA_result is False:
             check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
-                seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
+                seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=plot_skip)
 
             if check_low_copy is True:
 
-                # Update terminal repeat and blast full length number
-                seq_obj.set_old_terminal_repeat(found_match)
-                seq_obj.set_old_blast_full_n(blast_full_length_n)
-                seq_obj.update_status("processed", progress_file)
+                # Update terminal repeat and blast full length number, remove low copy intermediate files
+                handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir,
+                                         classification_dir, found_match=found_match,
+                                         blast_full_length_n=blast_full_length_n)
                 update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
                                           final_classified_con_file, low_copy_dir, TE_aid_plot)
 
@@ -225,8 +241,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                 click.echo(
                     f"\n{seq_name} is skipped due to sequence number in each cluster is smaller "
                     f"than {min_seq_num} and check_low_copy is {check_low_copy}\n")
-                handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir,
-                                        found_match, blast_full_length_n)
+                handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
+                                        plot_skip=plot_skip,te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
 
             return
 
@@ -246,7 +262,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             if find_boundary_result == "Short_sequence":
                 click.echo(f"\n{seq_name} is skipped due to too short length\n")
 
-                handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir)
+                handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir)
 
                 return False
 
@@ -317,19 +333,19 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             # Check the flag after the loop. If all inner clusters were skipped, write the progress file
             if all_inner_skipped:
                 check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
-                    seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file)
+                    seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=plot_skip)
 
                 if check_low_copy is True:
 
-                    # Update terminal repeat and blast full length number
-                    seq_obj.set_old_terminal_repeat(found_match)
-                    seq_obj.set_old_blast_full_n(blast_full_length_n)
-                    seq_obj.update_status("processed", progress_file)
+                    # Update terminal repeat and blast full length number, remove low copy intermediate files
+                    handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir,
+                                             classification_dir, found_match=found_match,
+                                             blast_full_length_n=blast_full_length_n)
                     update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
                                               final_classified_con_file, low_copy_dir, TE_aid_plot)
                 else:
-                    handle_sequence_skipped(seq_obj, progress_file, keep_intermediate, MSA_dir, classification_dir,
-                                            found_match, blast_full_length_n)
+                    handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
+                                             plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
                     click.echo(
                         f"\n{seq_name} is skipped due to sequence number in second round each cluster is "
                         f"smaller than {min_seq_num} or the sequence is too short and check_low_copy is {check_low_copy}\n")
@@ -337,15 +353,19 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                 return
 
     except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"Error during boundary finding and cropping for sequence: {seq_name}\n")
+            f.write(tb_content + '\n\n')
         click.echo(f"Error during boundary finding and cropping for sequence: {seq_name}. Error: {str(e)}\n")
-        traceback.print_exc()
         return
 
     # After all processing is done, change status to process and write the name of the file to the progress file
     seq_obj.update_status("processed", progress_file)
 
     # If all this sequence is finished remove all files contain this name
-    if not keep_intermediate:
+    if not debug:
         remove_files_with_start_pattern(MSA_dir, seq_name)
         remove_files_with_start_pattern(classification_dir, seq_name)
 
@@ -360,7 +380,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
     printProgressBar(processed_count, single_fasta_n, prefix='Progress:', suffix='Complete', length=50)
 
-def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file):
+def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file, plot_skip):
 
     if not os.path.isfile(input_file):
         raise FileNotFoundError(f"The fasta file {input_file} does not exist.")
@@ -406,6 +426,13 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     else:
         hmm_dir = ''
 
+    # Define skipped folder if it is required
+    if plot_skip:
+        skipped_dir = os.path.join(proof_annotation_dir, "Skipped_TE")
+        os.makedirs(skipped_dir, exist_ok=True)
+    else:
+        skipped_dir = None
+
     # Define proof_annotation folder path
     proof_annotation_dir = os.path.join(output_dir, "TE_Trimmer_for_proof_annotation")
     os.makedirs(proof_annotation_dir, exist_ok=True)
@@ -417,7 +444,7 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     # Define proof annotation evaluation folders
     perfect_proof = os.path.join(proof_annotation_dir, "Perfect_annotation")
     good_proof = os.path.join(proof_annotation_dir, "Good_annotation")
-    intermediate_proof = os.path.join(proof_annotation_dir, "Intermediate_annotation")
+    intermediate_proof = os.path.join(proof_annotation_dir, "Recommend_check_annotation")
     need_check_proof = os.path.join(proof_annotation_dir, "Need_check_annotation")
     os.makedirs(perfect_proof, exist_ok=True)
     os.makedirs(good_proof, exist_ok=True)
@@ -445,6 +472,12 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
         if not if_pfam:  # Check if if_pfam is False
             raise ValueError("PFAM database preparation failed.")  # Raise an exception to be caught below
     except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"PFAM database building error\n")
+            f.write(tb_content + '\n\n')
+
         click.echo(f"Note: Can't download PFAM database from internet, please use your own PFAM database\n"
                    f"For example: --pfam_dir <your_PFAM_directory>\n"
                    f"Your PFAM directory should contain: \n"
@@ -468,5 +501,5 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
 
     return bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, low_copy_dir, perfect_proof, \
     good_proof, intermediate_proof, need_check_proof, progress_file, pfam_dir, final_con_file, final_unknown_con_file, final_classified_con_file, \
-    error_files, input_file, genome_file
+    error_files, input_file, genome_file, skipped_dir
 
