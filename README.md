@@ -14,7 +14,6 @@ Many tools have been developed for *de novo* transposable element (TE) identific
 curation is still required for high quality TE annotation by experts. TE Trimmer is designed to replace and assistant
 TE manual curation. You can find more details for TE Trimmer [flowchart](#Flowchart).
 
-
 ## Installation
 You can find required dependencies from [here](https://github.com/qjiangzhao/TE-Trimmer/blob/Jiangzhao_TE_trimmer/TE_Trimmer_dependencies). 
 We will develop Conda and Docker packages for TE Trimmer.
@@ -96,20 +95,20 @@ More options are available:
                                   longer time.
 ```
 ### Outputs
-- 📁**Classification** - Folder used for TEs classification  
-- 📁**Multiple_sequence_alignment** - This folder contain all the raw files. All raw files will be kept when < --debug > is enables..
-- 📁**Single_fasta_files** - All sequences in the input file will be separated to single fasta file and be stored here.
-- 📁**TE_Trimmer_for_proof_annotation** - Folder contains files used for proof annotation. 
-  - 📁**Perfect_annotation** - For each sequence, three files are corresponded with it (anno.fa; fa; pdf)
-  - - 📄TE_name.anno.fa - Multiple sequence alignment file before cleaning
+- 📁**Classification** - This folder is used for TEs classification.  
+- 📁**Multiple_sequence_alignment** - All raw files will be kept in this folder when < --debug > is enables.
+- 📁**Single_fasta_files** - All sequences in the input file will be separated to single fasta files and be stored here.
+- 📁**TE_Trimmer_for_proof_annotation** - This folder contains files used for proof annotation. 
+  - 📁**Perfect_annotation** - For each sequence, three files are associate with it (anno.fa; fa; pdf)
+  - - 📄TE_name.anno.fa - Multiple sequence alignment file before cleaning.
   - - 📄TE_name.fa - Multiple sequence alignment file after cleaning.
   - - 📄TE_name.pdf - Plot file used to evaluate output.
   - 📁**Good_annotation** 
   - 📁**Recommend_check_annotation**
   - 📁**Need_check_annotation**
-  - 📁**Low_copy_TE** - Contains low copy TEs.
+  - 📁**Low_copy_TE** - This folder contains low copy TEs.
   - 📁**Skipped_TE** - Contains TE_Aid plots for all skipped TEs. Only visible when < --plot_skip > is enabled.
-- 📁**HMM** - Folder used to store Hidden Markov Model file. Only visible when < --hmm > is enabled.
+- 📁**HMM** - This folder is used to store Hidden Markov Model file. Only visible when < --hmm > is enabled.
 - 📄**Finished_sequence_recording.txt** - Report file. 
 - 📄**TE_Trimmer_consensus.fasta** - TE consensus library file before de-duplication.
 - 📄**TE_Trimmer_consensus_merged.fasta** - TE consensus library file after de-duplication.
@@ -125,14 +124,15 @@ python {path to TE Trimmer}/Proof_annotation_GUI.py -i {path to TE_Trimmer_for_p
                                                     -o {output directory}
 ```
 You can follow the instruction to perform the proof annotation. 
-![TE_Trimmer_interface1](https://private-user-images.githubusercontent.com/75024559/278868801-5e5afc2e-52b0-4400-a816-bfa7907b25f9.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTEiLCJleHAiOjE2OTg1ODA3OTIsIm5iZiI6MTY5ODU4MDQ5MiwicGF0aCI6Ii83NTAyNDU1OS8yNzg4Njg4MDEtNWU1YWZjMmUtNTJiMC00NDAwLWE4MTYtYmZhNzkwN2IyNWY5LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFJV05KWUFYNENTVkVINTNBJTJGMjAyMzEwMjklMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjMxMDI5VDExNTQ1MlomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWMwNmVjYzAzZjk2YWM1MDllZTlhMTczNzVkZWRhMjM4MzFmZGQ2ZDkxODJiYmMyNWYxZTdkZjE3NDg2ZjAxZGYmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0.A1iNn5tlLg1LH7JfFyqRTGVn-JSpyqUC98sWvOVR-XI)
+![TE_Trimmer_interface1](https://www.dropbox.com/scl/fi/mynrf8mokblq9egslpsti/Screenshot-2023-10-29-at-12.19.27.png?rlkey=pozzit1llyteux2rhwxnxnn99&raw=1)
 Those are all files in "Perfect annotation" folder (Click "Perfect annotation" button in the menu bar to show this.)
-![TE_Trimmer_interfact2](https://private-user-images.githubusercontent.com/75024559/278868806-fc83859e-75c5-4735-8680-4ba67c7692ca.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTEiLCJleHAiOjE2OTg1ODA3OTIsIm5iZiI6MTY5ODU4MDQ5MiwicGF0aCI6Ii83NTAyNDU1OS8yNzg4Njg4MDYtZmM4Mzg1OWUtNzVjNS00NzM1LTg2ODAtNGJhNjdjNzY5MmNhLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFJV05KWUFYNENTVkVINTNBJTJGMjAyMzEwMjklMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjMxMDI5VDExNTQ1MlomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWRmMGIxNDY3OGI4OTYyNDcxYWJmODJmNjBlM2I3NDE1MDA4OGRjYjgyZTAzNjFjZjAzMjQ1MmFiZTYyNTAwZjQmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0.4Yho6hWNj9guNVwdvhtUnrPhJS1pdZqSiPKPHGn3GE0)
-## Benchmark
+![TE_Trimmer_interfact2](https://www.dropbox.com/scl/fi/4nh0u7xvirieb68c5knnw/Screenshot-2023-10-29-at-12.20.14.png?rlkey=m2nfsevhriennsp5vf9s766zr&raw=1)
+
+## Benchmarking
+TE Trimmer is 6 time more accurate to annotate the intact TE.
+![Benchmarking1](https://www.dropbox.com/scl/fi/v1ex6txe0mb9200gmtir3/Benchamrking_joined2.png?rlkey=i742b8ykyht0zw885r3mj9u64&raw=1)
 
 ## Acknowledgements
 
 ## Flowchart
-![image](https://private-user-images.githubusercontent.com/75024559/278702015-5f01f336-f9bd-4827-89e4-7b1b055b7e3f.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTEiLCJleHAiOjE2OTg1ODA2OTAsIm5iZiI6MTY5ODU4MDM5MCwicGF0aCI6Ii83NTAyNDU1OS8yNzg3MDIwMTUtNWYwMWYzMzYtZjliZC00ODI3LTg5ZTQtN2IxYjA1NWI3ZTNmLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFJV05KWUFYNENTVkVINTNBJTJGMjAyMzEwMjklMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjMxMDI5VDExNTMxMFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTEwNTk1YzAzYmQzOWViMGFiZGRiNTczNDRhNGEwMDZhM2U0Mzc4ZTdlOGVkMTE5ZTgzNjIzNzQ1NDkzZTBjMjUmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0.mL-w5sGrnz2R7F0FqB0PV3wIVTSBiLDWtOXxSjWhdSg)
-
-
+![image](https://www.dropbox.com/scl/fi/4s0sd2e0ndic62pyt22dt/TE_Trimmer_vertical_flowchart.png?rlkey=ixwbo1p7h05xhz80nh2j47y2o&raw=1)
