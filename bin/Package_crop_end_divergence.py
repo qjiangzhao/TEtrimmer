@@ -1,4 +1,5 @@
 import click
+import os.path
 import os
 import numpy as np
 from Bio import AlignIO
@@ -111,6 +112,28 @@ class CropEnd:
         self.cropped_alignment = MultipleSeqAlignment(self.cropped_alignment)
 
         return self.cropped_alignment
+    
+    def average_proportion_per_column(self):
+        """
+        Calculate the average proportion for each column across all sequences.
+        """
+        # Ensure the DataFrame is available
+        if not hasattr(self, 'df'):
+            raise ValueError("The DataFrame has not been created yet. Please run pro_calculation() first.")
+
+        # Calculate the average for each column
+        average_proportions = self.df.mean()
+
+        # Calculate the overall mean of the column averages
+        overall_average = average_proportions.mean()
+
+        return average_proportions, overall_average
+    def write_to_file(self, output_dir):
+        output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_ce.fa")
+        with open(output_file, "w") as f:
+            AlignIO.write(self.cropped_alignment, f, "fasta")
+        return output_file
+    
 
 
 @click.command()
@@ -122,6 +145,7 @@ class CropEnd:
               help="Higher number means more stringent cropping. Range: 0-1")
 @click.option("--window_size", "-ws", default=20, type=int,
               help="Window size used for cropping end")
+
 def crop_end_div(input_file, output_file, threshold, window_size):
 
     if os.path.isfile(input_file):

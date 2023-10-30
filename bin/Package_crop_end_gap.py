@@ -1,3 +1,4 @@
+import os.path
 import click
 import os
 from Bio import AlignIO
@@ -55,6 +56,14 @@ class CropEndByGap:
         # Convert the list of SeqRecords into a MultipleSeqAlignment
         self.cropped_alignment = MultipleSeqAlignment(self.cropped_alignment)
         return self.cropped_alignment
+    
+    # Write the cropped alignment to a new file
+    def write_to_file(self, output_dir, cropped_alignment):
+        output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_ceg.fa")
+        with open(output_file, "w") as f:
+            AlignIO.write(cropped_alignment, f, "fasta")
+        return output_file
+
 
 
 @click.command()
@@ -67,6 +76,7 @@ class CropEndByGap:
                    "nucleotides to '-' in this window")
 @click.option("--window_size", "-ws", default=300, type=int,
               help="Window size used for cropping end")
+              
 def crop_end_gap(input_file, output_file, gap_threshold, window_size):
 
     if os.path.isfile(input_file):
