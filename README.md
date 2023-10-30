@@ -100,9 +100,9 @@ More options are available:
 - 📁**Single_fasta_files** - All sequences in the input file will be separated to single fasta files and be stored here.
 - 📁**TE_Trimmer_for_proof_annotation** - This folder contains files used for proof annotation. 
   - 📁**Perfect_annotation** - For each sequence, three files are associate with it (anno.fa; fa; pdf)
-  - - 📄TE_name.anno.fa - Multiple sequence alignment file before cleaning.
-  - - 📄TE_name.fa - Multiple sequence alignment file after cleaning.
-  - - 📄TE_name.pdf - Plot file used to evaluate output.
+    - 📄TE_name.anno.fa - Multiple sequence alignment file before cleaning.
+    - 📄TE_name.fa - Multiple sequence alignment file after cleaning.
+    - 📄TE_name.pdf - Plot file used to evaluate output.
   - 📁**Good_annotation** 
   - 📁**Recommend_check_annotation**
   - 📁**Need_check_annotation**
@@ -129,7 +129,7 @@ Those are all files in "Perfect annotation" folder (Click "Perfect annotation" b
 ![TE_Trimmer_interfact2](https://www.dropbox.com/scl/fi/4nh0u7xvirieb68c5knnw/Screenshot-2023-10-29-at-12.20.14.png?rlkey=m2nfsevhriennsp5vf9s766zr&raw=1)
 
 ## Benchmarking
-TE Trimmer is 6 time more accurate to annotate the intact TE.
+TE Trimmer is 6 time more accurate to annotate the intact TE than RepeatModeler for *B.hordei*. 
 ![Benchmarking1](https://www.dropbox.com/scl/fi/v1ex6txe0mb9200gmtir3/Benchamrking_joined2.png?rlkey=i742b8ykyht0zw885r3mj9u64&raw=1)
 
 ## Acknowledgements
