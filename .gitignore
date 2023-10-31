@@ -7,6 +7,7 @@ bin/TE-Aid-master
 
 # Ignore all __pycache__ files
 bin/__pycache__
+*.pyc
 
 # Ignore database
 pfam_database/
