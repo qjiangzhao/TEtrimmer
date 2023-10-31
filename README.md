@@ -15,7 +15,21 @@ curation is still required for high quality TE annotation by experts. TE Trimmer
 TE manual curation. You can find more details for TE Trimmer [flowchart](#Flowchart).
 
 ## Installation
-You can find required dependencies from [here](https://github.com/qjiangzhao/TE-Trimmer/blob/Jiangzhao_TE_trimmer/TE_Trimmer_dependencies). 
+You can find required packages from [here](https://github.com/qjiangzhao/TE-Trimmer/blob/Jiangzhao_TE_trimmer/package-list.txt). 
+To create the conda enviroment, do
+```commandline
+conda env create -f {path to TE Trimmer}/tetrimmerenv.yml
+```
+or 
+```commandline
+conda create --name tetrimmerenv --file {path to TE Trimmer}/package-list.txt
+```
+or 
+```commandline
+conda create -n tetrimmerenv -c conda-forge mamba
+conda activate tetrimmerenv
+mamba install -c conda-forge -c bioconda python perl r-base biopython matplotlib multiprocess pandas pypdf2 numpy scikit-learn urllib3 regex tk click requests bedtools blast cd-hit emboss hmmer mafft pfam_scan 'repeatmasker<4.1.5' 'rmblast<2.11' samtools dataclasses 'repeatmodeler=2.0.1' 'muscle=3.8'
+```
 We will develop Conda and Docker packages for TE Trimmer.
 
 ## Usage:
