@@ -46,8 +46,21 @@ test on Macbook Pro (2020 M1 chip 16 GB) and compared with HPC, you can find the
 - We haven't tested it on WLS of Windows, it should be feasible to run TE Trimmer on it too. 
 
 ### Test
-Test file is still not available.
-
+```commandline
+# Unittest is performed. 
+python {path to TE Trimmer}/test.py
+```
+or
+```commandline
+# The {output directory} must be empty. Unittest is not performed. 
+python {path to TE Trimmer}/TE_Trimmer.py --input_file {path to TE Trimmer}/tests/test_input.fa \
+                                          --genome_file {path to TE Trimmer}/tests/test_genome.fasta \
+                                          --output_dir {output directory} \
+                                          --num_threads 10
+                                          --species fungi
+                                          --classify_unknown
+                                          
+```
 ### Inputs
  
 - **TE consensus library**: TE Trimmer use the TE consensus library from *de novo* TE annotation tools like RepeatModeler or EDTA as input. 
@@ -109,7 +122,7 @@ More options are available:
   - 📁**Low_copy_TE** - *This folder contains low copy TEs.*
   - 📁**Skipped_TE** - *Contains TE_Aid plots for all skipped TEs. Only visible when < --plot_skip > is enabled.*
 - 📁**HMM** - *This folder is used to store Hidden Markov Model file. Only visible when < --hmm > is enabled.*
-- 📄**Finished_sequence_recording.txt** - *Report file.* 
+- 📄**summary.txt** - *Report file.* 
 - 📄**TE_Trimmer_consensus.fasta** - *TE consensus library file before de-duplication.*
 - 📄**TE_Trimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
 - 📄**error_file.txt** - *Error file to store all error messages, only visible when error is found.*
