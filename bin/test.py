@@ -29,6 +29,7 @@ class TestMainFunction(unittest.TestCase):
         ]
         runner = CliRunner()
         result = runner.invoke(main, args)
+        print(result.output)
 
         # Add assertions to check the results
         # check input fasta
