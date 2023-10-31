@@ -110,6 +110,7 @@ More options are available:
 ### Outputs
 - 📁**Classification** - *This folder is used for TEs classification.*  
 - 📁**Multiple_sequence_alignment** - *All raw files will be kept in this folder when < --debug > is enables.*
+  - 📄**error_file.txt** - *Error file to store all error messages, only visible when error is found.*
 - 📁**Single_fasta_files** - *All sequences in the input file will be separated to single fasta files and be stored here.*
 - 📁**TE_Trimmer_for_proof_annotation** - *This folder contains files used for proof annotation.* 
   - 📁**Perfect_annotation** - *For each sequence, three files are associate with it (anno.fa; fa; pdf).*
@@ -125,7 +126,7 @@ More options are available:
 - 📄**summary.txt** - *Report file.* 
 - 📄**TE_Trimmer_consensus.fasta** - *TE consensus library file before de-duplication.*
 - 📄**TE_Trimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
-- 📄**error_file.txt** - *Error file to store all error messages, only visible when error is found.*
+
 
 ### Proof annotation
 You can use this graphical user interface tool to assistant your proof annotation. We highly recommend to do proof 

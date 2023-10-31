@@ -380,6 +380,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
     printProgressBar(processed_count, single_fasta_n, prefix='Progress:', suffix='Complete', length=50)
 
+
 def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file, plot_skip):
 
     if not os.path.isfile(input_file):
@@ -411,6 +412,7 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     # Make a new folder for single fasta sequence
     single_file_dir = os.path.join(output_dir, "Single_fasta_files")
     os.makedirs(single_file_dir, exist_ok=True)
+
     # Make a new folder for MSA
     MSA_dir = os.path.join(output_dir, "Multiple_sequence_alignment")
     os.makedirs(MSA_dir, exist_ok=True)
@@ -426,16 +428,16 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     else:
         hmm_dir = ''
 
+    # Define proof_annotation folder path
+    proof_annotation_dir = os.path.join(output_dir, "TE_Trimmer_for_proof_annotation")
+    os.makedirs(proof_annotation_dir, exist_ok=True)
+
     # Define skipped folder if it is required
     if plot_skip:
         skipped_dir = os.path.join(proof_annotation_dir, "Skipped_TE")
         os.makedirs(skipped_dir, exist_ok=True)
     else:
         skipped_dir = None
-
-    # Define proof_annotation folder path
-    proof_annotation_dir = os.path.join(output_dir, "TE_Trimmer_for_proof_annotation")
-    os.makedirs(proof_annotation_dir, exist_ok=True)
 
     # Define low copy folder
     low_copy_dir = os.path.join(proof_annotation_dir, "Low_copy_TE")
@@ -453,11 +455,16 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
 
     # Define the progress_file, finished seq IDs will be stored here
     progress_file = os.path.join(output_dir, "summary.txt")
+
     # Check and create progress_file if it doesn't exist
     if not os.path.exists(progress_file):
         with open(progress_file, 'a') as f:
             f.write("input_name,consensus_name,blast_hit_n,cons_MSA_seq_n,cons_full_blast_n,input_length,cons_length,"
                     "input_TE_type,reclassified_type,terminal_repeat,low_copy,evaluation,status\n")
+
+    # Define error files to store not mandatory function errors including RepeatClassified classification,
+    # RepeatMasker classification, PFAM scanning, muscle alignment
+    error_files = os.path.join(MSA_dir, "error_file.txt")
 
     # If pfam database isn't provided, create pfam database at TE Trimmer software folder,
     # the database will be downloaded into there.
@@ -495,9 +502,6 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
     final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classified_consensus.fasta")
 
-    # Define error files to store not mandatory function errors including RepeatClassified classification,
-    # RepeatMasker classification, PFAM scanning, muscle alignment
-    error_files = os.path.join(MSA_dir, "error_file.txt")
 
     return bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, low_copy_dir, perfect_proof, \
     good_proof, intermediate_proof, need_check_proof, progress_file, pfam_dir, final_con_file, final_unknown_con_file, final_classified_con_file, \

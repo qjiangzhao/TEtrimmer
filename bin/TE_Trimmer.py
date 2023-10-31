@@ -11,20 +11,23 @@ from Bio import SeqIO
 
 # Local imports
 import analyze
-from Function_blast_extension_mafft import blast, separate_sequences, remove_files_with_start_pattern, change_permissions_recursive, \
-    repeatmasker, check_database, check_bed_uniqueness, extract_fasta, cd_hit_est, handle_sequence_low_copy, \
-    handle_sequence_skipped, repeatmasker_output_classify, rename_cons_file, update_low_copy_cons_file, \
-    rename_files_based_on_dict
-
+from Function_blast_extension_mafft import separate_sequences, remove_files_with_start_pattern, \
+    change_permissions_recursive, repeatmasker, check_database, cd_hit_est, repeatmasker_output_classify, \
+    rename_cons_file, rename_files_based_on_dict
 
 #####################################################################################################
 # Code block: Import json species_config file and define the default parameters
 #####################################################################################################
+
 # Load species-specific default values from the JSON config
 species_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'species_config.json')
 # Load the JSON configuration file
 with open(species_config_path, "r") as config_file:
     species_config = json.load(config_file)
+
+#####################################################################################################
+# Code block: Mian function of TE Trimmer
+#####################################################################################################
 
 
 @click.command(context_settings=dict(max_content_width=120),
@@ -164,13 +167,11 @@ with open(species_config_path, "r") as config_file:
                    'is unknown.')
 @click.option('--classify_all', default=False, is_flag=True,
               help='Use RepeatClassifier to classify every consensus sequence.  WARNING: it will take longer time.')
-
 def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_blast_len, num_threads, max_msa_lines,
          top_mas_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ext_step, plot_skip,
          max_ext, gap_thr, gap_nul_thr, crop_end_div_thr, crop_end_div_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, mini_orf, species, ext_check_win, dedup, genome_anno, hmm,
          debug, fast_mode, classify_unknown, classify_all):
-
     start_time = datetime.now()
     print(f"\nTE Trimmer started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n", flush=True)
 
@@ -188,6 +189,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     # Change Aliview permission
     aliview_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "aliview")
+
     # Change permissions of the directory and all its content to 755
     # 755 in octal corresponds to rwxr-xr-x
     change_permissions_recursive(aliview_path, 0o755)
@@ -195,7 +197,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     #####################################################################################################
     # Code block: Define the default options according to the given species
     #####################################################################################################
- 
+
     default_values = species_config.get(species, {})
     if cons_thr is None:
         cons_thr = default_values.get("cons_thr")
@@ -266,17 +268,19 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     #####################################################################################################
     # Code block: Define input file, output directory, genome, check blast database
     #####################################################################################################
-    bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, low_copy_dir, perfect_proof, \
-    good_proof, intermediate_proof, need_check_proof, progress_file, pfam_dir, final_con_file, final_unknown_con_file, final_classified_con_file, \
-    error_files, input_file, genome_file, skipped_dir = analyze.create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file, plot_skip)
+
+    bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, \
+        low_copy_dir, perfect_proof, good_proof, intermediate_proof, need_check_proof, progress_file, pfam_dir, \
+        final_con_file, final_unknown_con_file, final_classified_con_file, error_files, input_file, genome_file, \
+        skipped_dir = analyze.create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file,
+                                         plot_skip)
 
     #####################################################################################################
-    # Code block: Merge input file and generate single fasta file
+    # Code block: Remove duplications in input file when it is required and generate single fasta file
     #####################################################################################################
 
     # Generate single files when continue_analysis is false
     if not continue_analysis:
-
         # Do cd-hit-est merge when merge is true and continue_analysis is false
         if dedup:
             click.echo("\nTE Trimmer is merging input sequences, this might take some time.\n")
@@ -327,7 +331,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             single_fasta_n = len(seq_list)
 
             # Check which sequences have already been processed
-            complete_sequences, skipped_count, low_copy_count, classified_pro = analyze.check_progress_file(progress_file)
+            complete_sequences, skipped_count, low_copy_count, classified_pro = analyze.check_progress_file(
+                progress_file)
 
             # Filter out already complete sequences from the total sequences
             seq_list = [seq for seq in seq_list if seq.name not in complete_sequences]
@@ -336,6 +341,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     #####################################################################################################
     # Code block: Enable multiple threads
     #####################################################################################################
+
     analyze_sequence_params = [
         (seq, genome_file, MSA_dir, min_blast_len, min_seq_num, max_msa_lines,
          top_mas_lines, max_cluster_num, cons_thr, ext_thr, ext_step, classification_dir,
@@ -586,7 +592,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     try:
         # If 90% of the query sequences are processed, RepeatMasker is allowed to be performed whole genome annotation
-        #if processed_count >= single_fasta_n * 0.9:
+        # if processed_count >= single_fasta_n * 0.9:
 
         # Run RepeatMasker
         if genome_anno:
@@ -606,9 +612,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             if genome_anno_result:
                 click.echo("\nFinished whole genome TE annotation by RepeatMasker\n")
 
-        #else:
-            #click.echo(
-                #"Less than 90% of the query sequences processed, TE Trimmer can't perform whole genome TE annotation")
+        # else:
+        # click.echo(
+        # "Less than 90% of the query sequences processed, TE Trimmer can't perform whole genome TE annotation")
     except Exception as e:
         with open(error_files, "a") as f:
             # Get the traceback content as a string
@@ -627,7 +633,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Remove all single files when all the sequences are processed
     # shutil.rmtree(single_file_dir)
 
-    analyze.printProgressBar(processed_count, single_fasta_n, prefix='Progress:', suffix='Complete', length=50, final = True)
+    analyze.printProgressBar(processed_count, single_fasta_n, prefix='Progress:', suffix='Complete', length=50,
+                             final=True)
     print(f"\nTE Trimmer finished at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
     print(f"TE Trimmer runtime was {duration_without_microseconds}")
 
