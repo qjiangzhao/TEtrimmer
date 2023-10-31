@@ -1,6 +1,6 @@
 # Ignore Mac system files
 .DS_store
-bin/.DS_Store
+*.DS_Store
 
 # Ignore TE-Aid-master folder
 bin/TE-Aid-master
