@@ -12,7 +12,7 @@
 ## Introduction
 Many tools have been developed for *de novo* transposable element (TE) identification. But manual 
 curation is still required for high quality TE annotation by experts. TE Trimmer is designed to replace and assistant
-TE manual curation. You can find more details for TE Trimmer [flowchart](#Flowchart).
+TE manual curation. You can find more details from TE Trimmer [flowchart](#Flowchart).
 
 ## Installation
 You can find required dependencies from [here](https://github.com/qjiangzhao/TE-Trimmer/blob/Jiangzhao_TE_trimmer/TE_Trimmer_dependencies). 

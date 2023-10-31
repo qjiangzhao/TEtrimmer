@@ -83,6 +83,7 @@ def check_database(genome_file):
         if error_output_fai:
             print(f"Error check_database {error_output_fai}\n")
 
+
 def separate_sequences(input_file, output_dir, continue_analysis=False):
     """
     separates input file into single fasta file and creates object for each input sequence

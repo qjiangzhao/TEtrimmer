@@ -111,7 +111,7 @@ with open(species_config_path, "r") as config_file:
                    'clusters by sequence number and choose the top <--max_cluster_num> of clusters for '
                    'further analysis. WARNING: Big number will dramatically increase running time. Default: 2')
 @click.option('--ext_thr', type=float,
-              help="threshold used for define the extension extent. The lower the value of <--ext_thr>, the easier the "
+              help="Threshold used for define the extension extent. The lower the value of <--ext_thr>, the easier the "
                    "extensions on both ends be longer. Reduce <--ext_thr> if TE Trimmer fails to determine the correct "
                    "ends of repeat elements. Default: 0.7")
 @click.option('--ext_check_win', type=str,
