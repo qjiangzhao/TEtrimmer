@@ -47,12 +47,12 @@ test on Macbook Pro (2020 M1 chip 16 GB) and compared with HPC, you can find the
 
 ### Test
 ```commandline
-# The {output directory} must be empty.
+# Unittest is performed. 
 python {path to TE Trimmer}/test.py
 ```
 or
 ```commandline
-# The {output directory} must be empty.
+# The {output directory} must be empty. Unittest is not performed. 
 python {path to TE Trimmer}/TE_Trimmer.py --input_file {path to TE Trimmer}/tests/test_input.fa \
                                           --genome_file {path to TE Trimmer}/tests/test_genome.fasta \
                                           --output_dir {output directory} \
@@ -120,9 +120,9 @@ More options are available:
   - 📁**Recommend_check_annotation**
   - 📁**Need_check_annotation**
   - 📁**Low_copy_TE** - This folder contains low copy TEs.
-  - 📁**Skipped_TE** - Contains TE_Aid plots for all skipped TEs. Only visible when < --plot_skip > is enabled.
-- 📁**HMM** - This folder is used to store Hidden Markov Model file. Only visible when < --hmm > is enabled.
-- 📄**Finished_sequence_recording.txt** - Report file. 
+  - 📁**Skipped_TE** - Contains TE_Aid plots for all skipped TEs. Only generated when < --plot_skip > is enabled.
+- 📁**HMM** - This folder is used to store Hidden Markov Model file. Only generated when < --hmm > is enabled.
+- 📄**summary.txt** - Report file. 
 - 📄**TE_Trimmer_consensus.fasta** - TE consensus library file before de-duplication.
 - 📄**TE_Trimmer_consensus_merged.fasta** - TE consensus library file after de-duplication.
 - 📄**error_file.txt** - Error file to store all error messages. 
