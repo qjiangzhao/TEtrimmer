@@ -1,20 +1,13 @@
 # Standard library imports
 import os
 import traceback
-from datetime import timedelta, datetime
-import multiprocessing as mp
 import click
-import concurrent.futures
-import json
 import pandas as pd
-from Bio import SeqIO
 
 # Local imports
-from Function_blast_extension_mafft import blast, remove_files_with_start_pattern, change_permissions_recursive, \
-    repeatmasker, check_database, check_bed_uniqueness, extract_fasta, cd_hit_est, handle_sequence_low_copy, \
-    handle_sequence_skipped, repeatmasker_output_classify, rename_cons_file, update_low_copy_cons_file, \
-    rename_files_based_on_dict
-# from Class_bed_filter import BEDFile
+from Function_blast_extension_mafft import blast, remove_files_with_start_pattern,\
+    check_bed_uniqueness, extract_fasta, handle_sequence_low_copy, handle_sequence_skipped, \
+    update_low_copy_cons_file
 import bedfilter
 from boundarycrop import find_boundary_and_crop
 from Class_TE_aid import check_self_alignment
@@ -89,7 +82,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                      crop_end_gap_win, start_patterns, end_patterns, output_dir, pfam_dir, mini_orf,
                      single_fasta_n, hmm, check_extension_win, debug, progress_file,
                      classify_unknown, classify_all, final_con_file, final_unknown_con_file,
-                     final_classified_con_file, low_copy_dir, fast_mode, error_files, plot_skip, skipped_dir):
+                     final_classified_con_file, low_copy_dir, fast_mode, error_files, plot_skip, skipped_dir,
+                     plot_query):
     #####################################################################################################
     # Code block: Elongate query sequence when it is too short
     #####################################################################################################
@@ -199,7 +193,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         # randomly chose from the rest of sequences
         # top_mas_lines has to be equal or smaller than max_mas_lines
         bed_out_filter_file = bedfilter.process_lines(bed_out_file, MSA_dir, threshold=max_msa_lines,
-                                                           top_longest_lines_count=top_mas_lines)
+                                                      top_longest_lines_count=top_mas_lines)
 
         # extract fast from bed_out_filter_file
         # return fasta_out_flank_file absolute path
@@ -242,7 +236,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     f"\n{seq_name} is skipped due to sequence number in each cluster is smaller "
                     f"than {min_seq_num} and check_low_copy is {check_low_copy}\n")
                 handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
-                                        plot_skip=plot_skip,te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
+                                        plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
 
             return
 
@@ -250,7 +244,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         elif cluster_MSA_result is True:
             find_boundary_result = find_boundary_and_crop(
                 bed_out_filter_file, genome_file, MSA_dir, pfam_dir, seq_obj, hmm,
-                classify_all, classify_unknown, error_files,
+                classify_all, classify_unknown, error_files, plot_query,
                 cons_threshold=cons_thr, ext_threshold=ext_thr,
                 ex_step_size=ex_step, max_extension=max_extension,
                 gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
@@ -294,7 +288,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
                     inner_find_boundary_result = find_boundary_and_crop(
                         cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
-                        hmm, classify_all, classify_unknown, error_files, cons_threshold=cons_thr,
+                        hmm, classify_all, classify_unknown, error_files, plot_query, cons_threshold=cons_thr,
                         ext_threshold=ext_thr, ex_step_size=ex_step, max_extension=max_extension,
                         gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
                         crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
@@ -315,7 +309,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     for j in range(len(inner_cluster_bed_files_list)):
                         inner_inner_find_boundary_result = find_boundary_and_crop(
                             inner_cluster_bed_files_list[j], genome_file, MSA_dir,
-                            pfam_dir, seq_obj, hmm, classify_all, classify_unknown, error_files,
+                            pfam_dir, seq_obj, hmm, classify_all, classify_unknown, error_files, plot_query,
                             cons_threshold=cons_thr, ext_threshold=ext_thr,
                             ex_step_size=ex_step, max_extension=max_extension,
                             gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
@@ -345,7 +339,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                                               final_classified_con_file, low_copy_dir, TE_aid_plot)
                 else:
                     handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
-                                             plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
+                                            plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
                     click.echo(
                         f"\n{seq_name} is skipped due to sequence number in second round each cluster is "
                         f"smaller than {min_seq_num} or the sequence is too short and check_low_copy is {check_low_copy}\n")
