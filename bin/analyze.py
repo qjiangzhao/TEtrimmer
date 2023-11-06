@@ -330,7 +330,6 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=plot_skip)
 
                 if check_low_copy is True:
-
                     # Update terminal repeat and blast full length number, remove low copy intermediate files
                     handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir,
                                              classification_dir, found_match=found_match,
@@ -343,7 +342,6 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     click.echo(
                         f"\n{seq_name} is skipped due to sequence number in second round each cluster is "
                         f"smaller than {min_seq_num} or the sequence is too short and check_low_copy is {check_low_copy}\n")
-
                 return
 
     except Exception as e:
@@ -495,7 +493,6 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     final_con_file = os.path.join(output_dir, "TE_Trimmer_consensus.fasta")
     final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
     final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classified_consensus.fasta")
-
 
     return bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, low_copy_dir, perfect_proof, \
     good_proof, intermediate_proof, need_check_proof, progress_file, pfam_dir, final_con_file, final_unknown_con_file, final_classified_con_file, \

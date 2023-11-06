@@ -98,6 +98,8 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
             "be converted to '_'")
         detected_pound = False
         with open(input_file, 'r') as fasta_file:
+
+            # Have to add 'fasta' at the end, this pattern will be used for file deletion
             for record in SeqIO.parse(fasta_file, 'fasta'):
                 if len(record.id.split("#")) > 1:
                     detected_pound = True
@@ -1180,8 +1182,11 @@ def rename_files_based_on_dict(directory, reclassified_dict, seq_name=False):
                         shutil.move(old_file_path, new_file_path)
 
 
-def remove_files_with_start_pattern(input_dir, start_pattern):
+def remove_files_with_start_pattern(input_dir, start_pattern, if_seq_name=True):
     # Remove files and folder start with give pattern
+    # Add .fasta to the end of start_pattern
+    if if_seq_name:
+        start_pattern = f"{start_pattern}.fasta"
     for filename in os.listdir(input_dir):
         if filename.startswith(start_pattern):
             file_path = os.path.join(input_dir, filename)

@@ -557,16 +557,19 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         # Based on missing_ids delete files in proof annotation folder and HMM folder
         for missing_id in missing_ids:
             evaluation_leve = sequence_info[missing_id]["evaluation"]
+
+            # Addd # to the end of missing_id
+            missing_id = f"{missing_id}#"
             if evaluation_leve == "Perfect":
-                remove_files_with_start_pattern(perfect_proof, missing_id)
+                remove_files_with_start_pattern(perfect_proof, missing_id, if_seq_name=False)
             elif evaluation_leve == "Good":
-                remove_files_with_start_pattern(good_proof, missing_id)
+                remove_files_with_start_pattern(good_proof, missing_id, if_seq_name=False)
             elif evaluation_leve == "Reco_check":
-                remove_files_with_start_pattern(intermediate_proof, missing_id)
+                remove_files_with_start_pattern(intermediate_proof, missing_id, if_seq_name=False)
             elif evaluation_leve == "Need_check":
-                remove_files_with_start_pattern(need_check_proof, missing_id)
+                remove_files_with_start_pattern(need_check_proof, missing_id, if_seq_name=False)
             else:
-                remove_files_with_start_pattern(low_copy_dir, missing_id)
+                remove_files_with_start_pattern(low_copy_dir, missing_id, if_seq_name=False)
 
         if hmm:
             remove_files_with_start_pattern(hmm_dir, missing_ids)
