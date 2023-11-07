@@ -79,17 +79,39 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     # Use Aliview to open fasta file
     def open_file(filename, button, source_dir=te_trimmer_proof_annotation_dir):
         def _open_file(event):
+            filepath = os.path.join(source_dir, filename)
             if filename.lower().endswith(('.fa', '.fasta')):
-                subprocess.run([aliview_path, os.path.join(source_dir, filename)])
+                subprocess.run([aliview_path, filepath])
             elif filename.lower().endswith('.pdf'):
                 if os_type == "Linux":
-                    subprocess.run(['xdg-open', os.path.join(source_dir, filename)])
+                    subprocess.run(['xdg-open', filepath])
                 elif os_type == "Darwin":  # macOS
-                    subprocess.run(['open', os.path.join(source_dir, filename)])
+                    subprocess.run(['open', filepath])
                 elif os_type == "Windows":
-                    os.startfile(os.path.join(source_dir, filename))
+                    os.startfile(filepath)
                 else:
-                    subprocess.run(['xdg-open', os.path.join(source_dir, filename)])
+                    subprocess.run(['xdg-open', filepath])
+            elif filename.lower().endswith(('.txt', '.py', '.csv', '.md', '.bed')):
+                if os_type == "Linux":
+                    text_editor = 'gedit'  # Replace 'gedit' with your preferred text editor
+                    subprocess.run([text_editor, filepath])
+                elif os_type == "Darwin":  # macOS
+                    subprocess.run(['open', '-a', 'TextEdit', filepath])
+                elif os_type == "Windows":
+                    notepad_path = 'notepad.exe'  # or path to another text editor if preferred
+                    subprocess.run([notepad_path, filepath])
+                else:
+                    text_editor = 'gedit'  # Fallback for other systems
+                    subprocess.run([text_editor, filepath])
+            else:  # Fallback for other file types
+                if os_type == "Linux":
+                    subprocess.run(['xdg-open', filepath])
+                elif os_type == "Darwin":  # macOS
+                    subprocess.run(['open', filepath])
+                elif os_type == "Windows":
+                    os.startfile(filepath)
+                else:
+                    subprocess.run(['xdg-open', filepath])
             button.config(bg='yellow')
 
         return _open_file
@@ -152,18 +174,19 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                    " ,which can dramatically increase your TE annotation quality.\n\n"\
                    "1, Click the buttons in the menu bar, which corresponds to the different annotation status.\n\n" \
                    "2, All files in the chose folder (button) will be displayed.\n\n" \
-                   "3, For each TE output, you can find three files including <seq_name.anno.fa>, <seq_name.fa>, and " \
+                   "3, For each TE output, you can find four files including <seq_name.anno.fa>, <seq_name.fa>, <seq_name.bed>, and " \
                    "<seq_name.pdf>.\n\n" \
                    "   <seq_name.anno.fa> is the multiple sequence alignment (MSA) file before cleaning\n" \
                    "   <seq_name.fa> is the multiple sequence alignment (MSA) file after cleaning\n" \
-                   "   <seq_name.pdf> contains four plots used to evaluate annotation quality\n\n" \
+                   "   <seq_name.pdf> contains four plots used to evaluate annotation quality\n" \
+                   "   <seq_name.bed> contains sequence position information at the genome of MSA. Used for further extension.\n\n" \
                    "4, Double click <seq_name.pdf> and evaluate annotation quality.\n\n" \
                    "5, If you are satisfied with the result, click 'Consensus' button behind <seq_name.fa>. This MSA " \
                    "file will go to <Proof_annotation_consensus_folder>.\n\n" \
                    "6, If you are not satisfied, double click <seq_name.fa> or <seq_name.anno.fa> to modify MSA and " \
                    "save it to consensus folder.\n\n" \
-                   "7, If you want more extension for the MSA, click 'Extension' and this file will be salved to " \
-                   "<Proof_annotation_need_more_extension>.\n\n" \
+                   "7, If you want more extension for the MSA, click 'Extension' behind <seq_name.bed> and this " \
+                   "bed file will be salved to <Proof_annotation_need_more_extension> folder.\n\n" \
                    "8, For low copy element, check the pdf file and decide if to include it into the final consensus " \
                    "library. Note: low copy element do not have multiple sequence alignment file"
 

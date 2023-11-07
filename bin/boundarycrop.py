@@ -108,10 +108,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
         # Remove gaps with similarity check
         bed_fasta_mafft = remove_gaps_with_similarity_check(bed_fasta_mafft_with_gap_column_clean, output_dir,
-                                                                gap_threshold=0.6, simi_check_gap_thre=0.4,
-                                                                similarity_threshold=0.7,
-                                                                min_nucleotide=5
-                                                                )
+                                                            gap_threshold=0.6, simi_check_gap_thre=0.4,
+                                                            similarity_threshold=0.7,
+                                                            min_nucleotide=5
+                                                            )
 
         bed_fasta_mafft_object = CropEndByGap(bed_fasta_mafft, gap_threshold=crop_end_gap_thr,
                                               window_size=crop_end_gap_win)
@@ -500,7 +500,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     if consi_n > 0:
         consi_n = consi_n
         uniq_seq_name = f"{seq_name}_{consi_n:02}"
-
     else:
         uniq_seq_name = seq_name
 
@@ -516,7 +515,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Store consensus sequence length into consi_obj
     consi_obj.set_new_length(len(sequence))
 
-    # Store consensus sequence into consi_obj
+    # Store consensus sequence into consi_obj not necessary
     # consi_obj.set_cons_seq(sequence)
 
     # Store MSA sequence number into consi_obj
@@ -595,6 +594,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Good:         True               Not_required  >=15                   >=3                         Not_required
     # Reco_check    Not_required       Not_required  >=20                   >=2                         Not_required
     # Need_check    Not_required       Not_required  Not_required           Not_required                Not_required
+
     if (consi_obj.new_TE_terminal_repeat != "False" and
             consi_obj.new_TE_type != "NaN" and "unknown" not in consi_obj.new_TE_type.lower() and
             consi_obj.new_TE_MSA_seq_n >= 30 and
@@ -624,7 +624,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     file_copy_pattern = [
         (merged_pdf_path, str(consi_obj.proof_pdf)),
         (cropped_boundary_MSA, str(consi_obj.proof_fasta)),
-        (bed_fasta_mafft_boundary_crop_for_select, str(consi_obj.proof_anno))
+        (bed_fasta_mafft_boundary_crop_for_select, str(consi_obj.proof_anno)),
+        (bed_out_flank_file, str(consi_obj.proof_bed))  # bed file used for further extension
     ]
 
     files_moved_successfully = True

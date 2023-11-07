@@ -509,7 +509,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                 open(temp_consensus_round2_input, 'w') as round2_file:
 
             for seq_record in consensus_sequences:
-
                 # Sequence names in best_sequences and sequence_for_round2 dont' contain classification
                 seq_id = seq_record.id.split("#")[0]
 
@@ -552,7 +551,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
         # Find the difference between the two sets to get sequence names not included in the merged file
         missing_ids = original_ids - merged_ids
-        click.echo(missing_ids)
+        #click.echo(missing_ids)
 
         # Based on missing_ids delete files in proof annotation folder and HMM folder
         for missing_id in missing_ids:
