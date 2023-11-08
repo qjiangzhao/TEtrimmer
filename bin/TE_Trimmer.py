@@ -11,7 +11,7 @@ from Bio import SeqIO
 
 # Local imports
 import analyze
-from Function_blast_extension_mafft import separate_sequences, remove_files_with_start_pattern, \
+from functions import separate_sequences, remove_files_with_start_pattern, \
     change_permissions_recursive, repeatmasker, check_database, cd_hit_est, repeatmasker_output_classify, \
     rename_cons_file, rename_files_based_on_dict
 

@@ -1,6 +1,6 @@
 from Bio import AlignIO
 import os
-from Function_blast_extension_mafft import select_gaps_block_with_similarity_check
+from functions import select_gaps_block_with_similarity_check
 
 
 class CleanAndSelectColumn:

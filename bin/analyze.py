@@ -10,14 +10,12 @@ import pandas as pd
 from Bio import SeqIO
 
 # Local imports
-from Function_blast_extension_mafft import blast, remove_files_with_start_pattern, change_permissions_recursive, \
-    repeatmasker, check_database, check_bed_uniqueness, extract_fasta, cd_hit_est, handle_sequence_low_copy, \
-    handle_sequence_skipped, repeatmasker_output_classify, rename_cons_file, update_low_copy_cons_file, \
-    rename_files_based_on_dict
+from functions import blast, remove_files_with_start_pattern, check_bed_uniqueness, \
+    extract_fasta, handle_sequence_low_copy, handle_sequence_skipped, update_low_copy_cons_file
 # from Class_bed_filter import BEDFile
 import bedfilter
 from boundarycrop import find_boundary_and_crop
-from Class_TE_aid import check_self_alignment
+from TEaid import check_self_alignment
 from MSAcluster import clean_and_cluster_MSA
 from orfdomain import prepare_pfam_database
 

@@ -3,7 +3,7 @@ import os
 from Bio import SeqIO
 import click
 import pandas as pd
-from Function_blast_extension_mafft import blast
+from functions import blast
 
 
 def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=False):

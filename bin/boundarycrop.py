@@ -10,17 +10,17 @@ from Bio import AlignIO
 from boundaryclass import DefineBoundary
 from Package_crop_end_divergence import CropEnd
 from Package_crop_end_gap import CropEndByGap
-from Function_blast_extension_mafft import remove_gaps, generate_hmm_from_msa, extract_fasta, \
+from functions import remove_gaps, generate_hmm_from_msa, extract_fasta, \
     remove_gaps_with_similarity_check, remove_gaps_block_with_similarity_check, align_sequences, \
     con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, \
     con_generater, reverse_complement_seq_file, classify_single
-from Class_select_ditinct_columns import CleanAndSelectColumn
+from selectcolumns import CleanAndSelectColumn
 
 import checkpattern
-from Class_TE_aid import TEAid
+from TEaid import TEAid
 from orfdomain import PlotPfam, determine_sequence_direction
 from MSAcluster import clean_and_cluster_MSA, process_msa
-import Cialign_plot
+import cialign
 
 
 def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=0.8, window_size=20, gap_threshold=0.8):
@@ -405,10 +405,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     cropped_boundary_manual_MSA_concatenate_plot = f"{cropped_boundary_manual_MSA_concatenate}_plot.pdf"
 
     # Convert MSA to array
-    cropped_boundary_manual_MSA_concatenate_array, nams = Cialign_plot.FastaToArray(cropped_boundary_manual_MSA_concatenate)
+    cropped_boundary_manual_MSA_concatenate_array, nams = cialign.FastaToArray(cropped_boundary_manual_MSA_concatenate)
 
     # Draw the whole MSA
-    Cialign_plot.drawMiniAlignment(cropped_boundary_manual_MSA_concatenate_array,
+    cialign.drawMiniAlignment(cropped_boundary_manual_MSA_concatenate_array,
                                    nams, cropped_boundary_manual_MSA_concatenate_plot, concat_start_man, concat_end_man)
 
     #####################################################################################################

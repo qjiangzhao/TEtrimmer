@@ -10,8 +10,8 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import os
 
-from Class_select_ditinct_columns import CleanAndSelectColumn
-import Function_blast_extension_mafft
+from selectcolumns import CleanAndSelectColumn
+import functions as functions
 
 def read_msa(input_file):
     """Read the MSA file"""
@@ -36,7 +36,7 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     if fast_mode:
         muscle_ite_times = 2
     try:
-        fasta_out_flank_mafft_file = Function_blast_extension_mafft.muscle_align(input_file, output_dir,
+        fasta_out_flank_mafft_file = functions.muscle_align(input_file, output_dir,
                                                                                  ite_times=muscle_ite_times)
     except Exception as e:
         fasta_out_flank_mafft_file = False
@@ -44,10 +44,10 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
 
     # When muscle goes wrong, use mafft
     if not fasta_out_flank_mafft_file:
-        fasta_out_flank_mafft_file = Function_blast_extension_mafft.align_sequences(input_file, output_dir)
+        fasta_out_flank_mafft_file = functions.align_sequences(input_file, output_dir)
 
     # Remove gaps. Return absolute path for gap removed alignment file
-    fasta_out_flank_mafft_file_gap_filter = Function_blast_extension_mafft.remove_gaps_with_similarity_check(
+    fasta_out_flank_mafft_file_gap_filter = functions.remove_gaps_with_similarity_check(
         fasta_out_flank_mafft_file, output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
         similarity_threshold=0.85, min_nucleotide=5)
 
