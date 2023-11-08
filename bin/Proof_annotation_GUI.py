@@ -30,6 +30,8 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     # Define Aliview software path
     bin_py_path = os.path.dirname(os.path.abspath(__file__))
     aliview_path = os.path.join(bin_py_path, "aliview/aliview")
+    if os_type == "Windows":
+        aliview_path = os.path.join(bin_py_path, r"aliview\aliview.jar")
 
     # Define output folders, create them when they are not found
     consensus_folder = os.path.abspath(os.path.join(output_dir, "Proof_annotation_consensus_folder"))
@@ -81,7 +83,10 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
         def _open_file(event):
             filepath = os.path.join(source_dir, filename)
             if filename.lower().endswith(('.fa', '.fasta')):
-                subprocess.run([aliview_path, filepath])
+                if os_type == "Windows":
+                    subprocess.run(["java", aliview_path, filepath])
+                else:
+                    subprocess.run([aliview_path, filepath])
             elif filename.lower().endswith('.pdf'):
                 if os_type == "Linux":
                     subprocess.run(['xdg-open', filepath])
