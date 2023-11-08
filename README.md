@@ -15,21 +15,27 @@ curation is still required for high quality TE annotation by experts. TE Trimmer
 TE manual curation. You can find more details from TE Trimmer [flowchart](#Flowchart).
 
 ## Installation
-You can find required packages from [here](https://github.com/qjiangzhao/TE-Trimmer/blob/Jiangzhao_TE_trimmer/package-list.txt). 
-To create the conda enviroment, do
+You can find required packages from [here](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TE_Trimmer_dependencies). 
+and install them by yourself.
+
+
+or for linux system, create conda environment based on [TE_Trimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TE_Trimmer_env_for_linux.yml).
 ```commandline
-conda env create -f {path to TE Trimmer}/tetrimmerenv.yml
+conda env create -f TE_Trimmer_env_for_linux.yml
 ```
-or 
+or install by mamba based on [TE_Trimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TE_Trimmer_env_for_linux.yml). 
+We highly recommend install by "mamba" that is much faster. 
+
 ```commandline
-conda create --name tetrimmerenv --file {path to TE Trimmer}/package-list.txt
+# Install mamaba first
+conda install -c conda-forge mamba
+
+# Create TE Trimmer environment by mamba
+mamba env create -f TE_Trimmer_env_for_linux.yml
 ```
-or 
-```commandline
-conda create -n tetrimmerenv -c conda-forge mamba
-conda activate tetrimmerenv
-mamba install -c conda-forge -c bioconda python perl r-base biopython matplotlib multiprocess pandas pypdf2 numpy scikit-learn urllib3 regex tk click requests bedtools blast cd-hit emboss hmmer mafft pfam_scan 'repeatmasker<4.1.5' 'rmblast<2.11' samtools dataclasses 'repeatmodeler=2.0.1' 'muscle=3.8'
-```
+For macOS, you can use the same instruction but by [TE_Trimmer_env_for_macOS.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_macOS.yml).
+
+
 We will develop Conda and Docker packages for TE Trimmer.
 
 ## Usage:
