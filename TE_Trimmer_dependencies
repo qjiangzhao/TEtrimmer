@@ -1,4 +1,4 @@
-python                    >3.6.12          hffdb5ce_0_cpython    conda-forge
+python                    3.6 < and <= 3.10 hffdb5ce_0_cpython    conda-forge
 perl                      5.26.2            h36c2ea0_1008    conda-forge (for pfam_scan.pl)
 r-base                    4.0.3                hd23ff56_6    conda-forge
 
