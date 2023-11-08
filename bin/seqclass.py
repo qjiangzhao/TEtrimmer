@@ -92,6 +92,7 @@ class ConsensusObject:
         self.proof_pdf = "None"
         self.proof_fasta = "None"
         self.proof_anno = "None"
+        self.proof_bed = "None"
         self.new_length = "NaN"
         self.new_TE_type = "NaN"
         self.new_TE_MSA_seq_n = "NaN"
@@ -144,6 +145,7 @@ class ConsensusObject:
         self.proof_pdf = f"{self.consensus_name}#{proof_TE_type}.pdf"
         self.proof_fasta = f"{self.consensus_name}#{proof_TE_type}.fa"
         self.proof_anno = f"{self.consensus_name}#{proof_TE_type}.anno.fa"
+        self.proof_bed = f"{self.consensus_name}#{proof_TE_type}.bed"
 
     def set_hmm_file(self):
 

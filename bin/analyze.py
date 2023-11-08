@@ -1,13 +1,8 @@
 # Standard library imports
 import os
 import traceback
-from datetime import timedelta, datetime
-import multiprocessing as mp
 import click
-import concurrent.futures
-import json
 import pandas as pd
-from Bio import SeqIO
 
 # Local imports
 from functions import blast, remove_files_with_start_pattern, check_bed_uniqueness, \
@@ -87,7 +82,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                      crop_end_gap_win, start_patterns, end_patterns, output_dir, pfam_dir, mini_orf,
                      single_fasta_n, hmm, check_extension_win, debug, progress_file,
                      classify_unknown, classify_all, final_con_file, final_unknown_con_file,
-                     final_classified_con_file, low_copy_dir, fast_mode, error_files, plot_skip, skipped_dir):
+                     final_classified_con_file, low_copy_dir, fast_mode, error_files, plot_skip, skipped_dir,
+                     plot_query):
     #####################################################################################################
     # Code block: Elongate query sequence when it is too short
     #####################################################################################################
@@ -129,7 +125,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
         # run blast for each single fasta file and return a bed file absolute path
         bed_out_file_dup, blast_hits_count, blast_out_file = blast(seq_file, genome_file, MSA_dir,
-                                                                   min_length=min_blast_len, seq_obj=seq_obj)
+                                                                   min_length=min_blast_len, task="dc-megablast",
+                                                                   seq_obj=seq_obj)
 
     except Exception as e:
         with open(error_files, "a") as f:
@@ -197,7 +194,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         # randomly chose from the rest of sequences
         # top_mas_lines has to be equal or smaller than max_mas_lines
         bed_out_filter_file = bedfilter.process_lines(bed_out_file, MSA_dir, threshold=max_msa_lines,
-                                                           top_longest_lines_count=top_mas_lines)
+                                                      top_longest_lines_count=top_mas_lines)
 
         # extract fast from bed_out_filter_file
         # return fasta_out_flank_file absolute path
@@ -240,7 +237,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     f"\n{seq_name} is skipped due to sequence number in each cluster is smaller "
                     f"than {min_seq_num} and check_low_copy is {check_low_copy}\n")
                 handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
-                                        plot_skip=plot_skip,te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
+                                        plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
 
             return
 
@@ -248,7 +245,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         elif cluster_MSA_result is True:
             find_boundary_result = find_boundary_and_crop(
                 bed_out_filter_file, genome_file, MSA_dir, pfam_dir, seq_obj, hmm,
-                classify_all, classify_unknown, error_files,
+                classify_all, classify_unknown, error_files, plot_query,
                 cons_threshold=cons_thr, ext_threshold=ext_thr,
                 ex_step_size=ex_step, max_extension=max_extension,
                 gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
@@ -292,7 +289,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
                     inner_find_boundary_result = find_boundary_and_crop(
                         cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
-                        hmm, classify_all, classify_unknown, error_files, cons_threshold=cons_thr,
+                        hmm, classify_all, classify_unknown, error_files, plot_query, cons_threshold=cons_thr,
                         ext_threshold=ext_thr, ex_step_size=ex_step, max_extension=max_extension,
                         gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
                         crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
@@ -313,7 +310,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     for j in range(len(inner_cluster_bed_files_list)):
                         inner_inner_find_boundary_result = find_boundary_and_crop(
                             inner_cluster_bed_files_list[j], genome_file, MSA_dir,
-                            pfam_dir, seq_obj, hmm, classify_all, classify_unknown, error_files,
+                            pfam_dir, seq_obj, hmm, classify_all, classify_unknown, error_files, plot_query,
                             cons_threshold=cons_thr, ext_threshold=ext_thr,
                             ex_step_size=ex_step, max_extension=max_extension,
                             gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
@@ -334,7 +331,6 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=plot_skip)
 
                 if check_low_copy is True:
-
                     # Update terminal repeat and blast full length number, remove low copy intermediate files
                     handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir,
                                              classification_dir, found_match=found_match,
@@ -343,11 +339,10 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                                               final_classified_con_file, low_copy_dir, TE_aid_plot)
                 else:
                     handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
-                                             plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
+                                            plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
                     click.echo(
                         f"\n{seq_name} is skipped due to sequence number in second round each cluster is "
                         f"smaller than {min_seq_num} or the sequence is too short and check_low_copy is {check_low_copy}\n")
-
                 return
 
     except Exception as e:
@@ -492,14 +487,19 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
                    f"Pfam-A.hmm.dat\n"
                    f"Pfam-A.hmm.h3i\n"
                    f"Pfam-A.hmm.h3p\n\n"
-                   f"PFAM prediction will be used to determine the direction of TEs, it is necessary to make it run\n")
+                   f"PFAM prediction will be used to determine the direction of TEs, it is necessary to make it run\n\n"
+                   f"You can download <Pfam-A.hmm.gz> and <Pfam-A.hmm.dat.gz> from "
+                   f"https://www.ebi.ac.uk/interpro/download/pfam/\n"
+                   f"After: \n"
+                   f"gzip -d Pfam-A.hmm.gz\n"
+                   f"gzip -d Pfam-A.hmm.dat.gz\n"
+                   f"hmmpress Pfam-A.hmm\n\n")
         return
 
     # Define consensus files. temp files will be used for the final RepeatMasker classification
     final_con_file = os.path.join(output_dir, "TE_Trimmer_consensus.fasta")
     final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
     final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classified_consensus.fasta")
-
 
     return bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, low_copy_dir, perfect_proof, \
     good_proof, intermediate_proof, need_check_proof, progress_file, pfam_dir, final_con_file, final_unknown_con_file, final_classified_con_file, \

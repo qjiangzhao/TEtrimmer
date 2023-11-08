@@ -13,7 +13,6 @@ import matplotlib.patches as mpatches
 from Bio import SeqIO
 
 
-
 def check_and_download(directory, filename, url):
     """
     Function to check if file exist, otherwise download and unzip it

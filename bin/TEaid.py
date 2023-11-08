@@ -44,14 +44,14 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
     return check_low_copy, blast_full_length_n, found_match, TE_aid_plot
 
 
-def check_blast_full_length(seq_obj, blast_out_file, identity=90, coverage=0.9, min_hit_length=100, te_aid_blast=False,
+def check_blast_full_length(seq_obj, blast_out_file, identity=80, coverage=0.9, min_hit_length=100, te_aid_blast=False,
                             if_low_copy=False):
 
     # The TE Aid blast output file have a header
     if te_aid_blast:
-        df = pd.read_csv(blast_out_file, sep="\s+", skiprows=1, header=None)
+        df = pd.read_csv(blast_out_file, sep=r"\s+", skiprows=1, header=None)
     else:
-        df = pd.read_csv(blast_out_file, sep="\s+", header=None)
+        df = pd.read_csv(blast_out_file, sep=r"\s+", header=None)
 
     if if_low_copy:
         seq_length = seq_obj.old_length
@@ -100,7 +100,13 @@ class TEAid:
         TE_aid_output_dir = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_TEaid")
         os.makedirs(TE_aid_output_dir, exist_ok=True)
 
+        # TE Aid will create plot with end name c2g.pdf
+        final_pdf_file = os.path.join(TE_aid_output_dir, f"{os.path.basename(self.input_file)}.c2g.pdf")
         found_match = False
+
+        # Check if this pdf exist if so skip the downstream analysis, when low_copy is False
+        if not low_copy and os.path.exists(final_pdf_file):
+            return final_pdf_file, found_match
 
         command = [
             TE_aid,
@@ -121,8 +127,6 @@ class TEAid:
             pass
             #click.echo(f"Error encountered: {self.input_file}\n{result.stderr.decode('utf-8')}")
 
-        final_pdf_file = os.path.join(TE_aid_output_dir, f"{os.path.basename(self.input_file)}.c2g.pdf")
-    
         if low_copy:
 
             #####################################################################################################

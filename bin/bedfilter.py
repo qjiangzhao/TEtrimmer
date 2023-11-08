@@ -7,9 +7,11 @@ The bed generated based on blast might contain duplicate elements. This module c
 When bed file is too long, choose desired line number, which can faster multiple sequence alignment.
 """
 
+
 def read_bed_file(input_file):
     with open(input_file, 'r') as file:
         return [line.strip().split('\t') for line in file]
+
 
 def remove_duplicates(lines):
     unique_lines = []
@@ -22,12 +24,15 @@ def remove_duplicates(lines):
 
     return unique_lines
 
+
 def select_top_longest_lines(lines, n):
     return sorted(lines, key=lambda line: int(line[2]) - int(line[1]), reverse=True)[:n]
+
 
 def select_random_lines(n, remaining_lines):
     random.shuffle(remaining_lines)
     return remaining_lines[:n]
+
 
 def process_lines(input_file, output_dir, threshold=100, top_longest_lines_count=100):
     """

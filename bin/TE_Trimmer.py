@@ -84,8 +84,10 @@ with open(species_config_path, "r") as config_file:
               help='Open debug mode. This will keep all raw files. WARNING: Many files will be produced.')
 @click.option('--fast_mode', default=False, is_flag=True,
               help='Reduce running time but at the cost of lower accuracy and specificity.')
+@click.option('--plot_query', default=False, is_flag=True,
+              help='Perform TE_Aid plot for each query sequences before TE Trimmer analysis.')
 @click.option('--plot_skip', default=False, is_flag=True,
-              help='Perform TE_Aid plot for skipped elements')
+              help='Perform TE_Aid plot for skipped elements.')
 @click.option('--pfam_dir', default=None, type=str,
               help='Pfam database directory. Omit this option if you do not have a local PFAM database. '
                    'TE Trimmer will download the database automatically in this case.')
@@ -168,7 +170,7 @@ with open(species_config_path, "r") as config_file:
 @click.option('--classify_all', default=False, is_flag=True,
               help='Use RepeatClassifier to classify every consensus sequence.  WARNING: it will take longer time.')
 def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_blast_len, num_threads, max_msa_lines,
-         top_mas_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ext_step, plot_skip,
+         top_mas_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ext_step, plot_query, plot_skip,
          max_ext, gap_thr, gap_nul_thr, crop_end_div_thr, crop_end_div_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, mini_orf, species, ext_check_win, dedup, genome_anno, hmm,
          debug, fast_mode, classify_unknown, classify_all):
@@ -349,7 +351,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
          start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, single_fasta_n, hmm,
          ext_check_win, debug, progress_file, classify_unknown, classify_all,
          final_con_file, final_unknown_con_file, final_classified_con_file, low_copy_dir, fast_mode, error_files,
-         plot_skip, skipped_dir
+         plot_skip, skipped_dir, plot_query
          ) for seq in seq_list]
 
     # Using a ProcessPoolExecutor to run the function in parallel
@@ -507,7 +509,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                 open(temp_consensus_round2_input, 'w') as round2_file:
 
             for seq_record in consensus_sequences:
-
                 # Sequence names in best_sequences and sequence_for_round2 dont' contain classification
                 seq_id = seq_record.id.split("#")[0]
 
@@ -550,21 +551,24 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
         # Find the difference between the two sets to get sequence names not included in the merged file
         missing_ids = original_ids - merged_ids
-        click.echo(missing_ids)
+        #click.echo(missing_ids)
 
         # Based on missing_ids delete files in proof annotation folder and HMM folder
         for missing_id in missing_ids:
             evaluation_leve = sequence_info[missing_id]["evaluation"]
+
+            # Addd # to the end of missing_id
+            missing_id = f"{missing_id}#"
             if evaluation_leve == "Perfect":
-                remove_files_with_start_pattern(perfect_proof, missing_id)
+                remove_files_with_start_pattern(perfect_proof, missing_id, if_seq_name=False)
             elif evaluation_leve == "Good":
-                remove_files_with_start_pattern(good_proof, missing_id)
+                remove_files_with_start_pattern(good_proof, missing_id, if_seq_name=False)
             elif evaluation_leve == "Reco_check":
-                remove_files_with_start_pattern(intermediate_proof, missing_id)
+                remove_files_with_start_pattern(intermediate_proof, missing_id, if_seq_name=False)
             elif evaluation_leve == "Need_check":
-                remove_files_with_start_pattern(need_check_proof, missing_id)
+                remove_files_with_start_pattern(need_check_proof, missing_id, if_seq_name=False)
             else:
-                remove_files_with_start_pattern(low_copy_dir, missing_id)
+                remove_files_with_start_pattern(low_copy_dir, missing_id, if_seq_name=False)
 
         if hmm:
             remove_files_with_start_pattern(hmm_dir, missing_ids)
@@ -584,12 +588,13 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     #####################################################################################################
 
     # Delete MSA_dir and Classification if they are empty
+    """
     if not os.listdir(MSA_dir):
         os.rmdir(MSA_dir)
 
     if not os.listdir(classification_dir):
         os.rmdir(classification_dir)
-
+    """
     try:
         # If 90% of the query sequences are processed, RepeatMasker is allowed to be performed whole genome annotation
         # if processed_count >= single_fasta_n * 0.9:

@@ -44,8 +44,8 @@ def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=0.8, wi
 
 
 def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj, hmm, classify_all, classify_unknown,
-                           error_files, cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000, max_extension=7000,
-                           gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=16, crop_end_win=20,
+                           error_files, plot_query, cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000,
+                           max_extension=7000, gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=16, crop_end_win=20,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
                            mini_orf=200, define_boundary_win=150, fast_mode=False):
     """
@@ -88,7 +88,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     final_MSA_consistent = False
     intact_loop_times = 0
 
-    # intact_loop_times is the iteration numbers, <3 means iterate 2 times.
+    # intact_loop_times is the iteration numbers, < 3 means iterate 2 times.
     while (if_left_ex or if_right_ex) and (left_ex <= max_extension and right_ex <= max_extension) \
             and not final_MSA_consistent and intact_loop_times < 3:
 
@@ -108,10 +108,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
         # Remove gaps with similarity check
         bed_fasta_mafft = remove_gaps_with_similarity_check(bed_fasta_mafft_with_gap_column_clean, output_dir,
-                                                                gap_threshold=0.6, simi_check_gap_thre=0.4,
-                                                                similarity_threshold=0.7,
-                                                                min_nucleotide=5
-                                                                )
+                                                            gap_threshold=0.6, simi_check_gap_thre=0.4,
+                                                            similarity_threshold=0.7,
+                                                            min_nucleotide=5
+                                                            )
 
         bed_fasta_mafft_object = CropEndByGap(bed_fasta_mafft, gap_threshold=crop_end_gap_thr,
                                               window_size=crop_end_gap_win)
@@ -225,17 +225,13 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # When both start and end patterns are None, skip this block
     if start_patterns is not None or end_patterns is not None:
 
-        # Create StartEndChecker object
-        # check_start_end_object = StartEndChecker(cropped_alignment_output_file_no_gap,
-        #                                          start=cropped_boundary.start_post, end=cropped_boundary.end_post,
-        #                                          start_patterns=start_patterns, end_patterns=end_patterns,
-        #                                          threshold=0.7)
-
         if checkpattern.is_LTR(cropped_alignment_output_file_no_gap):  # Check if file name contain "LTR"
-            # Generate consensus sequences
-            consensus_seq = checkpattern.generate_consensus_sequence(cropped_alignment_output_file_no_gap, threshold=0.7, ambiguous="X")  
 
-            # Four variables will be returned,
+            # Generate consensus sequences
+            consensus_seq = checkpattern.generate_consensus_sequence(cropped_alignment_output_file_no_gap,
+                                                                     threshold=0.7, ambiguous="X")
+
+            # Four variables will be returned
             start_matched, end_matched, check_start, check_end = checkpattern.check_and_update(
                                         consensus_seq, start=cropped_boundary.start_post, end=cropped_boundary.end_post,
                                         start_patterns=start_patterns, end_patterns=end_patterns)
@@ -398,7 +394,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     MSA_plot = process_msa(cropped_boundary_plot_concatenate, output_dir, concat_start, concat_end, sequence_len)
 
     #####################################################################################################
-    # Code block: Plot whole MSA by CIAlign style with start and end point
+    # Code block: Plot whole MSA by CIAlign style with start and end points
     #####################################################################################################
 
     # Define while MSA plot output file
@@ -419,9 +415,18 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # TE-Aid package is stored at the same directory as this function file.
     TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
 
-    # Run TE_aid
+    # Run TE_aid, if low_copy self-blast will be performed
     TE_aid_object = TEAid(orf_cons, output_dir, genome_file, TE_aid_dir=TE_aid_path)
     TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
+
+    # Run TE_aid to plot the query sequence if it is required, because one query file can have multiple
+    # clusters, TEAid will test if this has been created before.
+    if plot_query:
+        query_file = seq_obj.get_input_fasta()
+        TE_aid_object_query = TEAid(query_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
+        TE_aid_plot_query, found_match_query = TE_aid_object_query.run(low_copy=False)
+    else:
+        TE_aid_plot_query = None
 
     #####################################################################################################
     # Code block: Merge plot files
@@ -432,7 +437,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     # List with your PDF file paths. Ensure they are not None before adding them to the list.
     pdf_files = [pdf for pdf in [MSA_plot, cropped_boundary_manual_MSA_concatenate_plot,
-                                 TE_aid_plot, orf_domain_plot] if pdf is not None]
+                                 TE_aid_plot, orf_domain_plot, TE_aid_plot_query] if pdf is not None]
 
     valid_pdf_count = 0  # Counter to keep track of valid PDFs added
 
@@ -495,7 +500,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     if consi_n > 0:
         consi_n = consi_n
         uniq_seq_name = f"{seq_name}_{consi_n:02}"
-
     else:
         uniq_seq_name = seq_name
 
@@ -511,7 +515,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Store consensus sequence length into consi_obj
     consi_obj.set_new_length(len(sequence))
 
-    # Store consensus sequence into consi_obj
+    # Store consensus sequence into consi_obj not necessary
     # consi_obj.set_cons_seq(sequence)
 
     # Store MSA sequence number into consi_obj
@@ -590,6 +594,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Good:         True               Not_required  >=15                   >=3                         Not_required
     # Reco_check    Not_required       Not_required  >=20                   >=2                         Not_required
     # Need_check    Not_required       Not_required  Not_required           Not_required                Not_required
+
     if (consi_obj.new_TE_terminal_repeat != "False" and
             consi_obj.new_TE_type != "NaN" and "unknown" not in consi_obj.new_TE_type.lower() and
             consi_obj.new_TE_MSA_seq_n >= 30 and
@@ -619,7 +624,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     file_copy_pattern = [
         (merged_pdf_path, str(consi_obj.proof_pdf)),
         (cropped_boundary_MSA, str(consi_obj.proof_fasta)),
-        (bed_fasta_mafft_boundary_crop_for_select, str(consi_obj.proof_anno))
+        (bed_fasta_mafft_boundary_crop_for_select, str(consi_obj.proof_anno)),
+        (bed_out_flank_file, str(consi_obj.proof_bed))  # bed file used for further extension
     ]
 
     files_moved_successfully = True
