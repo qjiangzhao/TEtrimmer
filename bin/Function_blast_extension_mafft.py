@@ -156,54 +156,55 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
     return seq_list
 
 
-def blast(seq_file, genome_file, output_dir, min_length=150, seq_obj=None):
+def blast(seq_file, genome_file, output_dir, min_length=150, task="blastn", seq_obj=None):
     """
-    Runs blastn and saves the results in a bed file.
+    Runs BLAST with specified task type and saves the results in a bed file.
 
     :param seq_file: str, path to input fasta file
     :param genome_file: str, path to genome file
     :param output_dir: str, prefix for output files
-    :param min_length: num default 150, minimum alignment length
+    :param min_length: num, default 150, minimum alignment length
+    :param task: str, default "blastn", BLAST task type ("blastn", "dc-megablast", etc.)
+    :param seq_obj: object, optional, sequence object to update with blast hits
 
-    :return: a bed output file name
+    :return: tuple, bed output file name and blast hits count
     """
     input_file = seq_file
     blast_hits_count = 0
     bed_out_file = None
     # define blast outfile
     blast_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b")
-    blast_cmd = f"blastn -query {input_file} -db {genome_file} " \
-                f"-outfmt \"6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand\" " \
-                f"-evalue 1e-40 -qcov_hsp_perc 20 | " \
-                f"awk -v 'ml={min_length}' 'BEGIN{{OFS=\"\\t\"}} $4 > ml {{print $0}}' >> {blast_out_file}"
+    # Modify the blast command to include the specified task
+    blast_cmd = (f"blastn -task {task} -query {input_file} -db {genome_file} "
+                 f"-outfmt \"6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand\" "
+                 f"-evalue 1e-40 -qcov_hsp_perc 20 | "
+                 f"awk -v ml={min_length} 'BEGIN{{OFS=\"\\t\"}} $4 > ml {{print $0}}' >> {blast_out_file}")
     result = subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     error_output = result.stderr.decode("utf-8")
 
     if error_output:
-        print(f"Error blast {error_output}")
+        print(f"Error during BLAST: {error_output}")
 
-    # Check the number of blast hits
+    # Check the number of BLAST hits
     with open(blast_out_file) as blast_file:
         for _ in blast_file:
             blast_hits_count += 1
 
-    if blast_hits_count >= 1:
+    if blast_hits_count > 0:
         # Define bed outfile
-        # Only convert blast to bed file when hits number is greater than 10
         bed_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b.bed")
-        bed_cmd = f"awk 'BEGIN{{OFS=\"\\t\"}} !/^#/ {{if ($10~/plus/){{print $2, $8, $9, $1, $3, \"+\"}} " \
-                  f"else {{print $2, $9, $8, $1, $3, \"-\"}}}}' < {blast_out_file} > {bed_out_file}"
+        bed_cmd = (f"awk 'BEGIN{{OFS=\"\\t\"}} !/^#/ {{if ($10~/plus/){{print $2, $8, $9, $1, $3, \"+\"}} "
+                  f"else {{print $2, $9, $8, $1, $3, \"-\"}}}}' < {blast_out_file} > {bed_out_file}")
         result_awk = subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         error_output_awk = result_awk.stderr.decode("utf-8")
 
         if error_output_awk:
-            print(f"Error blast {error_output_awk}")
+            print(f"Error during bed file creation: {error_output_awk}")
 
-        # Update blast hit number to sequence object when seq_obj is supplied
+        # Update BLAST hit number to sequence object when seq_obj is supplied
         if seq_obj is not None:
             seq_obj.update_blast_hit_n(blast_hits_count)
 
-    # if low copy number, check coverage, length and identity
     return bed_out_file, blast_hits_count, blast_out_file
 
 
@@ -306,8 +307,22 @@ def align_sequences(input_file, output_dir):
     """
     fasta_out_flank_mafft_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_aln.fa")
 
+    # Read the top 5 sequences and determine if any are longer than 7000
+    long_sequences = False
+    with open(input_file, "r") as handle:
+        for i, record in enumerate(SeqIO.parse(handle, "fasta")):
+            if len(record.seq) > 7000:
+                long_sequences = True
+                break
+            if i >= 4:  # Only check the top 5 sequences
+                break
+
     # Construct the command as a list of strings
     mafft_cmd = ["mafft", "--quiet", "--nuc", "--retree", "1", input_file]
+
+    # If any of the top 5 sequences are longer than 7000, add --memsave to salve memory
+    if long_sequences:
+        mafft_cmd.insert(1, "--memsave")  # Insert after 'mafft'
 
     # Execute the command
     result = subprocess.run(mafft_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -321,6 +336,7 @@ def align_sequences(input_file, output_dir):
         f.write(result.stdout.decode('utf-8'))
 
     return fasta_out_flank_mafft_file
+
 
 
 def muscle_align(input_file, output_dir, ite_times=4):

@@ -125,7 +125,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
         # run blast for each single fasta file and return a bed file absolute path
         bed_out_file_dup, blast_hits_count, blast_out_file = blast(seq_file, genome_file, MSA_dir,
-                                                                   min_length=min_blast_len, seq_obj=seq_obj)
+                                                                   min_length=min_blast_len, task="dc-megablast",
+                                                                   seq_obj=seq_obj)
 
     except Exception as e:
         with open(error_files, "a") as f:

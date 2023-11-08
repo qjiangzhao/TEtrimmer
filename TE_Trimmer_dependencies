@@ -24,10 +24,12 @@ blast                     2.10.1          pl526he19e7b1_3    bioconda
 cd-hit                    4.8.1                h2e03b76_5    bioconda
 emboss                    6.6.0                h6debe1e_0    bioconda	(use "getorf" for orf prediction)
 hmmer                     3.3.1                he1b5a44_0    bioconda
-mafft                     7.475                h516909a_0    bioconda
+mafft                     7.520                h031d066_3    bioconda
 pfam_scan                 1.6                     pl526_2    bioconda/label/cf201901
 repeatmasker              4.1.1                   pl526_1    bioconda
 samtools                  1.11                 h6270b1f_0    bioconda	(only for genome.fai file generation)
+repeatmodeler             2.0.1                   pl526_0    bioconda
+
 
 
 

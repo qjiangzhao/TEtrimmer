@@ -49,9 +49,9 @@ def check_blast_full_length(seq_obj, blast_out_file, identity=80, coverage=0.9, 
 
     # The TE Aid blast output file have a header
     if te_aid_blast:
-        df = pd.read_csv(blast_out_file, sep="\s+", skiprows=1, header=None)
+        df = pd.read_csv(blast_out_file, sep=r"\s+", skiprows=1, header=None)
     else:
-        df = pd.read_csv(blast_out_file, sep="\s+", header=None)
+        df = pd.read_csv(blast_out_file, sep=r"\s+", header=None)
 
     if if_low_copy:
         seq_length = seq_obj.old_length
