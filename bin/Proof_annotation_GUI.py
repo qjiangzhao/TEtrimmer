@@ -84,7 +84,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
             filepath = os.path.join(source_dir, filename)
             if filename.lower().endswith(('.fa', '.fasta')):
                 if os_type == "Windows":
-                    subprocess.run(["java", aliview_path, filepath])
+                    subprocess.run(["java", "-jar", aliview_path, filepath])
                 else:
                     subprocess.run([aliview_path, filepath])
             elif filename.lower().endswith('.pdf'):
