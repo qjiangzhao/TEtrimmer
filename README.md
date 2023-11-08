@@ -19,11 +19,11 @@ You can find required packages from [here](https://github.com/qjiangzhao/TE-Trim
 and install them by yourself.
 
 
-or for linux system, create conda environment based on [TE_Trimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TE_Trimmer_env_for_linux.yml).
+**or** for linux system, create conda environment based on [TE_Trimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TE_Trimmer_env_for_linux.yml).
 ```commandline
 conda env create -f TE_Trimmer_env_for_linux.yml
 ```
-or install by mamba based on [TE_Trimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TE_Trimmer_env_for_linux.yml). 
+**or** install by mamba based on [TE_Trimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TE_Trimmer_env_for_linux.yml). 
 We highly recommend install by "mamba" that is much faster. 
 
 ```commandline
