@@ -170,3 +170,124 @@ TE Trimmer is 6 time more accurate to annotate the intact TE than RepeatModeler 
 
 ## Flowchart
 ![image](https://www.dropbox.com/scl/fi/4s0sd2e0ndic62pyt22dt/TE_Trimmer_vertical_flowchart.png?rlkey=ixwbo1p7h05xhz80nh2j47y2o&raw=1)
+
+## All available options 
+```commandline
+Options:
+  -i, --input_file TEXT           Path to TE consensus file (FASTA format). Use the output from RepeatModeler or EDTA
+                                  et al.  [required]
+                                  
+  -g, --genome_file TEXT          Path to genome FASTA file.  [required]
+  
+  -o, --output_dir TEXT           Output directory. Default: current directory.
+  
+  -s, --species [fungi|plant|animal|powdery_mildew]
+                                  Select the species for which you want to run TE Trimmer.
+                                  
+  -ca, --continue_analysis        Continue to analysis after interruption.
+  
+  --dedup                         Remove duplicate sequences in input file.
+  
+  --genome_anno                   Perform genome TE annotation using the TE Trimmer curated database. Requires
+                                  RepeatMasker.
+                                  
+  --hmm                           Generate HMM files for each consensus sequences.
+  
+  --debug                         Open debug mode. This will keep all raw files. WARNING: Many files will be produced.
+  
+  --fast_mode                     Reduce running time but at the cost of lower accuracy and specificity.
+  
+  --plot_query                    Perform TE_Aid plot for each query sequences before TE Trimmer analysis.
+  
+  --plot_skip                     Perform TE_Aid plot for skipped elements
+  
+  --pfam_dir TEXT                 Pfam database directory. Omit this option if you do not have a local PFAM database.
+                                  TE Trimmer will download the database automatically in this case.
+                                  
+  --cons_thr FLOAT                Threshold used for the final consensus sequence generation. Default: 0.8
+  
+  --mini_orf INTEGER              Define the minimum ORF length that will be predicted by TE Trimmer. Default: 200
+  
+  --max_msa_lines INTEGER         Set the maximum sequences number for multiple sequence alignment. Default: 100
+  
+  --top_mas_lines INTEGER         When the sequence number of multiple sequence alignment (MSA) is greater than
+                                  <--max_msa_lines>, TE Trimmer will sort sequences by length and choose
+                                  <--top_msa_lines> number of sequences. Then, TE Trimmer will randomly select
+                                  sequences from all remaining BLAST hits until <--max_msa_lines> sequences are found
+                                  for the multiple sequence alignment. Default: 70
+                                  
+  --min_seq_num INTEGER           The minimum sequence number for each multiple sequence alignment. Note: can not
+                                  smaller than 10. Default: 10
+                                  
+  --min_blast_len INTEGER         The minimum sequence length for blast hits. Default: 150
+  
+  --max_cluster_num INTEGER       The maximum cluster number for each multiple sequence alignment. Each multiple
+                                  sequence alignment can be divided into different clusters. TE Trimmer will sort
+                                  clusters by sequence number and choose the top <--max_cluster_num> of clusters for
+                                  further analysis. WARNING: Big number will dramatically increase running time.
+                                  Default: 2
+                                  
+  --ext_thr FLOAT                 Threshold used for define the extension extent. The lower the value of <--ext_thr>,
+                                  the easier the extensions on both ends be longer. Reduce <--ext_thr> if TE Trimmer
+                                  fails to determine the correct ends of repeat elements. Default: 0.7
+                                  
+  --ext_check_win TEXT            Define check windows size for extension. Default: 150
+  
+  --ext_step INTEGER              Number of nucleotides to be added to the left and right ends of the multiple
+                                  sequence alignment. TE_Trimmer will iteratively add <--ext_step> number of
+                                  nucleotides until finding the boundary. Default: 1000
+                                  
+  --max_ext INTEGER               The maximum extension in nucleotides at both ends of the multiple sequence
+                                  alignment. Default: 7000
+                                  
+  --gap_thr FLOAT                 If multiple sequence alignment positions (columns) have a gap proportion larger than
+                                  <--gap_thr> and the proportion of the most common nucleotide in this column is less
+                                  than <--gap_nul_thr>, this column will be removed from the consensus. Default: 0.4
+                                  
+  --gap_nul_thr FLOAT             Set nucleotide proportion threshold for keeping the column of the multiple sequence
+                                  alignment. Used with the <--gap_thr> option. Default: 0.7
+                                  
+  --crop_end_div_thr FLOAT        The crop end by divergence function will convert each nucleotide in the multiple
+                                  sequence alignment into a proportion value. This function will iteratively choose a
+                                  sliding window from each end of each sequence of the MSA and sum up the proportion
+                                  numbers in this window. The cropping will continue until the sum of proportions is
+                                  larger than <--crop_end_div_thr>. Cropped nucleotides will be converted to -.
+                                  Default: 0.8
+                                  
+  --crop_end_div_win INTEGER      Window size used for the end-cropping process. Used with --crop_end_div_thr option.
+                                  Default: 20
+                                  
+  --crop_end_gap_thr FLOAT        The crop end by gap function will iteratively choose a sliding window from each end
+                                  of each sequence of the MSA and calculate the gap proportion in this window. The
+                                  cropping will continue until the sum of gap proportions is smaller than
+                                  <--crop_end_gap_thr>. Cropped nucleotides will be converted to -. Default: 0.1
+                                  
+  --crop_end_gap_win INTEGER      Define window size used to crop end by gap, used with <--crop_end_gap_thr> option.
+                                  Default: 250
+                                  
+  --start_patterns TEXT           LTR elements always start with a conserved sequence pattern. TE Trimmer searches the
+                                  beginning of the consensus sequence for these patterns. If the pattern is not found,
+                                  it will extend the search of <--start_patterns> to up to 15 nucleotides from the
+                                  beginning of the consensus sequence and redefine the start of the consensus sequence
+                                  if the pattern is found. Note: The user can provide multiple LTR start patterns in a
+                                  comma-separated list, like: TG,TA,TC (no spaces; the order of patterns determines
+                                  the priority for the search). Default: TG
+                                  
+  --end_patterns TEXT             LTR elements always end with a conserved sequence pattern. TE Trimmer searches the
+                                  end of the consensus sequence for these patterns. If the pattern is not found, it
+                                  will extend the search of <--end_patterns> to up to 15 nucleotides from the end of
+                                  the consensus sequence and redefine the end of the consensus sequence if the pattern
+                                  is found. Note: The user can provide multiple LTR end patterns in a comma-separated
+                                  list, like: CA,TA,GA (no spaces; the order of patterns determines the priority for
+                                  the search). Default: CA
+                                  
+  -t, --num_threads INTEGER       Threads numbers used for TE Trimmer. Default: 10
+  
+  --classify_unknown              Use RepeatClassifier to classify the consensus sequence if the input sequence is not
+                                  classified or is unknown.
+                                  
+  --classify_all                  Use RepeatClassifier to classify every consensus sequence.  WARNING: it will take
+                                  longer time.
+                                  
+  --help                          Show this message and exit.
+```
