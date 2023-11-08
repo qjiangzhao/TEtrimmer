@@ -8,6 +8,7 @@
   - [Outputs](#Outputs)
   - [Proof annotation](#Proof-annotation)
 - [Flowchart](#Flowchart)
+- [All available options](#All-available-options)
 
 ## Introduction
 Many tools have been developed for *de novo* transposable element (TE) identification. But manual 
@@ -33,18 +34,21 @@ conda install -c conda-forge mamba
 # Create TE Trimmer environment by mamba
 mamba env create -f TE_Trimmer_env_for_linux.yml
 ```
+For Window WSL, you can follow the same instruction used for linux. 
+
+
 For macOS, you can use the same instruction but by [TE_Trimmer_env_for_macOS.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_macOS.yml).
 
 
 We will develop Conda and Docker packages for TE Trimmer.
 
 ## Usage:
-Use --help to access all options
+Use --help to access all [options](#All-available-options)
 
 ```commandline
 python {path to TE Trimmer}/TE_Trimmer.py --help
 ```
-### Hardware requirement
+## Hardware requirement
 System: Linux, macOS
 
 RAM:
@@ -65,7 +69,7 @@ test on Macbook Pro (2020 M1 chip 16 GB) and compared with HPC, you can find the
 
 - We haven't tested it on WLS of Windows, it should be feasible to run TE Trimmer on it too. 
 
-### Test
+## Test
 ```commandline
 # Unittest is performed. 
 python {path to TE Trimmer}/test.py
@@ -81,7 +85,7 @@ python {path to TE Trimmer}/TE_Trimmer.py --input_file {path to TE Trimmer}/test
                                           --classify_unknown
                                           
 ```
-### Inputs
+## Inputs
  
 - **TE consensus library**: TE Trimmer use the TE consensus library from *de novo* TE annotation tools like RepeatModeler or EDTA as input. 
 For this reason, you have to run RepeatModeler or other TE annotation software first. 
@@ -127,7 +131,7 @@ More options are available:
   --classify_all                  Use RepeatClassifier to classify every consensus sequence.  WARNING: it will take
                                   longer time.
 ```
-### Outputs
+## Outputs
 - 📁**Classification** - *This folder is used for TEs classification.*  
 - 📁**Multiple_sequence_alignment** - *All raw files will be kept in this folder when < --debug > is enables.*
   - 📄**error_file.txt** - *Error file to store all error messages, only visible when error is found.*
@@ -148,7 +152,7 @@ More options are available:
 - 📄**TE_Trimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
 
 
-### Proof annotation
+## Proof annotation
 You can use this graphical user interface tool to assistant your proof annotation. We highly recommend to do proof 
 annotation for the TEs in "Recommend_check_annotation" and "Need_check_annotation" folder to achieve high quality TE
 consensus library. 
