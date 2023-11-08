@@ -87,7 +87,7 @@ with open(species_config_path, "r") as config_file:
 @click.option('--plot_query', default=False, is_flag=True,
               help='Perform TE_Aid plot for each query sequences before TE Trimmer analysis.')
 @click.option('--plot_skip', default=False, is_flag=True,
-              help='Perform TE_Aid plot for skipped elements')
+              help='Perform TE_Aid plot for skipped elements.')
 @click.option('--pfam_dir', default=None, type=str,
               help='Pfam database directory. Omit this option if you do not have a local PFAM database. '
                    'TE Trimmer will download the database automatically in this case.')

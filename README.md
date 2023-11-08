@@ -199,7 +199,7 @@ Options:
   
   --plot_query                    Perform TE_Aid plot for each query sequences before TE Trimmer analysis.
   
-  --plot_skip                     Perform TE_Aid plot for skipped elements
+  --plot_skip                     Perform TE_Aid plot for skipped elements.
   
   --pfam_dir TEXT                 Pfam database directory. Omit this option if you do not have a local PFAM database.
                                   TE Trimmer will download the database automatically in this case.

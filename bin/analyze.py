@@ -487,7 +487,13 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
                    f"Pfam-A.hmm.dat\n"
                    f"Pfam-A.hmm.h3i\n"
                    f"Pfam-A.hmm.h3p\n\n"
-                   f"PFAM prediction will be used to determine the direction of TEs, it is necessary to make it run\n")
+                   f"PFAM prediction will be used to determine the direction of TEs, it is necessary to make it run\n\n"
+                   f"You can download <Pfam-A.hmm.gz> and <Pfam-A.hmm.dat.gz> from "
+                   f"https://www.ebi.ac.uk/interpro/download/pfam/\n"
+                   f"After: \n"
+                   f"gzip -d Pfam-A.hmm.gz\n"
+                   f"gzip -d Pfam-A.hmm.dat.gz\n"
+                   f"hmmpress Pfam-A.hmm\n\n")
         return
 
     # Define consensus files. temp files will be used for the final RepeatMasker classification
