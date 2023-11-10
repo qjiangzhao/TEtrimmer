@@ -5,6 +5,8 @@ import shutil
 from PyPDF2 import PdfMerger
 import traceback
 from Bio import AlignIO
+import pandas as pd
+from scipy import stats
 
 # Local imports
 from boundaryclass import DefineBoundary
@@ -22,6 +24,167 @@ from orfdomain import PlotPfam, determine_sequence_direction
 from MSAcluster import clean_and_cluster_MSA, process_msa
 import cialign
 
+def long_bed(input_file, output_dir):
+    df = pd.read_csv(input_file, sep='\t', header = None)
+    df[6] = ''
+    df[6] = abs(df.iloc[:, 1] - df.iloc[:, 2])
+
+    # # Define a threshold for outlier removal
+    threshold = 10
+
+    # Identify the top 10 lengths
+    top_10_lengths = df.nlargest(10, 6)[6]
+
+    # Calculate the mean and standard deviation of the top 10 lengths
+    mean_top_10_lengths = top_10_lengths.mean()
+    std_top_10_lengths = top_10_lengths.std()
+
+    # Identify values outside the threshold and is on the small side
+    df['difference_from_mean'] = df[6] - mean_top_10_lengths
+    # ~ is used to negate the condition, meaning you keep rows where the condition is not satisfied.
+    filtered_df = df[
+    ~((abs(df['difference_from_mean']) > threshold * std_top_10_lengths) 
+      & (df['difference_from_mean'] < 0))
+    ]
+
+    # Save the filtered bed to a new file
+    filtered_long_bed = os.path.join(output_dir, f"{os.path.basename(input_file)}_filtered_long.bed")
+    filtered_df.to_csv(filtered_long_bed, sep='\t', index=False, header = None)
+    avg_alignment = int(filtered_df.iloc[:, 6].mean())
+
+    return avg_alignment, filtered_long_bed
+
+# def long_bed(input_file, output_dir):
+#     df = pd.read_csv(input_file, sep='\t', header = None)
+#     df[6] = ''
+#     df[6] = abs(df.iloc[:, 1] - df.iloc[:, 2])
+
+#     # Calculate the z-score for the column
+#     z_scores = stats.zscore(df.iloc[:, 6])
+
+#     # Define a threshold for outlier removal
+#     threshold = 1.5
+
+#     # Filter rows where the z-score is below the threshold
+#     filtered_df = df[abs(z_scores) <= threshold]
+
+#     # Save the filtered bed to a new file
+#     filtered_long_bed = os.path.join(output_dir, f"{os.path.basename(input_file)}_filtered_long.bed")
+#     filtered_df.to_csv(filtered_long_bed, sep='\t', index=False, header = None)
+#     avg_alignment = int(df.iloc[:, 6].mean())
+
+#     return avg_alignment, filtered_long_bed
+
+def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output_dir, crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win):
+    # end: left or right extension
+    if_ex = True
+    ex_total = 0
+    # the following calculate the majority of the alignment length and find the long alignment for extension while igorning the short ones
+    seq_alignment, filtered_long_bed = long_bed(input_file, output_dir)
+    # 100bp is added to avoid the case where boundary is at the edge. Therefore the alignment is actually 1.1kb
+    adjust = 100
+    print (f"extend_end input {ex_total}")
+    while if_ex and (ex_total < max_extension):
+        # bedtools will makesure the extension won't excess the maximum length of that chromosome
+        # track extend total
+        ex_total += ex_step_size
+        
+        if end == "left":
+            left_ex = ex_total
+            right_ex = -seq_alignment + ex_step_size - ex_total + adjust
+        if end == "right":
+            left_ex = -seq_alignment + ex_step_size - ex_total + adjust
+            right_ex = ex_total
+        bed_fasta, bed_out_flank_file = extract_fasta(filtered_long_bed, genome_file, output_dir, left_ex, right_ex)
+
+        # align_sequences() will return extended MSA absolute file
+        bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
+
+        if not os.path.isfile(bed_fasta_mafft_with_gap):
+            click.echo(f"{input_file} has problem during mafft extension step")
+            return False
+
+        # Remove nucleotide whose proportion is smaller than threshold
+        bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(bed_fasta_mafft_with_gap, threshold=0.08)
+        bed_fasta_mafft_with_gap_column_clean = bed_fasta_mafft_with_gap_column_clean_object.clean_column(output_dir)
+
+        # Remove gaps with similarity check
+        bed_fasta_mafft = remove_gaps_with_similarity_check(bed_fasta_mafft_with_gap_column_clean, output_dir,
+                                                            gap_threshold=0.6, simi_check_gap_thre=0.4,
+                                                            similarity_threshold=0.7,
+                                                            min_nucleotide=5
+                                                            )
+
+        bed_fasta_mafft_object = CropEndByGap(bed_fasta_mafft, gap_threshold=crop_end_gap_thr,
+                                                window_size=crop_end_gap_win)
+        cropped_alignment = bed_fasta_mafft_object.crop_alignment()
+        bed_fasta_mafft_cop_end_gap = bed_fasta_mafft_object.write_to_file(output_dir, cropped_alignment)
+
+        # Threshold to generate consensus sequence
+        bed_boundary = DefineBoundary(bed_fasta_mafft_cop_end_gap, threshold=ext_threshold,
+                                        check_window=define_boundary_win, max_X=0.3, if_con_generater=False)
+
+        if end == "left":
+            if bed_boundary.if_continue:
+                if_ex = bed_boundary.left_ext
+        if end == "right":
+            if bed_boundary.if_continue:
+                if_ex = bed_boundary.right_ext
+            # what this means???
+            elif not bed_boundary.if_continue:
+                print ("Short_sequence")
+                break
+    print (f"extend_end output {ex_total}")
+    return ex_total
+
+def final_MSA(bed_file, genome_file, output_dir, left_ex, right_ex, gap_nul_thr, gap_threshold, ext_threshold, define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win):
+
+    bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, left_ex, right_ex)
+    # align_sequences() will return extended MSA absolute file
+    bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
+
+    if not os.path.isfile(bed_fasta_mafft_with_gap):
+        click.echo(f"{bed_file} has problem during mafft extension step")
+        return False
+
+    # Remove nucleotide whose proportion is smaller than threshold
+    bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(bed_fasta_mafft_with_gap, threshold=0.08)
+    bed_fasta_mafft_with_gap_column_clean = bed_fasta_mafft_with_gap_column_clean_object.clean_column(output_dir)
+
+    # Remove gap block with similarity check
+    # gap_threshold=0.8 means if gap proportion is greater than 80% this column will be regarded as
+    
+    # gap column directly without further nucleotide similarity check
+    bed_fasta_mafft_gap_block_sim = remove_gaps_block_with_similarity_check(
+        bed_fasta_mafft_with_gap_column_clean, output_dir, gap_threshold=0.8, simi_check_gap_thre=gap_threshold,
+        similarity_threshold=gap_nul_thr, conservation_threshold=0.5)
+
+    bed_boundary = DefineBoundary(bed_fasta_mafft_gap_block_sim, threshold=ext_threshold,
+                                    check_window=define_boundary_win, max_X=0.2, if_con_generater=False)
+    bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=300)
+
+    # Because for LINE element bed_fasta_mafft_boundary_crop will be changed. Copy it to the other variable
+    bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_boundary_crop
+
+    if "LINE" in bed_file:
+        # For the high divergence region, more gaps can be found. According to this feature, remove high divergence
+        # region this function is very useful for dealing with LINE elements
+        cropped_MSA_by_gap = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
+                                            window_size=crop_end_gap_win)
+
+        bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
+
+    # Gaps are removed again after crop end process
+    cropped_alignment_output_file_no_gap, column_mapping = crop_end_and_clean_column(
+        bed_fasta_mafft_boundary_crop, output_dir, crop_end_threshold=crop_end_thr,
+        window_size=crop_end_win, gap_threshold=0.8)
+
+    # Crop end can't define the final boundary, use DefineBoundary again to define start position
+    cropped_boundary = DefineBoundary(cropped_alignment_output_file_no_gap, threshold=0.8,
+                                        check_window=3, max_X=0)
+    cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
+
+    return bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_no_gap, cropped_boundary, column_mapping, bed_fasta_mafft_boundary_crop, bed_fasta_mafft_boundary_crop_for_select
 
 def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=0.8, window_size=20, gap_threshold=0.8):
 
@@ -30,7 +193,7 @@ def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=0.8, wi
     CropEnd_thres = crop_end_threshold * window_size
     cropped_MSA = CropEnd(input_file, threshold=CropEnd_thres, window_size=window_size)
     cropped_MSA.crop_alignment()
-
+    
     # write_to_file() function will return absolute cropped alignment file
     cropped_MSA_output_file = cropped_MSA.write_to_file(output_dir)
 
@@ -45,7 +208,7 @@ def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=0.8, wi
 
 def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj, hmm, classify_all, classify_unknown,
                            error_files, plot_query, cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000,
-                           max_extension=7000, gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=16, crop_end_win=20,
+                           max_extension=7000, gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=0.8, crop_end_win=20,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
                            mini_orf=200, define_boundary_win=150, fast_mode=False):
     """
@@ -88,121 +251,162 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     final_MSA_consistent = False
     intact_loop_times = 0
 
-    # intact_loop_times is the iteration numbers, < 3 means iterate 2 times.
-    while (if_left_ex or if_right_ex) and (left_ex <= max_extension and right_ex <= max_extension) \
-            and not final_MSA_consistent and intact_loop_times < 3:
+    # # intact_loop_times is the iteration numbers, < 3 means iterate 2 times.
+    # while (if_left_ex or if_right_ex) and (left_ex <= max_extension and right_ex <= max_extension) \
+    #         and not final_MSA_consistent and intact_loop_times < 3:
 
-        # bedtools will makesure the extension won't excess the maximum length of that chromosome
-        bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, left_ex, right_ex)
+    #     # bedtools will makesure the extension won't excess the maximum length of that chromosome
+    #     bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, left_ex, right_ex)
 
-        # align_sequences() will return extended MSA absolute file
-        bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
+    #     # align_sequences() will return extended MSA absolute file
+    #     bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
 
-        if not os.path.isfile(bed_fasta_mafft_with_gap):
+    #     if not os.path.isfile(bed_fasta_mafft_with_gap):
+    #         click.echo(f"{bed_file} has problem during mafft extension step")
+    #         return False
+
+    #     # Remove nucleotide whose proportion is smaller than threshold
+    #     bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(bed_fasta_mafft_with_gap, threshold=0.08)
+    #     bed_fasta_mafft_with_gap_column_clean = bed_fasta_mafft_with_gap_column_clean_object.clean_column(output_dir)
+
+    #     # Remove gaps with similarity check
+    #     bed_fasta_mafft = remove_gaps_with_similarity_check(bed_fasta_mafft_with_gap_column_clean, output_dir,
+    #                                                         gap_threshold=0.6, simi_check_gap_thre=0.4,
+    #                                                         similarity_threshold=0.7,
+    #                                                         min_nucleotide=5
+    #                                                         )
+
+    #     bed_fasta_mafft_object = CropEndByGap(bed_fasta_mafft, gap_threshold=crop_end_gap_thr,
+    #                                           window_size=crop_end_gap_win)
+    #     cropped_alignment = bed_fasta_mafft_object.crop_alignment()
+    #     bed_fasta_mafft_cop_end_gap = bed_fasta_mafft_object.write_to_file(output_dir, cropped_alignment)
+
+    #     # Threshold to generate consensus sequence
+    #     bed_boundary = DefineBoundary(bed_fasta_mafft_cop_end_gap, threshold=ext_threshold,
+    #                                   check_window=define_boundary_win, max_X=0.3, if_con_generater=False)
+
+    #     if bed_boundary.if_continue:
+    #         if bed_boundary.left_ext:  # boundary.left_ext will become true when more extension is required
+    #             left_ex += ex_step_size
+    #         else:
+    #             if_left_ex = bed_boundary.left_ext
+
+    #         if bed_boundary.right_ext:
+    #             right_ex += ex_step_size
+    #         else:
+    #             if_right_ex = bed_boundary.right_ext
+    #     elif not bed_boundary.if_continue:
+
+    #         return "Short_sequence"
+
+    #     #####################################################################################################
+    #     # Code block: Remove gaps and define the start and end position
+    #     #####################################################################################################
+
+    #     if (not if_left_ex and not if_right_ex) or left_ex == max_extension or right_ex == max_extension:
+
+    #         # Remove gap block with similarity check
+    #         # gap_threshold=0.8 means if gap proportion is greater than 80% this column will be regarded as
+    #         # gap column directly without further nucleotide similarity check
+    #         bed_fasta_mafft_gap_block_sim = remove_gaps_block_with_similarity_check(
+    #             bed_fasta_mafft_with_gap_column_clean, output_dir, gap_threshold=0.8, simi_check_gap_thre=gap_threshold,
+    #             similarity_threshold=gap_nul_thr, conservation_threshold=0.5)
+
+    #         bed_boundary = DefineBoundary(bed_fasta_mafft_gap_block_sim, threshold=ext_threshold,
+    #                                       check_window=define_boundary_win, max_X=0.2, if_con_generater=False)
+    #         bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=300)
+
+    #         # Because for LINE element bed_fasta_mafft_boundary_crop will be changed. Copy it to the other variable
+    #         bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_boundary_crop
+
+    #         if "LINE" in bed_file:
+    #             # For the high divergence region, more gaps can be found. According to this feature, remove high divergence
+    #             # region this function is very useful for dealing with LINE elements
+    #             cropped_MSA_by_gap = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
+    #                                               window_size=crop_end_gap_win)
+
+    #             bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
+
+    #         # Gaps are removed again after crop end process
+    #         cropped_alignment_output_file_no_gap, column_mapping = crop_end_and_clean_column(
+    #             bed_fasta_mafft_boundary_crop, output_dir, crop_end_threshold=crop_end_thr,
+    #             window_size=crop_end_win, gap_threshold=0.8)
+
+    #         # Crop end can't define the final boundary, use DefineBoundary again to define start position
+    #         cropped_boundary = DefineBoundary(cropped_alignment_output_file_no_gap, threshold=0.8,
+    #                                           check_window=3, max_X=0)
+    #         cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
+
+    #         #####################################################################################################
+    #         # Code block: Check the consistency of the final MSA
+    #         #####################################################################################################
+
+    #         if not fast_mode:
+    #             final_MSA_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file, output_dir,
+    #                                                           clean_column_threshold=0.08, min_length_num=10,
+    #                                                           cluster_num=2, cluster_col_thr=250, fast_mode=fast_mode
+    #                                                           )
+
+    #             # False means the sequences number in each cluster is smaller than minimum number, normally 10
+    #             # True means not necessary to do further cluster
+    #             if final_MSA_consistency is False or final_MSA_consistency is True:
+    #                 final_MSA_consistent = True
+
+    #             # else means that further clustering is required
+    #             else:
+    #                 # Only use the first cluster for further analysis, which contains the most sequences
+    #                 new_bed_file = final_MSA_consistency[0]
+    #                 bed_file = new_bed_file
+
+    #                 intact_loop_times = intact_loop_times + 1
+
+    #                 # Reset extension parameters to enable whole while loop
+    #                 if_left_ex = True
+    #                 if_right_ex = True
+
+    #                 left_ex = 0
+    #                 right_ex = 0
+    print (f"check left out while loop {left_ex} and max_extension is {max_extension}")
+    while not final_MSA_consistent and intact_loop_times < 3 and (left_ex <= max_extension and right_ex <= max_extension) :
+        print (f"check left in while loop {left_ex}")
+        left_ex = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir, crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win)
+        right_ex = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir, crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win)
+        
+        print (seq_name)
+        print (f"left {left_ex}")
+        print (f"right {right_ex}")
+        print (intact_loop_times)
+
+        # if no error message, get final MSA
+        # TODO check short sequence
+        if left_ex and right_ex:
+            bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_no_gap, cropped_boundary, \
+                column_mapping, bed_fasta_mafft_boundary_crop, bed_fasta_mafft_boundary_crop_for_select = final_MSA(bed_file, genome_file, 
+                                                        output_dir, left_ex, right_ex, gap_nul_thr, gap_threshold, 
+                                                        ext_threshold, define_boundary_win,crop_end_gap_thr, 
+                                                        crop_end_gap_win, crop_end_thr, crop_end_win)
+        else:
             click.echo(f"{bed_file} has problem during mafft extension step")
             return False
 
-        # Remove nucleotide whose proportion is smaller than threshold
-        bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(bed_fasta_mafft_with_gap, threshold=0.08)
-        bed_fasta_mafft_with_gap_column_clean = bed_fasta_mafft_with_gap_column_clean_object.clean_column(output_dir)
-
-        # Remove gaps with similarity check
-        bed_fasta_mafft = remove_gaps_with_similarity_check(bed_fasta_mafft_with_gap_column_clean, output_dir,
-                                                            gap_threshold=0.6, simi_check_gap_thre=0.4,
-                                                            similarity_threshold=0.7,
-                                                            min_nucleotide=5
+        if not fast_mode:
+            final_MSA_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file, output_dir,
+                                                            clean_column_threshold=0.08, min_length_num=10,
+                                                            cluster_num=2, cluster_col_thr=250, fast_mode=fast_mode
                                                             )
 
-        bed_fasta_mafft_object = CropEndByGap(bed_fasta_mafft, gap_threshold=crop_end_gap_thr,
-                                              window_size=crop_end_gap_win)
-        cropped_alignment = bed_fasta_mafft_object.crop_alignment()
-        bed_fasta_mafft_cop_end_gap = bed_fasta_mafft_object.write_to_file(output_dir, cropped_alignment)
+            # False means the sequences number in each cluster is smaller than minimum number, normally 10
+            # True means not necessary to do further cluster
+            if final_MSA_consistency is False or final_MSA_consistency is True:
+                final_MSA_consistent = True
 
-        # Threshold to generate consensus sequence
-        bed_boundary = DefineBoundary(bed_fasta_mafft_cop_end_gap, threshold=ext_threshold,
-                                      check_window=define_boundary_win, max_X=0.3, if_con_generater=False)
-
-        if bed_boundary.if_continue:
-            if bed_boundary.left_ext:  # boundary.left_ext will become true when more extension is required
-                left_ex += ex_step_size
+            # else means that further clustering is required
             else:
-                if_left_ex = bed_boundary.left_ext
-
-            if bed_boundary.right_ext:
-                right_ex += ex_step_size
-            else:
-                if_right_ex = bed_boundary.right_ext
-        elif not bed_boundary.if_continue:
-
-            return "Short_sequence"
-
-        #####################################################################################################
-        # Code block: Remove gaps and define the start and end position
-        #####################################################################################################
-
-        if (not if_left_ex and not if_right_ex) or left_ex == max_extension or right_ex == max_extension:
-
-            # Remove gap block with similarity check
-            # gap_threshold=0.8 means if gap proportion is greater than 80% this column will be regarded as
-            # gap column directly without further nucleotide similarity check
-            bed_fasta_mafft_gap_block_sim = remove_gaps_block_with_similarity_check(
-                bed_fasta_mafft_with_gap_column_clean, output_dir, gap_threshold=0.8, simi_check_gap_thre=gap_threshold,
-                similarity_threshold=gap_nul_thr, conservation_threshold=0.5)
-
-            bed_boundary = DefineBoundary(bed_fasta_mafft_gap_block_sim, threshold=ext_threshold,
-                                          check_window=define_boundary_win, max_X=0.2, if_con_generater=False)
-            bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=300)
-
-            # Because for LINE element bed_fasta_mafft_boundary_crop will be changed. Copy it to the other variable
-            bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_boundary_crop
-
-            if "LINE" in bed_file:
-                # For the high divergence region, more gaps can be found. According to this feature, remove high divergence
-                # region this function is very useful for dealing with LINE elements
-                cropped_MSA_by_gap = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
-                                                  window_size=crop_end_gap_win)
-
-                bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
-
-            # Gaps are removed again after crop end process
-            cropped_alignment_output_file_no_gap, column_mapping = crop_end_and_clean_column(
-                bed_fasta_mafft_boundary_crop, output_dir, crop_end_threshold=crop_end_thr,
-                window_size=crop_end_win, gap_threshold=0.8)
-
-            # Crop end can't define the final boundary, use DefineBoundary again to define start position
-            cropped_boundary = DefineBoundary(cropped_alignment_output_file_no_gap, threshold=0.8,
-                                              check_window=3, max_X=0)
-            cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
-
-            #####################################################################################################
-            # Code block: Check the consistency of the final MSA
-            #####################################################################################################
-
-            if not fast_mode:
-                final_MSA_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file, output_dir,
-                                                              clean_column_threshold=0.08, min_length_num=10,
-                                                              cluster_num=2, cluster_col_thr=250, fast_mode=fast_mode
-                                                              )
-
-                # False means the sequences number in each cluster is smaller than minimum number, normally 10
-                # True means not necessary to do further cluster
-                if final_MSA_consistency is False or final_MSA_consistency is True:
-                    final_MSA_consistent = True
-
-                # else means that further clustering is required
-                else:
-                    # Only use the first cluster for further analysis, which contains the most sequences
-                    new_bed_file = final_MSA_consistency[0]
-                    bed_file = new_bed_file
-
-                    intact_loop_times = intact_loop_times + 1
-
-                    # Reset extension parameters to enable whole while loop
-                    if_left_ex = True
-                    if_right_ex = True
-
-                    left_ex = 0
-                    right_ex = 0
+                # Only use the first cluster for further analysis, which contains the most sequences
+                print (f"{seq_name} here")
+                new_bed_file = final_MSA_consistency[0]
+                bed_file = new_bed_file
+                intact_loop_times = intact_loop_times + 1
 
     #####################################################################################################
     # Code block: Check if the final MSA contains too many ambiguous letter "N"
