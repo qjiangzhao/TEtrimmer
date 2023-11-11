@@ -25,6 +25,7 @@ from MSAcluster import clean_and_cluster_MSA, process_msa
 import cialign
 
 def long_bed(input_file, output_dir):
+    # calculate alignment length in column 6
     df = pd.read_csv(input_file, sep='\t', header = None)
     df[6] = ''
     df[6] = abs(df.iloc[:, 1] - df.iloc[:, 2])
@@ -46,13 +47,23 @@ def long_bed(input_file, output_dir):
     ~((abs(df['difference_from_mean']) > threshold * std_top_10_lengths) 
       & (df['difference_from_mean'] < 0))
     ]
+    # Conditionally update values in column 1 and column 2 for right extension
+    # 1 adjusted to avoid error message "Error: malformed BED entry at line 91. Start was greater than end"
+    reset_right_filtered_df = filtered_df.copy()
+    reset_right_filtered_df.loc[reset_right_filtered_df[5] == '+', 1] = reset_right_filtered_df.loc[reset_right_filtered_df[5] == '+', 2] -1
+    reset_right_filtered_df.loc[reset_right_filtered_df[5] == '-', 2] = reset_right_filtered_df.loc[reset_right_filtered_df[5] == '-', 1] + 1
 
-    # Save the filtered bed to a new file
-    filtered_long_bed = os.path.join(output_dir, f"{os.path.basename(input_file)}_filtered_long.bed")
-    filtered_df.to_csv(filtered_long_bed, sep='\t', index=False, header = None)
-    avg_alignment = int(filtered_df.iloc[:, 6].mean())
+    # Conditionally update values in column 1 and column 2 for left extension
+    reset_left_filtered_df = filtered_df.copy()
+    reset_left_filtered_df.loc[reset_left_filtered_df[5] == '+', 2] = reset_left_filtered_df.loc[reset_left_filtered_df[5] == '+', 1] + 1
+    reset_left_filtered_df.loc[reset_left_filtered_df[5] == '-', 1] = reset_left_filtered_df.loc[reset_left_filtered_df[5] == '-', 2] -1
+    # writre new bed file
+    reset_right_long_bed = os.path.join(output_dir, f"{os.path.basename(input_file)}_reset_right_long.bed")
+    reset_left_long_bed = os.path.join(output_dir, f"{os.path.basename(input_file)}_reset_left_long.bed")
+    reset_right_filtered_df.to_csv(reset_right_long_bed, sep='\t', index=False, header = None)
+    reset_left_filtered_df.to_csv(reset_left_long_bed, sep='\t', index=False, header = None)
 
-    return avg_alignment, filtered_long_bed
+    return reset_left_long_bed, reset_right_long_bed
 
 # def long_bed(input_file, output_dir):
 #     df = pd.read_csv(input_file, sep='\t', header = None)
@@ -80,10 +91,9 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
     if_ex = True
     ex_total = 0
     # the following calculate the majority of the alignment length and find the long alignment for extension while igorning the short ones
-    seq_alignment, filtered_long_bed = long_bed(input_file, output_dir)
-    # 100bp is added to avoid the case where boundary is at the edge. Therefore the alignment is actually 1.1kb
+    reset_left_long_bed, reset_right_long_bed = long_bed(input_file, output_dir)
+    # 100bp is added to avoid the case where boundary is at the edge. Therefore the alignment is actually ex_step_size + 100bp
     adjust = 100
-    print (f"extend_end input {ex_total}")
     while if_ex and (ex_total < max_extension):
         # bedtools will makesure the extension won't excess the maximum length of that chromosome
         # track extend total
@@ -91,12 +101,13 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
         
         if end == "left":
             left_ex = ex_total
-            right_ex = -seq_alignment + ex_step_size - ex_total + adjust
+            right_ex = ex_step_size - ex_total + adjust
+            bed_fasta, bed_out_flank_file = extract_fasta(reset_left_long_bed, genome_file, output_dir, left_ex, right_ex)
         if end == "right":
-            left_ex = -seq_alignment + ex_step_size - ex_total + adjust
+            left_ex = ex_step_size - ex_total + adjust
             right_ex = ex_total
-        bed_fasta, bed_out_flank_file = extract_fasta(filtered_long_bed, genome_file, output_dir, left_ex, right_ex)
-
+            bed_fasta, bed_out_flank_file = extract_fasta(reset_right_long_bed, genome_file, output_dir, left_ex, right_ex)
+        
         # align_sequences() will return extended MSA absolute file
         bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
 
@@ -123,18 +134,15 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
         # Threshold to generate consensus sequence
         bed_boundary = DefineBoundary(bed_fasta_mafft_cop_end_gap, threshold=ext_threshold,
                                         check_window=define_boundary_win, max_X=0.3, if_con_generater=False)
-
-        if end == "left":
-            if bed_boundary.if_continue:
-                if_ex = bed_boundary.left_ext
-        if end == "right":
-            if bed_boundary.if_continue:
+        if not bed_boundary.if_continue:
+            print ("Short_sequence")
+            break
+        elif bed_boundary.if_continue:
+            if end == "left":
+                if_ex = bed_boundary.left_ext                
+            if end == "right":
                 if_ex = bed_boundary.right_ext
-            # what this means???
-            elif not bed_boundary.if_continue:
-                print ("Short_sequence")
-                break
-    print (f"extend_end output {ex_total}")
+                
     return ex_total
 
 def final_MSA(bed_file, genome_file, output_dir, left_ex, right_ex, gap_nul_thr, gap_threshold, ext_threshold, define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win):
@@ -366,28 +374,31 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     #                 left_ex = 0
     #                 right_ex = 0
-    print (f"check left out while loop {left_ex} and max_extension is {max_extension}")
     while not final_MSA_consistent and intact_loop_times < 3 and (left_ex <= max_extension and right_ex <= max_extension) :
-        print (f"check left in while loop {left_ex}")
-        left_ex = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir, crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win)
-        right_ex = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir, crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win)
         
-        print (seq_name)
-        print (f"left {left_ex}")
-        print (f"right {right_ex}")
-        print (intact_loop_times)
+        try: 
+            left_ex = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir, crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win)
+            right_ex = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir, crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win)
+            print (seq_name)
+            print (f"left {left_ex}")
+            print (f"right {right_ex}")
+            print (intact_loop_times)
 
-        # if no error message, get final MSA
-        # TODO check short sequence
-        if left_ex and right_ex:
-            bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_no_gap, cropped_boundary, \
-                column_mapping, bed_fasta_mafft_boundary_crop, bed_fasta_mafft_boundary_crop_for_select = final_MSA(bed_file, genome_file, 
-                                                        output_dir, left_ex, right_ex, gap_nul_thr, gap_threshold, 
-                                                        ext_threshold, define_boundary_win,crop_end_gap_thr, 
-                                                        crop_end_gap_win, crop_end_thr, crop_end_win)
-        else:
-            click.echo(f"{bed_file} has problem during mafft extension step")
-            return False
+            # if no error message, get final MSA
+            if left_ex and right_ex:
+                bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_no_gap, cropped_boundary, \
+                    column_mapping, bed_fasta_mafft_boundary_crop, bed_fasta_mafft_boundary_crop_for_select = final_MSA(bed_file, genome_file, 
+                                                            output_dir, left_ex, right_ex, gap_nul_thr, gap_threshold, 
+                                                            ext_threshold, define_boundary_win,crop_end_gap_thr, 
+                                                            crop_end_gap_win, crop_end_thr, crop_end_win)
+        except Exception as e:
+            with open(error_files, "a") as f:
+                # Get the traceback content as a string
+                tb_content = traceback.format_exc()
+                f.write(f"extend_end error\n")
+                f.write(tb_content + '\n\n')
+                click.echo(f"extend_end isn't working. {seq_name} left {left_ex} right {right_ex}")
+                return False
 
         if not fast_mode:
             final_MSA_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file, output_dir,
