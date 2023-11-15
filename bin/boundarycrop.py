@@ -31,7 +31,7 @@ def long_bed(input_file, output_dir):
     df[6] = abs(df.iloc[:, 1] - df.iloc[:, 2])
 
     # # Define a threshold for outlier removal
-    threshold = 10
+    threshold = 3
 
     # Identify the top 10 lengths
     top_10_lengths = df.nlargest(10, 6)[6]
@@ -64,27 +64,6 @@ def long_bed(input_file, output_dir):
     reset_left_filtered_df.to_csv(reset_left_long_bed, sep='\t', index=False, header = None)
 
     return reset_left_long_bed, reset_right_long_bed
-
-# def long_bed(input_file, output_dir):
-#     df = pd.read_csv(input_file, sep='\t', header = None)
-#     df[6] = ''
-#     df[6] = abs(df.iloc[:, 1] - df.iloc[:, 2])
-
-#     # Calculate the z-score for the column
-#     z_scores = stats.zscore(df.iloc[:, 6])
-
-#     # Define a threshold for outlier removal
-#     threshold = 1.5
-
-#     # Filter rows where the z-score is below the threshold
-#     filtered_df = df[abs(z_scores) <= threshold]
-
-#     # Save the filtered bed to a new file
-#     filtered_long_bed = os.path.join(output_dir, f"{os.path.basename(input_file)}_filtered_long.bed")
-#     filtered_df.to_csv(filtered_long_bed, sep='\t', index=False, header = None)
-#     avg_alignment = int(df.iloc[:, 6].mean())
-
-#     return avg_alignment, filtered_long_bed
 
 def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output_dir, crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win):
     # end: left or right extension
@@ -135,7 +114,6 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
         bed_boundary = DefineBoundary(bed_fasta_mafft_cop_end_gap, threshold=ext_threshold,
                                         check_window=define_boundary_win, max_X=0.3, if_con_generater=False)
         if not bed_boundary.if_continue:
-            print ("Short_sequence")
             break
         elif bed_boundary.if_continue:
             if end == "left":
@@ -379,10 +357,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         try: 
             left_ex = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir, crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win)
             right_ex = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir, crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win)
-            print (seq_name)
-            print (f"left {left_ex}")
-            print (f"right {right_ex}")
-            print (intact_loop_times)
 
             # if no error message, get final MSA
             if left_ex and right_ex:
