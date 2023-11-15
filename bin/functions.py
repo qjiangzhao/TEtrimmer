@@ -198,9 +198,11 @@ def blast(seq_file, genome_file, output_dir, min_length=150, task="blastn", seq_
 
     if blast_hits_count > 0:
         # Define bed outfile
+        # add $4 alignment length
         bed_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b.bed")
         bed_cmd = (f"awk 'BEGIN{{OFS=\"\\t\"}} !/^#/ {{if ($10~/plus/){{print $2, $8, $9, $1, $3, \"+\"}} "
                    f"else {{print $2, $9, $8, $1, $3, \"-\"}}}}' < {blast_out_file} > {bed_out_file}")
+
         result_awk = subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         error_output_awk = result_awk.stderr.decode("utf-8")
 

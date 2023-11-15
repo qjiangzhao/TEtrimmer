@@ -10,8 +10,8 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import os
 
-from Class_select_ditinct_columns import CleanAndSelectColumn
-import Function_blast_extension_mafft
+from selectcolumns import CleanAndSelectColumn
+import functions as functions
 
 
 def read_msa(input_file):
@@ -20,8 +20,7 @@ def read_msa(input_file):
 
 
 def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, clean_column_threshold=0.08,
-                          min_length_num=10, cluster_num=2, cluster_col_thr=500, muscle_ite_times=4, fast_mode=False,
-                          if_align=True):
+                          min_length_num=10, cluster_num=2, cluster_col_thr=500, muscle_ite_times=4, fast_mode=False):
     """
     This function will cluster multiple sequence alignment file
     :param input_file: str, The direct fasta file derived from bed file
@@ -36,27 +35,21 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     """
 
     # Align_sequences will return the absolute file path of alignment file
-    """
     if fast_mode:
         muscle_ite_times = 2
     try:
-        fasta_out_flank_mafft_file = Function_blast_extension_mafft.muscle_align(input_file, output_dir,
-                                                                                 ite_times=muscle_ite_times)
+        fasta_out_flank_mafft_file = functions.muscle_align(input_file, output_dir,
+                                                            ite_times=muscle_ite_times)
     except Exception as e:
         fasta_out_flank_mafft_file = False
         pass
 
     # When muscle goes wrong, use mafft
     if not fasta_out_flank_mafft_file:
-        fasta_out_flank_mafft_file = Function_blast_extension_mafft.align_sequences(input_file, output_dir)
-    """
-    if if_align:
-        fasta_out_flank_mafft_file = Function_blast_extension_mafft.align_sequences(input_file, output_dir)
-    else:
-        # In case the input file is aligned fasta file, it is not necessary to do it again
-        fasta_out_flank_mafft_file = input_file
+        fasta_out_flank_mafft_file = functions.align_sequences(input_file, output_dir)
+
     # Remove gaps. Return absolute path for gap removed alignment file
-    fasta_out_flank_mafft_file_gap_filter = Function_blast_extension_mafft.remove_gaps_with_similarity_check(
+    fasta_out_flank_mafft_file_gap_filter = functions.remove_gaps_with_similarity_check(
         fasta_out_flank_mafft_file, output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
         similarity_threshold=0.85, min_nucleotide=5)
 
@@ -67,28 +60,20 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     # Clean_column() function will help MSA cluster and return the absolute path of column cleaned alignment file
     pattern_alignment.clean_column(output_dir)
 
-    # write_alignment_filtered() function return pattern_alignment absolute path
-    pattern_alignment = pattern_alignment.write_alignment_filtered(output_dir)
-
     # Select_divergent_column() function will return a boolean value, true represents need cluster step
     if pattern_alignment.select_divergent_column(cluster_col_thr=cluster_col_thr, dis_col_threshold=div_column_thr):
 
+        # write_alignment_filtered() function return pattern_alignment absolute path
+        pattern_alignment = pattern_alignment.write_alignment_filtered(output_dir)
         """
         "min_lines" will define the minimum line numbers for each cluster
         "max_cluster" will define the maximum cluster numbers that will be returned
         this function will return a list contain all cluster file absolute path
         """
 
-        # When the distinct occupied more than 35% of the MSA, lower silhouette score
-        if len(pattern_alignment.dis_col_n) / pattern_alignment.alignment_seq_num >= 0.35:
-            silhouette_score_thr = 0.5
-        else:
-            silhouette_score_thr = 0.6
-
         filtered_cluster_records, if_cluster = cluster_msa(pattern_alignment,
                                                            min_cluster_size=min_length_num,
-                                                           max_cluster=cluster_num,
-                                                           silhouette_score_thr=silhouette_score_thr)
+                                                           max_cluster=cluster_num)
 
         # Test if silhouette_scores is high enough to perform cluster
         if if_cluster:
@@ -118,7 +103,7 @@ def calculate_distance_matrix(alignment):
     return np.array(dm)
 
 
-def cluster_msa(alignment, min_cluster_size=10, max_cluster=False, silhouette_score_thr=0.6):
+def cluster_msa(alignment, min_cluster_size=10, max_cluster=False):
     alignment = read_msa(alignment)
     distance_matrix = calculate_distance_matrix(alignment)
     cluster_range = range(2, 6)
@@ -137,9 +122,8 @@ def cluster_msa(alignment, min_cluster_size=10, max_cluster=False, silhouette_sc
             best_silhouette_score = silhouette_score_value
             best_cluster_assignments = cluster_assignments
             best_cluster_num = n_clusters
-    silhouette_score_thr = silhouette_score_thr
 
-    if best_silhouette_score < silhouette_score_thr:
+    if best_silhouette_score < 0.6:
         return None, False
 
     cluster_recording_list = []
@@ -206,10 +190,10 @@ def subset_alignment_intact(input_file, filtered_cluster_records, output_dir):
 
     return output_file_list
 
+
 #####################################################################################################
 # Code block: Plot MSA
 #####################################################################################################
-
 
 def alignment_to_dataframe(alignment):
     """Convert the alignment to a DataFrame"""
@@ -275,6 +259,7 @@ def highlight_columns(alignment_df, alignment_color_df, base_mapping):
                 if freq / total_bases < 0.2:
                     alignment_color_df[col][alignment_df[col] == base] = base_mapping[base]
 
+
 def plot_msa(self, start_point, end_point):
     """
     Plot the heatmap
@@ -291,7 +276,7 @@ def plot_msa(self, start_point, end_point):
     # Compute figure size: a bit less than number of columns / 5 for width, and number of rows / 3 for height
     # In pandas, the DataFrame.shape attribute returns a tuple representing the dimensionality of the DataFrame.
     # The tuple (r, c), where r represents the number of rows and c the number of columns.
-    #figsize = (max(1, self.alignment_df.shape[1] / 6), max(9, self.alignment_df.shape[0] / 3))
+    # figsize = (max(1, self.alignment_df.shape[1] / 6), max(9, self.alignment_df.shape[0] / 3))
 
     # Set a fixed height per sequence (e.g., 0.4 units per sequence)
     height_per_sequence = 0.4
@@ -325,29 +310,28 @@ def plot_msa(self, start_point, end_point):
     """
 
     plt.annotate('Start crop Point', xy=(start_point, -0.5), xytext=(start_point, -3),
-                    arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05), ha='center', color='r')
+                 arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05), ha='center', color='r')
     plt.annotate('End crop Point', xy=(end_point, -0.5), xytext=(end_point, -3),
-                    arrowprops=dict(facecolor='blue', edgecolor='blue', shrink=0.05), ha='center', color='b')
-
+                 arrowprops=dict(facecolor='blue', edgecolor='blue', shrink=0.05), ha='center', color='b')
 
     # Use input file name as title
     # title = os.path.basename(self.input_file)
     # plt.title(title, y=1.05, fontsize=15)
 
     # Add sequence len information to the plot
-    plt.text(start_point + 49, -1, f"MSA length = {str(self.sequence_len)}",  ha='left',
-                va='center', color='black', size=15, weight="bold")
+    plt.text(start_point + 49, -1, f"MSA length = {str(self.sequence_len)}", ha='left',
+             va='center', color='black', size=15, weight="bold")
 
     # Add the base letters
     # (j, i) is a tuple representing the indices of each element in the array, and
     # label is the value of the element at that position.
-    for (j,i),label in np.ndenumerate(self.alignment_df):
+    for (j, i), label in np.ndenumerate(self.alignment_df):
         label = str(label).upper()  # Change the label to uppercase
         if palette[self.alignment_color_df.iloc[j, i]] == "#FFFFFF":
             if label == "-":
                 text_color = "black"
             else:
-                text_color = color_map.get(label, "black") # Default to "black" if label is not found
+                text_color = color_map.get(label, "black")  # Default to "black" if label is not found
         else:
             text_color = "black"
 
@@ -362,12 +346,13 @@ def plot_msa(self, start_point, end_point):
     del self.alignment_df
     del self.alignment_color_df
 
+
 def plot_msa(alignment_df, alignment_color_df, unique_bases, start_point, end_point, output_file, sequence_len):
     """
     Plot the heatmap
     """
     color_map = {"A": "#00CC00", "a": "#00CC00", "G": "#949494", "g": "#949494", "C": "#6161ff", "c": "#6161ff",
-                "T": "#FF6666", "t": "#FF6666", "-": "#FFFFFF", np.nan: "#FFFFFF"}
+                 "T": "#FF6666", "t": "#FF6666", "-": "#FFFFFF", np.nan: "#FFFFFF"}
 
     palette = [color_map[base] for base in unique_bases]
     cmap = ListedColormap(palette)
@@ -375,7 +360,7 @@ def plot_msa(alignment_df, alignment_color_df, unique_bases, start_point, end_po
     # Compute figure size: a bit less than number of columns / 5 for width, and number of rows / 3 for height
     # In pandas, the DataFrame.shape attribute returns a tuple representing the dimensionality of the DataFrame.
     # The tuple (r, c), where r represents the number of rows and c the number of columns.
-    #figsize = (max(1, self.alignment_df.shape[1] / 6), max(9, self.alignment_df.shape[0] / 3))
+    # figsize = (max(1, self.alignment_df.shape[1] / 6), max(9, self.alignment_df.shape[0] / 3))
     # Set a fixed height per sequence (e.g., 0.4 units per sequence)
     height_per_sequence = 0.4
     total_height = alignment_color_df.shape[0] * height_per_sequence
@@ -403,15 +388,16 @@ def plot_msa(alignment_df, alignment_color_df, unique_bases, start_point, end_po
     color='r' sets the color of the text to red.
     """
     plt.annotate('Start crop Point', xy=(start_point, -0.5), xytext=(start_point, -3),
-                arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05), ha='center', color='r')
+                 arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05), ha='center', color='r')
     plt.annotate('End crop Point', xy=(end_point, -0.5), xytext=(end_point, -3),
-                arrowprops=dict(facecolor='blue', edgecolor='blue', shrink=0.05), ha='center', color='b')
+                 arrowprops=dict(facecolor='blue', edgecolor='blue', shrink=0.05), ha='center', color='b')
     # Use input file name as title
     # title = os.path.basename(self.input_file)
     # plt.title(title, y=1.05, fontsize=15)
 
     # Add sequence len information to the plot
-    plt.text(start_point + 49, -1, f"MSA length = {str(sequence_len)}", ha='left', va='center', color='black', size=15, weight="bold")
+    plt.text(start_point + 49, -1, f"MSA length = {str(sequence_len)}", ha='left', va='center', color='black', size=15,
+             weight="bold")
     # Add the base letters
     # (j, i) is a tuple representing the indices of each element in the array, and
     # label is the value of the element at that position.
@@ -421,7 +407,7 @@ def plot_msa(alignment_df, alignment_color_df, unique_bases, start_point, end_po
             if label == "-":
                 text_color = "black"
             else:
-                text_color = color_map.get(label, "black") # Default to "black" if label is not found
+                text_color = color_map.get(label, "black")  # Default to "black" if label is not found
         else:
             text_color = "black"
 
@@ -433,6 +419,7 @@ def plot_msa(alignment_df, alignment_color_df, unique_bases, start_point, end_po
     del alignment_df
     del alignment_color_df
 
+
 def process_msa(input_file, output_dir, start_point, end_point, sequence_len):
     alignment = read_msa(input_file)
     alignment_df = alignment_to_dataframe(alignment)
@@ -443,7 +430,6 @@ def process_msa(input_file, output_dir, start_point, end_point, sequence_len):
     plot_msa(alignment_df, alignment_color_df, base_mapping.keys(), start_point, end_point, output_file, sequence_len)
 
     return output_file
-
 
 
 

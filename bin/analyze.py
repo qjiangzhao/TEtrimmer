@@ -5,12 +5,12 @@ import click
 import pandas as pd
 
 # Local imports
-from Function_blast_extension_mafft import blast, remove_files_with_start_pattern,\
-    check_bed_uniqueness, extract_fasta, handle_sequence_low_copy, handle_sequence_skipped, \
-    update_low_copy_cons_file
+from functions import blast, remove_files_with_start_pattern, check_bed_uniqueness, \
+    extract_fasta, handle_sequence_low_copy, handle_sequence_skipped, update_low_copy_cons_file
+# from Class_bed_filter import BEDFile
 import bedfilter
 from boundarycrop import find_boundary_and_crop
-from Class_TE_aid import check_self_alignment
+from TEaid import check_self_alignment
 from MSAcluster import clean_and_cluster_MSA
 from orfdomain import prepare_pfam_database
 
