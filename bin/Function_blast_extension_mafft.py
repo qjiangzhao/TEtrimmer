@@ -11,7 +11,6 @@ import pandas.errors
 from seqclass import SeqObject
 
 
-
 def calculate_genome_length(genome_file):
     """
     Calculate the length of each sequence in a genome file in FASTA format
@@ -176,7 +175,7 @@ def blast(seq_file, genome_file, output_dir, min_length=150, task="blastn", seq_
     blast_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b")
     # Modify the blast command to include the specified task
     blast_cmd = (f"blastn -task {task} -query {input_file} -db {genome_file} "
-                 f"-outfmt \"6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand\" "
+                 f"-outfmt \"6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand evalue bitscore qcovhsp\" "
                  f"-evalue 1e-40 -qcov_hsp_perc 20 | "
                  f"awk -v ml={min_length} 'BEGIN{{OFS=\"\\t\"}} $4 > ml {{print $0}}' >> {blast_out_file}")
     result = subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -184,6 +183,13 @@ def blast(seq_file, genome_file, output_dir, min_length=150, task="blastn", seq_
 
     if error_output:
         print(f"Error during BLAST: {error_output}")
+
+    # Sort BLAST output by bitscore and take top 20 hits
+    sorted_blast_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b.sorted")
+    sort_cmd = f"sort -k12,12nr {blast_out_file} | head -n 20 > {sorted_blast_file}"
+    subprocess.run(sort_cmd, shell=True, check=True)
+
+    blast_out_file = sorted_blast_file
 
     # Check the number of BLAST hits
     with open(blast_out_file) as blast_file:
@@ -194,7 +200,7 @@ def blast(seq_file, genome_file, output_dir, min_length=150, task="blastn", seq_
         # Define bed outfile
         bed_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b.bed")
         bed_cmd = (f"awk 'BEGIN{{OFS=\"\\t\"}} !/^#/ {{if ($10~/plus/){{print $2, $8, $9, $1, $3, \"+\"}} "
-                  f"else {{print $2, $9, $8, $1, $3, \"-\"}}}}' < {blast_out_file} > {bed_out_file}")
+                   f"else {{print $2, $9, $8, $1, $3, \"-\"}}}}' < {blast_out_file} > {bed_out_file}")
         result_awk = subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         error_output_awk = result_awk.stderr.decode("utf-8")
 

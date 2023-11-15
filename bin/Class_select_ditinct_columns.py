@@ -20,6 +20,8 @@ class CleanAndSelectColumn:
         self.alignment_length = self.alignment.get_alignment_length()
         self.alignment_filtered = None
         self.if_need_cluster = True
+        self.columns_to_keep = []
+        self.dis_col_n = None
         self.calculation_proportion()
 
     def calculation_proportion(self):
@@ -66,42 +68,53 @@ class CleanAndSelectColumn:
         column number that required for clustering will be sequence_length * 0.05
         :return: if_need_cluster: boolean, decide if need clustering
         """
-        if self.alignment_seq_num >= 90:
-            dis_col_threshold = 0.85
+        if self.alignment_seq_num >= 40:
+            # Delete highly conserved columns
+            columns_to_delete = []
+            for i in range(self.alignment_length):
+                proportions = list(self.proportions[i].values())
+                if any(proportion > dis_col_threshold for proportion in proportions) and \
+                        all(proportion*self.alignment_seq_num <= 8 for proportion in proportions if proportion != max(proportions)):
+                    columns_to_delete.append(i)
 
-        # Delete highly conserved columns
-        columns_to_delete = []
-        for i in range(self.alignment_length):
-            if any(proportion > dis_col_threshold for proportion in self.proportions[i].values()):
-                columns_to_delete.append(i)
+            for i in range(self.alignment_length):
+                if i not in columns_to_delete:
+                    self.columns_to_keep.append(i)
+        else:
+            # Delete highly conserved columns
+            columns_to_delete = []
+            for i in range(self.alignment_length):
+                if any(proportion > dis_col_threshold for proportion in self.proportions[i].values()):
+                    columns_to_delete.append(i)
 
-        columns_to_keep = []
-        for i in range(self.alignment_length):
-            if i not in columns_to_delete:
-                columns_to_keep.append(i)
+            for i in range(self.alignment_length):
+                if i not in columns_to_delete:
+                    self.columns_to_keep.append(i)
+
+        self.dis_col_n = len(self.columns_to_keep)
 
         # It is only meaningful to calculate the gap block when there are enough distinct columns.
         #min_length_to_include_gap_block = max(25, int(0.1 * self.alignment_length)) \
             #if self.alignment_length <= 1000 else 100
 
-        #if len(columns_to_keep) > min_length_to_include_gap_block:
+        #if len(self.columns_to_keep) > min_length_to_include_gap_block:
 
         gap_block_to_keep = select_gaps_block_with_similarity_check(self.input_file)
 
         # Concatenate columns with high divergence and gap block columns
         if gap_block_to_keep:
-            columns_to_keep = sorted(set(columns_to_keep + gap_block_to_keep))
+            self.columns_to_keep = sorted(set(self.columns_to_keep + gap_block_to_keep))
 
-        """
-        When alignment length is greater than 1000, the distinct column number have to be more than 100
-        otherwise, it will be ten percent of the MSA length but not less than 50
-        """
-        min_length = max(50, int(0.05 * self.alignment_length)) if self.alignment_length <= cluster_col_thr / 0.05 \
-            else cluster_col_thr
+        # Set different min_length when MSA length is different
+        if self.alignment_length <= 500:
+            min_length = max(15, int(0.1 * self.alignment_length))
+        else:
+            min_length = max(50, int(0.05 * self.alignment_length)) if self.alignment_length <= cluster_col_thr / 0.05 \
+                else cluster_col_thr
 
-        if len(columns_to_keep) > min_length:  # Set the threshold number to decide if perform cluster
-            self.alignment_filtered = self.alignment[:, columns_to_keep[0]:columns_to_keep[0] + 1]
-            for i in columns_to_keep[1:]:
+        if len(self.columns_to_keep) > min_length:  # Set the threshold number to decide if perform cluster
+            self.alignment_filtered = self.alignment[:, self.columns_to_keep[0]:self.columns_to_keep[0] + 1]
+            for i in self.columns_to_keep[1:]:
                 self.alignment_filtered += self.alignment[:, i:i + 1]
         else:
             self.if_need_cluster = False  # use this values to decide if execute "Class_group_MSA"

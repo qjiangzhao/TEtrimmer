@@ -3,7 +3,6 @@ from Bio.Align import AlignInfo
 from Bio import AlignIO
 
 
-
 # Check if file name contains LTR
 def is_LTR(input_file):
     input_file_name = os.path.basename(input_file)
@@ -37,6 +36,7 @@ def check_start_end(consensus_seq, start, end, start_patterns, end_patterns):
             end_matched = False
 
     return start_matched, end_matched
+
 
 def check_and_update(consensus_seq, start, end, start_patterns, end_patterns):
     """

@@ -13,12 +13,15 @@ import os
 from Class_select_ditinct_columns import CleanAndSelectColumn
 import Function_blast_extension_mafft
 
+
 def read_msa(input_file):
     """Read the MSA file"""
     return AlignIO.read(input_file, "fasta")
 
+
 def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, clean_column_threshold=0.08,
-                          min_length_num=10, cluster_num=2, cluster_col_thr=500, muscle_ite_times=4, fast_mode=False):
+                          min_length_num=10, cluster_num=2, cluster_col_thr=500, muscle_ite_times=4, fast_mode=False,
+                          if_align=True):
     """
     This function will cluster multiple sequence alignment file
     :param input_file: str, The direct fasta file derived from bed file
@@ -33,6 +36,7 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     """
 
     # Align_sequences will return the absolute file path of alignment file
+    """
     if fast_mode:
         muscle_ite_times = 2
     try:
@@ -45,7 +49,12 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     # When muscle goes wrong, use mafft
     if not fasta_out_flank_mafft_file:
         fasta_out_flank_mafft_file = Function_blast_extension_mafft.align_sequences(input_file, output_dir)
-
+    """
+    if if_align:
+        fasta_out_flank_mafft_file = Function_blast_extension_mafft.align_sequences(input_file, output_dir)
+    else:
+        # In case the input file is aligned fasta file, it is not necessary to do it again
+        fasta_out_flank_mafft_file = input_file
     # Remove gaps. Return absolute path for gap removed alignment file
     fasta_out_flank_mafft_file_gap_filter = Function_blast_extension_mafft.remove_gaps_with_similarity_check(
         fasta_out_flank_mafft_file, output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
@@ -58,20 +67,28 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     # Clean_column() function will help MSA cluster and return the absolute path of column cleaned alignment file
     pattern_alignment.clean_column(output_dir)
 
+    # write_alignment_filtered() function return pattern_alignment absolute path
+    pattern_alignment = pattern_alignment.write_alignment_filtered(output_dir)
+
     # Select_divergent_column() function will return a boolean value, true represents need cluster step
     if pattern_alignment.select_divergent_column(cluster_col_thr=cluster_col_thr, dis_col_threshold=div_column_thr):
 
-        # write_alignment_filtered() function return pattern_alignment absolute path
-        pattern_alignment = pattern_alignment.write_alignment_filtered(output_dir)
         """
         "min_lines" will define the minimum line numbers for each cluster
         "max_cluster" will define the maximum cluster numbers that will be returned
         this function will return a list contain all cluster file absolute path
         """
-    
+
+        # When the distinct occupied more than 35% of the MSA, lower silhouette score
+        if len(pattern_alignment.dis_col_n) / pattern_alignment.alignment_seq_num >= 0.35:
+            silhouette_score_thr = 0.5
+        else:
+            silhouette_score_thr = 0.6
+
         filtered_cluster_records, if_cluster = cluster_msa(pattern_alignment,
-                                                              min_cluster_size=min_length_num,
-                                                              max_cluster=cluster_num)
+                                                           min_cluster_size=min_length_num,
+                                                           max_cluster=cluster_num,
+                                                           silhouette_score_thr=silhouette_score_thr)
 
         # Test if silhouette_scores is high enough to perform cluster
         if if_cluster:
@@ -94,12 +111,14 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     else:
         return True
 
+
 def calculate_distance_matrix(alignment):
     calculator = DistanceCalculator('identity')
     dm = calculator.get_distance(alignment)
     return np.array(dm)
 
-def cluster_msa(alignment, min_cluster_size=10, max_cluster=False):
+
+def cluster_msa(alignment, min_cluster_size=10, max_cluster=False, silhouette_score_thr=0.6):
     alignment = read_msa(alignment)
     distance_matrix = calculate_distance_matrix(alignment)
     cluster_range = range(2, 6)
@@ -118,8 +137,9 @@ def cluster_msa(alignment, min_cluster_size=10, max_cluster=False):
             best_silhouette_score = silhouette_score_value
             best_cluster_assignments = cluster_assignments
             best_cluster_num = n_clusters
+    silhouette_score_thr = silhouette_score_thr
 
-    if best_silhouette_score < 0.6:
+    if best_silhouette_score < silhouette_score_thr:
         return None, False
 
     cluster_recording_list = []
@@ -139,6 +159,7 @@ def cluster_msa(alignment, min_cluster_size=10, max_cluster=False):
 
     return filtered_cluster_records, True
 
+
 def subset_bed_file(input_file, filtered_cluster_records, output_dir):
     """
     Subset the give bed files by clusters
@@ -149,7 +170,7 @@ def subset_bed_file(input_file, filtered_cluster_records, output_dir):
     bed_df = pd.read_csv(input_file, sep='\t', header=None)
 
     for cluster in filtered_cluster_records:
-        ids = [seq_id.rstrip("+-()") for seq_id in cluster] # Remove (-) or (+) from ids
+        ids = [seq_id.rstrip("+-()") for seq_id in cluster]  # Remove (-) or (+) from ids
         cluster_df = bed_df[bed_df.apply(lambda row: f"{row[0]}:{row[1]}-{row[2]}" in ids, axis=1)]
         bed_dfs.append(cluster_df)
 
@@ -161,6 +182,7 @@ def subset_bed_file(input_file, filtered_cluster_records, output_dir):
         output_file_list.append(output_file)
 
     return output_file_list
+
 
 def subset_alignment_intact(input_file, filtered_cluster_records, output_dir):
     """
@@ -187,6 +209,7 @@ def subset_alignment_intact(input_file, filtered_cluster_records, output_dir):
 #####################################################################################################
 # Code block: Plot MSA
 #####################################################################################################
+
 
 def alignment_to_dataframe(alignment):
     """Convert the alignment to a DataFrame"""
@@ -225,6 +248,7 @@ def create_base_mapping(alignment_df):
     base_mapping = dict(zip(unique_bases, range(len(unique_bases))))
     return base_mapping
 
+
 def replace_bases(alignment_df, base_mapping):
     """Replace bases with corresponding integers"""
     return alignment_df.replace(base_mapping)
@@ -232,10 +256,10 @@ def replace_bases(alignment_df, base_mapping):
 
 def highlight_columns(alignment_df, alignment_color_df, base_mapping):
     for col in alignment_df.columns:
-        column_without_gaps = [base for base in alignment_df[col] if base != '-'] # exclude gaps
+        column_without_gaps = [base for base in alignment_df[col] if base != '-']  # exclude gaps
         count = Counter(column_without_gaps)
         total_bases = sum(count.values())
-        if total_bases == 0: # all gaps, nothing to do
+        if total_bases == 0:  # all gaps, nothing to do
             continue
         # count.most_common(1)[0] is used to get the most common element (nucleotide)
         # in a column of the alignment and its count
@@ -258,7 +282,7 @@ def plot_msa(self, start_point, end_point):
 
     # Define your custom color map
     color_map = {"A": "#00CC00", "a": "#00CC00", "G": "#949494", "g": "#949494", "C": "#6161ff", "c": "#6161ff",
-                    "T": "#FF6666", "t": "#FF6666", "-": "#FFFFFF", np.nan: "#FFFFFF"}
+                 "T": "#FF6666", "t": "#FF6666", "-": "#FFFFFF", np.nan: "#FFFFFF"}
 
     # Create a custom color palette
     palette = [color_map[base] for base in self.unique_bases]

@@ -171,7 +171,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
             # Crop end can't define the final boundary, use DefineBoundary again to define start position
             cropped_boundary = DefineBoundary(cropped_alignment_output_file_no_gap, threshold=0.8,
-                                              check_window=3, max_X=0)
+                                              check_window=4, max_X=0)
             cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
 
             #####################################################################################################
@@ -181,7 +181,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             if not fast_mode:
                 final_MSA_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file, output_dir,
                                                               clean_column_threshold=0.08, min_length_num=10,
-                                                              cluster_num=2, cluster_col_thr=250, fast_mode=fast_mode
+                                                              cluster_num=2, cluster_col_thr=250, fast_mode=fast_mode,
+                                                              if_align=False
                                                               )
 
                 # False means the sequences number in each cluster is smaller than minimum number, normally 10

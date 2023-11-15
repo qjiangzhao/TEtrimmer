@@ -201,7 +201,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     elif os_type == "Darwin":  # macOS
         logo_font = ('Courier', 10)
     else:
-        logo_font = ('Courier', 10)
+        logo_font = ('Courier', 5)
     logo_label = Label(canvas, text=log_text, bg='white', font=logo_font, justify='left', wraplength=1100)
     logo_label.pack(pady=10)
 
