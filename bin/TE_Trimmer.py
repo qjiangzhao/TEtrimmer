@@ -56,7 +56,7 @@ with open(species_config_path, "r") as config_file:
 
                 ##########################################################################################              
 
-                python ./path_to_TE_Trimmer_bin/TE_Trimmer.py -i <TE_consensus_file> -o <genome_file>
+                python ./path_to_TE_Trimmer_bin/TE_Trimmer.py -i <TE_consensus_file> -g <genome_file>
 
                 TE Trimmer is designed to replace transposable element (TE) manual curation. 
 
@@ -72,6 +72,8 @@ with open(species_config_path, "r") as config_file:
               help='Output directory. Default: current directory.')
 @click.option('--species', '-s', default='fungi', type=click.Choice(species_config.keys()),
               help='Select the species for which you want to run TE Trimmer.')
+@click.option('--engine', '-e', default='blast', type=click.Choice(["blast", "mmseqs"]),
+              help='Select the similar sequence search engine. "blast" or "mmseqs". Default: blast')
 @click.option('--continue_analysis', '-ca', default=False, is_flag=True,
               help='Continue to analysis after interruption.')
 @click.option('--dedup', default=False, is_flag=True,
@@ -173,7 +175,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
          top_mas_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ext_step, plot_query, plot_skip,
          max_ext, gap_thr, gap_nul_thr, crop_end_div_thr, crop_end_div_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, mini_orf, species, ext_check_win, dedup, genome_anno, hmm,
-         debug, fast_mode, classify_unknown, classify_all):
+         debug, fast_mode, classify_unknown, classify_all, engine):
     start_time = datetime.now()
     print(f"\nTE Trimmer started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n", flush=True)
 
@@ -314,7 +316,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         # Create new object to check blast database availability
         # Check if blast database and genome length files are available, otherwise create them at the
         # same directory of genome file
-        check_database(genome_file)
+        check_database(genome_file, search_type=engine)
         # Initial call to print 0% progress
         analyze.printProgressBar(0, single_fasta_n, prefix='Progress:', suffix='Complete', length=50)
 
@@ -351,7 +353,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
          start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, single_fasta_n, hmm,
          ext_check_win, debug, progress_file, classify_unknown, classify_all,
          final_con_file, final_unknown_con_file, final_classified_con_file, low_copy_dir, fast_mode, error_files,
-         plot_skip, skipped_dir, plot_query
+         plot_skip, skipped_dir, plot_query, engine
          ) for seq in seq_list]
 
     # Using a ProcessPoolExecutor to run the function in parallel

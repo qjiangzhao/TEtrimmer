@@ -2,6 +2,7 @@ import shutil
 import subprocess
 import os
 import click
+import shutil
 from Bio import AlignIO, SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -46,24 +47,47 @@ def calculate_genome_length(genome_file):
     return output_file
 
 
-def check_database(genome_file):
+def check_database(genome_file, search_type="blast"):
     """
     Checks if the blast database and genome length file exist.
     If they don't exist, create them.
 
     :param genome_file: str, path to genome file (contain genome name)
     """
+    if search_type == "blast":
+        blast_database_file = genome_file + ".nin"
+        if not os.path.isfile(blast_database_file):
+            print(f"\nBlast database doesn't exist. Running makeblastdb\n")
 
-    blast_database_file = genome_file + ".nin"
-    if not os.path.isfile(blast_database_file):
-        print(f"\nBlast database doesn't exist. Running makeblastdb\n")
+            makeblastdb_cmd = f"makeblastdb -in {genome_file} -dbtype nucl -out {genome_file} "
+            result = subprocess.run(makeblastdb_cmd, shell=True, check=True, stderr=subprocess.PIPE)
+            error_output = result.stderr.decode("utf-8")
+            if error_output:
+                print(f"Error check_database {error_output}\n")
+    elif search_type == "mmseqs":
+        mmseqs_database_dir = genome_file + "_db"
+        if not os.path.isdir(mmseqs_database_dir):
+            print(f"\nMMseqs2 database doesn't exist. Running MMseqs2 database creation...\n")
+            mmseqs_createdb_cmd = f"mmseqs createdb {genome_file} {mmseqs_database_dir}"
+            subprocess.run(mmseqs_createdb_cmd, shell=True, check=True, stderr=subprocess.PIPE)
 
-        makeblastdb_cmd = f"makeblastdb -in {genome_file} -dbtype nucl -out {genome_file} "
-        result = subprocess.run(makeblastdb_cmd, shell=True, check=True, stderr=subprocess.PIPE)
-        error_output = result.stderr.decode("utf-8")
+            # Check if MMseqs2 database files have been created
+            if os.path.exists(f"{mmseqs_database_dir}.dbtype"):
+                print(f"MMseqs2 database created successfully: {mmseqs_database_dir}")
 
-        if error_output:
-            print(f"Error check_database {error_output}\n")
+                # Create index for the MMseqs2 database
+                print("Creating index for MMseqs2 database...")
+                mmseqs_createindex_cmd = f"mmseqs createindex {mmseqs_database_dir} {mmseqs_database_dir}_tmp " \
+                                         f"--search-type 3"
+                result = subprocess.run(mmseqs_createindex_cmd, shell=True, check=True, stderr=subprocess.PIPE)
+                error_output = result.stderr.decode("utf-8")
+                if error_output:
+                    print(f"Error creating MMseqs2 index: {error_output}\n")
+                else:
+                    print("MMseqs2 index created successfully.")
+            else:
+                print(f"Error: MMseqs2 database files not found for {genome_file}, you can build it by yourself to"
+                      f"aovid this error")
 
     # Check if genome length files exists, otherwise create it at the same folder with genome file
     length_file = genome_file + ".length"
@@ -155,7 +179,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
     return seq_list
 
 
-def blast(seq_file, genome_file, output_dir, min_length=150, task="blastn", seq_obj=None):
+def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast", task="blastn", seq_obj=None):
     """
     Runs BLAST with specified task type and saves the results in a bed file.
 
@@ -173,23 +197,28 @@ def blast(seq_file, genome_file, output_dir, min_length=150, task="blastn", seq_
     bed_out_file = None
     # define blast outfile
     blast_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b")
-    # Modify the blast command to include the specified task
-    blast_cmd = (f"blastn -task {task} -query {input_file} -db {genome_file} "
-                 f"-outfmt \"6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand evalue bitscore qcovhsp\" "
-                 f"-evalue 1e-40 -qcov_hsp_perc 20 | "
-                 f"awk -v ml={min_length} 'BEGIN{{OFS=\"\\t\"}} $4 > ml {{print $0}}' >> {blast_out_file}")
-    result = subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    error_output = result.stderr.decode("utf-8")
 
-    if error_output:
-        print(f"Error during BLAST: {error_output}")
+    if search_type == "blast":
+        # Modify the blast command to include the specified task
+        blast_cmd = (f"blastn -task {task} -query {input_file} -db {genome_file} "
+                     f"-outfmt \"6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand evalue qcovhsp\" "
+                     f"-evalue 1e-40 -qcov_hsp_perc 20 | "
+                     f"awk -v ml={min_length} 'BEGIN{{OFS=\"\\t\"}} $4 > ml {{print $0}}' >> {blast_out_file}")
+        result = subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        error_output = result.stderr.decode("utf-8")
 
-    # Sort BLAST output by bitscore and take top 20 hits
-    sorted_blast_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b.sorted")
-    sort_cmd = f"sort -k12,12nr {blast_out_file} | head -n 20 > {sorted_blast_file}"
-    subprocess.run(sort_cmd, shell=True, check=True)
+        if error_output:
+            print(f"Error during BLAST: {error_output}")
+    elif search_type == "mmseqs":
+        # MMseqs2 search
+        mmseqs_cmd = (f"mmseqs easy-search {seq_file} {genome_file}_db {blast_out_file} {blast_out_file}_tmp --search-type 3 "
+                      f"--min-seq-id 0.6 --format-output \"query,target,pident,alnlen,mismatch,qstart,qend,tstart,tend,evalue,qcov\" "
+                      f"--cov-mode 4 -c 0.5 --e-profile 1e-40 --threads 1 --min-aln-len {min_length}")
+        result = subprocess.run(mmseqs_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        error_output = result.stderr.decode("utf-8")
 
-    blast_out_file = sorted_blast_file
+        if error_output:
+            print(f"Error during MMseqs2: {error_output}")
 
     # Check the number of BLAST hits
     with open(blast_out_file) as blast_file:
@@ -200,8 +229,14 @@ def blast(seq_file, genome_file, output_dir, min_length=150, task="blastn", seq_
         # Define bed outfile
         # add $4 alignment length
         bed_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b.bed")
-        bed_cmd = (f"awk 'BEGIN{{OFS=\"\\t\"}} !/^#/ {{if ($10~/plus/){{print $2, $8, $9, $1, $3, \"+\"}} "
-                   f"else {{print $2, $9, $8, $1, $3, \"-\"}}}}' < {blast_out_file} > {bed_out_file}")
+        if search_type == "blast":
+            bed_cmd = (f"awk 'BEGIN{{OFS=\"\\t\"; counter=0}} !/^#/ {{counter+=1; "
+                       f"if ($10~/plus/){{print $2, $8, $9, counter, $3, \"+\", $4, $1}} "
+                       f"else {{print $2, $9, $8, counter, $3, \"-\", $4, $1}}}}' < {blast_out_file} > {bed_out_file}")
+        elif search_type == "mmseqs":
+            bed_cmd = (f"awk 'BEGIN{{OFS=\"\\t\"; counter=0}} !/^#/ {{counter+=1; "
+                       f"if ($7>$6){{print $2, $8, $9, counter, $3, \"+\", $4, $1}} "
+                       f"else {{print $2, $8, $9, counter, $3, \"-\", $4, $1}}}}' < {blast_out_file} > {bed_out_file}")
 
         result_awk = subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         error_output_awk = result_awk.stderr.decode("utf-8")
@@ -273,7 +308,7 @@ def bed_ave_sequence_len(bed_content, start_rank, end_rank):
     return average
 
 
-def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex):
+def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameonly=False):
     """
     Extracts fasta sequence from the reference genome using bedtools.
 
@@ -281,6 +316,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex):
     :param output_dir: str, prefix for output files
     :param left_ex: int, number of bases to extend the start position of each feature
     :param right_ex: int, number of bases to extend the end position of each feature
+    :param nameonly: boolean Default: False: only use bed file name filed for the fasta header
     :return: fasta file absolute path derived from bed file
     """
     bed_out_flank_file_dup = os.path.join(output_dir, f"{os.path.basename(input_file)}_{left_ex}_{right_ex}.bed")
@@ -289,13 +325,15 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex):
 
     fasta_out_flank_file_nucleotide_clean = os.path.join(output_dir,
                                                          f"{os.path.basename(input_file)}_{left_ex}_{right_ex}_cl.fa")
-
     bed_cmd = f"bedtools slop -s -i {input_file} -g {genome_file}.length -l {left_ex} -r {right_ex} > {bed_out_flank_file_dup}"
     subprocess.run(bed_cmd, shell=True, check=True)
 
     bed_out_flank_file = check_bed_uniqueness(output_dir, bed_out_flank_file_dup)
 
-    fasta_cmd = f"bedtools getfasta -s -fi {genome_file} -fo {fasta_out_flank_file} -bed {bed_out_flank_file}"
+    if nameonly:
+        fasta_cmd = f"bedtools getfasta -s -nameOnly -fi {genome_file} -fo {fasta_out_flank_file} -bed {bed_out_flank_file}"
+    else:
+        fasta_cmd = f"bedtools getfasta -s -fi {genome_file} -fo {fasta_out_flank_file} -bed {bed_out_flank_file}"
     subprocess.run(fasta_cmd, shell=True, check=True)
 
     # Use awk to remove letters that aren't A G C T a g c t
