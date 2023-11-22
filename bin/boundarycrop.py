@@ -125,21 +125,21 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
         # Read bed_out_flank_file
         bed_out_flank_file_df = pd.read_csv(bed_out_flank_file, sep='\t', header=None)
 
-        # Update bed_dickey = row.iloc[3]
+        # Update bed_dic
         for i in bed_dic:
             id_list = large_crop_ids + remain_ids
             if i in id_list:
                 matching_rows = bed_out_flank_file_df[bed_out_flank_file_df[3] == i]
                 if end == "left":
                     if bed_dic[i][2] == "+":
-                        bed_dic[i][0] += matching_rows.iloc[0, 1]
+                        bed_dic[i][0] = matching_rows.iloc[0, 1]
                     elif bed_dic[i][2] == "-":
-                        bed_dic[i][1] += matching_rows.iloc[0, 2]
+                        bed_dic[i][1] = matching_rows.iloc[0, 2]
                 if end == "right":
                     if bed_dic[i][2] == "+":
-                        bed_dic[i][1] += matching_rows.iloc[0, 2]
+                        bed_dic[i][1] = matching_rows.iloc[0, 2]
                     elif bed_dic[i][2] == "-":
-                        bed_dic[i][0] += matching_rows.iloc[0, 1]
+                        bed_dic[i][0] = matching_rows.iloc[0, 1]
 
         # When the remaining sequences that need further extension is less than 5, stop the extension
         if not bed_boundary.if_continue or remain_n <= 5:
@@ -294,7 +294,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
         # Add the key-value pair to the dictionary
         bed_dict[key] = value_list
-    click.echo(f"#######original bed dic {bed_dict}")
 
     #####################################################################################################
     # Code block: Define left and right sides extension number
@@ -310,13 +309,13 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         try: 
             left_bed_dic = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir,
                                       crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win, bed_dict)
-            click.echo(f"### left dic {left_bed_dic}")
+
+            click.echo(left_bed_dic)
 
             final_bed_dic = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir,
                                        crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win,
                                        left_bed_dic)
-            click.echo(f"### right dic {final_bed_dic}")
-
+            click.echo(final_bed_dic)
             # Update bed file for final MSA
             for key, value in final_bed_dic.items():
                 # Find rows where the fourth column matches the key and update them

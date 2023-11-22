@@ -326,6 +326,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
     fasta_out_flank_file_nucleotide_clean = os.path.join(output_dir,
                                                          f"{os.path.basename(input_file)}_{left_ex}_{right_ex}_cl.fa")
     bed_cmd = f"bedtools slop -s -i {input_file} -g {genome_file}.length -l {left_ex} -r {right_ex} > {bed_out_flank_file_dup}"
+
     subprocess.run(bed_cmd, shell=True, check=True)
 
     bed_out_flank_file = check_bed_uniqueness(output_dir, bed_out_flank_file_dup)
