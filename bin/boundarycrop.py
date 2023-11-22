@@ -24,13 +24,12 @@ from orfdomain import PlotPfam, determine_sequence_direction
 from MSAcluster import clean_and_cluster_MSA, process_msa
 import cialign
 
+
 def long_bed(input_file, output_dir):
     # calculate alignment length in column 6
-    df = pd.read_csv(input_file, sep='\t', header = None)
-    df[6] = ''
-    df[6] = abs(df.iloc[:, 1] - df.iloc[:, 2])
+    df = pd.read_csv(input_file, sep='\t', header=None)
 
-    # # Define a threshold for outlier removal
+    # Define a threshold for outlier removal
     threshold = 3
 
     # Identify the top 10 lengths
@@ -42,40 +41,42 @@ def long_bed(input_file, output_dir):
 
     # Identify values outside the threshold and is on the small side
     df['difference_from_mean'] = df[6] - mean_top_10_lengths
+
     # ~ is used to negate the condition, meaning you keep rows where the condition is not satisfied.
-    filtered_df = df[
-    ~((abs(df['difference_from_mean']) > threshold * std_top_10_lengths) 
-      & (df['difference_from_mean'] < 0))
-    ]
+    filtered_df = df[~((abs(df['difference_from_mean']) > threshold * std_top_10_lengths)
+                       & (df['difference_from_mean'] < 0))]
+
     # Conditionally update values in column 1 and column 2 for right extension
     # 1 adjusted to avoid error message "Error: malformed BED entry at line 91. Start was greater than end"
     reset_right_filtered_df = filtered_df.copy()
-    reset_right_filtered_df.loc[reset_right_filtered_df[5] == '+', 1] = reset_right_filtered_df.loc[reset_right_filtered_df[5] == '+', 2] -1
+    reset_right_filtered_df.loc[reset_right_filtered_df[5] == '+', 1] = reset_right_filtered_df.loc[reset_right_filtered_df[5] == '+', 2] - 1
     reset_right_filtered_df.loc[reset_right_filtered_df[5] == '-', 2] = reset_right_filtered_df.loc[reset_right_filtered_df[5] == '-', 1] + 1
 
     # Conditionally update values in column 1 and column 2 for left extension
     reset_left_filtered_df = filtered_df.copy()
     reset_left_filtered_df.loc[reset_left_filtered_df[5] == '+', 2] = reset_left_filtered_df.loc[reset_left_filtered_df[5] == '+', 1] + 1
-    reset_left_filtered_df.loc[reset_left_filtered_df[5] == '-', 1] = reset_left_filtered_df.loc[reset_left_filtered_df[5] == '-', 2] -1
-    # writre new bed file
+    reset_left_filtered_df.loc[reset_left_filtered_df[5] == '-', 1] = reset_left_filtered_df.loc[reset_left_filtered_df[5] == '-', 2] - 1
+
+    # write new bed file
     reset_right_long_bed = os.path.join(output_dir, f"{os.path.basename(input_file)}_reset_right_long.bed")
     reset_left_long_bed = os.path.join(output_dir, f"{os.path.basename(input_file)}_reset_left_long.bed")
-    reset_right_filtered_df.to_csv(reset_right_long_bed, sep='\t', index=False, header = None)
-    reset_left_filtered_df.to_csv(reset_left_long_bed, sep='\t', index=False, header = None)
+    reset_right_filtered_df.to_csv(reset_right_long_bed, sep='\t', index=False, header=None)
+    reset_left_filtered_df.to_csv(reset_left_long_bed, sep='\t', index=False, header=None)
 
     return reset_left_long_bed, reset_right_long_bed
 
+
 def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output_dir, crop_end_gap_thr,
-               crop_end_gap_win, ext_threshold, define_boundary_win):
+               crop_end_gap_win, ext_threshold, define_boundary_win, bed_dic):
     # end: left or right extension
     if_ex = True
     ex_total = 0
 
     # the following calculate the majority of the alignment length and find the long alignment for extension
-    # while igorning the short ones
+    # while ignoring the short ones
     reset_left_long_bed, reset_right_long_bed = long_bed(input_file, output_dir)
 
-    # 100bp is added to avoid the case where boundary is at the edge. Therefore the alignment is actually
+    # 100bp is added to avoid the case where boundary is at the edge. Therefore, the alignment is actually
     # ex_step_size + 100bp
     adjust = 100
     while if_ex and (ex_total < max_extension):
@@ -86,11 +87,13 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
         if end == "left":
             left_ex = ex_total
             right_ex = ex_step_size - ex_total + adjust
-            bed_fasta, bed_out_flank_file = extract_fasta(reset_left_long_bed, genome_file, output_dir, left_ex, right_ex)
+            bed_fasta, bed_out_flank_file = extract_fasta(reset_left_long_bed, genome_file, output_dir,
+                                                          left_ex, right_ex, nameonly=True)
         if end == "right":
             left_ex = ex_step_size - ex_total + adjust
             right_ex = ex_total
-            bed_fasta, bed_out_flank_file = extract_fasta(reset_right_long_bed, genome_file, output_dir, left_ex, right_ex)
+            bed_fasta, bed_out_flank_file = extract_fasta(reset_right_long_bed, genome_file, output_dir,
+                                                          left_ex, right_ex, nameonly=True)
         
         # align_sequences() will return extended MSA absolute file
         bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
@@ -111,28 +114,72 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
                                                             )
 
         bed_fasta_mafft_object = CropEndByGap(bed_fasta_mafft, gap_threshold=crop_end_gap_thr,
-                                                window_size=crop_end_gap_win)
+                                              window_size=crop_end_gap_win)
+        large_crop_ids, remain_n, remain_ids = bed_fasta_mafft_object.find_large_crops()
         cropped_alignment = bed_fasta_mafft_object.crop_alignment()
         bed_fasta_mafft_cop_end_gap = bed_fasta_mafft_object.write_to_file(output_dir, cropped_alignment)
 
         # Threshold to generate consensus sequence
         bed_boundary = DefineBoundary(bed_fasta_mafft_cop_end_gap, threshold=ext_threshold,
-                                        check_window=define_boundary_win, max_X=0.3, if_con_generater=False)
-        if not bed_boundary.if_continue:
+                                      check_window=define_boundary_win, max_X=0.3, if_con_generater=False)
+        # Read bed_out_flank_file
+        bed_out_flank_file_df = pd.read_csv(bed_out_flank_file, sep='\t', header=None)
+
+        # Update bed_dic
+        for i in bed_dic:
+            id_list = large_crop_ids + remain_ids
+            if i in id_list:
+                matching_rows = bed_out_flank_file_df[bed_out_flank_file_df[3] == i]
+                if end == "left":
+                    if bed_dic[i][2] == "+":
+                        bed_dic[i][0] = matching_rows.iloc[0, 1]
+                    elif bed_dic[i][2] == "-":
+                        bed_dic[i][1] = matching_rows.iloc[0, 2]
+                if end == "right":
+                    if bed_dic[i][2] == "+":
+                        bed_dic[i][1] = matching_rows.iloc[0, 2]
+                    elif bed_dic[i][2] == "-":
+                        bed_dic[i][0] = matching_rows.iloc[0, 1]
+
+        # When the remaining sequences that need further extension is less than 5, stop the extension
+        if not bed_boundary.if_continue or remain_n <= 5:
             break
         elif bed_boundary.if_continue:
+            # Subset bed file to only keep sequences that need further extension
+            ite = 1
+
             if end == "left":
-                if_ex = bed_boundary.left_ext                
+
+                if_ex = bed_boundary.left_ext
+                df = pd.read_csv(reset_left_long_bed, sep='\t', header=None)
+
+                # Filter out rows where the fourth column is in large_crop_ids
+                df_filtered = df[~df[3].isin(large_crop_ids)]
+                reset_left_long_bed = reset_left_long_bed + f"_{ite}"
+
+                # Write the filtered DataFrame back to reset_left_long_bed
+                df_filtered.to_csv(reset_left_long_bed, sep='\t', index=False, header=None)
+
             if end == "right":
                 if_ex = bed_boundary.right_ext
-                
-    return ex_total
+                df = pd.read_csv(reset_right_long_bed, sep='\t', header=None)
+
+                # Filter out rows where the fourth column is in large_crop_ids
+                df_filtered = df[~df[3].isin(large_crop_ids)]
+                reset_right_long_bed = reset_right_long_bed + f"_{ite}"
+
+                # Write the filtered DataFrame back to reset_left_long_bed
+                df_filtered.to_csv(reset_right_long_bed, sep='\t', index=False, header=None)
+            ite += 1
+
+    return bed_dic
 
 
-def final_MSA(bed_file, genome_file, output_dir, left_ex, right_ex, gap_nul_thr, gap_threshold, ext_threshold,
+def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
               define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win):
 
-    bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, left_ex, right_ex)
+    bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, 0, 0)
+
     # align_sequences() will return extended MSA absolute file
     bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
 
@@ -146,7 +193,6 @@ def final_MSA(bed_file, genome_file, output_dir, left_ex, right_ex, gap_nul_thr,
 
     # Remove gap block with similarity check
     # gap_threshold=0.8 means if gap proportion is greater than 80% this column will be regarded as
-    
     # gap column directly without further nucleotide similarity check
     bed_fasta_mafft_gap_block_sim = remove_gaps_block_with_similarity_check(
         bed_fasta_mafft_with_gap_column_clean, output_dir, gap_threshold=0.8, simi_check_gap_thre=gap_threshold,
@@ -205,7 +251,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                            error_files, plot_query, cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000,
                            max_extension=7000, gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=0.8, crop_end_win=20,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
-                           mini_orf=200, define_boundary_win=150, fast_mode=False):
+                           mini_orf=200, define_boundary_win=150, fast_mode=False, engine="blast"):
     """
     :param bed_file: str, bed file directory
     :param genome_file: str, genome directory
@@ -235,6 +281,20 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     if"LINE" in seq_obj.old_TE_type:
         ext_threshold = ext_threshold - 0.2
 
+    # Read bed file and build dictionary to store sequence position
+    df = pd.read_csv(bed_file, sep='\t', header=None)
+
+    # Initialize an empty dictionary to store your desired key-value pairs
+    bed_dict = {}
+
+    # Iterate through the DataFrame to populate the dictionary
+    for index, row in df.iterrows():
+        key = row.iloc[3]
+        value_list = [row.iloc[1], row.iloc[2], row.iloc[5]]
+
+        # Add the key-value pair to the dictionary
+        bed_dict[key] = value_list
+
     #####################################################################################################
     # Code block: Define left and right sides extension number
     #####################################################################################################
@@ -244,21 +304,34 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     final_MSA_consistent = False
     intact_loop_times = 0
 
-    while not final_MSA_consistent and intact_loop_times < 3 and (left_ex <= max_extension and right_ex <= max_extension):
+    while not final_MSA_consistent and intact_loop_times < 2:
         
         try: 
-            left_ex = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir,
-                                 crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win)
-            right_ex = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir,
-                                  crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win)
+            left_bed_dic = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir,
+                                      crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win, bed_dict)
+
+            click.echo(left_bed_dic)
+
+            final_bed_dic = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir,
+                                       crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win,
+                                       left_bed_dic)
+            click.echo(final_bed_dic)
+            # Update bed file for final MSA
+            for key, value in final_bed_dic.items():
+                # Find rows where the fourth column matches the key and update them
+                df.loc[df[3] == key, [1, 2]] = value[:2]
+
+            # Define bed file name for final MSA
+            bed_final_MSA = bed_file + "_fm.bed"
+            df.to_csv(bed_final_MSA, sep='\t', index=False, header=False)
 
             # if no error message, get final MSA
-            if left_ex and right_ex:
-                bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_no_gap, cropped_boundary, \
-                    column_mapping, bed_fasta_mafft_boundary_crop, bed_fasta_mafft_boundary_crop_for_select = final_MSA(bed_file, genome_file, 
-                                                            output_dir, left_ex, right_ex, gap_nul_thr, gap_threshold, 
-                                                            ext_threshold, define_boundary_win,crop_end_gap_thr, 
-                                                            crop_end_gap_win, crop_end_thr, crop_end_win)
+
+            bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_no_gap, cropped_boundary, \
+                column_mapping, bed_fasta_mafft_boundary_crop, bed_fasta_mafft_boundary_crop_for_select = \
+                final_MSA(bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold,
+                          ext_threshold, define_boundary_win,crop_end_gap_thr, crop_end_gap_win, crop_end_thr,
+                          crop_end_win)
         except Exception as e:
             with open(error_files, "a") as f:
                 # Get the traceback content as a string
@@ -270,9 +343,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
         if not fast_mode:
             final_MSA_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file, output_dir,
-                                                            clean_column_threshold=0.08, min_length_num=10,
-                                                            cluster_num=2, cluster_col_thr=250, fast_mode=fast_mode
-                                                            )
+                                                          clean_column_threshold=0.08, min_length_num=10,
+                                                          cluster_num=2, cluster_col_thr=250, fast_mode=fast_mode
+                                                          )
 
             # False means the sequences number in each cluster is smaller than minimum number, normally 10
             # True means not necessary to do further cluster
@@ -612,7 +685,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     # Store blast full length sequence number into consi_obj
     # check_blast_full_n is a function in TE_Aid class. TE Trimmer will use the blast result of TE Aid
-    blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj)
+    blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj, engine=engine)
     consi_obj.set_blast_full_n(blast_full_length_n)
 
     # Store pfam prediction to consi_obj

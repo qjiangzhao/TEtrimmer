@@ -206,7 +206,7 @@ class TEAid:
     #####################################################################################################
     # Code block: Check blast full length number
     #####################################################################################################
-    def check_blast_full_n(self, seq_obj):
+    def check_blast_full_n(self, seq_obj, engine="blast"):
 
         # Make a folder to store TE_aid result.
         TE_aid_output_dir = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_TEaid")
@@ -221,7 +221,7 @@ class TEAid:
                                                     min_hit_length=100, te_aid_blast=True)
         else:
             bed_out_file, blast_hits_count, blast_out_file = blast(self.input_file, self.genome_file,
-                                                                   self.output_dir)
+                                                                   self.output_dir, search_type=engine)
             full_length_n = check_blast_full_length(seq_obj, blast_out_file, identity=90, coverage=0.9,
                                                     min_hit_length=100, te_aid_blast=False)
 

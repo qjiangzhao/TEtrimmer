@@ -30,6 +30,7 @@ class CropEndByGap:
             for i in range(len_seq - self.window_size + 1):  # Loop through the sequence with a sliding window
                 window = seq_str[i:i + self.window_size]  # Get the subsequence in the window
                 gap_proportion = window.count('-') / self.window_size  # Calculate the gap proportion in the window
+
                 # If the gap proportion is less than or equal to the threshold, set this position as the start position
                 # and break the loop
                 if gap_proportion <= self.gap_threshold:
@@ -41,16 +42,50 @@ class CropEndByGap:
                 window = seq_str[i - self.window_size + 1:i + 1]
                 gap_proportion = window.count('-') / self.window_size
                 if gap_proportion <= self.gap_threshold:
-                    self.position_dict[record.id][1] = i + 1  # Note: add 1 to make the position 1-indexed
+                    end_position = i + 1  # Note: add 1 to make the position 1-indexed
+
+                    # Ensure end position is not smaller than the start position
+                    if end_position <= self.position_dict[record.id][0]:
+                        self.position_dict[record.id][1] = self.position_dict[record.id][0]
+                    else:
+                        self.position_dict[record.id][1] = end_position
+
                     break
+
+    # New method to find sequences with cropped region > 50% of the alignment length
+    def find_large_crops(self):
+        large_crop_ids = []  # List to store the IDs of sequences with large cropped regions
+        remaining_sequence_ids = []  # List to store the IDs of the remaining sequences
+        total_length = self.alignment.get_alignment_length()  # Total length of the alignment
+
+        for seq_id, positions in self.position_dict.items():
+            # Remove '-' and '+' from the sequence ID
+            seq_id = seq_id.replace('(-)', '').replace('(+)', '')
+            start, end = positions
+            cropped_length = start + (total_length - end)
+
+            # Check if the cropped region is greater than 50% of the total alignment length
+            if cropped_length > total_length * 0.8:
+                large_crop_ids.append(seq_id)  # Add the sequence ID to the list
+            else:
+                remaining_sequence_ids.append(seq_id)  # Add the sequence ID to the remaining sequences list
+
+        # The number of sequences remaining can be calculated as the length of remaining_sequence_ids
+        remaining_sequences = len(remaining_sequence_ids)
+        large_crop_ids = [int(seq_id) for seq_id in large_crop_ids]
+        remaining_sequence_ids = [int(seq_id) for seq_id in remaining_sequence_ids]
+
+        return large_crop_ids, remaining_sequences, remaining_sequence_ids
 
     # This method crops the alignment based on the start and end positions found
     def crop_alignment(self):
         for record in self.alignment:  # Loop through each sequence in the alignment
+
             # Create a new sequence by cropping the original sequence based on the start and end positions
             cropped_seq = "-" * self.position_dict[record.id][0] + \
                           str(record.seq[self.position_dict[record.id][0]:self.position_dict[record.id][1]]) + \
                           "-" * (len(record.seq) - self.position_dict[record.id][1])
+
             # Create a new SeqRecord with the cropped sequence and add it to the list
             self.cropped_alignment.append(SeqRecord(Seq(cropped_seq), id=record.id, description=""))
         # Convert the list of SeqRecords into a MultipleSeqAlignment
@@ -76,7 +111,6 @@ class CropEndByGap:
                    "nucleotides to '-' in this window")
 @click.option("--window_size", "-ws", default=300, type=int,
               help="Window size used for cropping end")
-              
 def crop_end_gap(input_file, output_file, gap_threshold, window_size):
 
     if os.path.isfile(input_file):
