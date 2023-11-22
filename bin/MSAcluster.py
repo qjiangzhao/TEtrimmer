@@ -2,6 +2,8 @@ import os.path
 from Bio import AlignIO
 import pandas as pd
 import numpy as np
+import subprocess
+import click
 import matplotlib.pyplot as plt
 from collections import Counter
 from matplotlib.colors import ListedColormap
@@ -9,6 +11,8 @@ from Bio.Phylo.TreeConstruction import DistanceCalculator
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import os
+from ete3 import Tree
+
 
 from selectcolumns import CleanAndSelectColumn
 import functions as functions
@@ -142,6 +146,75 @@ def cluster_msa(alignment, min_cluster_size=10, max_cluster=False):
         filtered_cluster_records = filtered_cluster_records[:max_cluster]
 
     return filtered_cluster_records, True
+
+def processable_node(node):
+    if node.dist > 0.1:
+       if len(node)>=10:
+        return True
+    else:
+       return False
+
+def cut_branch(leaf, cluster):
+    has_long_branch = False
+    # check if any branch >0.1
+    for n in leaf.iter_descendants("levelorder"):
+        if n.dist > 0.1:
+            has_long_branch = True
+            break
+    # base call
+    if not has_long_branch or len(leaf)<10:
+        if len(leaf) >= 10:
+            cluster.append(leaf)
+        return cluster
+    else:
+        for n in leaf.iter_descendants("postorder"):
+            if n.dist > 0.1:
+                # detach n from the current subtree
+                removed_node = n.detach()
+                if len(removed_node) >= 10:
+                    cluster.append(n)
+                break
+        # recursion
+        return cut_branch(leaf, cluster)
+    
+def cluster_msa_iqtree(alignment, min_cluster_size=10, max_cluster=False):
+    # this function uses iqtree to separate alignment into branches and cut branch when length is >0.1
+    iqtree_command = ["iqtree", "-s", alignment]
+    result = subprocess.run(iqtree_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    treefile = f"{alignment}.treefile"
+    print (treefile)
+    t = Tree(treefile)
+    # check if any branch longer than 0.1
+    long_branch = t.iter_leaves(is_leaf_fn=processable_node)
+    if len(list(long_branch)) == 0:
+        print ("no need to cluster")
+    else:
+        # # Calculate the midpoint node, sometime this makes the long branch more obvious
+        # R = t.get_midpoint_outgroup()
+        # # and set it as tree outgroup
+        # t.set_outgroup(R)
+        cluster = []
+        # we want get all deepest nodes in a tree whose branch length >0.1
+        for leaf in t.iter_leaves(is_leaf_fn=processable_node):
+            # for each subtree, look for branch >0.1 again
+            subcluster = []
+            newcluster = cut_branch(leaf, subcluster)
+            if newcluster:
+                cluster = cluster + newcluster
+        if len(cluster) == 0:
+            print ("no need to cluster")
+            
+        else:
+            print ("cluster")
+            for i in cluster:
+                print (len(i))
+        error_output = result.stderr.decode("utf-8")
+        if error_output:
+            click.echo(f"Error executing RepeatMasker command{error_output}\n.")
+            return False
+
+        else:
+            return True
 
 
 def subset_bed_file(input_file, filtered_cluster_records, output_dir):
