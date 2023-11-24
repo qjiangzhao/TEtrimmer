@@ -79,6 +79,9 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
     # 100bp is added to avoid the case where boundary is at the edge. Therefore, the alignment is actually
     # ex_step_size + 100bp
     adjust = 100
+    ite = 1
+    reset_left_long_bed_copy = reset_left_long_bed
+    reset_right_long_bed_copy = reset_right_long_bed
     while if_ex and (ex_total < max_extension):
         # bedtools will makesure the extension won't excess the maximum length of the chromosome
         # track extend total
@@ -141,21 +144,18 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
                     elif bed_dic[i][2] == "-":
                         bed_dic[i][0] = matching_rows.iloc[0, 1]
 
-        # When the remaining sequences that need further extension is less than 5, stop the extension
-        if not bed_boundary.if_continue or remain_n <= 5:
+        # When the remaining sequences that need further extension are less than 5, stop the extension
+        if not bed_boundary.if_continue or remain_n < 5:
             break
         elif bed_boundary.if_continue:
             # Subset bed file to only keep sequences that need further extension
-            ite = 1
-
             if end == "left":
-
                 if_ex = bed_boundary.left_ext
                 df = pd.read_csv(reset_left_long_bed, sep='\t', header=None)
 
                 # Filter out rows where the fourth column is in large_crop_ids
                 df_filtered = df[~df[3].isin(large_crop_ids)]
-                reset_left_long_bed = reset_left_long_bed + f"_{ite}"
+                reset_left_long_bed = reset_left_long_bed_copy + f"_{ite}"
 
                 # Write the filtered DataFrame back to reset_left_long_bed
                 df_filtered.to_csv(reset_left_long_bed, sep='\t', index=False, header=None)
@@ -166,7 +166,7 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
 
                 # Filter out rows where the fourth column is in large_crop_ids
                 df_filtered = df[~df[3].isin(large_crop_ids)]
-                reset_right_long_bed = reset_right_long_bed + f"_{ite}"
+                reset_right_long_bed = reset_right_long_bed_copy + f"_{ite}"
 
                 # Write the filtered DataFrame back to reset_left_long_bed
                 df_filtered.to_csv(reset_right_long_bed, sep='\t', index=False, header=None)
@@ -188,7 +188,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         return False
 
     # Remove nucleotide whose proportion is smaller than threshold
-    bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(bed_fasta_mafft_with_gap, threshold=0.08)
+    bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(bed_fasta_mafft_with_gap, threshold=0.03)
     bed_fasta_mafft_with_gap_column_clean = bed_fasta_mafft_with_gap_column_clean_object.clean_column(output_dir)
 
     # Remove gap block with similarity check
@@ -199,7 +199,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         similarity_threshold=gap_nul_thr, conservation_threshold=0.5)
 
     bed_boundary = DefineBoundary(bed_fasta_mafft_gap_block_sim, threshold=ext_threshold,
-                                    check_window=define_boundary_win, max_X=0.2, if_con_generater=False)
+                                  check_window=define_boundary_win, max_X=0.2, if_con_generater=False)
     bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=300)
 
     # Because for LINE element bed_fasta_mafft_boundary_crop will be changed. Copy it to the other variable
@@ -209,8 +209,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         # For the high divergence region, more gaps can be found. According to this feature, remove high divergence
         # region this function is very useful for dealing with LINE elements
         cropped_MSA_by_gap = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
-                                            window_size=crop_end_gap_win)
-
+                                          window_size=crop_end_gap_win)
         bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
 
     # Gaps are removed again after crop end process
@@ -220,7 +219,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
 
     # Crop end can't define the final boundary, use DefineBoundary again to define start position
     cropped_boundary = DefineBoundary(cropped_alignment_output_file_no_gap, threshold=0.8,
-                                        check_window=3, max_X=0)
+                                      check_window=4, max_X=0)
     cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
 
     return bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_no_gap, cropped_boundary, \
@@ -290,6 +289,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Iterate through the DataFrame to populate the dictionary
     for index, row in df.iterrows():
         key = row.iloc[3]
+
+        # Use sequence position and strand as dictionary values
         value_list = [row.iloc[1], row.iloc[2], row.iloc[5]]
 
         # Add the key-value pair to the dictionary
@@ -310,15 +311,13 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             left_bed_dic = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir,
                                       crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win, bed_dict)
 
-            click.echo(left_bed_dic)
-
             final_bed_dic = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir,
                                        crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win,
                                        left_bed_dic)
-            click.echo(final_bed_dic)
+
             # Update bed file for final MSA
             for key, value in final_bed_dic.items():
-                # Find rows where the fourth column matches the key and update them
+                # Find rows where the fourth column matches the key and update position by dictionary value
                 df.loc[df[3] == key, [1, 2]] = value[:2]
 
             # Define bed file name for final MSA
@@ -326,7 +325,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             df.to_csv(bed_final_MSA, sep='\t', index=False, header=False)
 
             # if no error message, get final MSA
-
             bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_no_gap, cropped_boundary, \
                 column_mapping, bed_fasta_mafft_boundary_crop, bed_fasta_mafft_boundary_crop_for_select = \
                 final_MSA(bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold,
@@ -380,9 +378,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     # When both start and end patterns are None, skip this block
     if start_patterns is not None or end_patterns is not None:
-
         if checkpattern.is_LTR(cropped_alignment_output_file_no_gap):  # Check if file name contain "LTR"
-
             # Generate consensus sequences
             consensus_seq = checkpattern.generate_consensus_sequence(cropped_alignment_output_file_no_gap,
                                                                      threshold=0.7, ambiguous="X")
@@ -561,7 +557,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     # Draw the whole MSA
     cialign.drawMiniAlignment(cropped_boundary_manual_MSA_concatenate_array,
-                                   nams, cropped_boundary_manual_MSA_concatenate_plot, concat_start_man, concat_end_man)
+                              nams, cropped_boundary_manual_MSA_concatenate_plot, concat_start_man, concat_end_man)
 
     #####################################################################################################
     # Code block: Generate TE-Aid plot

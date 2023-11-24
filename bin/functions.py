@@ -493,6 +493,28 @@ def reverse_complement_seq_file(input_file, output_file):
     return output_file
 
 
+def remove_short_seq(input_file, output_file, threshold=0.1):
+    alignment = AlignIO.read(input_file, "fasta")
+
+    # Get MSA length
+    len = alignment.get_alignment_length()
+
+    # Initialize an empty list to store the filtered sequences
+    filtered_alignment = []
+
+    # Loop each sequence in the alignment
+    for record in alignment:
+        # Get the length of the sequence without gaps
+        seq_length = len(record.seq.ungap("-"))
+
+        # Check if the sequence length is greater than or equal the length threshold
+        if seq_length >= len * threshold:
+            filtered_alignment.append(record)
+
+    # Write the filtered list record to a file
+    AlignIO.write(filtered_alignment, output_file)
+
+
 def remove_gaps(input_file, output_dir, threshold=0.8, min_nucleotide=5):
     """
     Remove gaps when gap percentage is bigger than threshold. Remove columns when nucleotide number is less than 5
