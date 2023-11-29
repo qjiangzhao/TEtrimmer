@@ -180,6 +180,25 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     print(f"\nTE Trimmer started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n", flush=True)
 
     #####################################################################################################
+    # Code block: File ends
+    #####################################################################################################
+    # _fm.bed: final multiple sequence alignment.
+    # _u: uniqueness.
+    # _bcl.fa bed clean. Use awk to remove letters that aren't A G C T a g c t in the fasta file
+    # _aln.fa alignment. File after alignment
+    # _cl.fa clean. Convert nucleotide with very proportion in MSA into gap
+    # _gs.fa gap similarity. Remove gaps in MSA with similarity check
+    # _se.fa start end. Selected MSA based on given start and end position
+    # _ce.fa crop end. MSA after crop end by similarity
+    # _bc.fa boundary crop.
+    # _co.fa consensus. Consensus sequence file
+    # _orf.txt ORF prediction file
+    # _orf_modi_t.txt ORF modified table
+    # _pfam.txt Pfam prediction
+    # _me.fa merged. Merged fasta file
+    # _proof_anno_me.fa proof annotation merged.
+
+    #####################################################################################################
     # Code block: Change permissions of Aliview and TE_Aid
     #####################################################################################################
 

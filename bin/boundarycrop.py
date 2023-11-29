@@ -15,9 +15,9 @@ from Package_crop_end_gap import CropEndByGap
 from functions import remove_gaps, generate_hmm_from_msa, extract_fasta, \
     remove_gaps_with_similarity_check, remove_gaps_block_with_similarity_check, align_sequences, \
     con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, \
-    con_generater, reverse_complement_seq_file, classify_single
+    con_generater, reverse_complement_seq_file, classify_single, check_terminal_repeat, select_star_to_end, \
+    define_crop_end_simi_thr
 from selectcolumns import CleanAndSelectColumn
-
 import checkpattern
 from TEaid import TEAid
 from orfdomain import PlotPfam, determine_sequence_direction
@@ -30,7 +30,7 @@ def long_bed(input_file, output_dir):
     df = pd.read_csv(input_file, sep='\t', header=None)
 
     # Define a threshold for outlier removal
-    threshold = 3
+    threshold = 0.5
 
     # Identify the top 10 lengths
     top_10_lengths = df.nlargest(10, 6)[6]
@@ -175,7 +175,7 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
     return bed_dic
 
 
-def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
+def final_MSA_old(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
               define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win):
 
     bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, 0, 0)
@@ -188,7 +188,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         return False
 
     # Remove nucleotide whose proportion is smaller than threshold
-    bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(bed_fasta_mafft_with_gap, threshold=0.03)
+    bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(bed_fasta_mafft_with_gap, threshold=0.01)
     bed_fasta_mafft_with_gap_column_clean = bed_fasta_mafft_with_gap_column_clean_object.clean_column(output_dir)
 
     # Remove gap block with similarity check
@@ -213,20 +213,131 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
 
     # Gaps are removed again after crop end process
-    cropped_alignment_output_file_no_gap, column_mapping = crop_end_and_clean_column(
+    cropped_alignment_output_file_g, column_mapping = crop_end_and_remove_gap(
         bed_fasta_mafft_boundary_crop, output_dir, crop_end_threshold=crop_end_thr,
         window_size=crop_end_win, gap_threshold=0.8)
 
     # Crop end can't define the final boundary, use DefineBoundary again to define start position
-    cropped_boundary = DefineBoundary(cropped_alignment_output_file_no_gap, threshold=0.8,
+    cropped_boundary = DefineBoundary(cropped_alignment_output_file_g, threshold=0.8,
                                       check_window=4, max_X=0)
     cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
 
-    return bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_no_gap, cropped_boundary, \
+    return bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
         column_mapping, bed_fasta_mafft_boundary_crop, bed_fasta_mafft_boundary_crop_for_select
 
 
-def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=0.8, window_size=20, gap_threshold=0.8):
+def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
+              define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win):
+
+    bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, 0, 0)
+
+    # align_sequences() will return extended MSA absolute file
+    bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
+
+    if not os.path.isfile(bed_fasta_mafft_with_gap):
+        click.echo(f"{bed_file} has problem during mafft extension step")
+        return False
+
+    # Remove nucleotide whose proportion is smaller than threshold
+    bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(bed_fasta_mafft_with_gap, threshold=0.01)
+    bed_fasta_mafft_with_gap_column_clean = bed_fasta_mafft_with_gap_column_clean_object.clean_column(output_dir)
+
+    # Remove gap with similarity check
+    bed_fasta_mafft_gap_sim = remove_gaps_with_similarity_check(bed_fasta_mafft_with_gap_column_clean, output_dir)
+
+    # Crop end before terminal check, use loose threshold to avoid overhead cropping
+    bed_fasta_mafft_gap_sim_cp_object = CropEnd(bed_fasta_mafft_gap_sim, threshold=20, window_size=40)
+    bed_fasta_mafft_gap_sim_cp_object.crop_alignment()
+    bed_fasta_mafft_gap_sim_cp = bed_fasta_mafft_gap_sim_cp_object.write_to_file(output_dir)
+
+    # Generate consensus sequence, use low threshold to reduce N numbers in the consensus sequence
+    bed_fasta_mafft_gap_sim_cp_con = con_generater(bed_fasta_mafft_gap_sim_cp, output_dir, threshold=0.6, ambiguous="N")
+
+    # Check terminal repeats
+    # Define the output folder to store the temporary blast database
+    check_terminal_repeat_output = f"{bed_fasta_mafft_gap_sim_cp_con}_tem"
+    LTR_boundary, TIR_boundary = check_terminal_repeat(bed_fasta_mafft_gap_sim_cp_con, check_terminal_repeat_output)
+
+    # Check terminal repeats
+    if LTR_boundary is not None or TIR_boundary is not None:
+        # Check LTR first
+        if LTR_boundary is not None:
+            left = LTR_boundary[0]
+            right = LTR_boundary[1]
+        else:
+            left = TIR_boundary[0]
+            right = TIR_boundary[1]
+
+        # Extract MSA based on terminal repeat boundary
+        bed_fasta_mafft_gap_sim_selected = select_star_to_end(bed_fasta_mafft_gap_sim, output_dir, left, right)
+
+        # Define the threshold use for cropping end by similarity to make sure the ends of MSA won't be totally removed
+        # Because the boundary of the MSA has been defined.
+        pro_mean = define_crop_end_simi_thr(bed_fasta_mafft_gap_sim_selected)
+
+        if pro_mean < 32:
+            # Set crop_end_sim_thr to be smaller than pro_mean to avoid over cropping.
+            crop_end_sim_thr = int(pro_mean) - 3
+        else:
+            crop_end_sim_thr = 32
+
+        # Do crop end by similarity to clean MSA
+        bed_fasta_mafft_gap_sim_selected_cp_object = CropEnd(
+            bed_fasta_mafft_gap_sim_selected, threshold=crop_end_sim_thr, window_size=40)
+        bed_fasta_mafft_gap_sim_selected_cp_object.crop_alignment()
+        bed_fasta_mafft_gap_sim_selected_cp = bed_fasta_mafft_gap_sim_selected_cp_object.write_to_file(output_dir)
+
+        # Remove gap by similarity again
+        bed_fasta_mafft_gap_sim_selected_cp_g, column_mapping = remove_gaps_with_similarity_check(
+            bed_fasta_mafft_gap_sim_selected_cp, output_dir, return_map=True)
+
+        """
+        # Crop end by gap to make final MSA look better
+        bed_fasta_mafft_gap_sim_selected_cp_g_cpg = CropEndByGap(bed_fasta_mafft_gap_sim_selected_cp_g,
+                                                                 gap_threshold=crop_end_gap_thr,
+                                                                 window_size=crop_end_gap_win)
+        """
+        # Define boundary
+        cropped_boundary = DefineBoundary(bed_fasta_mafft_gap_sim_selected_cp_g, threshold=0.8,
+                                          check_window=4, max_X=3)
+        cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
+
+        cropped_alignment_output_file_g = bed_fasta_mafft_gap_sim_selected_cp_g
+        bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_gap_sim
+
+    # When LTR or TIR are not found
+    else:
+        bed_boundary = DefineBoundary(bed_fasta_mafft_gap_sim_cp, threshold=ext_threshold,
+                                      check_window=define_boundary_win, max_X=0.2, if_con_generater=False)
+        bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=300)
+
+        # Because for LINE element bed_fasta_mafft_boundary_crop will be changed. Copy it to the other variable
+        bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_gap_sim
+
+        if "LINE" in bed_file:
+            # For the high divergence region, more gaps can be found. According to this feature, remove high divergence
+            # region this function is very useful for dealing with LINE elements
+            cropped_MSA_by_gap = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
+                                              window_size=crop_end_gap_win)
+            bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
+
+        # Gaps are removed again after crop end process
+        cropped_alignment_output_file_g, column_mapping = crop_end_and_remove_gap(
+            bed_fasta_mafft_boundary_crop, output_dir, crop_end_threshold=crop_end_thr,
+            window_size=crop_end_win, gap_threshold=0.8)
+
+        # Crop end can't define the final boundary, use DefineBoundary again to define start position
+        cropped_boundary = DefineBoundary(cropped_alignment_output_file_g, threshold=0.8,
+                                          check_window=4, max_X=0)
+        cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
+
+    click.echo(column_mapping)
+
+    return bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
+        column_mapping, bed_fasta_mafft_boundary_crop_for_select
+
+
+def crop_end_and_remove_gap(input_file, output_dir, crop_end_threshold=0.8, window_size=20, gap_threshold=0.8):
 
     # Window_size means the checked nucleotide number each time
     # Threshold means the sum of nucleotide proportion in window_size must greater than that
@@ -240,10 +351,10 @@ def crop_end_and_clean_column(input_file, output_dir, crop_end_threshold=0.8, wi
     # Remove gaps again after crop end step
     # "column_mapping" is a dictionary the key is gap removed MSA index, the value is the corresponded original
     # MSA index
-    cropped_alignment_output_file_no_gap, column_mapping = remove_gaps(
-        cropped_MSA_output_file, output_dir, threshold=gap_threshold, min_nucleotide=5)
+    cropped_alignment_output_file_g, column_mapping = remove_gaps_with_similarity_check(
+        cropped_MSA_output_file, output_dir, return_map=True)
 
-    return cropped_alignment_output_file_no_gap, column_mapping
+    return cropped_alignment_output_file_g, column_mapping
 
 
 def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj, hmm, classify_all, classify_unknown,
@@ -325,8 +436,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             df.to_csv(bed_final_MSA, sep='\t', index=False, header=False)
 
             # if no error message, get final MSA
-            bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_no_gap, cropped_boundary, \
-                column_mapping, bed_fasta_mafft_boundary_crop, bed_fasta_mafft_boundary_crop_for_select = \
+            bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
+                column_mapping, bed_fasta_mafft_boundary_crop_for_select = \
                 final_MSA(bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold,
                           ext_threshold, define_boundary_win,crop_end_gap_thr, crop_end_gap_win, crop_end_thr,
                           crop_end_win)
@@ -378,9 +489,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     # When both start and end patterns are None, skip this block
     if start_patterns is not None or end_patterns is not None:
-        if checkpattern.is_LTR(cropped_alignment_output_file_no_gap):  # Check if file name contain "LTR"
+        if checkpattern.is_LTR(cropped_alignment_output_file_g):  # Check if file name contain "LTR"
             # Generate consensus sequences
-            consensus_seq = checkpattern.generate_consensus_sequence(cropped_alignment_output_file_no_gap,
+            consensus_seq = checkpattern.generate_consensus_sequence(cropped_alignment_output_file_g,
                                                                      threshold=0.7, ambiguous="X")
 
             # Four variables will be returned
@@ -399,11 +510,15 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     #####################################################################################################
     # Code block: Generate MSA for CIAlign plot
     #####################################################################################################
+    click.echo(bed_fasta_mafft_boundary_crop_for_select)
+    click.echo(column_mapping[cropped_boundary.start_post])
+    click.echo(column_mapping[cropped_boundary.end_post])
 
     # Get 300 columns left the start point
     cropped_boundary_manual_MSA_left = select_window_columns(
         bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.start_post], "left", window_size=300
     )
+
 
     # Get 300 columns right the end point
     cropped_boundary_manual_MSA_right = select_window_columns(
@@ -414,7 +529,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # The concat_start and concat_end points correspond with cropped_boundary.start_post and cropped_boundary.end_post
     # Because the input file of "concatenate_alignment()" is alignment object not file path, read "cropped_boundary_MSA"
     # to an alignment object.
-    input_file_name = str(os.path.basename(bed_fasta_mafft_boundary_crop)) + "_proof_anno"
+    input_file_name = str(os.path.basename(bed_fasta_mafft_boundary_crop_for_select)) + "_proof_anno"
     cropped_boundary_MSA_alignment = AlignIO.read(cropped_boundary_MSA, "fasta")
     cropped_boundary_manual_MSA_concatenate, concat_start_man, concat_end_man = concatenate_alignments(
         cropped_boundary_manual_MSA_left, cropped_boundary_MSA_alignment, cropped_boundary_manual_MSA_right,
@@ -429,7 +544,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Extract the beginning and end columns of cropped MSA then join them by "----------".
     # Return MSA length, which will be used for plotting
     cropped_boundary_plot_select_start_end_and_joint, sequence_len = select_start_end_and_join(
-        cropped_alignment_output_file_no_gap, output_dir, cropped_boundary.start_post, cropped_boundary.end_post
+        cropped_alignment_output_file_g, output_dir, cropped_boundary.start_post, cropped_boundary.end_post
     )
 
     # "column_mapping" is a dictionary, the key represent cropped nucleotide position. The value represent the

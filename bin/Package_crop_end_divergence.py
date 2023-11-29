@@ -36,8 +36,8 @@ class CropEnd:
 
     def pro_calculation(self):
         """
-        :function pro_calculation: calculate nucleotides proporation at each column per sequence
-        :return: a data frame contains all sequence names and nucleotide proporation information
+        :function pro_calculation: calculate nucleotides proportion at each column per sequence
+        :return: a data frame contains all sequence names and nucleotide proportion information
         """
         # Loop through each column of the alignment
         for i in range(self.alignment.get_alignment_length()):
@@ -99,7 +99,6 @@ class CropEnd:
 
     def crop_alignment(self):
         # Create a new list to hold the cropped sequences
-
         # Loop through each sequence in the alignment
         for record in self.alignment:
             # Create a new string with the cropped sequence
@@ -128,6 +127,7 @@ class CropEnd:
         overall_average = average_proportions.mean()
 
         return average_proportions, overall_average
+
     def write_to_file(self, output_dir):
         output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_ce.fa")
         with open(output_file, "w") as f:

@@ -3,7 +3,7 @@ from Bio import AlignIO
 import os
 
 
-class DefineBoundary():
+class DefineBoundary:
 
     def __init__(self, input_file, threshold=0.8, check_window=200, max_X=0.25, if_con_generater=True,
                  extension_stop_num=150):
@@ -24,15 +24,15 @@ class DefineBoundary():
         self.cut_seqs = []
         self.extension_stop_num = extension_stop_num
         if if_con_generater:  # Default to use normal consensus sequence generation method
-            self.con_generater()
+            self.con_generator()
             self.boundary_position()
             self.extension_check()
         else:  # Otherwise, ues consensus generation method that have minimum sequence requirement for each column
-            self.con_generater_select_column()
+            self.con_generator_select_column()
             self.boundary_position()
             self.extension_check()
 
-    def con_generater(self):
+    def con_generator(self):
         # Read input file
         self.alignment = AlignIO.read(self.input_file, "fasta")
         summary = AlignInfo.SummaryInfo(self.alignment)
@@ -40,7 +40,7 @@ class DefineBoundary():
         self.consensus_seq = list(summary.dumb_consensus(threshold=self.threshold, ambiguous=self.ambiguous).upper())
 
     # Generate consensus sequences
-    def con_generater_select_column(self):
+    def con_generator_select_column(self):
         """
         Generate consensus sequence when the column have more than 5 nucleotides. For columns with less than 5 nucleotides
         give ambiguous letter
@@ -57,7 +57,8 @@ class DefineBoundary():
             nucleotide_counts = {nucleotide: column.count(nucleotide) for nucleotide in set(column) if nucleotide in self.nucl}
 
             # Check if the column has at least 5 nucleotides and is greater than one tenth of alignment sequence number
-            if sum(nucleotide_counts.values()) < 5 or sum(nucleotide_counts.values()) <= round(len(self.alignment) / 10):
+            #if sum(nucleotide_counts.values()) < 5 or sum(nucleotide_counts.values()) <= round(len(self.alignment) / 10):
+            if sum(nucleotide_counts.values()) < 5:
                 self.consensus_seq[i] = self.ambiguous  # if column has fewer than 5 nucleotides, mark as ambiguous
         # Convert list to a string by join function
         self.consensus_seq = "".join(self.consensus_seq)
@@ -116,19 +117,12 @@ class DefineBoundary():
 
         # Ensure the start position is within the sequence range
         start_col = max(self.start_post - crop_extension, 0)
-
         # Ensure the end position is within the sequence range
         end_col = min(self.end_post + crop_extension, MSA_len)
-
         # Select the window columns from the alignment
         selected_alignment = self.alignment[:, start_col:end_col]
-
         # Create a new MultipleSeqAlignment object with the selected alignment
         selected_alignment = MultipleSeqAlignment(selected_alignment)
-
-        # Create a new MultipleSeqAlignment object with the cut sequences
-        selected_alignment = MultipleSeqAlignment(selected_alignment)
-
         # Write the cut MSA to a file
         output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_bc.fa")
 

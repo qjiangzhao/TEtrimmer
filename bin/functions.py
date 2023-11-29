@@ -10,6 +10,7 @@ from Bio.Align import MultipleSeqAlignment, AlignInfo
 import pandas as pd
 import pandas.errors
 from seqclass import SeqObject
+import numpy as np
 
 
 def calculate_genome_length(genome_file):
@@ -324,7 +325,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
     fasta_out_flank_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_{left_ex}_{right_ex}.fa")
 
     fasta_out_flank_file_nucleotide_clean = os.path.join(output_dir,
-                                                         f"{os.path.basename(input_file)}_{left_ex}_{right_ex}_cl.fa")
+                                                         f"{os.path.basename(input_file)}_{left_ex}_{right_ex}_bcl.fa")
     bed_cmd = f"bedtools slop -s -i {input_file} -g {genome_file}.length -l {left_ex} -r {right_ex} > {bed_out_flank_file_dup}"
 
     subprocess.run(bed_cmd, shell=True, check=True)
@@ -385,7 +386,6 @@ def align_sequences(input_file, output_dir):
     return fasta_out_flank_mafft_file
 
 
-
 def muscle_align(input_file, output_dir, ite_times=4):
     output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_maln.fa")
     muscle_cmd = ["muscle", "-maxiters", str(ite_times), "-in", input_file, "-out", output_file]
@@ -396,7 +396,6 @@ def muscle_align(input_file, output_dir, ite_times=4):
     if result.returncode != 0:
         return False
         # raise Exception(f"Muscle command failed with error: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
-
     # Convert the sequences in the output file to lowercase
     sequences = list(SeqIO.parse(output_file, "fasta"))
     for seq in sequences:
@@ -432,6 +431,58 @@ def con_generater_no_file(input_file, threshold=0.8, ambiguous="N"):
 
     # Return the consensus sequence string
     return consensus_seq_str
+
+
+def calc_proportion(input_file):
+    # Read input file
+    alignment = AlignIO.read(input_file, "fasta")
+    max_props = []
+
+    # Loop through each column of the alignment
+    for i in range(alignment.get_alignment_length()):
+        counts = {"a": 0, "c": 0, "g": 0, "t": 0}
+        for record in alignment:
+            nucleotide = record.seq[i].lower()
+            if nucleotide in counts:
+                counts[nucleotide] += 1
+
+        # Calculate the proportion of each nucleotide
+        total = sum(counts.values())
+        proportions = {nucleotide: count / total for nucleotide, count in counts.items()}
+        max_props.append(max(proportions.values()))  # Append the maximum proportion
+
+    return np.array(max_props)  # Convert the list to a NumPy array and return it
+
+
+# Function help to define the threshold of crop end by similarity
+def define_crop_end_simi_thr(input_file, window_size=40, max_steps=100):
+    array = calc_proportion(input_file)
+    array_length = len(array)
+    start_sum = 0
+    end_sum = 0
+    steps = 0
+
+    # Determine the range for sliding windows
+    if array_length < 2 * max_steps:
+        iteration_range = range(array_length // 2)
+    else:
+        iteration_range = range(max_steps)
+
+    # Calculate sum for start and end sliding windows
+    for i in iteration_range:
+        # Start window
+        start_window = array[i:i + window_size]
+        start_sum += np.sum(start_window)
+
+        # End window
+        end_window = array[-(i + window_size): -i if i != 0 else None]
+        end_sum += np.sum(end_window)
+
+        steps += 1
+
+    # Calculate mean of the sum of proportions
+    mean_sum = (start_sum + end_sum) / (steps * 2)
+    return mean_sum
 
 
 def calc_conservation(col):
@@ -648,8 +699,8 @@ def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_thresh
         return fasta_out_flank_mafft_gap_filter_file
 
 
-def remove_gaps_with_similarity_check(input_file, output_dir, gap_threshold=0.8,
-                                      simi_check_gap_thre=0.4, similarity_threshold=0.7, min_nucleotide=5):
+def remove_gaps_with_similarity_check(input_file, output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
+                                      similarity_threshold=0.7, min_nucleotide=5, return_map=False):
     """
     Remove gaps when gap percentage is bigger than threshold. Remove columns when nucleotide number is less than 5.
     When gap percentage is equal or bigger than "simi_check_gap_thre". It will calculate most abundant nucleotide
@@ -672,8 +723,8 @@ def remove_gaps_with_similarity_check(input_file, output_dir, gap_threshold=0.8,
 
     column_mapping = {}  # Stores the mapping of column indices from filtered MSA to original MSA
 
-    if len(MSA_mafft) < 5:
-        raise ValueError("Number of sequences is less than 5. Cannot remove gaps.")
+    #if len(MSA_mafft) < 5:
+        #raise ValueError("Number of sequences is less than 5. Cannot remove gaps.")
 
     for col_idx in range(MSA_mafft.get_alignment_length()):
         col = MSA_mafft[:, col_idx]
@@ -716,7 +767,11 @@ def remove_gaps_with_similarity_check(input_file, output_dir, gap_threshold=0.8,
     # Write the filtered MSA to the output file
     with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
         AlignIO.write(MSA_mafft_filtered, f, 'fasta')
-    return fasta_out_flank_mafft_gap_filter_file
+
+    if return_map:
+        return fasta_out_flank_mafft_gap_filter_file, column_mapping
+    else:
+        return fasta_out_flank_mafft_gap_filter_file
 
 
 def remove_gaps_block_with_similarity_check(input_file, output_dir, gap_threshold=0.8,
@@ -951,6 +1006,25 @@ def select_gaps_block_with_similarity_check(input_file,
         return flat_keep_blocks
     else:
         return False
+
+
+# Select MSA columns according to the given star and end position
+def select_star_to_end(input_file, output_dir, start, end):
+    alignment = AlignIO.read(input_file, "fasta")
+    MSA_len = alignment.get_alignment_length()
+    # Ensure the start position is within the sequence range
+    start = max(start, 0)
+    # Ensure the end position is within the sequence range
+    end = min(end, MSA_len)
+    # Select the window columns from the alignment
+    select_alignment = alignment[:, start:end]
+    # Create MultipleSeqAlignment object with the select alignment
+    select_alignment_object = MultipleSeqAlignment(select_alignment)
+    # Define the output file
+    output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_se.fa")
+    AlignIO.write(select_alignment_object, output_file, "fasta")
+
+    return output_file
 
 
 def select_start_end_and_join(input_file, output_dir, start, end, window_size=50):
@@ -1393,3 +1467,82 @@ def classify_single(consensus_fasta):
     seq_TE_type = record.id.split("#")[-1]
 
     return seq_TE_type
+
+
+def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None):
+
+    # Read input file and get sequence length
+    record = SeqIO.read(input_file, "fasta")
+    record_len = len(record.seq)
+
+    if if_blast or blast_out is None:
+        os.makedirs(output_dir, exist_ok=True)
+        database_file = os.path.join(output_dir, "Tem_blast_database")
+        makeblastdb_cmd = f"makeblastdb -in {input_file} -dbtype nucl -out {database_file}"
+        subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        blast_cmd = f"blastn -query {input_file} -db {database_file} " \
+                    f"-outfmt \"6 qseqid qstart qend sstart send \" " \
+                    f"-evalue 0.05"  # Set higher evalue for self-blast
+
+        # Execute the command
+        result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        # If there is an error, print it
+        if result.returncode != 0:
+            click.echo(
+                f"An error occurred self blast: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
+            return
+        else:
+            blast_out = result.stdout.decode('utf-8')
+
+            # Define blast out file
+            blast_out_file = os.path.join(output_dir, "tem_blast_out.txt")
+
+            with open(blast_out_file, 'w') as f:
+
+                # Give a header to blast result
+                f.write("qseqid\tqstart\tqend\tsstart\tsend\n")
+                f.write(blast_out)
+    else:
+        blast_out_file = blast_out
+
+    df = pd.read_csv(blast_out_file, sep="\t", header=None, skiprows=1)
+
+    df_LTR = df[(df[2] - df[1] >= 150) & (df[1] != df[3]) & (df[2] != df[4]) & (df[3] < df[4]) & (df[3] > df[1])].copy()
+
+    if not df_LTR.empty:
+        df_LTR["5"] = df[4] - df[1]
+        df_LTR.reset_index(drop=True, inplace=True)
+
+        # Find the row with the largest difference
+        LTR_largest = df_LTR.iloc[df_LTR["5"].idxmax()]
+
+        # Check if the terminal repeat spans the most part of the query sequence. Because the query is after extension,
+        # assuming the maximum redundant extension for left and right side are both 2000.
+        if abs(LTR_largest[4] - LTR_largest[1]) >= (record_len - 4000):
+            # Because blast use index start from 1, modify the start position
+            LTR_boundary = [LTR_largest[1] - 1, LTR_largest[4]]
+        else:
+            LTR_boundary = None
+    else:
+        LTR_boundary = None
+
+    df_TIR = df[(df[2] - df[1] >= 50) & (df[1] != df[3]) & (df[2] != df[4]) & (df[3] > df[4]) & (df[4] > df[1])].copy()
+
+    if not df_TIR.empty:
+        df_TIR["5"] = df[3] - df[1]
+        df_TIR.reset_index(drop=True, inplace=True)
+
+        # Same like LTR check the terminal repeat spanning region
+        TIR_largest = df_TIR.iloc[df_TIR["5"].idxmax()]
+        if abs(TIR_largest[3] - TIR_largest[1]) >= (record_len - 2000):
+            TIR_boundary = [TIR_largest[1] - 1, TIR_largest[3]]
+        else:
+            TIR_boundary = None
+    else:
+        TIR_boundary = None
+
+    return LTR_boundary, TIR_boundary
+
+
