@@ -185,9 +185,6 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         bed_out_file = check_bed_uniqueness(MSA_dir, bed_out_file_dup)
 
         # test bed_out_file line number and extract top longest lines
-        # return bed_out_filter_file absolute path
-        # bed_out_filter = BEDFile(bed_out_file)
-
         # for process_lines() function. threshold represent the maximum number to keep for MSA
         # top_longest_lines_count means the number of sequences with top length
         # for example if threshold = 100, top_longest_lines_count = 50, then 50 sequences will be
@@ -200,7 +197,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         # return fasta_out_flank_file absolute path
         # because have to group MSA the first round extend for left and right side are both 0
         fasta_out_flank_file, bed_out_flank_file = extract_fasta(
-            bed_out_filter_file, genome_file, MSA_dir, left_ex=0, right_ex=0)
+            bed_out_filter_file, genome_file, MSA_dir, left_ex=0, right_ex=0, nameonly=True)
 
         # Return False when cluster number is 0. Return True when divergent column number is smaller than 100
         # Otherwise it will return the subset bed and alignment file
@@ -216,9 +213,13 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             f.write(tb_content + '\n\n')
         click.echo(f"\nError when group MSA for sequence: {seq_name}. Error: {str(e)}\n")
         return
+    
+    #####################################################################################################
+    # Code block: perform find_boundary_and_crop on clustered MSA when necessary
+    #####################################################################################################
 
     try:
-        # cluster false means no cluster, TE Trimmer will skip this sequence.
+        # cluster false means no sufficient cluster (all cluster size < 10), TE Trimmer will skip this sequence.
         if cluster_MSA_result is False:
             check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
                 seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=plot_skip)
@@ -241,30 +242,6 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
             return
 
-        # Cluster True means not necessary to cluster MSA, perform find_boundary_and_crop directly
-        elif cluster_MSA_result is True:
-            find_boundary_result = find_boundary_and_crop(
-                bed_out_filter_file, genome_file, MSA_dir, pfam_dir, seq_obj, hmm,
-                classify_all, classify_unknown, error_files, plot_query,
-                cons_threshold=cons_thr, ext_threshold=ext_thr,
-                ex_step_size=ex_step, max_extension=max_extension,
-                gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
-                crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
-                crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
-                start_patterns=start_patterns, end_patterns=end_patterns, mini_orf=mini_orf,
-                define_boundary_win=check_extension_win, fast_mode=fast_mode, engine=engine
-            )
-            if find_boundary_result == "Short_sequence":
-                click.echo(f"\n{seq_name} is skipped due to too short length\n")
-
-                handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir)
-
-                return False
-
-            elif not find_boundary_result:  # This means the errors happen in the function
-                return
-
-        # else means need cluster
         else:
             cluster_bed_files_list = cluster_MSA_result
 
@@ -272,60 +249,23 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             all_inner_skipped = True
             for i in range(len(cluster_bed_files_list)):
 
-                # Based on the bed file list, extract fasta file
-                inner_fasta_out_flank_file, inner_bed_out_flank_file = extract_fasta(
-                    cluster_bed_files_list[i], genome_file, MSA_dir, left_ex=0, right_ex=0)
+                inner_find_boundary_result = find_boundary_and_crop(
+                    cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
+                    hmm, classify_all, classify_unknown, error_files, plot_query, cons_threshold=cons_thr,
+                    ext_threshold=ext_thr, ex_step_size=ex_step, max_extension=max_extension,
+                    gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
+                    crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
+                    crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
+                    start_patterns=start_patterns, end_patterns=end_patterns,
+                    mini_orf=mini_orf, define_boundary_win=check_extension_win,
+                    fast_mode=fast_mode, engine=engine)
 
-                inner_cluster_MSA_result = clean_and_cluster_MSA(inner_fasta_out_flank_file,
-                                                                 cluster_bed_files_list[i], MSA_dir,
-                                                                 clean_column_threshold=0.08,
-                                                                 min_length_num=min_seq_num,
-                                                                 cluster_num=max_cluster_num,
-                                                                 cluster_col_thr=100, fast_mode=fast_mode)
-                # inner_cluster_MSA_result is false means this cluster sequence number is too less
-                if inner_cluster_MSA_result is False:
+                if inner_find_boundary_result == "Short_sequence":
                     continue
-                elif inner_cluster_MSA_result is True:  # Means don't need to cluster
-
-                    inner_find_boundary_result = find_boundary_and_crop(
-                        cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
-                        hmm, classify_all, classify_unknown, error_files, plot_query, cons_threshold=cons_thr,
-                        ext_threshold=ext_thr, ex_step_size=ex_step, max_extension=max_extension,
-                        gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
-                        crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
-                        crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
-                        start_patterns=start_patterns, end_patterns=end_patterns,
-                        mini_orf=mini_orf, define_boundary_win=check_extension_win,
-                        fast_mode=fast_mode, engine=engine)
-
-                    if inner_find_boundary_result == "Short_sequence":
-                        continue
-                    elif inner_find_boundary_result:
-                        all_inner_skipped = False
-                    elif not inner_find_boundary_result:  # This means the errors happen in the function
-                        continue
-
-                else:
-                    inner_cluster_bed_files_list = inner_cluster_MSA_result
-
-                    for j in range(len(inner_cluster_bed_files_list)):
-                        inner_inner_find_boundary_result = find_boundary_and_crop(
-                            inner_cluster_bed_files_list[j], genome_file, MSA_dir,
-                            pfam_dir, seq_obj, hmm, classify_all, classify_unknown, error_files, plot_query,
-                            cons_threshold=cons_thr, ext_threshold=ext_thr,
-                            ex_step_size=ex_step, max_extension=max_extension,
-                            gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
-                            crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
-                            crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
-                            start_patterns=start_patterns, end_patterns=end_patterns,
-                            mini_orf=mini_orf, define_boundary_win=check_extension_win,
-                            fast_mode=fast_mode, engine=engine)
-                        if inner_inner_find_boundary_result == "Short_sequence":
-                            continue
-                        elif inner_inner_find_boundary_result:
-                            all_inner_skipped = False
-                        elif not inner_inner_find_boundary_result:  # This means the errors happen in the function
-                            continue
+                elif inner_find_boundary_result:
+                    all_inner_skipped = False
+                elif not inner_find_boundary_result:  # This means the errors happen in the function
+                    continue
 
             # Check the flag after the loop. If all inner clusters were skipped, write the progress file
             if all_inner_skipped:
@@ -343,8 +283,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
                                             plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
                     click.echo(
-                        f"\n{seq_name} is skipped due to sequence number in second round each cluster is "
-                        f"smaller than {min_seq_num} or the sequence is too short and check_low_copy is {check_low_copy}\n")
+                        f"\n{seq_name} is skipped due to sequence is too short and check_low_copy is {check_low_copy}\n")
                 return
 
     except Exception as e:

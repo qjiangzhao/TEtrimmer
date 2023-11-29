@@ -1,5 +1,6 @@
 import os.path
 from Bio import AlignIO
+from Bio import Phylo
 import pandas as pd
 import numpy as np
 import subprocess
@@ -12,16 +13,153 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import os
 from ete3 import Tree
+from sklearn.cluster import DBSCAN
+import re
+
 
 
 from selectcolumns import CleanAndSelectColumn
 import functions as functions
 
+def calculate_tree_dis(input_file):
+    # Read the tree from a Newick file
+    tree = Phylo.read(input_file, "newick")
+    output_file = f"{input_file}.tdistance"
+    # Get all terminals (leaves) in the tree
+    terminals = tree.get_terminals()
+    num_terminals = len(terminals)
+
+    # Initialize an empty distance matrix with sequence names
+    distance_matrix = [[""] * (num_terminals + 1) for _ in range(num_terminals + 1)]
+
+    # Set the first row and column as sequence names
+    for i in range(1, num_terminals + 1):
+        distance_matrix[i][0] = terminals[i - 1].name
+        distance_matrix[0][i] = terminals[i - 1].name
+
+    # Calculate pairwise distances
+    for i in range(1, num_terminals + 1):
+        for j in range(1, num_terminals + 1):
+            # If i and j are equal, set distance to 1
+            if i == j:
+                distance_matrix[i][j] = 1
+            else:
+                # Calculate the total branch length between terminal nodes i and j
+                total_branch_length = tree.distance(terminals[i - 1], terminals[j - 1])
+
+                # Assign the calculated distance to the matrix
+                distance_matrix[i][j] = total_branch_length
+
+    # Write the distance matrix to a file
+    with open(output_file, "w") as f:
+        for row in distance_matrix:
+            f.write("\t".join(map(str, row)) + "\n")
+    return output_file
+
 
 def read_msa(input_file):
     """Read the MSA file"""
     return AlignIO.read(input_file, "fasta")
+    
+def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=False):
+    # this function uses iqtree to separate alignment into branches and then do dbscan_cluster on seqeunces based on maximunm likelihood tree distance
+    # dependencies: calculate_tree_dis, dbscan_cluster
+    # temp using K2P+I
+    iqtree_command = ["iqtree",
+                      "-m",
+                      "K2P+I",
+                      "-s", 
+                      alignment]
+    result = subprocess.run(iqtree_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    treefile = f"{alignment}.treefile"
+    distance_file = calculate_tree_dis(treefile)
+    cluster, sequence_names = dbscan_cluster(distance_file)
+    # map sequence_names name to cluster 
+    sequence_cluster_mapping = dict(zip(sequence_names, cluster))
+    # Use Counter to count occurrences
+    counter = Counter(cluster)
+    # Find cluster with size > min_cluster_size
+    filter_cluster = [element for element, count in counter.items() if count > min_cluster_size]
+    top_cluster = Counter({element: count for element, count in counter.items() if element in filter_cluster}).most_common
+    # If there are multiple cluster, pick the top max_cluster
+    if max_cluster:
+        top_cluster = top_cluster(max_cluster)
+    else:
+        top_cluster = top_cluster()
+    # Find the seq name in selected cluster
+    seq_cluster_list = []
+    if len(top_cluster) > 0:
+        for i in top_cluster:
+            # Extract sequence id for each cluster
+            seq_records = [sequence for sequence, cluster_label in sequence_cluster_mapping.items() if cluster_label == i[0]]
+            seq_cluster_list.append(seq_records)
+    
+    # if no cluster has size < 10, there is no cluster, skip this sequence
+    # if only one cluster has size >10, there is only one cluster, outliers are potentially filtered out
+    # if multiple clusters has size >10, multiple cluster
+    if_cluster = (len(seq_cluster_list)>0)
+    return seq_cluster_list, if_cluster
 
+def dbscan_cluster(input):
+    # Read the distance matrix from the file
+    with open(input, "r") as f:
+        lines = f.readlines()
+
+    # Extract distance values
+    distance_values = []
+    sequence_names = []  # Add this line to store sequence names
+    for line in lines[1:]:
+        values = line.strip().split("\t")
+        sequence_names.append(values[0])  # Assuming the sequence name is in the first column
+        float_values = [float(value) for value in values[1:]]  # Adjust the index based on your data
+        distance_values.append(float_values)
+        
+    # Convert distance values to a NumPy array
+    X = np.array(distance_values, dtype=np.float64)
+
+    # Replace NaN values with a large number
+    X[np.isnan(X)] = np.nanmax(X) + 1
+
+    # Apply DBSCAN clustering with the recommended eps value
+    dbscan = DBSCAN(eps=0.1, min_samples=2, metric="precomputed")
+    labels = dbscan.fit_predict(X)
+    return labels, sequence_names
+
+def process_labels(input_file, filtered_cluster_records):
+    """
+    during the iqtree process, the sequence name is modified to remove special characters
+    this step extract bed info based on the index of sequence name in bedfile created by nameOnly
+    :param input_file: str, the absolute path of bed file
+    :return: a list contain the clustered bed files
+    """
+    bed_dfs = []
+    bed_df = pd.read_csv(input_file, sep='\t', header=None)
+    for cluster in filtered_cluster_records:
+        # Use regular expression to find all numbers
+        ids = [re.findall(r'\d+', seq_id)[0] for seq_id in cluster]
+        # Convert the numbers to integers
+        ids = [int(num) for num in ids]
+        # select rows where the fourth column is in filter_cluster_records
+        cluster_df = bed_df[bed_df[3].isin(ids)]
+        bed_dfs.append(cluster_df)
+
+    return bed_dfs
+
+def subset_bed_file(input_file, bed_dfs, output_dir):
+    """
+    Subset the give bed files by clusters
+    :param input_file: str, the absolute path of bed file
+    :return: a list contain the clustered bed files
+    """
+
+    output_file_list = []
+
+    for i, df in enumerate(bed_dfs):
+        output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_g_{i + 1}.bed")
+        df.to_csv(output_file, sep='\t', header=False, index=False)
+        output_file_list.append(output_file)
+
+    return output_file_list
 
 def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, clean_column_threshold=0.08,
                           min_length_num=10, cluster_num=2, cluster_col_thr=500, muscle_ite_times=4, fast_mode=False):
@@ -75,194 +213,31 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
         this function will return a list contain all cluster file absolute path
         """
 
-        filtered_cluster_records, if_cluster = cluster_msa(pattern_alignment,
+        filtered_cluster_records, if_cluster = cluster_msa_iqtree_DBSCAN(pattern_alignment,
                                                            min_cluster_size=min_length_num,
                                                            max_cluster=cluster_num)
-
-        # Test if silhouette_scores is high enough to perform cluster
+    # if false, meaning no enough divergent column for cluster
+    # Do full length alignment cluster and only keep the biggest cluster
+    else:
+        print (f"{bed_file} divergent column <100, use full length alignment")
+        filtered_cluster_records, if_cluster = cluster_msa_iqtree_DBSCAN(fasta_out_flank_mafft_file,
+                                                           min_cluster_size=min_length_num,
+                                                           max_cluster=cluster_num)
         if if_cluster:
-
-            """
-            Test if cluster number is 0, if so skip this sequence
-            If cluster is 0, that means no cluster has line numbers greater than "min_lines". In this case, 
-            it will be hard to still use multiple sequence alignment method to define consensus sequence.
-            that isn't to say this won't be a TE, but with less copy numbers. Low copy TE will also be checked later
-            """
-            if len(filtered_cluster_records) == 0:
-                return False
-            else:
-                # Subset bed file and return a list contain all clustered bed absolute files
-                cluster_bed_files_list = subset_bed_file(bed_file, filtered_cluster_records, output_dir)
-                return cluster_bed_files_list
-        else:
-            return True
-
+            # keep the biggest cluster only
+            filtered_cluster_records = [max(filtered_cluster_records, key=len)]
+    if if_cluster:
+        # Subset bed file and return a list contain all clustered bed absolute files
+        bed_dfs = process_labels(bed_file, filtered_cluster_records)
+        cluster_bed_files_list = subset_bed_file(bed_file, bed_dfs, output_dir)
+        return cluster_bed_files_list
     else:
-        return True
-
-
-def calculate_distance_matrix(alignment):
-    calculator = DistanceCalculator('identity')
-    dm = calculator.get_distance(alignment)
-    return np.array(dm)
-
-
-def cluster_msa(alignment, min_cluster_size=10, max_cluster=False):
-    alignment = read_msa(alignment)
-    distance_matrix = calculate_distance_matrix(alignment)
-    cluster_range = range(2, 6)
-    # Initialize variables to track the best cluster
-    best_silhouette_score = -1
-    best_cluster_assignments = None
-    best_cluster_num = None
-
-    for n_clusters in cluster_range:
-        kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
-        cluster_assignments = kmeans.fit_predict(distance_matrix)
-        silhouette_score_value = silhouette_score(distance_matrix, cluster_assignments)
-        # Calculate the Silhouette Score for the current clustering
-        # Update the best cluster if the current score is higher
-        if silhouette_score_value > best_silhouette_score:
-            best_silhouette_score = silhouette_score_value
-            best_cluster_assignments = cluster_assignments
-            best_cluster_num = n_clusters
-
-    if best_silhouette_score < 0.6:
-        return None, False
-
-    cluster_recording_list = []
-    for i in range(best_cluster_num):
-        # Get line numbers for each clusters
-        cluster_indices = [index for index, label in enumerate(best_cluster_assignments) if label == i]
-        # Extract sequence id for each cluster
-        cluster_records = [record.id for index, record in enumerate(alignment) if index in cluster_indices]
-        cluster_recording_list.append(cluster_records)
-    # Filter out cluster with less than min_cluster_size sequences
-    filtered_cluster_records = [cluster for cluster in cluster_recording_list if len(cluster) >= min_cluster_size]
-    # Sort the filtered_groups by the number of lines in each group, in descending order
-    filtered_cluster_records.sort(key=len, reverse=True)
-
-    if max_cluster:
-        filtered_cluster_records = filtered_cluster_records[:max_cluster]
-
-    return filtered_cluster_records, True
-
-def processable_node(node):
-    if node.dist > 0.1:
-       if len(node)>=10:
-        return True
-    else:
-       return False
-
-def cut_branch(leaf, cluster):
-    has_long_branch = False
-    # check if any branch >0.1
-    for n in leaf.iter_descendants("levelorder"):
-        if n.dist > 0.1:
-            has_long_branch = True
-            break
-    # base call
-    if not has_long_branch or len(leaf)<10:
-        if len(leaf) >= 10:
-            cluster.append(leaf)
-        return cluster
-    else:
-        for n in leaf.iter_descendants("postorder"):
-            if n.dist > 0.1:
-                # detach n from the current subtree
-                removed_node = n.detach()
-                if len(removed_node) >= 10:
-                    cluster.append(n)
-                break
-        # recursion
-        return cut_branch(leaf, cluster)
-    
-def cluster_msa_iqtree(alignment, min_cluster_size=10, max_cluster=False):
-    # this function uses iqtree to separate alignment into branches and cut branch when length is >0.1
-    iqtree_command = ["iqtree", "-s", alignment]
-    result = subprocess.run(iqtree_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    treefile = f"{alignment}.treefile"
-    print (treefile)
-    t = Tree(treefile)
-    # check if any branch longer than 0.1
-    long_branch = t.iter_leaves(is_leaf_fn=processable_node)
-    if len(list(long_branch)) == 0:
-        print ("no need to cluster")
-    else:
-        # # Calculate the midpoint node, sometime this makes the long branch more obvious
-        # R = t.get_midpoint_outgroup()
-        # # and set it as tree outgroup
-        # t.set_outgroup(R)
-        cluster = []
-        # we want get all deepest nodes in a tree whose branch length >0.1
-        for leaf in t.iter_leaves(is_leaf_fn=processable_node):
-            # for each subtree, look for branch >0.1 again
-            subcluster = []
-            newcluster = cut_branch(leaf, subcluster)
-            if newcluster:
-                cluster = cluster + newcluster
-        if len(cluster) == 0:
-            print ("no need to cluster")
-            
-        else:
-            print ("cluster")
-            for i in cluster:
-                print (len(i))
-        error_output = result.stderr.decode("utf-8")
-        if error_output:
-            click.echo(f"Error executing RepeatMasker command{error_output}\n.")
-            return False
-
-        else:
-            return True
-
-
-def subset_bed_file(input_file, filtered_cluster_records, output_dir):
-    """
-    Subset the give bed files by clusters
-    :param input_file: str, the absolute path of bed file
-    :return: a list contain the clustered bed files
-    """
-    bed_dfs = []
-    bed_df = pd.read_csv(input_file, sep='\t', header=None)
-
-    for cluster in filtered_cluster_records:
-        ids = [seq_id.rstrip("+-()") for seq_id in cluster]  # Remove (-) or (+) from ids
-        cluster_df = bed_df[bed_df.apply(lambda row: f"{row[0]}:{row[1]}-{row[2]}" in ids, axis=1)]
-        bed_dfs.append(cluster_df)
-
-    output_file_list = []
-
-    for i, df in enumerate(bed_dfs):
-        output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_g_{i + 1}.bed")
-        df.to_csv(output_file, sep='\t', header=False, index=False)
-        output_file_list.append(output_file)
-
-    return output_file_list
-
-
-def subset_alignment_intact(input_file, filtered_cluster_records, output_dir):
-    """
-    According to clusters, subset input_file to different clusters
-    :param input_file: str, the absolute path of input MSA file, which is used to generate pattern MSA file.
-    :return: a list contains absolute paths of cluster MSA files
-    """
-    output_file_list = []
-    alignment_intact = AlignIO.read(input_file, "fasta")
-
-    for i, cluster in enumerate(filtered_cluster_records):
-        output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_g_{i + 1}.fa")
-        with open(output_file, 'w') as file:
-            for seq_id in cluster:
-                record = [seq for seq in alignment_intact if seq.id == seq_id]
-                if record:
-                    record = record[0]
-                    file.write(f'>{record.id}\n')
-                    file.write(f'{record.seq}\n')
-        output_file_list.append(output_file)
-
-    return output_file_list
-
+        """
+        if cluster = False, it means no cluster has line numbers greater than "min_lines". In this case, 
+        it will be hard to still use multiple sequence alignment method to define consensus sequence.
+        that isn't to say this won't be a TE, but with less copy numbers. Low copy TE will also be checked later
+        """
+        return False
 
 #####################################################################################################
 # Code block: Plot MSA
