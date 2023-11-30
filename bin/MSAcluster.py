@@ -1,22 +1,166 @@
 import os.path
 from Bio import AlignIO
+from Bio import Phylo
 import pandas as pd
 import numpy as np
+import subprocess
+import click
 import matplotlib.pyplot as plt
 from collections import Counter
 from matplotlib.colors import ListedColormap
-from Bio.Phylo.TreeConstruction import DistanceCalculator
-from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
 import os
+from ete3 import Tree
+from sklearn.cluster import DBSCAN
+import re
 
 from selectcolumns import CleanAndSelectColumn
 import functions as functions
 
 
+def calculate_tree_dis(input_file):
+    # Read the tree from a Newick file
+    tree = Phylo.read(input_file, "newick")
+    output_file = f"{input_file}.tdistance"
+    # Get all terminals (leaves) in the tree
+    terminals = tree.get_terminals()
+    num_terminals = len(terminals)
+
+    # Initialize an empty distance matrix with sequence names
+    distance_matrix = [[""] * (num_terminals + 1) for _ in range(num_terminals + 1)]
+
+    # Set the first row and column as sequence names
+    for i in range(1, num_terminals + 1):
+        distance_matrix[i][0] = terminals[i - 1].name
+        distance_matrix[0][i] = terminals[i - 1].name
+
+    # Calculate pairwise distances
+    for i in range(1, num_terminals + 1):
+        for j in range(1, num_terminals + 1):
+            # If i and j are equal, set distance to 1
+            if i == j:
+                distance_matrix[i][j] = 1
+            else:
+                # Calculate the total branch length between terminal nodes i and j
+                total_branch_length = tree.distance(terminals[i - 1], terminals[j - 1])
+
+                # Assign the calculated distance to the matrix
+                distance_matrix[i][j] = total_branch_length
+
+    # Write the distance matrix to a file
+    with open(output_file, "w") as f:
+        for row in distance_matrix:
+            f.write("\t".join(map(str, row)) + "\n")
+    return output_file
+
+
 def read_msa(input_file):
     """Read the MSA file"""
     return AlignIO.read(input_file, "fasta")
+
+
+def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=False):
+    # this function uses iqtree to separate alignment into branches and then do dbscan_cluster on seqeunces
+    # based on maximunm likelihood tree distance
+    # dependencies: calculate_tree_dis, dbscan_cluster
+    # temp using K2P+I
+    iqtree_command = ["iqtree",
+                      "-m",
+                      "K2P+I",
+                      "-s", 
+                      alignment]
+    result = subprocess.run(iqtree_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    treefile = f"{alignment}.treefile"
+    distance_file = calculate_tree_dis(treefile)
+    cluster, sequence_names = dbscan_cluster(distance_file)
+    # map sequence_names name to cluster 
+    sequence_cluster_mapping = dict(zip(sequence_names, cluster))
+    # Use Counter to count occurrences
+    counter = Counter(cluster)
+    # Find cluster with size > min_cluster_size
+    filter_cluster = [element for element, count in counter.items() if count > min_cluster_size]
+    top_cluster = Counter({element: count for element, count in counter.items() if element in filter_cluster}).most_common
+    # If there are multiple cluster, pick the top max_cluster
+    if max_cluster:
+        top_cluster = top_cluster(max_cluster)
+    else:
+        top_cluster = top_cluster()
+    # Find the seq name in selected cluster
+    seq_cluster_list = []
+    if len(top_cluster) > 0:
+        for i in top_cluster:
+            # Extract sequence id for each cluster
+            seq_records = [sequence for sequence, cluster_label in sequence_cluster_mapping.items() if cluster_label == i[0]]
+            seq_cluster_list.append(seq_records)
+    
+    # if no cluster has size < 10, there is no cluster, skip this sequence
+    # if only one cluster has size >10, there is only one cluster, outliers are potentially filtered out
+    # if multiple clusters has size >10, multiple cluster
+    if_cluster = (len(seq_cluster_list)>0)
+    return seq_cluster_list, if_cluster
+
+
+def dbscan_cluster(input_file):
+    # Read the distance matrix from the file
+    with open(input_file, "r") as f:
+        lines = f.readlines()
+
+    # Extract distance values
+    distance_values = []
+    sequence_names = []  # Add this line to store sequence names
+    for line in lines[1:]:
+        values = line.strip().split("\t")
+        sequence_names.append(values[0])  # Assuming the sequence name is in the first column
+        float_values = [float(value) for value in values[1:]]  # Adjust the index based on your data
+        distance_values.append(float_values)
+        
+    # Convert distance values to a NumPy array
+    X = np.array(distance_values, dtype=np.float64)
+
+    # Replace NaN values with a large number
+    X[np.isnan(X)] = np.nanmax(X) + 1
+
+    # Apply DBSCAN clustering with the recommended eps value
+    dbscan = DBSCAN(eps=0.1, min_samples=2, metric="precomputed")
+    labels = dbscan.fit_predict(X)
+    return labels, sequence_names
+
+
+def process_labels(input_file, filtered_cluster_records):
+    """
+    during the iqtree process, the sequence name is modified to remove special characters
+    this step extract bed info based on the index of sequence name in bedfile created by nameOnly
+    :param input_file: str, the absolute path of bed file
+    :return: a list contain the clustered bed files
+    """
+    bed_dfs = []
+    bed_df = pd.read_csv(input_file, sep='\t', header=None)
+    for cluster in filtered_cluster_records:
+        # Use regular expression to find all numbers
+        ids = [re.findall(r'\d+', seq_id)[0] for seq_id in cluster]
+        # Convert the numbers to integers
+        ids = [int(num) for num in ids]
+        # select rows where the fourth column is in filter_cluster_records
+        cluster_df = bed_df[bed_df[3].isin(ids)]
+        bed_dfs.append(cluster_df)
+
+    return bed_dfs
+
+
+def subset_bed_file(input_file, bed_dfs, output_dir):
+    """
+    Subset the give bed files by clusters
+    :param input_file: str, the absolute path of bed file
+    :return: a list contain the clustered bed files
+    """
+
+    output_file_list = []
+
+    for i, df in enumerate(bed_dfs):
+        output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_g_{i + 1}.bed")
+        df.to_csv(output_file, sep='\t', header=False, index=False)
+        output_file_list.append(output_file)
+
+    return output_file_list
 
 
 def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, clean_column_threshold=0.08,
@@ -71,129 +215,35 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
         this function will return a list contain all cluster file absolute path
         """
 
-        filtered_cluster_records, if_cluster = cluster_msa(pattern_alignment,
-                                                           min_cluster_size=min_length_num,
-                                                           max_cluster=cluster_num)
-
-        # Test if silhouette_scores is high enough to perform cluster
-        if if_cluster:
-
-            """
-            Test if cluster number is 0, if so skip this sequence
-            If cluster is 0, that means no cluster has line numbers greater than "min_lines". In this case, 
-            it will be hard to still use multiple sequence alignment method to define consensus sequence.
-            that isn't to say this won't be a TE, but with less copy numbers. Low copy TE will also be checked later
-            """
-            if len(filtered_cluster_records) == 0:
-                return False
-            else:
-                # Subset bed file and return a list contain all clustered bed absolute files
-                cluster_bed_files_list = subset_bed_file(bed_file, filtered_cluster_records, output_dir)
-                return cluster_bed_files_list
-        else:
-            return True
-
+        filtered_cluster_records, if_cluster = cluster_msa_iqtree_DBSCAN(pattern_alignment,
+                                                                         min_cluster_size=min_length_num,
+                                                                         max_cluster=cluster_num)
+    # if false, meaning no enough divergent column for cluster
+    # Do full length alignment cluster and only keep the biggest cluster
     else:
-        return True
-
-
-def calculate_distance_matrix(alignment):
-    calculator = DistanceCalculator('identity')
-    dm = calculator.get_distance(alignment)
-    return np.array(dm)
-
-
-def cluster_msa(alignment, min_cluster_size=10, max_cluster=False):
-    alignment = read_msa(alignment)
-    distance_matrix = calculate_distance_matrix(alignment)
-    cluster_range = range(2, 6)
-    # Initialize variables to track the best cluster
-    best_silhouette_score = -1
-    best_cluster_assignments = None
-    best_cluster_num = None
-
-    for n_clusters in cluster_range:
-        kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
-        cluster_assignments = kmeans.fit_predict(distance_matrix)
-        silhouette_score_value = silhouette_score(distance_matrix, cluster_assignments)
-        # Calculate the Silhouette Score for the current clustering
-        # Update the best cluster if the current score is higher
-        if silhouette_score_value > best_silhouette_score:
-            best_silhouette_score = silhouette_score_value
-            best_cluster_assignments = cluster_assignments
-            best_cluster_num = n_clusters
-
-    if best_silhouette_score < 0.6:
-        return None, False
-
-    cluster_recording_list = []
-    for i in range(best_cluster_num):
-        # Get line numbers for each clusters
-        cluster_indices = [index for index, label in enumerate(best_cluster_assignments) if label == i]
-        # Extract sequence id for each cluster
-        cluster_records = [record.id for index, record in enumerate(alignment) if index in cluster_indices]
-        cluster_recording_list.append(cluster_records)
-    # Filter out cluster with less than min_cluster_size sequences
-    filtered_cluster_records = [cluster for cluster in cluster_recording_list if len(cluster) >= min_cluster_size]
-    # Sort the filtered_groups by the number of lines in each group, in descending order
-    filtered_cluster_records.sort(key=len, reverse=True)
-
-    if max_cluster:
-        filtered_cluster_records = filtered_cluster_records[:max_cluster]
-
-    return filtered_cluster_records, True
-
-
-def subset_bed_file(input_file, filtered_cluster_records, output_dir):
-    """
-    Subset the give bed files by clusters
-    :param input_file: str, the absolute path of bed file
-    :return: a list contain the clustered bed files
-    """
-    bed_dfs = []
-    bed_df = pd.read_csv(input_file, sep='\t', header=None)
-
-    for cluster in filtered_cluster_records:
-        ids = [seq_id.rstrip("+-()") for seq_id in cluster]  # Remove (-) or (+) from ids
-        cluster_df = bed_df[bed_df.apply(lambda row: f"{row[0]}:{row[1]}-{row[2]}" in ids, axis=1)]
-        bed_dfs.append(cluster_df)
-
-    output_file_list = []
-
-    for i, df in enumerate(bed_dfs):
-        output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_g_{i + 1}.bed")
-        df.to_csv(output_file, sep='\t', header=False, index=False)
-        output_file_list.append(output_file)
-
-    return output_file_list
-
-
-def subset_alignment_intact(input_file, filtered_cluster_records, output_dir):
-    """
-    According to clusters, subset input_file to different clusters
-    :param input_file: str, the absolute path of input MSA file, which is used to generate pattern MSA file.
-    :return: a list contains absolute paths of cluster MSA files
-    """
-    output_file_list = []
-    alignment_intact = AlignIO.read(input_file, "fasta")
-
-    for i, cluster in enumerate(filtered_cluster_records):
-        output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_g_{i + 1}.fa")
-        with open(output_file, 'w') as file:
-            for seq_id in cluster:
-                record = [seq for seq in alignment_intact if seq.id == seq_id]
-                if record:
-                    record = record[0]
-                    file.write(f'>{record.id}\n')
-                    file.write(f'{record.seq}\n')
-        output_file_list.append(output_file)
-
-    return output_file_list
-
+        print(f"{bed_file} divergent column <100, use full length alignment")
+        filtered_cluster_records, if_cluster = cluster_msa_iqtree_DBSCAN(
+            fasta_out_flank_mafft_file, min_cluster_size=min_length_num, max_cluster=cluster_num)
+        if if_cluster:
+            # keep the biggest cluster only
+            filtered_cluster_records = [max(filtered_cluster_records, key=len)]
+    if if_cluster:
+        # Subset bed file and return a list contain all clustered bed absolute files
+        bed_dfs = process_labels(bed_file, filtered_cluster_records)
+        cluster_bed_files_list = subset_bed_file(bed_file, bed_dfs, output_dir)
+        return cluster_bed_files_list
+    else:
+        """
+        if cluster = False, it means no cluster has line numbers greater than "min_lines". In this case, 
+        it will be hard to still use multiple sequence alignment method to define consensus sequence.
+        that isn't to say this won't be a TE, but with less copy numbers. Low copy TE will also be checked later
+        """
+        return False
 
 #####################################################################################################
 # Code block: Plot MSA
 #####################################################################################################
+
 
 def alignment_to_dataframe(alignment):
     """Convert the alignment to a DataFrame"""
@@ -345,79 +395,6 @@ def plot_msa(self, start_point, end_point):
     # Release memory for these dataframes
     del self.alignment_df
     del self.alignment_color_df
-
-
-def plot_msa(alignment_df, alignment_color_df, unique_bases, start_point, end_point, output_file, sequence_len):
-    """
-    Plot the heatmap
-    """
-    color_map = {"A": "#00CC00", "a": "#00CC00", "G": "#949494", "g": "#949494", "C": "#6161ff", "c": "#6161ff",
-                 "T": "#FF6666", "t": "#FF6666", "-": "#FFFFFF", np.nan: "#FFFFFF"}
-
-    palette = [color_map[base] for base in unique_bases]
-    cmap = ListedColormap(palette)
-
-    # Compute figure size: a bit less than number of columns / 5 for width, and number of rows / 3 for height
-    # In pandas, the DataFrame.shape attribute returns a tuple representing the dimensionality of the DataFrame.
-    # The tuple (r, c), where r represents the number of rows and c the number of columns.
-    # figsize = (max(1, self.alignment_df.shape[1] / 6), max(9, self.alignment_df.shape[0] / 3))
-    # Set a fixed height per sequence (e.g., 0.4 units per sequence)
-    height_per_sequence = 0.4
-    total_height = alignment_color_df.shape[0] * height_per_sequence
-
-    figsize = (max(1, alignment_color_df.shape[1] / 6), total_height)
-    # This function allows you to adjust several parameters that determine the size of the margins
-    # left: This adjusts the margin on the left side of the plot. A value of 0.1, for instance,
-    # means that the left margin will take up 10% of the total figure width.
-    # right: This adjusts the margin on the right side of the plot. A value of 0.95 means that the right
-    # margin starts at 95% of the figure width from the left. Essentially, it leaves a 5% margin on the right side.
-    plt.figure(figsize=figsize, facecolor='white')
-    plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.8)
-    plt.imshow(alignment_color_df, aspect='auto', cmap=cmap)
-    plt.box(False)  # Removing frame
-    plt.xticks([])  # Remove labels
-    plt.yticks([])  # Remove labels
-
-    """
-    plt.annotate() is a function from the matplotlib library that is used to add text annotations to a figure.
-    xy=(start_point, -0.5) specifies the point (x, y) that you want your arrow annotation to point to. 
-    xytext=(start_point, -3) specifies the position (x, y) to place the text.
-    arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05) is a dictionary containing properties of the arrow 
-    that is drawn from the text to the point. 
-    ha='center' specifies the horizontal alignment of the text annotation. 
-    color='r' sets the color of the text to red.
-    """
-    plt.annotate('Start crop Point', xy=(start_point, -0.5), xytext=(start_point, -3),
-                 arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05), ha='center', color='r')
-    plt.annotate('End crop Point', xy=(end_point, -0.5), xytext=(end_point, -3),
-                 arrowprops=dict(facecolor='blue', edgecolor='blue', shrink=0.05), ha='center', color='b')
-    # Use input file name as title
-    # title = os.path.basename(self.input_file)
-    # plt.title(title, y=1.05, fontsize=15)
-
-    # Add sequence len information to the plot
-    plt.text(start_point + 49, -1, f"MSA length = {str(sequence_len)}", ha='left', va='center', color='black', size=15,
-             weight="bold")
-    # Add the base letters
-    # (j, i) is a tuple representing the indices of each element in the array, and
-    # label is the value of the element at that position.
-    for (j, i), label in np.ndenumerate(alignment_df):
-        label = str(label).upper()
-        if palette[alignment_color_df.iloc[j, i]] == "#FFFFFF":
-            if label == "-":
-                text_color = "black"
-            else:
-                text_color = color_map.get(label, "black")  # Default to "black" if label is not found
-        else:
-            text_color = "black"
-
-        plt.text(i, j, label, ha='center', va='center', color=text_color, size=13)
-
-    plt.savefig(output_file, format='pdf', dpi=200)
-    plt.close()
-    # Release memory for these dataframes
-    del alignment_df
-    del alignment_color_df
 
 
 def process_msa(input_file, output_dir, start_point, end_point, sequence_len):

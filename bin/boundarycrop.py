@@ -21,7 +21,7 @@ from selectcolumns import CleanAndSelectColumn
 import checkpattern
 from TEaid import TEAid
 from orfdomain import PlotPfam, determine_sequence_direction
-from MSAcluster import clean_and_cluster_MSA, process_msa
+from MSAcluster import process_msa
 import cialign
 
 
@@ -235,7 +235,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
     bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
 
     if not os.path.isfile(bed_fasta_mafft_with_gap):
-        click.echo(f"{bed_file} has problem during mafft extension step")
+        click.echo(f"{bed_file} has problem during final mafft extension step")
         return False
 
     # Remove nucleotide whose proportion is smaller than threshold
@@ -413,61 +413,39 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     left_ex = ex_step_size
     right_ex = ex_step_size
-    final_MSA_consistent = False
-    intact_loop_times = 0
-
-    while not final_MSA_consistent and intact_loop_times < 2:
         
-        try: 
-            left_bed_dic = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir,
-                                      crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win, bed_dict)
+    try: 
+        left_bed_dic = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir,
+                                    crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win, bed_dict)
 
-            final_bed_dic = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir,
-                                       crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win,
-                                       left_bed_dic)
+        final_bed_dic = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir,
+                                   crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win,
+                                   left_bed_dic)
 
-            # Update bed file for final MSA
-            for key, value in final_bed_dic.items():
-                # Find rows where the fourth column matches the key and update position by dictionary value
-                df.loc[df[3] == key, [1, 2]] = value[:2]
+        # Update bed file for final MSA
+        for key, value in final_bed_dic.items():
+            # Find rows where the fourth column matches the key and update position by dictionary value
+            df.loc[df[3] == key, [1, 2]] = value[:2]
 
-            # Define bed file name for final MSA
-            bed_final_MSA = bed_file + "_fm.bed"
-            df.to_csv(bed_final_MSA, sep='\t', index=False, header=False)
+        # Define bed file name for final MSA
+        bed_final_MSA = bed_file + "_fm.bed"
+        df.to_csv(bed_final_MSA, sep='\t', index=False, header=False)
 
-            # if no error message, get final MSA
-            bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
-                column_mapping, bed_fasta_mafft_boundary_crop_for_select = \
-                final_MSA(bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold,
-                          ext_threshold, define_boundary_win,crop_end_gap_thr, crop_end_gap_win, crop_end_thr,
-                          crop_end_win)
-        except Exception as e:
-            with open(error_files, "a") as f:
-                # Get the traceback content as a string
-                tb_content = traceback.format_exc()
-                f.write(f"extend_end error\n")
-                f.write(tb_content + '\n\n')
-                click.echo(f"extend_end isn't working. {seq_name} left {left_ex} right {right_ex}")
-                return False
+        # if no error message, get final MSA
 
-        if not fast_mode:
-            final_MSA_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file, output_dir,
-                                                          clean_column_threshold=0.08, min_length_num=10,
-                                                          cluster_num=2, cluster_col_thr=250, fast_mode=fast_mode
-                                                          )
-
-            # False means the sequences number in each cluster is smaller than minimum number, normally 10
-            # True means not necessary to do further cluster
-            if final_MSA_consistency is False or final_MSA_consistency is True:
-                final_MSA_consistent = True
-
-            # else means that further clustering is required
-            else:
-                # Only use the first cluster for further analysis, which contains the most sequences
-                print(f"{seq_name} here")
-                new_bed_file = final_MSA_consistency[0]
-                bed_file = new_bed_file
-                intact_loop_times = intact_loop_times + 1
+        bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
+            column_mapping, bed_fasta_mafft_boundary_crop, bed_fasta_mafft_boundary_crop_for_select = \
+            final_MSA(bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold,
+                        ext_threshold, define_boundary_win,crop_end_gap_thr, crop_end_gap_win, crop_end_thr,
+                        crop_end_win)
+    except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"extend_end error\n")
+            f.write(tb_content + '\n\n')
+            click.echo(f"extend_end isn't working. {seq_name} left {left_ex} right {right_ex}")
+            return False
 
     #####################################################################################################
     # Code block: Check if the final MSA contains too many ambiguous letter "N"
