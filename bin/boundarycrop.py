@@ -29,6 +29,7 @@ def long_bed(input_file, output_dir):
     # calculate alignment length in column 6
     df = pd.read_csv(input_file, sep='\t', header=None)
 
+    """
     # Define a threshold for outlier removal
     threshold = 0.5
 
@@ -45,6 +46,8 @@ def long_bed(input_file, output_dir):
     # ~ is used to negate the condition, meaning you keep rows where the condition is not satisfied.
     filtered_df = df[~((abs(df['difference_from_mean']) > threshold * std_top_10_lengths)
                        & (df['difference_from_mean'] < 0))]
+    """
+    filtered_df = df
 
     # Conditionally update values in column 1 and column 2 for right extension
     # 1 adjusted to avoid error message "Error: malformed BED entry at line 91. Start was greater than end"
@@ -291,6 +294,10 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         bed_fasta_mafft_gap_sim_selected_cp_g, column_mapping = remove_gaps_with_similarity_check(
             bed_fasta_mafft_gap_sim_selected_cp, output_dir, return_map=True)
 
+        # Modify the dictionary to correspond with bed_fasta_mafft_gap_sim
+        for key in column_mapping:
+            column_mapping[key] += left
+
         """
         # Crop end by gap to make final MSA look better
         bed_fasta_mafft_gap_sim_selected_cp_g_cpg = CropEndByGap(bed_fasta_mafft_gap_sim_selected_cp_g,
@@ -312,7 +319,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=300)
 
         # Because for LINE element bed_fasta_mafft_boundary_crop will be changed. Copy it to the other variable
-        bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_gap_sim
+        bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_boundary_crop
 
         if "LINE" in bed_file:
             # For the high divergence region, more gaps can be found. According to this feature, remove high divergence
@@ -330,8 +337,6 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         cropped_boundary = DefineBoundary(cropped_alignment_output_file_g, threshold=0.8,
                                           check_window=4, max_X=0)
         cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
-
-    click.echo(column_mapping)
 
     return bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
         column_mapping, bed_fasta_mafft_boundary_crop_for_select
@@ -434,10 +439,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         # if no error message, get final MSA
 
         bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
-            column_mapping, bed_fasta_mafft_boundary_crop, bed_fasta_mafft_boundary_crop_for_select = \
-            final_MSA(bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold,
-                        ext_threshold, define_boundary_win,crop_end_gap_thr, crop_end_gap_win, crop_end_thr,
-                        crop_end_win)
+            column_mapping, bed_fasta_mafft_boundary_crop_for_select = final_MSA(
+            bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
+            define_boundary_win,crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win)
+
     except Exception as e:
         with open(error_files, "a") as f:
             # Get the traceback content as a string
@@ -488,20 +493,16 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     #####################################################################################################
     # Code block: Generate MSA for CIAlign plot
     #####################################################################################################
-    click.echo(bed_fasta_mafft_boundary_crop_for_select)
-    click.echo(column_mapping[cropped_boundary.start_post])
-    click.echo(column_mapping[cropped_boundary.end_post])
 
     # Get 300 columns left the start point
     cropped_boundary_manual_MSA_left = select_window_columns(
-        bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.start_post], "left", window_size=300
-    )
-
+        bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.start_post],
+        "left", window_size=300)
 
     # Get 300 columns right the end point
     cropped_boundary_manual_MSA_right = select_window_columns(
-        bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.end_post], "right", window_size=300
-    )
+        bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.end_post],
+        "right", window_size=300)
 
     # Concatenate MSA for manual curation
     # The concat_start and concat_end points correspond with cropped_boundary.start_post and cropped_boundary.end_post
@@ -836,7 +837,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     #               Terminal_repeat    Classified    MSA_sequence_number    Blast_full_length_number    if_PFAM
     # Perfect:      True               True          >=30                   >=5                         True
-    # Good:         True               Not_required  >=15                   >=3                         Not_required
+    # Good:         True               Not_required  >=10                   >=2                         Not_required
     # Reco_check    Not_required       Not_required  >=20                   >=2                         Not_required
     # Need_check    Not_required       Not_required  Not_required           Not_required                Not_required
 
@@ -848,8 +849,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         consi_obj.set_cons_evaluation("Perfect")
 
     elif (consi_obj.new_TE_terminal_repeat != "False" and
-          consi_obj.new_TE_MSA_seq_n >= 15 and
-          consi_obj.new_TE_blast_full_length_n >= 3):
+          consi_obj.new_TE_MSA_seq_n >= 10 and
+          consi_obj.new_TE_blast_full_length_n >= 2):
         consi_obj.set_cons_evaluation("Good")
 
     elif (consi_obj.new_TE_MSA_seq_n >= 20 and

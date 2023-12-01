@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 from collections import Counter
 from matplotlib.colors import ListedColormap
 import os
-from ete3 import Tree
 from sklearn.cluster import DBSCAN
+from sklearn.decomposition import PCA
 import re
 
 from selectcolumns import CleanAndSelectColumn
@@ -58,20 +58,22 @@ def read_msa(input_file):
     return AlignIO.read(input_file, "fasta")
 
 
-def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=False):
-    # this function uses iqtree to separate alignment into branches and then do dbscan_cluster on seqeunces
-    # based on maximunm likelihood tree distance
+def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=None):
+    # this function uses iqtree to separate alignment into branches and then do dbscan_cluster on sequences
+    # based on maximum likelihood tree distance
     # dependencies: calculate_tree_dis, dbscan_cluster
     # temp using K2P+I
     iqtree_command = ["iqtree",
                       "-m",
                       "K2P+I",
+                      "--seqtype",
+                      "DNA",
                       "-s", 
                       alignment]
     result = subprocess.run(iqtree_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     treefile = f"{alignment}.treefile"
     distance_file = calculate_tree_dis(treefile)
-    cluster, sequence_names = dbscan_cluster(distance_file)
+    cluster, sequence_names = dbscan_cluster(distance_file, pca=True)
     # map sequence_names name to cluster 
     sequence_cluster_mapping = dict(zip(sequence_names, cluster))
     # Use Counter to count occurrences
@@ -80,7 +82,7 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=False)
     filter_cluster = [element for element, count in counter.items() if count > min_cluster_size]
     top_cluster = Counter({element: count for element, count in counter.items() if element in filter_cluster}).most_common
     # If there are multiple cluster, pick the top max_cluster
-    if max_cluster:
+    if max_cluster is not None:
         top_cluster = top_cluster(max_cluster)
     else:
         top_cluster = top_cluster()
@@ -95,11 +97,11 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=False)
     # if no cluster has size < 10, there is no cluster, skip this sequence
     # if only one cluster has size >10, there is only one cluster, outliers are potentially filtered out
     # if multiple clusters has size >10, multiple cluster
-    if_cluster = (len(seq_cluster_list)>0)
+    if_cluster = (len(seq_cluster_list) > 0)
     return seq_cluster_list, if_cluster
 
 
-def dbscan_cluster(input_file):
+def dbscan_cluster(input_file, pca=False):
     # Read the distance matrix from the file
     with open(input_file, "r") as f:
         lines = f.readlines()
@@ -114,15 +116,57 @@ def dbscan_cluster(input_file):
         distance_values.append(float_values)
         
     # Convert distance values to a NumPy array
-    X = np.array(distance_values, dtype=np.float64)
+    distance_np = np.array(distance_values, dtype=np.float64)
 
     # Replace NaN values with a large number
-    X[np.isnan(X)] = np.nanmax(X) + 1
+    distance_np[np.isnan(distance_np)] = np.nanmax(distance_np) + 1
 
     # Apply DBSCAN clustering with the recommended eps value
     dbscan = DBSCAN(eps=0.1, min_samples=2, metric="precomputed")
-    labels = dbscan.fit_predict(X)
+    labels = dbscan.fit_predict(distance_np)
+    if pca:
+        title = os.path.basename(input_file)
+        plot_pca(distance_np, labels, input_file, title=title)
+        
     return labels, sequence_names
+
+
+def plot_pca(distance_matrix, labels, output_file, title="PCA Plot"):
+    # Calculate PCA
+    pca = PCA(n_components=2)
+    pca_result = pca.fit_transform(distance_matrix)
+
+    # Create a DataFrame with the results
+    pca_df = pd.DataFrame(data=pca_result, columns=['PC1', 'PC2'])
+    pca_df['Cluster'] = labels
+
+    # Plot the PCA with colored clusters
+    plt.figure(figsize=(10, 6))
+    cluster_counts = {}  # Dictionary to hold the count of points in each cluster
+
+    for label in set(labels):
+        indices = np.where(labels == label)[0]
+        cluster_points = pca_df.loc[indices, ['PC1', 'PC2']]
+        plt.scatter(cluster_points['PC1'], cluster_points['PC2'], label=f'Cluster {label}')
+
+        # Calculate the count of points in the cluster
+        cluster_counts[label] = len(indices)
+
+        # Annotate the cluster with its point count
+        # The annotation is placed at the mean position of the cluster's points
+        plt.annotate(f'Count: {len(indices)}',
+                     (cluster_points['PC1'].mean(), cluster_points['PC2'].mean()),
+                     textcoords="offset points", xytext=(0,10), ha='center')
+
+    plt.title(f'{title} - PCA Plot')
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.legend()
+
+    # Save the plot to a file
+    output_file_n = f"{output_file}_PCA.pdf"
+    plt.savefig(output_file_n)
+    plt.close()
 
 
 def process_labels(input_file, filtered_cluster_records):
@@ -310,41 +354,33 @@ def highlight_columns(alignment_df, alignment_color_df, base_mapping):
                     alignment_color_df[col][alignment_df[col] == base] = base_mapping[base]
 
 
-def plot_msa(self, start_point, end_point):
+def plot_msa(alignment_df, alignment_color_df, unique_bases, start_point, end_point, output_file, sequence_len):
     """
     Plot the heatmap
     """
-
-    # Define your custom color map
     color_map = {"A": "#00CC00", "a": "#00CC00", "G": "#949494", "g": "#949494", "C": "#6161ff", "c": "#6161ff",
                  "T": "#FF6666", "t": "#FF6666", "-": "#FFFFFF", np.nan: "#FFFFFF"}
 
-    # Create a custom color palette
-    palette = [color_map[base] for base in self.unique_bases]
+    palette = [color_map[base] for base in unique_bases]
     cmap = ListedColormap(palette)
 
     # Compute figure size: a bit less than number of columns / 5 for width, and number of rows / 3 for height
     # In pandas, the DataFrame.shape attribute returns a tuple representing the dimensionality of the DataFrame.
     # The tuple (r, c), where r represents the number of rows and c the number of columns.
     # figsize = (max(1, self.alignment_df.shape[1] / 6), max(9, self.alignment_df.shape[0] / 3))
-
     # Set a fixed height per sequence (e.g., 0.4 units per sequence)
     height_per_sequence = 0.4
-    total_height = self.alignment_df.shape[0] * height_per_sequence
+    total_height = alignment_color_df.shape[0] * height_per_sequence
 
-    # Compute figure size
-    figsize = (max(1, self.alignment_df.shape[1] / 6), total_height)
-
-    # Plot the heatmap
-    plt.figure(figsize=figsize, facecolor='white')
-
+    figsize = (max(1, alignment_color_df.shape[1] / 6), total_height)
     # This function allows you to adjust several parameters that determine the size of the margins
     # left: This adjusts the margin on the left side of the plot. A value of 0.1, for instance,
     # means that the left margin will take up 10% of the total figure width.
     # right: This adjusts the margin on the right side of the plot. A value of 0.95 means that the right
     # margin starts at 95% of the figure width from the left. Essentially, it leaves a 5% margin on the right side.
+    plt.figure(figsize=figsize, facecolor='white')
     plt.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.8)
-    plt.imshow(self.alignment_color_df, aspect='auto', cmap=cmap)
+    plt.imshow(alignment_color_df, aspect='auto', cmap=cmap)
     plt.box(False)  # Removing frame
     plt.xticks([])  # Remove labels
     plt.yticks([])  # Remove labels
@@ -358,26 +394,23 @@ def plot_msa(self, start_point, end_point):
     ha='center' specifies the horizontal alignment of the text annotation. 
     color='r' sets the color of the text to red.
     """
-
     plt.annotate('Start crop Point', xy=(start_point, -0.5), xytext=(start_point, -3),
                  arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05), ha='center', color='r')
     plt.annotate('End crop Point', xy=(end_point, -0.5), xytext=(end_point, -3),
                  arrowprops=dict(facecolor='blue', edgecolor='blue', shrink=0.05), ha='center', color='b')
-
     # Use input file name as title
     # title = os.path.basename(self.input_file)
     # plt.title(title, y=1.05, fontsize=15)
 
     # Add sequence len information to the plot
-    plt.text(start_point + 49, -1, f"MSA length = {str(self.sequence_len)}", ha='left',
-             va='center', color='black', size=15, weight="bold")
-
+    plt.text(start_point + 49, -1, f"MSA length = {str(sequence_len)}", ha='left', va='center', color='black', size=15,
+             weight="bold")
     # Add the base letters
     # (j, i) is a tuple representing the indices of each element in the array, and
     # label is the value of the element at that position.
-    for (j, i), label in np.ndenumerate(self.alignment_df):
-        label = str(label).upper()  # Change the label to uppercase
-        if palette[self.alignment_color_df.iloc[j, i]] == "#FFFFFF":
+    for (j, i), label in np.ndenumerate(alignment_df):
+        label = str(label).upper()
+        if palette[alignment_color_df.iloc[j, i]] == "#FFFFFF":
             if label == "-":
                 text_color = "black"
             else:
@@ -387,14 +420,11 @@ def plot_msa(self, start_point, end_point):
 
         plt.text(i, j, label, ha='center', va='center', color=text_color, size=13)
 
-    # Save the figure to a file
-    self.output_file = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_plot.pdf")
-    plt.savefig(self.output_file, format='pdf', dpi=200)
+    plt.savefig(output_file, format='pdf', dpi=200)
     plt.close()
-
     # Release memory for these dataframes
-    del self.alignment_df
-    del self.alignment_color_df
+    del alignment_df
+    del alignment_color_df
 
 
 def process_msa(input_file, output_dir, start_point, end_point, sequence_len):
@@ -407,10 +437,3 @@ def process_msa(input_file, output_dir, start_point, end_point, sequence_len):
     plot_msa(alignment_df, alignment_color_df, base_mapping.keys(), start_point, end_point, output_file, sequence_len)
 
     return output_file
-
-
-
-
-
-
-

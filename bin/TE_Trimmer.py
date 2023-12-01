@@ -481,15 +481,16 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             sequence_info[sequence_name] = {"evaluation": evaluation, "type": te_type, "length": length}
 
         # Parse cd-hit-est result
-        clusters = {}
-        current_cluster = []
+        clusters = {}  # The key is cluster name, the values are sequence names in this cluster (list)
+        current_cluster = []  # This corresponds to the list above
         with open(cd_hit_merge_output_round1_clstr, "r") as f:
             for line in f:
+                # To be honest, I hate cd-hit output format a lot.
                 if line.startswith(">Cluster"):
-                    cluster_name = line.strip().replace(" ", "")  # Remove the empty space in the cluster name
                     if current_cluster:  # If the current_cluster isn't empty
                         clusters[cluster_name] = current_cluster
-                        current_cluster = []
+                    cluster_name = line.strip().replace(" ", "")  # Remove the empty space in the cluster name
+                    current_cluster = []
                 else:
                     seq_info = line.split(">")[1].split("...")[0].split("#")[0]
                     current_cluster.append(seq_info)
@@ -572,7 +573,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
         # Find the difference between the two sets to get sequence names not included in the merged file
         missing_ids = original_ids - merged_ids
-        #click.echo(missing_ids)
 
         # Based on missing_ids delete files in proof annotation folder and HMM folder
         for missing_id in missing_ids:

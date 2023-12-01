@@ -1,4 +1,5 @@
 from Bio import AlignIO
+from Bio.Align import MultipleSeqAlignment
 import os
 from functions import select_gaps_block_with_similarity_check
 
@@ -20,6 +21,9 @@ class CleanAndSelectColumn:
         self.alignment_length = self.alignment.get_alignment_length()
         self.alignment_filtered = None
         self.if_need_cluster = True
+        self.divergent_column_len = None
+        self.gap_alignment_filter = None
+        self.alignment_filtered_len = None
         self.calculation_proportion()
 
     def calculation_proportion(self):
@@ -89,8 +93,12 @@ class CleanAndSelectColumn:
         gap_block_to_keep = select_gaps_block_with_similarity_check(self.input_file)
 
         # Concatenate columns with high divergence and gap block columns
-        if gap_block_to_keep:
-            columns_to_keep = sorted(set(columns_to_keep + gap_block_to_keep))
+        if gap_block_to_keep and (len(columns_to_keep) >= 30):
+            divergence_len = len((set(columns_to_keep + gap_block_to_keep)))
+        else:
+            divergence_len = len(columns_to_keep)
+        self.alignment_filtered_len = len(columns_to_keep)
+        columns_to_keep = sorted(columns_to_keep)
 
         """
         When alignment length is greater than 1000, the distinct column number have to be more than 100
@@ -99,7 +107,7 @@ class CleanAndSelectColumn:
         min_length = max(50, int(0.05 * self.alignment_length)) if self.alignment_length <= cluster_col_thr / 0.05 \
             else cluster_col_thr
 
-        if len(columns_to_keep) > min_length:  # Set the threshold number to decide if perform cluster
+        if divergence_len > min_length:  # Set the threshold number to decide if perform cluster
             self.alignment_filtered = self.alignment[:, columns_to_keep[0]:columns_to_keep[0] + 1]
             for i in columns_to_keep[1:]:
                 self.alignment_filtered += self.alignment[:, i:i + 1]
@@ -108,8 +116,20 @@ class CleanAndSelectColumn:
 
         return self.if_need_cluster
 
+    # Remove sequences that contain many gaps. This can cause problem for iqtree clustring.
+    def filter_out_big_gap_seq(self, gap_threshold=1):
+        gap_alignment_filter_list = []
+        for record in self.alignment_filtered:
+            gap_count = record.seq.count("-")
+            gap_fraction = gap_count / self.alignment_filtered_len
+
+            if gap_fraction < gap_threshold:
+                gap_alignment_filter_list.append(record)
+        self.gap_alignment_filter = MultipleSeqAlignment(gap_alignment_filter_list)
+
     def write_alignment_filtered(self, output_dir):
         output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_pat_MSA.fa")
+        self.filter_out_big_gap_seq()
         with open(output_file, 'w') as f:
-            AlignIO.write(self.alignment_filtered, f, 'fasta')
+            AlignIO.write(self.gap_alignment_filter, f, 'fasta')
         return output_file
