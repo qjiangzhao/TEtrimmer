@@ -73,7 +73,7 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=None):
     result = subprocess.run(iqtree_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     treefile = f"{alignment}.treefile"
     distance_file = calculate_tree_dis(treefile)
-    cluster, sequence_names = dbscan_cluster(distance_file, pca=True)
+    cluster, sequence_names = dbscan_cluster(distance_file, pca=False)
     # map sequence_names name to cluster 
     sequence_cluster_mapping = dict(zip(sequence_names, cluster))
     # Use Counter to count occurrences
@@ -265,9 +265,9 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     # if false, meaning no enough divergent column for cluster
     # Do full length alignment cluster and only keep the biggest cluster
     else:
-        print(f"{bed_file} divergent column <100, use full length alignment")
+        # print(f"{bed_file} divergent column <100, use full length alignment")
         filtered_cluster_records, if_cluster = cluster_msa_iqtree_DBSCAN(
-            fasta_out_flank_mafft_file, min_cluster_size=min_length_num, max_cluster=cluster_num)
+            fasta_out_flank_mafft_file_gap_filter, min_cluster_size=min_length_num, max_cluster=cluster_num)
         if if_cluster:
             # keep the biggest cluster only
             filtered_cluster_records = [max(filtered_cluster_records, key=len)]
@@ -291,7 +291,7 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
 
 def alignment_to_dataframe(alignment):
     """Convert the alignment to a DataFrame"""
-    # "rec" represents a object for each element in alignment. It contains "seq", "id", and "additional annotations"
+    # "rec" represents an object for each element in alignment. It contains "seq", "id", and "additional annotations"
     # list(rec) is equal to list(rec.seq) it will convert sequence to a list
     # "np.array" will convert list to array.
     alignment_df = pd.DataFrame(

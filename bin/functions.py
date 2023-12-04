@@ -118,7 +118,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
     if not continue_analysis:
 
         print(
-            "TE Trimmer is modifying sequence names, '/', '-', ':', '...', and empty space before '#' will "
+            "TE Trimmer is modifying sequence names, '/', '-', ':', '...', '|' and empty space before '#' will "
             "be converted to '_'")
         detected_pound = False
         with open(input_file, 'r') as fasta_file:
@@ -128,7 +128,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                 if len(record.id.split("#")) > 1:
                     detected_pound = True
                     sanitized_id = record.id.split("#")[0].replace('/', '_').replace(' ', '_').\
-                        replace('-', '_').replace(':', '_').replace('...', '_')
+                        replace('-', '_').replace(':', '_').replace('...', '_').replace('|', '_')
                     te_type = record.id.split("#")[-1]
 
                 # Check if # is in the seq.id. If # is present, the string before # is the seq_name, and the string
