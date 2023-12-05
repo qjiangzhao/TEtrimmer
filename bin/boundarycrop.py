@@ -179,7 +179,7 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
 
 
 def final_MSA_old(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
-              define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win):
+                  define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win):
 
     bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, 0, 0)
 
@@ -794,9 +794,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # fast_mode will supress RepeatClassifier step
     # Classification isn't mandatory, skip this step when error is encountered
     try:
-        if fast_mode:
-            classify_all = False
-            classify_unknown = False
 
         if classify_all or (
                 classify_unknown and (seq_obj.check_unknown() or (abs(consi_obj.new_length - seq_obj.old_length) >= 1000))):

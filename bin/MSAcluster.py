@@ -66,6 +66,7 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=None):
     iqtree_command = ["iqtree",
                       "-m",
                       "K2P+I",
+                      "--redo-tree",
                       "--seqtype",
                       "DNA",
                       "-s", 

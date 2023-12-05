@@ -11,6 +11,7 @@ import requests
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from Bio import SeqIO
+from functions import prcyan, prgre
 
 
 def check_and_download(directory, filename, url):
@@ -34,28 +35,31 @@ def check_and_download(directory, filename, url):
             response = requests.get(url, stream=True)
             response.raise_for_status()  # Raise an exception if the GET request was unsuccessful
         except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
-            click.echo(f"\nFailed to reach the server at {url} for PFMA database downloading\n")
-            click.echo(f"Error:, {str(e)}")
-            return
+            prcyan(f"\nFailed to reach the server at {url} for Pfam database downloading\n")
+            return False
 
-        gz_file_path = file_path + ".gz"  # Give a defined name for the file will be downloaded
-        urllib.request.urlretrieve(url, gz_file_path)
+        try:
+            gz_file_path = file_path + ".gz"  # Give a defined name for the file will be downloaded
+            urllib.request.urlretrieve(url, gz_file_path)
 
-        # Unzipping
-        with gzip.open(gz_file_path, 'rb') as f_in:
-            with open(file_path, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
+            # Unzipping
+            with gzip.open(gz_file_path, 'rb') as f_in:
+                with open(file_path, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
 
-        # Delete gz file after extraction
-        os.remove(gz_file_path)
-        click.echo(f"\n{filename} is downloaded and unzipped.\n")
+            # Delete gz file after extraction
+            os.remove(gz_file_path)
+            click.echo(f"\n{filename} is downloaded and unzipped.\n")
+        except Exception:
+            prcyan("TE Trimmer can't properly unzip the downloaded Pfam file")
+            return False
 
     # Check if download is successful
     if os.path.isfile(file_path):
         return True
     else:
-        click.echo(f"{filename} found. Pfam can't be downloaded by TE Trimmer. Please check your internet connection "
-                   f"or download Pfam by yourself")
+        prcyan(f"{filename} found. Pfam can't be downloaded by TE Trimmer. Please check your internet connection "
+               f"or download Pfam by yourself")
         return False
 
 
@@ -94,15 +98,15 @@ def prepare_pfam_database(pfam_database_dir):
                 hmmpress_pfam_command = ["hmmpress", os.path.join(pfam_database_dir, "Pfam-A.hmm")]
                 try:
                     subprocess.run(hmmpress_pfam_command, check=True)
-                except FileNotFoundError:
-                    click.echo("\nhmmpress command not found. Please ensure that hmmpress is installed and "
-                               "available in your PATH.\n")
+                except subprocess.CalledProcessError as e:
+                    prcyan(f"\nhmmpress index files generation failed with error code {e.returncode}")
+                    prgre("Please check if your 'hmmpress' has been correctly installed.\n"
+                          "Try 'hmmpress <your_downloaded_pfam_file> Pfam-A.hmm")
                     return False
         else:
             return False
 
-    except Exception as e:
-        click.echo(f"Error while downloading or preparing Pfam-A.hmm: {str(e)}")
+    except Exception:
         return False
 
     try:
@@ -111,8 +115,7 @@ def prepare_pfam_database(pfam_database_dir):
         else:
             return False
 
-    except Exception as e:
-        click.echo(f"Error while downloading Pfam-A.hmm.dat: {str(e)}")
+    except Exception:
         return False
 
 
@@ -161,7 +164,6 @@ class PlotPfam:
         self.output_orf_file_name_modified = None
         self.output_orf_file_name_modified_table = None
         self.output_pfam_file_modified = None
-
 
     def run_getorf(self):
         """

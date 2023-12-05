@@ -6,7 +6,7 @@ import pandas as pd
 
 # Local imports
 from functions import blast, remove_files_with_start_pattern, check_bed_uniqueness, \
-    extract_fasta, handle_sequence_low_copy, handle_sequence_skipped, update_low_copy_cons_file
+    extract_fasta, handle_sequence_low_copy, handle_sequence_skipped, update_low_copy_cons_file, prcyan, prgre
 # from Class_bed_filter import BEDFile
 import bedfilter
 from boundarycrop import find_boundary_and_crop
@@ -60,7 +60,6 @@ def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=
     # click.echo(f'\r{prefix} |{bar}| {iteration}/{total} = {percent}% {suffix}', nl=False)
     click.echo(f'{prefix} |{bar}| {iteration}/{total} = {percent}% {suffix}', nl=True)
     # print(f'{prefix} |{bar}| {iteration}/{total} = {percent}% {suffix}', end='\n', flush=True)
-
 
     # Print New Line on Complete
     if iteration == total:
@@ -317,30 +316,32 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file, plot_skip):
 
     if not os.path.isfile(input_file):
-        raise FileNotFoundError(f"The fasta file {input_file} does not exist.")
+        prcyan(f"The fasta file {input_file} does not exist. Please check your input file path!")
+        raise FileNotFoundError
     input_file = os.path.abspath(input_file)  # get input absolute path
 
     # check if genome file exist
     if not os.path.isfile(genome_file):
-        raise FileNotFoundError(f"The genome fasta file {genome_file} does not exist.")
+        prcyan(f"The genome fasta file {genome_file} does not exist. Please check your genome file path!")
+        raise FileNotFoundError
     genome_file = os.path.abspath(genome_file)  # get genome absolute path
 
     # bin_py_path contains all classes and bash code
     # so.path.abspath(__file__) will return the current executable python file
     bin_py_path = os.path.dirname(os.path.abspath(__file__))
 
-    # check if path exist otherwise create one
+    # check if output path exist otherwise create it
     os.makedirs(output_dir, exist_ok=True)
     output_dir = os.path.abspath(output_dir)  # get absolute path
 
     # Check if output directory is empty when --continue_analysis is False
     if os.listdir(output_dir) and not continue_analysis:
-        click.echo(
-            f"WARNING: The output directory {output_dir} is not empty. Please empty your output directory or "
-            f"choose another empty directory\n")
+        prcyan(f"\nWARNING: The output directory {output_dir} is not empty. Please empty your output directory or "
+               f"choose another empty directory.")
+        prgre("\nNOTE: TE Trimmer can create output directory when it is not exist.")
 
         # Stop the whole program when the output directory is not empty
-        return
+        raise Exception
 
     # Make a new folder for single fasta sequence
     single_file_dir = os.path.join(output_dir, "Single_fasta_files")
@@ -407,10 +408,11 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
         pfam_dir = os.path.join(os.path.dirname(bin_py_path), "pfam_database")
         os.makedirs(pfam_dir, exist_ok=True)
     try:
+        os.makedirs(pfam_dir, exist_ok=True)
         if_pfam = prepare_pfam_database(pfam_dir)
 
         if not if_pfam:  # Check if if_pfam is False
-            raise ValueError("PFAM database preparation failed.")  # Raise an exception to be caught below
+            raise Exception
     except Exception as e:
         with open(error_files, "a") as f:
             # Get the traceback content as a string
@@ -418,22 +420,22 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
             f.write(f"PFAM database building error\n")
             f.write(tb_content + '\n\n')
 
-        click.echo(f"Note: Can't download PFAM database from internet, please use your own PFAM database\n"
-                   f"For example: --pfam_dir <your_PFAM_directory>\n"
-                   f"Your PFAM directory should contain: \n"
-                   f"Pfam-A.hmm\n"
-                   f"Pfam-A.hmm.h3f\n"
-                   f"Pfam-A.hmm.h3m\n"
-                   f"Pfam-A.hmm.dat\n"
-                   f"Pfam-A.hmm.h3i\n"
-                   f"Pfam-A.hmm.h3p\n\n"
-                   f"PFAM prediction will be used to determine the direction of TEs, it is necessary to make it run\n\n"
-                   f"You can download <Pfam-A.hmm.gz> and <Pfam-A.hmm.dat.gz> from "
-                   f"https://www.ebi.ac.uk/interpro/download/pfam/\n"
-                   f"After: \n"
-                   f"gzip -d Pfam-A.hmm.gz\n"
-                   f"gzip -d Pfam-A.hmm.dat.gz\n"
-                   f"hmmpress Pfam-A.hmm\n\n")
+        prgre(f"Note: Can't download PFAM database from internet, please use your own PFAM database\n"
+              f"For example: --pfam_dir <your_PFAM_directory>\n"
+              f"Your PFAM directory should contain: \n"
+              f"Pfam-A.hmm\n"
+              f"Pfam-A.hmm.h3f\n"
+              f"Pfam-A.hmm.h3m\n"
+              f"Pfam-A.hmm.dat\n"
+              f"Pfam-A.hmm.h3i\n"
+              f"Pfam-A.hmm.h3p\n\n"
+              f"PFAM prediction will be used to determine the direction of TEs, it is mandatory to have it\n\n"
+              f"You can download <Pfam-A.hmm.gz> and <Pfam-A.hmm.dat.gz> from "
+              f"https://www.ebi.ac.uk/interpro/download/pfam/\n"
+              f"After: \n"
+              f"gzip -d Pfam-A.hmm.gz\n"
+              f"gzip -d Pfam-A.hmm.dat.gz\n"
+              f"hmmpress Pfam-A.hmm\n\n")
         return
 
     # Define consensus files. temp files will be used for the final RepeatMasker classification
