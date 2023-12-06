@@ -73,7 +73,12 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=None):
                       "-s", 
                       alignment]
     try:
-        subprocess.run(iqtree_command, check=True, stdout=subprocess.PIPE)
+        subprocess.run(iqtree_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    except FileNotFoundError:
+        prcyan("'iqtree' command not found. Please ensure 'iqtree' is correctly installed.")
+        raise Exception
+
     except subprocess.CalledProcessError as e:
         prcyan(f"iqtree failed with error code {e.returncode}")
         prcyan(e.stderr)

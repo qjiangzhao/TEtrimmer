@@ -70,7 +70,11 @@ def check_database(genome_file, search_type="blast"):
 
             try:
                 makeblastdb_cmd = f"makeblastdb -in {genome_file} -dbtype nucl -out {genome_file} "
-                subprocess.run(makeblastdb_cmd, shell=True, check=True, stderr=subprocess.PIPE, text=True)
+                subprocess.run(makeblastdb_cmd, shell=True, check=True, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True)
+            except FileNotFoundError:
+                prcyan("'makeblastdb' command not found. Please ensure 'makeblastdb' is correctly installed.")
+                raise Exception
 
             except subprocess.CalledProcessError as e:
                 prcyan(f"makeblastdb failed with exit code {e.returncode}")
@@ -83,7 +87,8 @@ def check_database(genome_file, search_type="blast"):
 
             try:
                 mmseqs_createdb_cmd = f"mmseqs createdb {genome_file} {mmseqs_database_dir}"
-                subprocess.run(mmseqs_createdb_cmd, shell=True, check=True, stderr=subprocess.PIPE, text=True)
+                subprocess.run(mmseqs_createdb_cmd, shell=True, check=True,stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True)
 
             except subprocess.CalledProcessError as e:
                 prcyan(f"mmseqs failed with exit code {e.returncode}")
@@ -120,7 +125,12 @@ def check_database(genome_file, search_type="blast"):
         faidx_cmd = f"samtools faidx {genome_file}"
 
         try:
-            subprocess.run(faidx_cmd, shell=True, check=True, stdout=subprocess.PIPE)
+            subprocess.run(faidx_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        except FileNotFoundError:
+            prcyan("'samtools' command not found. Please ensure 'samtools' is correctly installed.")
+            return False
+
         except subprocess.CalledProcessError as e:
             prcyan(f"\nsamtool faidx failed with error code {e.returncode}")
             prcyan(e.stderr)
@@ -228,7 +238,11 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
                      f"-evalue 1e-40 -qcov_hsp_perc 20 | "
                      f"awk -v ml={min_length} 'BEGIN{{OFS=\"\\t\"}} $4 > ml {{print $0}}' >> {blast_out_file}")
         try:
-            subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE)
+            subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        except FileNotFoundError:
+            prcyan("'blastn' command not found. Please ensure 'blastn' is correctly installed.")
+            raise Exception
 
         except subprocess.CalledProcessError as e:
             prcyan(f"\nBLAST is failed for {input_file_n} with error code {e.returncode}")
@@ -265,7 +279,8 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
                        f"if ($7>$6){{print $2, $8, $9, counter, $3, \"+\", $4, $1}} "
                        f"else {{print $2, $8, $9, counter, $3, \"-\", $4, $1}}}}' < {blast_out_file} > {bed_out_file}")
         try:
-            result_awk = subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE)
+            subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
         except subprocess.CalledProcessError as e:
             prcyan(f"\nBLAST to bed file conversion failed for {input_file_n} with error code {e.returncode}")
             prcyan(e.stderr)
@@ -357,7 +372,12 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
     bed_cmd = f"bedtools slop -s -i {input_file} -g {genome_file}.length -l {left_ex} -r {right_ex} > {bed_out_flank_file_dup}"
 
     try:
-        subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE)
+        subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    except FileNotFoundError:
+        prcyan("'bedtools slop' command not found. Please ensure 'bedtools' is correctly installed.")
+        raise Exception
+
     except subprocess.CalledProcessError as e:
         prcyan(f"\nbedtools slop failed for {input_file_n} with error code {e.returncode}")
         prcyan(e.stderr)
@@ -371,7 +391,12 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
         fasta_cmd = f"bedtools getfasta -s -fi {genome_file} -fo {fasta_out_flank_file} -bed {bed_out_flank_file}"
 
     try:
-        subprocess.run(fasta_cmd, shell=True, check=True, stdout=subprocess.PIPE)
+        subprocess.run(fasta_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    except FileNotFoundError:
+        prcyan("'bedtools getfasta' command not found. Please ensure 'bedtools' is correctly installed.")
+        raise Exception
+
     except subprocess.CalledProcessError as e:
         prcyan(f"\nbedtools getfasta failed for {input_file_n} with error code {e.returncode}")
         prcyan(e.stderr)
@@ -381,7 +406,8 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
     fasta_nucleotide_clean = f"awk '/^>/ {{print}} !/^>/ {{gsub(/[^AGCTagct]/, \"\"); print}}' {fasta_out_flank_file}" \
                              f" > {fasta_out_flank_file_nucleotide_clean}"
     try:
-        subprocess.run(fasta_nucleotide_clean, shell=True, check=True, stdout=subprocess.PIPE)
+        subprocess.run(fasta_nucleotide_clean, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
     except subprocess.CalledProcessError as e:
         prcyan(e.stderr)
         raise Exception
@@ -419,7 +445,12 @@ def align_sequences(input_file, output_dir):
 
     try:
         # Execute the command
-        result = subprocess.run(mafft_cmd, check=True, stdout=subprocess.PIPE, text=True)
+        result = subprocess.run(mafft_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    except FileNotFoundError:
+        prcyan("'mafft' command not found. Please ensure 'mafft' is correctly installed.")
+        raise Exception
+
     except subprocess.CalledProcessError as e:
         prcyan(f"MAFFT failed for {input_file_n} with error code {e.returncode}")
         prcyan(e.stderr)
@@ -550,7 +581,7 @@ def calc_conservation(col):
     return max_count / total_nucleotides
 
 
-def generate_hmm_from_msa(input_msa_file, output_hmm_file):
+def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
     """
     Generate HMM profile using hmmbuild from a multiple sequence alignment file.
 
@@ -563,15 +594,21 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file):
 
     try:
         # Execute the command
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-        # Check if the command was successful
-        if result.returncode != 0:
-            click.echo(f"Error running hmmbuild: {os.path.basename(output_hmm_file)}"
-                       f"\n{result.stderr.decode('utf-8')}")
+        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     except FileNotFoundError:
-        click.echo("Error: hmmbuild not found. Ensure HMMER is installed and available in the PATH.")
+        prcyan("'hmmbuild' command not found. Please ensure 'hmmbuild' is correctly installed.")
+        prgre("This hmm error won't affect the final TE consensus library.")
+        pass
+
+    except subprocess.CalledProcessError as e:
+        with open(error_file, 'a') as f:
+            f.write(f"\nhmm file generation failed for {os.path.basename(output_hmm_file)} with error code {e.returncode}")
+            f.write('\n' + e.stderr)
+        prcyan(f"\nhmm file generation failed for {os.path.basename(output_hmm_file)} with error code {e.returncode}")
+        prgre("\nThis hmm error won't affect the final TE consensus library, you can ignore it."
+              "\nFor traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
+        pass
 
 
 def reverse_complement_seq_file(input_file, output_file):
@@ -1224,6 +1261,11 @@ def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9,
 
     try:
         subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    except FileNotFoundError:
+        prcyan("'cd-hit-est' command not found. Please ensure 'cd-hit-est' is correctly installed.")
+        raise Exception
+
     except subprocess.CalledProcessError as e:
         prcyan(f"cd-hit-est failed for {os.path.basename(input_file)} with error code {e.returncode}")
         prcyan(e.stderr)
@@ -1258,6 +1300,11 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
     try:
         subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return True
+
+    except FileNotFoundError:
+        prcyan("'RepeatMasker' command not found. Please ensure 'RepeatMasker' is correctly installed.")
+        raise Exception
+
     except subprocess.CalledProcessError as e:
         if classify:
             prcyan(f"\nRepeatMasker failed during final classification step with error code {e.returncode}")
@@ -1510,7 +1557,12 @@ def classify_single(consensus_fasta):
 
     try:
         # Run RepeatClassifier using subprocess
-        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    except FileNotFoundError:
+        prcyan("'RepeatClassifier' command not found. Please ensure 'RepeatModeler' is correctly installed.")
+        return False
+
     except subprocess.CalledProcessError as e:
         prcyan(f"RepeatClassifier error for {os.path.basename(consensus_fasta)} with error code {e.returncode}")
         prcyan(e.stderr)
@@ -1574,41 +1626,49 @@ def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None)
 
     df = pd.read_csv(blast_out_file, sep="\t", header=None, skiprows=1)
 
-    df_LTR = df[(df[2] - df[1] >= 150) & (df[1] != df[3]) & (df[2] != df[4]) & (df[3] < df[4]) & (df[3] > df[1])].copy()
+    # Make sure self blast isn't empty. This could happen when ambiguous letter is too many in the sequence.
+    if not df.empty:
 
-    if not df_LTR.empty:
-        df_LTR["5"] = df[4] - df[1]
-        df_LTR.reset_index(drop=True, inplace=True)
+        df_LTR = df[(df[2] - df[1] >= 150) & (df[1] != df[3]) & (df[2] != df[4]) & (df[3] < df[4]) & (df[3] > df[1])].copy()
 
-        # Find the row with the largest difference
-        LTR_largest = df_LTR.iloc[df_LTR["5"].idxmax()]
+        if not df_LTR.empty:
+            df_LTR["5"] = df[4] - df[1]
+            df_LTR.reset_index(drop=True, inplace=True)
 
-        # Check if the terminal repeat spans the most part of the query sequence. Because the query is after extension,
-        # assuming the maximum redundant extension for left and right side are both 2000.
-        if abs(LTR_largest[4] - LTR_largest[1]) >= (record_len - 4000):
-            # Because blast use index start from 1, modify the start position
-            LTR_boundary = [LTR_largest[1] - 1, LTR_largest[4]]
+            # Find the row with the largest difference
+            LTR_largest = df_LTR.iloc[df_LTR["5"].idxmax()]
+
+            # Check if the terminal repeat spans the most part of the query sequence. Because the query is after extension,
+            # assuming the maximum redundant extension for left and right side are both 2000.
+            if abs(LTR_largest[4] - LTR_largest[1]) >= (record_len - 4000):
+                # Because blast use index start from 1, modify the start position
+                LTR_boundary = [LTR_largest[1] - 1, LTR_largest[4]]
+            else:
+                LTR_boundary = None
         else:
             LTR_boundary = None
-    else:
-        LTR_boundary = None
 
-    df_TIR = df[(df[2] - df[1] >= 50) & (df[1] != df[3]) & (df[2] != df[4]) & (df[3] > df[4]) & (df[4] > df[1])].copy()
+        df_TIR = df[(df[2] - df[1] >= 50) & (df[1] != df[3]) & (df[2] != df[4]) & (df[3] > df[4]) & (df[4] > df[1])].copy()
 
-    if not df_TIR.empty:
-        df_TIR["5"] = df[3] - df[1]
-        df_TIR.reset_index(drop=True, inplace=True)
+        if not df_TIR.empty:
+            df_TIR["5"] = df[3] - df[1]
+            df_TIR.reset_index(drop=True, inplace=True)
 
-        # Same like LTR check the terminal repeat spanning region
-        TIR_largest = df_TIR.iloc[df_TIR["5"].idxmax()]
-        if abs(TIR_largest[3] - TIR_largest[1]) >= (record_len - 2000):
-            TIR_boundary = [TIR_largest[1] - 1, TIR_largest[3]]
+            # Same like LTR check the terminal repeat spanning region
+            TIR_largest = df_TIR.iloc[df_TIR["5"].idxmax()]
+            if abs(TIR_largest[3] - TIR_largest[1]) >= (record_len - 2000):
+                TIR_boundary = [TIR_largest[1] - 1, TIR_largest[3]]
+            else:
+                TIR_boundary = None
         else:
             TIR_boundary = None
+
     else:
+        LTR_boundary = None
         TIR_boundary = None
 
     return LTR_boundary, TIR_boundary
+
 
 def filter_out_big_gap_seq(input, output=None, gap_threshold=1):
     if output is None:

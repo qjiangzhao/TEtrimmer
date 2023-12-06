@@ -659,7 +659,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             f.write(f"\nMSA plot failed {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
             prcyan(f"\nMSA plot failed {seq_name} with error:\n{e}")
-            prgre("\nMSA plots are only useful to evaluate TE Trimmer and won't affect the final TE consensus library."
+            prgre("\nMSA plots are only used to evaluate TE Trimmer and won't affect the final TE consensus library."
                   " For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
             pass
 
@@ -672,14 +672,15 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
 
         # Run TE_aid, if low_copy self-blast will be performed
-        TE_aid_object = TEAid(orf_cons, output_dir, genome_file, TE_aid_dir=TE_aid_path)
+        TE_aid_object = TEAid(orf_cons, output_dir, genome_file, error_file=error_files, TE_aid_dir=TE_aid_path)
         TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
 
         # Run TE_aid to plot the query sequence if it is required, because one query file can have multiple
         # clusters, TEAid will test if this has been created before.
         if plot_query:
             query_file = seq_obj.get_input_fasta()
-            TE_aid_object_query = TEAid(query_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
+            TE_aid_object_query = TEAid(query_file, output_dir, genome_file, error_file=error_files,
+                                        TE_aid_dir=TE_aid_path)
             TE_aid_plot_query, found_match_query = TE_aid_object_query.run(low_copy=False)
         else:
             TE_aid_plot_query = None
@@ -945,7 +946,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             os.makedirs(hmm_dir, exist_ok=True)
             consi_obj.set_hmm_file()
             hmm_output_file = os.path.join(hmm_dir, consi_obj.hmm_file)
-            generate_hmm_from_msa(cropped_boundary_MSA, hmm_output_file)
+            generate_hmm_from_msa(cropped_boundary_MSA, hmm_output_file, error_files)
 
         # The unknown TE consensus will be classified again later by using successfully classified sequence
         if "Unknown" in updated_TE_type:

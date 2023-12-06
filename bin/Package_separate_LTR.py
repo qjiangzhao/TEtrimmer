@@ -95,6 +95,9 @@ def detect_ltr_for_sequence(record, output_dir):
     columns = ['qseqid', 'qstart', 'qend', 'sstart', 'send']
     df = pd.DataFrame([x.split('\t') for x in blast_out.split('\n')], columns=columns)
 
+    if df.empty:
+        return None
+
     # Convert columns to integer
     df[['qstart', 'qend', 'sstart', 'send']] = df[['qstart', 'qend', 'sstart', 'send']].astype(int)
 
