@@ -80,24 +80,36 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=None):
     counter = Counter(cluster)
     # Find cluster with size > min_cluster_size
     filter_cluster = [element for element, count in counter.items() if count > min_cluster_size]
-    top_cluster = Counter({element: count for element, count in counter.items() if element in filter_cluster}).most_common
-    # If there are multiple cluster, pick the top max_cluster
-    if max_cluster is not None:
-        top_cluster = top_cluster(max_cluster)
-    else:
-        top_cluster = top_cluster()
-    # Find the seq name in selected cluster
     seq_cluster_list = []
-    if len(top_cluster) > 0:
-        for i in top_cluster:
-            # Extract sequence id for each cluster
-            seq_records = [sequence for sequence, cluster_label in sequence_cluster_mapping.items() if cluster_label == i[0]]
+    # if only -1 in filter_cluster and cluster size > 60% number of sequences in MSA:
+    if filter_cluster == [-1]:
+        if counter[-1] > 0.6 * len(sequence_names):
+            print (f"only -1 cluster > 10, size = {counter[-1]}, thr = {0.6 * len(sequence_names)}")
+            seq_records = [sequence for sequence, cluster_label in sequence_cluster_mapping.items() if cluster_label == -1]
             seq_cluster_list.append(seq_records)
+    else: 
+        # has 0 cluster, or 1 cluster that's not -1, or multiple clusters, elimininate cluster that is -1
+        filter_cluster = [c for c in filter_cluster if c != -1]
+        top_cluster = Counter({element: count for element, count in counter.items() if element in filter_cluster}).most_common
+        # Pick the top max_cluster
+        if max_cluster is not None:
+            top_cluster = top_cluster(max_cluster)
+        else:
+            top_cluster = top_cluster()
+        # Find the seq name in selected cluster
+        if len(top_cluster) > 0:
+            for i in top_cluster:
+                # Extract sequence id for each cluster
+                seq_records = [sequence for sequence, cluster_label in sequence_cluster_mapping.items() if cluster_label == i[0]]
+                seq_cluster_list.append(seq_records)
     
-    # if no cluster has size < 10, there is no cluster, skip this sequence
-    # if only one cluster has size >10, there is only one cluster, outliers are potentially filtered out
-    # if multiple clusters has size >10, multiple cluster
     if_cluster = (len(seq_cluster_list) > 0)
+    # if all cluster size < 10, there is no meaningful cluster, if_cluster = False, skip this sequence
+    # if only one cluster has size >10 and it is -1,
+    #       if -1 cluster > 60% number of sequences in MSA, use this -1 cluster
+    #       else, skip this sequence 
+    # if at least one cluster has size >10 and it is not just -1, 
+    #   only keep the max_cluster that are not -1
     return seq_cluster_list, if_cluster
 
 
@@ -265,9 +277,9 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     # if false, meaning no enough divergent column for cluster
     # Do full length alignment cluster and only keep the biggest cluster
     else:
-        print(f"{bed_file} divergent column <100, use full length alignment")
+        print(f"{bed_file} divergent column <100, use full length alignment with gap_removed")
         filtered_cluster_records, if_cluster = cluster_msa_iqtree_DBSCAN(
-            fasta_out_flank_mafft_file, min_cluster_size=min_length_num, max_cluster=cluster_num)
+            fasta_out_flank_mafft_file_gap_filter, min_cluster_size=min_length_num, max_cluster=cluster_num)
         if if_cluster:
             # keep the biggest cluster only
             filtered_cluster_records = [max(filtered_cluster_records, key=len)]
@@ -278,7 +290,7 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
         return cluster_bed_files_list
     else:
         """
-        if cluster = False, it means no cluster has line numbers greater than "min_lines". In this case, 
+        if cluster = False, it means no cluster has line numbers greater than "min_lines" or only has small -1 cluster. In this case, 
         it will be hard to still use multiple sequence alignment method to define consensus sequence.
         that isn't to say this won't be a TE, but with less copy numbers. Low copy TE will also be checked later
         """

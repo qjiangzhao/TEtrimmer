@@ -3,7 +3,7 @@ import os
 from Bio import SeqIO
 import click
 import pandas as pd
-from functions import blast
+from functions import blast, check_terminal_repeat
 
 
 def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=False):
@@ -132,74 +132,85 @@ class TEAid:
             #####################################################################################################
             # Code block: Check terminal repeat
             #####################################################################################################
-
-            # Read input file and get sequence length
-            record = SeqIO.read(self.input_file, "fasta")
-            record_len = len(record.seq)
-
             # Check the presence of self-alignment of terminal repeats in self-blast.pairs.txt
             self_blast_txt = os.path.join(TE_aid_output_dir, f"{os.path.basename(self.input_file)}.self-blast.pairs.txt")
 
-            # Sometime TE_Aid won't give self blast result
             if not os.path.exists(self_blast_txt):
-                database_file = os.path.join(TE_aid_output_dir, "Tem_blast_database")
-                makeblastdb_cmd = f"makeblastdb -in {self.input_file} -dbtype nucl -out {database_file}"
-                subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-                blast_cmd = f"blastn -query {self.input_file} -db {database_file} " \
-                            f"-outfmt \"6 qseqid qstart qend sstart send \" " \
-                            f"-evalue 0.05"  # Set higher evalue for self-blast
-
-                # Execute the command
-                result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-                # If there is an error, print it
-                if result.returncode != 0:
-                    click.echo(
-                        f"An error occurred self blast: {os.path.basename(self.input_file)}\n{result.stderr.decode('utf-8')}")
-                    return
-                else:
-                    blast_out = result.stdout.decode('utf-8')
-
-                    with open(self_blast_txt, 'w') as f:
-
-                        # Because TE_Aid result have header, give a header to blast result
-                        f.write("qseqid\tqstart\tqend\tsstart\tsend\n")
-                        f.write(blast_out)
-
-            data_list = []
-            # Read the input file
-            with open(self_blast_txt, "r") as file:
-                # Skip the header line
-                next(file)
-                # Iterate through the lines in the file
-                for line in file:
-                    # Split each line into a list of strings using whitespace as the separator
-                    parts = line.strip().split()[1:]
-                    # Convert the string elements to integers
-                    data = [int(part) for part in parts]
-                    # Append the data list to the data_list
-                    data_list.append(data)
+                if_blast = True
+                blast_out = None
+                TEaid = False
+            else:
+                if_blast = False
+                blast_out = self_blast_txt
+                TEaid = True
             
-            # Iterate through the lists
-            for i, lst1 in enumerate(data_list):
-                for j, lst2 in enumerate(data_list):
-                    # Check if the beginning and end aligned to itself.
-                    # The length of LTR have to be more than 100 bp. The start point of LTR has to be smaller than 15
-                    # The length of LTR can't be longer than 1/5 of query sequence
-                    if i != j and lst1[0] <= 15 and 100 <= lst1[1] - lst1[0] <= record_len / 5 \
-                            and lst1[:2] == lst2[2:] and lst1[2:] == lst2[:2]:
-                        found_match = "LTR"
-                        break
+            LTR_boundary, TIR_boundary, found_match = check_terminal_repeat(self.input_file, TE_aid_output_dir, if_blast, blast_out, TIR_adj = 2000, LTR_adj = 4000, TEaid = TEaid)
+            # # Read input file and get sequence length
+            # record = SeqIO.read(self.input_file, "fasta")
+            # record_len = len(record.seq)
 
-                    # Find the reverse repeat
-                    # Make sure reverse repeat has to be longer than 20 and can't longer than 1/2 of query sequence
-                    if i != j and lst1[0] <= 15 and lst1[0] == lst2[3] and lst1[1] == lst2[2] and lst1[2] == lst2[1] \
-                            and lst1[3] == lst2[0] and 20 <= lst1[1] - lst1[0] <= record_len / 2:
-                        found_match = "TIR"
-                        break
-                if found_match == "LTR" or found_match == "TIR":
-                    break
+            
+
+            # # Sometime TE_Aid won't give self blast result
+            # if not os.path.exists(self_blast_txt):
+            #     database_file = os.path.join(TE_aid_output_dir, "Tem_blast_database")
+            #     makeblastdb_cmd = f"makeblastdb -in {self.input_file} -dbtype nucl -out {database_file}"
+            #     subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            #     blast_cmd = f"blastn -query {self.input_file} -db {database_file} " \
+            #                 f"-outfmt \"6 qseqid qstart qend sstart send \" " \
+            #                 f"-evalue 0.05"  # Set higher evalue for self-blast
+
+            #     # Execute the command
+            #     result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            #     # If there is an error, print it
+            #     if result.returncode != 0:
+            #         click.echo(
+            #             f"An error occurred self blast: {os.path.basename(self.input_file)}\n{result.stderr.decode('utf-8')}")
+            #         return
+            #     else:
+            #         blast_out = result.stdout.decode('utf-8')
+
+            #         with open(self_blast_txt, 'w') as f:
+
+            #             # Because TE_Aid result have header, give a header to blast result
+            #             f.write("qseqid\tqstart\tqend\tsstart\tsend\n")
+            #             f.write(blast_out)
+
+            # data_list = []
+            # # Read the input file
+            # with open(self_blast_txt, "r") as file:
+            #     # Skip the header line
+            #     next(file)
+            #     # Iterate through the lines in the file
+            #     for line in file:
+            #         # Split each line into a list of strings using whitespace as the separator
+            #         parts = line.strip().split()[1:]
+            #         # Convert the string elements to integers
+            #         data = [int(part) for part in parts]
+            #         # Append the data list to the data_list
+            #         data_list.append(data)
+            
+            # # Iterate through the lists
+            # for i, lst1 in enumerate(data_list):
+            #     for j, lst2 in enumerate(data_list):
+            #         # Check if the beginning and end aligned to itself.
+            #         # The length of LTR have to be more than 100 bp. The start point of LTR has to be smaller than 15
+            #         # The length of LTR can't be longer than 1/5 of query sequence
+            #         if i != j and lst1[0] <= 15 and 100 <= lst1[1] - lst1[0] <= record_len / 5 \
+            #                 and lst1[:2] == lst2[2:] and lst1[2:] == lst2[:2]:
+            #             found_match = "LTR"
+            #             break
+
+            #         # Find the reverse repeat
+            #         # Make sure reverse repeat has to be longer than 20 and can't longer than 1/2 of query sequence
+            #         if i != j and lst1[0] <= 15 and lst1[0] == lst2[3] and lst1[1] == lst2[2] and lst1[2] == lst2[1] \
+            #                 and lst1[3] == lst2[0] and 20 <= lst1[1] - lst1[0] <= record_len / 2:
+            #             found_match = "TIR"
+            #             break
+            #     if found_match == "LTR" or found_match == "TIR":
+            #         break
 
         return final_pdf_file, found_match
 

@@ -178,57 +178,6 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
     return bed_dic
 
 
-def final_MSA_old(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
-              define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win):
-
-    bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, 0, 0)
-
-    # align_sequences() will return extended MSA absolute file
-    bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
-
-    if not os.path.isfile(bed_fasta_mafft_with_gap):
-        click.echo(f"{bed_file} has problem during mafft extension step")
-        return False
-
-    # Remove nucleotide whose proportion is smaller than threshold
-    bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(bed_fasta_mafft_with_gap, threshold=0.01)
-    bed_fasta_mafft_with_gap_column_clean = bed_fasta_mafft_with_gap_column_clean_object.clean_column(output_dir)
-
-    # Remove gap block with similarity check
-    # gap_threshold=0.8 means if gap proportion is greater than 80% this column will be regarded as
-    # gap column directly without further nucleotide similarity check
-    bed_fasta_mafft_gap_block_sim = remove_gaps_block_with_similarity_check(
-        bed_fasta_mafft_with_gap_column_clean, output_dir, gap_threshold=0.8, simi_check_gap_thre=gap_threshold,
-        similarity_threshold=gap_nul_thr, conservation_threshold=0.5)
-
-    bed_boundary = DefineBoundary(bed_fasta_mafft_gap_block_sim, threshold=ext_threshold,
-                                  check_window=define_boundary_win, max_X=0.2, if_con_generater=False)
-    bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=300)
-
-    # Because for LINE element bed_fasta_mafft_boundary_crop will be changed. Copy it to the other variable
-    bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_boundary_crop
-
-    if "LINE" in bed_file:
-        # For the high divergence region, more gaps can be found. According to this feature, remove high divergence
-        # region this function is very useful for dealing with LINE elements
-        cropped_MSA_by_gap = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
-                                          window_size=crop_end_gap_win)
-        bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
-
-    # Gaps are removed again after crop end process
-    cropped_alignment_output_file_g, column_mapping = crop_end_and_remove_gap(
-        bed_fasta_mafft_boundary_crop, output_dir, crop_end_threshold=crop_end_thr,
-        window_size=crop_end_win, gap_threshold=0.8)
-
-    # Crop end can't define the final boundary, use DefineBoundary again to define start position
-    cropped_boundary = DefineBoundary(cropped_alignment_output_file_g, threshold=0.8,
-                                      check_window=4, max_X=0)
-    cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
-
-    return bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
-        column_mapping, bed_fasta_mafft_boundary_crop, bed_fasta_mafft_boundary_crop_for_select
-
-
 def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
               define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win):
 
@@ -259,10 +208,10 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
     # Check terminal repeats
     # Define the output folder to store the temporary blast database
     check_terminal_repeat_output = f"{bed_fasta_mafft_gap_sim_cp_con}_tem"
-    LTR_boundary, TIR_boundary = check_terminal_repeat(bed_fasta_mafft_gap_sim_cp_con, check_terminal_repeat_output)
+    LTR_boundary, TIR_boundary, found_match = check_terminal_repeat(bed_fasta_mafft_gap_sim_cp_con, check_terminal_repeat_output)
 
     # Check terminal repeats
-    if LTR_boundary is not None or TIR_boundary is not None:
+    if found_match:
         # Check LTR first
         if LTR_boundary is not None:
             left = LTR_boundary[0]

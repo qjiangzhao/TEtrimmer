@@ -122,7 +122,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
             "be converted to '_'")
         detected_pound = False
         with open(input_file, 'r') as fasta_file:
-
+            id_list = []
             # Have to add 'fasta' at the end, this pattern will be used for file deletion
             for record in SeqIO.parse(fasta_file, 'fasta'):
                 if len(record.id.split("#")) > 1:
@@ -142,6 +142,13 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                     record.id = f"{record.id}#{te_type}"
                     record.description = record.id
 
+                 # double check if sanitized_id is unique. If not, modify sanitized_id
+                if sanitized_id not in id_list:
+                    id_list.append(sanitized_id)
+                else:
+                    id_list.append(sanitized_id)
+                    count = id_list.count(sanitized_id)
+                    sanitized_id = f"{sanitized_id}_n{count}"
                 # Define output file name
                 output_filename = os.path.join(output_dir, f"{sanitized_id}.fasta")
                 seq_obj = SeqObject(str(sanitized_id), str(output_filename), len(record.seq), te_type)
@@ -1469,11 +1476,12 @@ def classify_single(consensus_fasta):
     return seq_TE_type
 
 
-def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None):
+def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None, TIR_adj = 2000, LTR_adj = 4000, TEaid = False):
 
     # Read input file and get sequence length
     record = SeqIO.read(input_file, "fasta")
     record_len = len(record.seq)
+    found_match = False
 
     if if_blast or blast_out is None:
         os.makedirs(output_dir, exist_ok=True)
@@ -1506,13 +1514,21 @@ def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None)
                 f.write(blast_out)
     else:
         blast_out_file = blast_out
+        
+    # TEaid self blast output default format is separated by white space
+    if TEaid:
+        df = pd.read_csv(blast_out_file, sep='\s+', header=None, skiprows=1)
+    else: 
+        df = pd.read_csv(blast_out_file, sep="\t", header=None, skiprows=1)
 
-    df = pd.read_csv(blast_out_file, sep="\t", header=None, skiprows=1)
-
-    df_LTR = df[(df[2] - df[1] >= 150) & (df[1] != df[3]) & (df[2] != df[4]) & (df[3] < df[4]) & (df[3] > df[1])].copy()
+    df_LTR = df[(df.iloc[:, 2] - df.iloc[:, 1] >= 150) &
+            (df.iloc[:, 1] != df.iloc[:, 3]) &
+            (df.iloc[:, 2] != df.iloc[:, 4]) &
+            (df.iloc[:, 3] < df.iloc[:, 4]) &
+            (df.iloc[:, 3] > df.iloc[:, 1])].copy()
 
     if not df_LTR.empty:
-        df_LTR["5"] = df[4] - df[1]
+        df_LTR["5"] = df.iloc[:, 4] - df.iloc[:, 1]
         df_LTR.reset_index(drop=True, inplace=True)
 
         # Find the row with the largest difference
@@ -1520,29 +1536,35 @@ def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None)
 
         # Check if the terminal repeat spans the most part of the query sequence. Because the query is after extension,
         # assuming the maximum redundant extension for left and right side are both 2000.
-        if abs(LTR_largest[4] - LTR_largest[1]) >= (record_len - 4000):
+        if abs(LTR_largest[4] - LTR_largest[1]) >= (record_len - LTR_adj):
             # Because blast use index start from 1, modify the start position
             LTR_boundary = [LTR_largest[1] - 1, LTR_largest[4]]
+            found_match = "LTR"
         else:
             LTR_boundary = None
     else:
         LTR_boundary = None
 
-    df_TIR = df[(df[2] - df[1] >= 50) & (df[1] != df[3]) & (df[2] != df[4]) & (df[3] > df[4]) & (df[4] > df[1])].copy()
-
+    df_TIR = df[(df.iloc[:, 2] - df.iloc[:, 1] >= 50) &
+            (df.iloc[:, 1] != df.iloc[:, 3]) &
+            (df.iloc[:, 2] != df.iloc[:, 4]) &
+            (df.iloc[:, 3] > df.iloc[:, 4]) &
+            (df.iloc[:, 4] > df.iloc[:, 1])].copy()
+    
     if not df_TIR.empty:
-        df_TIR["5"] = df[3] - df[1]
+        df_TIR["5"] = df.iloc[:, 3] - df.iloc[:, 1]
         df_TIR.reset_index(drop=True, inplace=True)
 
         # Same like LTR check the terminal repeat spanning region
         TIR_largest = df_TIR.iloc[df_TIR["5"].idxmax()]
-        if abs(TIR_largest[3] - TIR_largest[1]) >= (record_len - 2000):
+        if abs(TIR_largest[3] - TIR_largest[1]) >= (record_len - TIR_adj):
             TIR_boundary = [TIR_largest[1] - 1, TIR_largest[3]]
+            found_match = "TIR"
         else:
             TIR_boundary = None
     else:
         TIR_boundary = None
 
-    return LTR_boundary, TIR_boundary
+    return LTR_boundary, TIR_boundary, found_match
 
 
