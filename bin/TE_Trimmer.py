@@ -78,7 +78,7 @@ with open(species_config_path, "r") as config_file:
               help='Continue to analysis after interruption.')
 @click.option('--dedup', default=False, is_flag=True,
               help='Remove duplicate sequences in input file.')
-@click.option('--genome_anno', default=False, is_flag=True,
+@click.option('--genome_anno', '-ga', default=False, is_flag=True,
               help='Perform genome TE annotation using the TE Trimmer curated database. Requires RepeatMasker.')
 @click.option('--hmm', default=False, is_flag=True,
               help='Generate HMM files for each consensus sequences.')
@@ -90,7 +90,7 @@ with open(species_config_path, "r") as config_file:
 #              help='Perform TE_Aid plot for each query sequences before TE Trimmer analysis.')
 #@click.option('--plot_skip', default=False, is_flag=True,
 #              help='Perform TE_Aid plot for skipped elements.')
-@click.option('--pfam_dir', default=None, type=str,
+@click.option('--pfam_dir', '-pd', default=None, type=str,
               help='Pfam database directory. Omit this option if you do not have a local PFAM database. '
                    'TE Trimmer will download the database automatically in this case.')
 @click.option('--cons_thr', type=float,
@@ -459,6 +459,10 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             tb_content = traceback.format_exc()
             f.write(f"\nFinal RepeatMasker classification is wrong.\n")
             f.write(tb_content + '\n\n')
+        prcyan(f"\nThe final classification failed with error {e}")
+        prgre("\nThis won't affect final TE consensus sequences but only the name. You can choose to ignore this. "
+              "For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
+        pass
 
     #####################################################################################################
     # Code block: merge consensus_file to remove duplications
@@ -608,23 +612,17 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"Final cd-hit-est deduplication error\n")
+            f.write(f"\nFinal cd-hit-est deduplication error\n")
             f.write(tb_content + '\n\n')
         prcyan("\nThe final cd-hit-est merge step can't be performed. Final TE consensus library redundancy can "
-               "be higher but sensitive won't be affected You can remove duplicated sequence by yourself. \n")
+               "be higher but the sensitive won't be affected You can remove duplicated sequence by yourself. \n")
+        prgre("\nYou can choose to ignore this error. For traceback text, please refer to 'error_file.txt' "
+              "under 'Multiple_sequence_alignment' folder")
 
     #####################################################################################################
     # Code block: Whole genome TE annotation
     #####################################################################################################
 
-    # Delete MSA_dir and Classification if they are empty
-    """
-    if not os.listdir(MSA_dir):
-        os.rmdir(MSA_dir)
-
-    if not os.listdir(classification_dir):
-        os.rmdir(classification_dir)
-    """
     try:
         # If 90% of the query sequences are processed, RepeatMasker is allowed to be performed whole genome annotation
         # if processed_count >= single_fasta_n * 0.9:
@@ -651,7 +649,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"Genome TE annotation error.\n")
+            f.write(f"\nGenome TE annotation error.\n")
             f.write(tb_content + '\n\n')
 
     end_time = datetime.now()

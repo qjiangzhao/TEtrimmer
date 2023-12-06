@@ -120,7 +120,7 @@ def check_database(genome_file, search_type="blast"):
         faidx_cmd = f"samtools faidx {genome_file}"
 
         try:
-            subprocess.run(faidx_cmd, shell=True, check=True)
+            subprocess.run(faidx_cmd, shell=True, check=True, stdout=subprocess.PIPE)
         except subprocess.CalledProcessError as e:
             prcyan(f"\nsamtool faidx failed with error code {e.returncode}")
             prcyan(e.stderr)
@@ -228,7 +228,7 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
                      f"-evalue 1e-40 -qcov_hsp_perc 20 | "
                      f"awk -v ml={min_length} 'BEGIN{{OFS=\"\\t\"}} $4 > ml {{print $0}}' >> {blast_out_file}")
         try:
-            subprocess.run(blast_cmd, shell=True, check=True)
+            subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE)
 
         except subprocess.CalledProcessError as e:
             prcyan(f"\nBLAST is failed for {input_file_n} with error code {e.returncode}")
@@ -265,7 +265,7 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
                        f"if ($7>$6){{print $2, $8, $9, counter, $3, \"+\", $4, $1}} "
                        f"else {{print $2, $8, $9, counter, $3, \"-\", $4, $1}}}}' < {blast_out_file} > {bed_out_file}")
         try:
-            result_awk = subprocess.run(bed_cmd, shell=True, check=True)
+            result_awk = subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE)
         except subprocess.CalledProcessError as e:
             prcyan(f"\nBLAST to bed file conversion failed for {input_file_n} with error code {e.returncode}")
             prcyan(e.stderr)
@@ -357,7 +357,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
     bed_cmd = f"bedtools slop -s -i {input_file} -g {genome_file}.length -l {left_ex} -r {right_ex} > {bed_out_flank_file_dup}"
 
     try:
-        subprocess.run(bed_cmd, shell=True, check=True)
+        subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
         prcyan(f"\nbedtools slop failed for {input_file_n} with error code {e.returncode}")
         prcyan(e.stderr)
@@ -371,7 +371,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
         fasta_cmd = f"bedtools getfasta -s -fi {genome_file} -fo {fasta_out_flank_file} -bed {bed_out_flank_file}"
 
     try:
-        subprocess.run(fasta_cmd, shell=True, check=True)
+        subprocess.run(fasta_cmd, shell=True, check=True, stdout=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
         prcyan(f"\nbedtools getfasta failed for {input_file_n} with error code {e.returncode}")
         prcyan(e.stderr)
@@ -381,7 +381,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
     fasta_nucleotide_clean = f"awk '/^>/ {{print}} !/^>/ {{gsub(/[^AGCTagct]/, \"\"); print}}' {fasta_out_flank_file}" \
                              f" > {fasta_out_flank_file_nucleotide_clean}"
     try:
-        subprocess.run(fasta_nucleotide_clean, shell=True, check=True)
+        subprocess.run(fasta_nucleotide_clean, shell=True, check=True, stdout=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
         prcyan(e.stderr)
         raise Exception
@@ -1609,5 +1609,31 @@ def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None)
         TIR_boundary = None
 
     return LTR_boundary, TIR_boundary
+
+def filter_out_big_gap_seq(input, output=None, gap_threshold=1):
+    if output is None:
+        alignment = input
+    else:
+        # Read the alignment from the input file
+        alignment = AlignIO.read(input, "fasta")
+    alignment_len = alignment.get_alignment_length()
+
+    # Filter based on gap fraction
+    gap_alignment_filter_list = []
+    for record in alignment:
+        gap_count = record.seq.count("-")
+        gap_fraction = gap_count / alignment_len
+
+        if gap_fraction < gap_threshold:
+            gap_alignment_filter_list.append(record)
+
+    # Create a new MultipleSeqAlignment object with the filtered records
+    filtered_alignment = MultipleSeqAlignment(gap_alignment_filter_list)
+
+    if output is None:
+        return filtered_alignment
+    else:
+        # Write the filtered alignment to the output file
+        AlignIO.write(filtered_alignment, output, "fasta")
 
 

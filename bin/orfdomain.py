@@ -97,7 +97,7 @@ def prepare_pfam_database(pfam_database_dir):
                 # Creates binary files that allow for faster access by other HMMER
                 hmmpress_pfam_command = ["hmmpress", os.path.join(pfam_database_dir, "Pfam-A.hmm")]
                 try:
-                    subprocess.run(hmmpress_pfam_command, check=True)
+                    subprocess.run(hmmpress_pfam_command, check=True, stdout=subprocess.PIPE)
                 except subprocess.CalledProcessError as e:
                     prcyan(f"\nhmmpress index files generation failed with error code {e.returncode}")
                     prgre("Please check if your 'hmmpress' has been correctly installed.\n"
@@ -196,7 +196,7 @@ class PlotPfam:
 
         change_orf_name = f"cat {output_orf_file} | awk '{{if(/>/){{print $1$2$3$4}}else{{print}}}}' > {self.output_orf_file_name_modified}"
 
-        subprocess.run(change_orf_name, shell=True, check=True)
+        subprocess.run(change_orf_name, shell=True, check=True, stdout=subprocess.PIPE)
 
         # Generate orf table for orf plot
         output_orf_file_name_modified_table = (
@@ -207,7 +207,7 @@ class PlotPfam:
             f"> {self.output_orf_file_name_modified_table}"
         )
 
-        subprocess.run(output_orf_file_name_modified_table, shell=True, check=True)
+        subprocess.run(output_orf_file_name_modified_table, shell=True, check=True, stdout=subprocess.PIPE)
         return True
 
     def run_pfam_scan(self):
@@ -230,7 +230,7 @@ class PlotPfam:
             "-cpu", str("1")
         ]
         try:
-            subprocess.run(pfam_sacn_command, check=True)
+            subprocess.run(pfam_sacn_command, check=True, stdout=subprocess.PIPE)
         except FileNotFoundError:
             click.echo("pfam_scal.pl command not found. Please ensure that tool is installed "
                        "and available in your PATH.")
@@ -245,7 +245,7 @@ class PlotPfam:
             f"> {self.output_pfam_file_modified}"
         )
 
-        subprocess.run(modify_pfam_result, shell=True, check=True)
+        subprocess.run(modify_pfam_result, shell=True, check=True, stdout=subprocess.PIPE)
 
         # Check if the output file only have one line, one line means the Pfam prediction is None.
         with open(self.output_pfam_file_modified, 'r') as file:

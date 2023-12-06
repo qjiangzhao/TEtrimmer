@@ -72,7 +72,8 @@ def check_blast_full_length(seq_obj, blast_out_file, identity=80, coverage=0.9, 
 
 class TEAid:
 
-    def __init__(self, input_file, output_dir, genome_file, TE_aid_dir, min_orf=200, full_length_threshold=0.9):
+    def __init__(self, input_file, output_dir, genome_file, TE_aid_dir, error_file=None,
+                 min_orf=200, full_length_threshold=0.9):
         """
         :param input_file: str, absolute path of input file
         :param output_dir: str, absolute directory of output file
@@ -85,6 +86,7 @@ class TEAid:
         self.output_dir = output_dir
         self.genome_file = genome_file
         self.TE_aid_dir = TE_aid_dir
+        self.error_file = error_file
         self.min_orf = min_orf
         self.full_length_threshold = full_length_threshold
 
@@ -121,11 +123,14 @@ class TEAid:
         if low_copy:
             command.extend(["-T"])
 
-        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-        if result.stderr:
+        try:
+            subprocess.run(command, check=True, stdout=subprocess.PIPE)
+        except subprocess.CalledProcessError as e:
+            if self.error_file is not None:
+                with open(self.error_file, 'a') as f:
+                    f.write(f"\nTE Aid error for {os.path.basename(self.input_file)} with error code {e.returncode}")
+                    f.write('\n' + e.stderr + '\n')
             pass
-            #click.echo(f"Error encountered: {self.input_file}\n{result.stderr.decode('utf-8')}")
 
         if low_copy:
 

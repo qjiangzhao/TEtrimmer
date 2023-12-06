@@ -132,7 +132,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             tb_content = traceback.format_exc()
             f.write(f"Error while running blast for sequence: {seq_name}\n")
             f.write(tb_content + '\n\n')
-        click.echo(f"Error while running blast for sequence: {seq_name}. Main Error: {str(e)}")
+        prcyan(f"Error while running blast for sequence: {seq_name}. Main Error: {str(e)}")
         return
 
     try:
@@ -141,7 +141,6 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         if blast_hits_count == 0:
             click.echo(f"\n{seq_name} is skipped due to blast hit number is 0\n")
             handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir)
-
             return
 
         # Check if blast hit number is smaller than "min_seq_num", not include "min_seq_num"
@@ -170,12 +169,16 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             return  # when blast hit number is smaller than 10, code will execute next fasta file
 
     except Exception as e:
+        # Add sequence to skip when check low copy module gets errors
+        handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir)
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
             f.write(f"\nError while checking low copy for sequence: {seq_name}\n")
             f.write(tb_content + '\n\n')
-        click.echo(f"\nError while checking low copy for sequence: {seq_name}. Error: {str(e)}\n")
+        prcyan(f"\nError while checking low copy for sequence: {seq_name}. Error: {str(e)}\n")
+        prgre("\nLow copy TE check module is not very important, you can ignore this error message, which won't affect "
+              "your final result too much.")
         return
 
     try:
@@ -209,7 +212,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             tb_content = traceback.format_exc()
             f.write(f"Error when group MSA: {seq_name}\n")
             f.write(tb_content + '\n\n')
-        click.echo(f"\nError when group MSA for sequence: {seq_name}. Error: {str(e)}\n")
+        prcyan(f"\nError when group MSA for sequence: {seq_name}. Error: {str(e)}\n")
+        prcyan('\n' + tb_content + '\n')
         return
     
     #####################################################################################################
@@ -247,7 +251,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             all_inner_skipped = True
             for i in range(len(cluster_bed_files_list)):
 
-                inner_find_boundary_result = find_boundary_and_crop(
+                find_boundary_result = find_boundary_and_crop(
                     cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
                     hmm, classify_all, classify_unknown, error_files, plot_query, cons_threshold=cons_thr,
                     ext_threshold=ext_thr, ex_step_size=ex_step, max_extension=max_extension,
@@ -258,12 +262,10 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     mini_orf=mini_orf, define_boundary_win=check_extension_win,
                     fast_mode=fast_mode, engine=engine)
 
-                if inner_find_boundary_result == "Short_sequence":
+                if not find_boundary_result:
                     continue
-                elif inner_find_boundary_result:
+                elif find_boundary_result:
                     all_inner_skipped = False
-                elif not inner_find_boundary_result:  # This means the errors happen in the function
-                    continue
 
             # Check the flag after the loop. If all inner clusters were skipped, write the progress file
             if all_inner_skipped:

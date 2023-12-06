@@ -14,7 +14,8 @@ from sklearn.decomposition import PCA
 import re
 
 from selectcolumns import CleanAndSelectColumn
-import functions as functions
+from functions import prcyan, prgre, muscle_align, align_sequences, remove_gaps_with_similarity_check, \
+    filter_out_big_gap_seq
 
 
 def calculate_tree_dis(input_file):
@@ -71,7 +72,13 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=None):
                       "DNA",
                       "-s", 
                       alignment]
-    result = subprocess.run(iqtree_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        subprocess.run(iqtree_command, check=True, stdout=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        prcyan(f"iqtree failed with error code {e.returncode}")
+        prcyan(e.stderr)
+        raise Exception("iqtree error")
+
     treefile = f"{alignment}.treefile"
     distance_file = calculate_tree_dis(treefile)
     cluster, sequence_names = dbscan_cluster(distance_file, pca=False)
@@ -227,18 +234,17 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     if fast_mode:
         muscle_ite_times = 2
     try:
-        fasta_out_flank_mafft_file = functions.muscle_align(input_file, output_dir,
-                                                            ite_times=muscle_ite_times)
+        fasta_out_flank_mafft_file = muscle_align(input_file, output_dir, ite_times=muscle_ite_times)
     except Exception as e:
         fasta_out_flank_mafft_file = False
         pass
 
     # When muscle goes wrong, use mafft
     if not fasta_out_flank_mafft_file:
-        fasta_out_flank_mafft_file = functions.align_sequences(input_file, output_dir)
+        fasta_out_flank_mafft_file = align_sequences(input_file, output_dir)
 
     # Remove gaps. Return absolute path for gap removed alignment file
-    fasta_out_flank_mafft_file_gap_filter = functions.remove_gaps_with_similarity_check(
+    fasta_out_flank_mafft_file_gap_filter = remove_gaps_with_similarity_check(
         fasta_out_flank_mafft_file, output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
         similarity_threshold=0.85, min_nucleotide=5)
 
@@ -266,7 +272,9 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     # if false, meaning no enough divergent column for cluster
     # Do full length alignment cluster and only keep the biggest cluster
     else:
-        # print(f"{bed_file} divergent column <100, use full length alignment")
+        # Remove sequences that contain many gaps. This can cause problem for iqtree clustering.
+        filter_out_big_gap_seq(fasta_out_flank_mafft_file_gap_filter, fasta_out_flank_mafft_file_gap_filter,
+                               gap_threshold=0.9)
         filtered_cluster_records, if_cluster = cluster_msa_iqtree_DBSCAN(
             fasta_out_flank_mafft_file_gap_filter, min_cluster_size=min_length_num, max_cluster=cluster_num)
         if if_cluster:

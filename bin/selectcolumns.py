@@ -1,7 +1,7 @@
 from Bio import AlignIO
 from Bio.Align import MultipleSeqAlignment
 import os
-from functions import select_gaps_block_with_similarity_check
+from functions import select_gaps_block_with_similarity_check, filter_out_big_gap_seq
 
 
 class CleanAndSelectColumn:
@@ -22,7 +22,6 @@ class CleanAndSelectColumn:
         self.alignment_filtered = None
         self.if_need_cluster = True
         self.divergent_column_len = None
-        self.gap_alignment_filter = None
         self.alignment_filtered_len = None
         self.calculation_proportion()
 
@@ -116,20 +115,11 @@ class CleanAndSelectColumn:
 
         return self.if_need_cluster
 
-    # Remove sequences that contain many gaps. This can cause problem for iqtree clustring.
-    def filter_out_big_gap_seq(self, gap_threshold=1):
-        gap_alignment_filter_list = []
-        for record in self.alignment_filtered:
-            gap_count = record.seq.count("-")
-            gap_fraction = gap_count / self.alignment_filtered_len
-
-            if gap_fraction < gap_threshold:
-                gap_alignment_filter_list.append(record)
-        self.gap_alignment_filter = MultipleSeqAlignment(gap_alignment_filter_list)
-
     def write_alignment_filtered(self, output_dir):
         output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_pat_MSA.fa")
-        self.filter_out_big_gap_seq()
+
+        # Remove sequences that contain many gaps. This can cause problem for iqtree clustering.
+        gap_alignment_filter = filter_out_big_gap_seq(self.alignment_filtered, gap_threshold=0.9)
         with open(output_file, 'w') as f:
-            AlignIO.write(self.gap_alignment_filter, f, 'fasta')
+            AlignIO.write(gap_alignment_filter, f, 'fasta')
         return output_file
