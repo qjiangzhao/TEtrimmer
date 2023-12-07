@@ -13,6 +13,14 @@ from seqclass import SeqObject
 import numpy as np
 
 
+def prcyan(text):
+    click.echo(click.style(text, fg='cyan'))
+
+
+def prgre(text):
+    click.echo(click.style(text, fg='green'))
+
+
 def calculate_genome_length(genome_file):
     """
     Calculate the length of each sequence in a genome file in FASTA format
@@ -58,19 +66,33 @@ def check_database(genome_file, search_type="blast"):
     if search_type == "blast":
         blast_database_file = genome_file + ".nin"
         if not os.path.isfile(blast_database_file):
-            print(f"\nBlast database doesn't exist. Running makeblastdb\n")
+            print(f"\nBlast database doesn't exist. Running makeblastdb")
 
-            makeblastdb_cmd = f"makeblastdb -in {genome_file} -dbtype nucl -out {genome_file} "
-            result = subprocess.run(makeblastdb_cmd, shell=True, check=True, stderr=subprocess.PIPE)
-            error_output = result.stderr.decode("utf-8")
-            if error_output:
-                print(f"Error check_database {error_output}\n")
+            try:
+                makeblastdb_cmd = f"makeblastdb -in {genome_file} -dbtype nucl -out {genome_file} "
+                subprocess.run(makeblastdb_cmd, shell=True, check=True, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True)
+            except FileNotFoundError:
+                prcyan("'makeblastdb' command not found. Please ensure 'makeblastdb' is correctly installed.")
+                raise Exception
+
+            except subprocess.CalledProcessError as e:
+                prcyan(f"makeblastdb failed with exit code {e.returncode}")
+                prcyan(e.stderr)
+                return False
     elif search_type == "mmseqs":
         mmseqs_database_dir = genome_file + "_db"
         if not os.path.isdir(mmseqs_database_dir):
             print(f"\nMMseqs2 database doesn't exist. Running MMseqs2 database creation...\n")
-            mmseqs_createdb_cmd = f"mmseqs createdb {genome_file} {mmseqs_database_dir}"
-            subprocess.run(mmseqs_createdb_cmd, shell=True, check=True, stderr=subprocess.PIPE)
+
+            try:
+                mmseqs_createdb_cmd = f"mmseqs createdb {genome_file} {mmseqs_database_dir}"
+                subprocess.run(mmseqs_createdb_cmd, shell=True, check=True,stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True)
+
+            except subprocess.CalledProcessError as e:
+                prcyan(f"mmseqs failed with exit code {e.returncode}")
+                prcyan(e.stderr)
 
             # Check if MMseqs2 database files have been created
             if os.path.exists(f"{mmseqs_database_dir}.dbtype"):
@@ -101,11 +123,21 @@ def check_database(genome_file, search_type="blast"):
     if not os.path.isfile(fai_file):
         print(f"\nIndex file {fai_file} not found. Creating it by samtools faidx\n")
         faidx_cmd = f"samtools faidx {genome_file}"
-        result_fai = subprocess.run(faidx_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        error_output_fai = result_fai.stderr.decode("utf-8")
 
-        if error_output_fai:
-            print(f"Error check_database {error_output_fai}\n")
+        try:
+            subprocess.run(faidx_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        except FileNotFoundError:
+            prcyan("'samtools' command not found. Please ensure 'samtools' is correctly installed.")
+            return False
+
+        except subprocess.CalledProcessError as e:
+            prcyan(f"\nsamtool faidx failed with error code {e.returncode}")
+            prcyan(e.stderr)
+            prgre("Please check if your samtools works well. Or you can build the genome index file by yourself\n"
+                  "samtools faidx <your_genome>")
+            return False
+    return True
 
 
 def separate_sequences(input_file, output_dir, continue_analysis=False):
@@ -118,7 +150,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
     if not continue_analysis:
 
         print(
-            "TE Trimmer is modifying sequence names, '/', '-', ':', '...', and empty space before '#' will "
+            "TE Trimmer is modifying sequence names, '/', '-', ':', '...', '|' and empty space before '#' will "
             "be converted to '_'")
         detected_pound = False
         with open(input_file, 'r') as fasta_file:
@@ -128,7 +160,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                 if len(record.id.split("#")) > 1:
                     detected_pound = True
                     sanitized_id = record.id.split("#")[0].replace('/', '_').replace(' ', '_').\
-                        replace('-', '_').replace(':', '_').replace('...', '_')
+                        replace('-', '_').replace(':', '_').replace('...', '_').replace('|', '_')
                     te_type = record.id.split("#")[-1]
 
                 # Check if # is in the seq.id. If # is present, the string before # is the seq_name, and the string
@@ -161,7 +193,6 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                     SeqIO.write(record, output_file, 'fasta')
 
             if detected_pound:
-                # TODO, user can disable this annotation
                 print("TE Trimmer detects # in your input fasta sequence. The string before # is denoted as the "
                       "seq_name, and the string after # is denoted as the TE type\n")
 
@@ -201,6 +232,7 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
     :return: tuple, bed output file name and blast hits count
     """
     input_file = seq_file
+    input_file_n = os.path.basename(input_file)
     blast_hits_count = 0
     bed_out_file = None
     # define blast outfile
@@ -212,11 +244,18 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
                      f"-outfmt \"6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand evalue qcovhsp\" "
                      f"-evalue 1e-40 -qcov_hsp_perc 20 | "
                      f"awk -v ml={min_length} 'BEGIN{{OFS=\"\\t\"}} $4 > ml {{print $0}}' >> {blast_out_file}")
-        result = subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        error_output = result.stderr.decode("utf-8")
+        try:
+            subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        if error_output:
-            print(f"Error during BLAST: {error_output}")
+        except FileNotFoundError:
+            prcyan("'blastn' command not found. Please ensure 'blastn' is correctly installed.")
+            raise Exception
+
+        except subprocess.CalledProcessError as e:
+            prcyan(f"\nBLAST is failed for {input_file_n} with error code {e.returncode}")
+            prcyan(e.stderr)
+            raise Exception
+
     elif search_type == "mmseqs":
         # MMseqs2 search
         mmseqs_cmd = (f"mmseqs easy-search {seq_file} {genome_file}_db {blast_out_file} {blast_out_file}_tmp --search-type 3 "
@@ -237,6 +276,7 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
         # Define bed outfile
         # add $4 alignment length
         bed_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b.bed")
+
         if search_type == "blast":
             bed_cmd = (f"awk 'BEGIN{{OFS=\"\\t\"; counter=0}} !/^#/ {{counter+=1; "
                        f"if ($10~/plus/){{print $2, $8, $9, counter, $3, \"+\", $4, $1}} "
@@ -245,12 +285,13 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
             bed_cmd = (f"awk 'BEGIN{{OFS=\"\\t\"; counter=0}} !/^#/ {{counter+=1; "
                        f"if ($7>$6){{print $2, $8, $9, counter, $3, \"+\", $4, $1}} "
                        f"else {{print $2, $8, $9, counter, $3, \"-\", $4, $1}}}}' < {blast_out_file} > {bed_out_file}")
+        try:
+            subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        result_awk = subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        error_output_awk = result_awk.stderr.decode("utf-8")
-
-        if error_output_awk:
-            print(f"Error during bed file creation: {error_output_awk}")
+        except subprocess.CalledProcessError as e:
+            prcyan(f"\nBLAST to bed file conversion failed for {input_file_n} with error code {e.returncode}")
+            prcyan(e.stderr)
+            raise Exception
 
         # Update BLAST hit number to sequence object when seq_obj is supplied
         if seq_obj is not None:
@@ -327,6 +368,8 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
     :param nameonly: boolean Default: False: only use bed file name filed for the fasta header
     :return: fasta file absolute path derived from bed file
     """
+    input_file_n = os.path.basename(input_file)
+
     bed_out_flank_file_dup = os.path.join(output_dir, f"{os.path.basename(input_file)}_{left_ex}_{right_ex}.bed")
 
     fasta_out_flank_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_{left_ex}_{right_ex}.fa")
@@ -335,7 +378,17 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
                                                          f"{os.path.basename(input_file)}_{left_ex}_{right_ex}_bcl.fa")
     bed_cmd = f"bedtools slop -s -i {input_file} -g {genome_file}.length -l {left_ex} -r {right_ex} > {bed_out_flank_file_dup}"
 
-    subprocess.run(bed_cmd, shell=True, check=True)
+    try:
+        subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    except FileNotFoundError:
+        prcyan("'bedtools slop' command not found. Please ensure 'bedtools' is correctly installed.")
+        raise Exception
+
+    except subprocess.CalledProcessError as e:
+        prcyan(f"\nbedtools slop failed for {input_file_n} with error code {e.returncode}")
+        prcyan(e.stderr)
+        raise Exception
 
     bed_out_flank_file = check_bed_uniqueness(output_dir, bed_out_flank_file_dup)
 
@@ -343,11 +396,28 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
         fasta_cmd = f"bedtools getfasta -s -nameOnly -fi {genome_file} -fo {fasta_out_flank_file} -bed {bed_out_flank_file}"
     else:
         fasta_cmd = f"bedtools getfasta -s -fi {genome_file} -fo {fasta_out_flank_file} -bed {bed_out_flank_file}"
-    subprocess.run(fasta_cmd, shell=True, check=True)
+
+    try:
+        subprocess.run(fasta_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    except FileNotFoundError:
+        prcyan("'bedtools getfasta' command not found. Please ensure 'bedtools' is correctly installed.")
+        raise Exception
+
+    except subprocess.CalledProcessError as e:
+        prcyan(f"\nbedtools getfasta failed for {input_file_n} with error code {e.returncode}")
+        prcyan(e.stderr)
+        raise Exception
 
     # Use awk to remove letters that aren't A G C T a g c t
-    fasta_nucleotide_clean = f"awk '/^>/ {{print}} !/^>/ {{gsub(/[^AGCTagct]/, \"\"); print}}' {fasta_out_flank_file} > {fasta_out_flank_file_nucleotide_clean}"
-    subprocess.run(fasta_nucleotide_clean, shell=True, check=True)
+    fasta_nucleotide_clean = f"awk '/^>/ {{print}} !/^>/ {{gsub(/[^AGCTagct]/, \"\"); print}}' {fasta_out_flank_file}" \
+                             f" > {fasta_out_flank_file_nucleotide_clean}"
+    try:
+        subprocess.run(fasta_nucleotide_clean, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    except subprocess.CalledProcessError as e:
+        prcyan(e.stderr)
+        raise Exception
 
     return fasta_out_flank_file_nucleotide_clean, bed_out_flank_file_dup
 
@@ -360,16 +430,17 @@ def align_sequences(input_file, output_dir):
     :param output_dir: str, output file directory
     :return: multiple sequence alignment file absolute path
     """
+    input_file_n = os.path.basename(input_file)
     fasta_out_flank_mafft_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_aln.fa")
 
     # Read the top 5 sequences and determine if any are longer than 7000
     long_sequences = False
-    with open(input_file, "r") as handle:
-        for i, record in enumerate(SeqIO.parse(handle, "fasta")):
-            if len(record.seq) > 7000:
+    with open(input_file, "r") as f:
+        for i, record in enumerate(SeqIO.parse(f, "fasta")):
+            if len(record.seq) > 10000:
                 long_sequences = True
                 break
-            if i >= 4:  # Only check the top 5 sequences
+            if i >= 10:  # Only check the top 10 sequences
                 break
 
     # Construct the command as a list of strings
@@ -379,16 +450,22 @@ def align_sequences(input_file, output_dir):
     if long_sequences:
         mafft_cmd.insert(1, "--memsave")  # Insert after 'mafft'
 
-    # Execute the command
-    result = subprocess.run(mafft_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        # Execute the command
+        result = subprocess.run(mafft_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    # Check for errors
-    if result.returncode != 0:
-        raise Exception(f"MAFFT failed with error: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
+    except FileNotFoundError:
+        prcyan("'mafft' command not found. Please ensure 'mafft' is correctly installed.")
+        raise Exception
+
+    except subprocess.CalledProcessError as e:
+        prcyan(f"MAFFT failed for {input_file_n} with error code {e.returncode}")
+        prcyan(e.stderr)
+        raise Exception
 
     # Write the output to the file
     with open(fasta_out_flank_mafft_file, 'w') as f:
-        f.write(result.stdout.decode('utf-8'))
+        f.write(result.stdout)
 
     return fasta_out_flank_mafft_file
 
@@ -511,7 +588,7 @@ def calc_conservation(col):
     return max_count / total_nucleotides
 
 
-def generate_hmm_from_msa(input_msa_file, output_hmm_file):
+def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
     """
     Generate HMM profile using hmmbuild from a multiple sequence alignment file.
 
@@ -524,14 +601,21 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file):
 
     try:
         # Execute the command
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-        # Check if the command was successful
-        if result.returncode != 0:
-            click.echo(f"Error running hmmbuild: {os.path.basename(output_hmm_file)}\n{result.stderr.decode('utf-8')}")
+        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     except FileNotFoundError:
-        click.echo("Error: hmmbuild not found. Ensure HMMER is installed and available in the PATH.")
+        prcyan("'hmmbuild' command not found. Please ensure 'hmmbuild' is correctly installed.")
+        prgre("This hmm error won't affect the final TE consensus library.")
+        pass
+
+    except subprocess.CalledProcessError as e:
+        with open(error_file, 'a') as f:
+            f.write(f"\nhmm file generation failed for {os.path.basename(output_hmm_file)} with error code {e.returncode}")
+            f.write('\n' + e.stderr)
+        prcyan(f"\nhmm file generation failed for {os.path.basename(output_hmm_file)} with error code {e.returncode}")
+        prgre("\nThis hmm error won't affect the final TE consensus library, you can ignore it."
+              "\nFor traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
+        pass
 
 
 def reverse_complement_seq_file(input_file, output_file):
@@ -1156,6 +1240,18 @@ def change_permissions_recursive(input_dir, mode):
 
 
 def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9, thread=10):
+    """
+    -l	length of throw_away_sequences, default 10
+    -d	length of description in .clstr file, default 20 if set to 0, it takes the fasta defline and
+    stops at first space
+    -s	length difference cutoff, default 0.0 if set to 0.9, the shorter sequences need to be at least 90% length
+    of the representative of the cluster
+    -aL	alignment coverage for the longer sequence, default 0.0 if set to 0.9, the alignment must
+    covers 90% of the sequence
+    -aS	alignment coverage for the shorter sequence, default 0.0 if set to 0.9, the alignment must
+    covers 90% of the sequence
+    Note: -s only consider length, but -aL and -aS consider alignment
+    """
     command = [
         "cd-hit-est",
         "-i", input_file,
@@ -1165,21 +1261,23 @@ def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9,
         "-aS", str(aS),
         "-M", "0",
         "-T", str(thread),
-        "-l", "80",
+        "-l", "50",
         "-d", "0",
         "-s", str(s)
     ]
 
-    result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    error_output = result.stderr.decode("utf-8")
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    if error_output:
+    except FileNotFoundError:
+        prcyan("'\ncd-hit-est' command not found. Please ensure 'cd-hit-est' is correctly installed.\n")
+        raise Exception
 
-        click.echo(f"Error executing cd-hit-est command {error_output}\n")
-        return False
+    except subprocess.CalledProcessError as e:
+        prcyan(f"\ncd-hit-est failed for {os.path.basename(input_file)} with error code {e.returncode}")
+        prcyan(e.stderr)
+        raise Exception
 
-    else:
-        return True
 
 def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False):
     """
@@ -1206,17 +1304,26 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
                    "-xm",  # Creates an additional output file in cross_match format (for parsing)
                    "-a",  # Writes alignments in .align output file
                    ]
-
-    result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    error_output = result.stderr.decode("utf-8")
-
-    if error_output:
-
-        click.echo(f"Error executing RepeatMasker command{error_output}\n.")
-        return False
-
-    else:
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return True
+
+    except FileNotFoundError:
+        prcyan("'RepeatMasker' command not found. Please ensure 'RepeatMasker' is correctly installed.")
+        raise Exception
+
+    except subprocess.CalledProcessError as e:
+        if classify:
+            prcyan(f"\nRepeatMasker failed during final classification step with error code {e.returncode}")
+            prcyan(e.stderr)
+            prgre("This will not affect the final result but only the classification of TE might not be affect")
+            raise Exception
+        else:
+            prcyan(f"\nRepeatMasker failed during final whole genome TE annotation with error code {e.returncode}")
+            prcyan(e.stderr)
+            prgre("This won't affect the final TE consensus library at all. You can do the final genome TE annotation"
+                  " by yourself with RepeatMasker")
+            raise Exception
 
 
 def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, min_len=80, min_cov=0.8):
@@ -1455,15 +1562,25 @@ def classify_single(consensus_fasta):
     # Define RepeatClassifier command, the output file will store at the same directory of the consensus_fasta
     command = ["RepeatClassifier", "-consensi", consensus_fasta]
 
-    # Run RepeatClassifier using subprocess
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        # Run RepeatClassifier using subprocess
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    except FileNotFoundError:
+        prcyan("'RepeatClassifier' command not found. Please ensure 'RepeatModeler' is correctly installed.")
+        return False
+
+    except subprocess.CalledProcessError as e:
+        prcyan(f"RepeatClassifier error for {os.path.basename(consensus_fasta)} with error code {e.returncode}")
+        prcyan(e.stderr)
+        prgre("This only affect classification but not consensus sequence. "
+              "You can run 'RepeatClassifier -consensi <your_consensus_file>' to test")
+        # Change the working directory back to the original directory
+        os.chdir(original_dir)
+        return False
 
     # Change the working directory back to the original directory
     os.chdir(original_dir)
-
-    if result.returncode != 0:
-        click.echo(f"RepeatClassifier error for {os.path.basename(consensus_fasta)}\n{result.stderr.decode('utf-8')}")
-        return False
 
     classified_file = f'{consensus_fasta}.classified'
 
@@ -1476,14 +1593,17 @@ def classify_single(consensus_fasta):
     return seq_TE_type
 
 
-def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None, TIR_adj = 2000, LTR_adj = 4000, TEaid = False):
-
+def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=2000, LTR_adj=3000):
+    """
+    output_dir: used to store self blast database
+    """
     # Read input file and get sequence length
     record = SeqIO.read(input_file, "fasta")
     record_len = len(record.seq)
     found_match = False
 
-    if if_blast or blast_out is None:
+    # teaid output is not given or the given file doesn't exist or is empty, do self blast
+    if teaid_blast_out is None or not file_exists_and_not_empty(teaid_blast_out):
         os.makedirs(output_dir, exist_ok=True)
         database_file = os.path.join(output_dir, "Tem_blast_database")
         makeblastdb_cmd = f"makeblastdb -in {input_file} -dbtype nucl -out {database_file}"
@@ -1491,35 +1611,39 @@ def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None,
 
         blast_cmd = f"blastn -query {input_file} -db {database_file} " \
                     f"-outfmt \"6 qseqid qstart qend sstart send \" " \
-                    f"-evalue 0.05"  # Set higher evalue for self-blast
+                    f"-evalue 0.05"  # Set higher e-value for self-blast
 
-        # Execute the command
-        result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            result = subprocess.run(blast_cmd, shell=True, check=True, text=True, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+            blast_out = result.stdout
 
-        # If there is an error, print it
-        if result.returncode != 0:
-            click.echo(
-                f"An error occurred self blast: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
-            return
-        else:
-            blast_out = result.stdout.decode('utf-8')
+            # If self blast result is empty, return directly
+            if blast_out.strip() == "":
+                return None, None, False
+        except subprocess.CalledProcessError as e:
+            prcyan(f"\nTerminal repeat detection failed for {os.path.basename(input_file)} with error code {e.returncode}")
+            prcyan('\n' + e.stderr + '\n')
+            raise Exception
 
-            # Define blast out file
-            blast_out_file = os.path.join(output_dir, "tem_blast_out.txt")
+        # Define blast out file
+        blast_out_file = os.path.join(output_dir, "tem_blast_out.txt")
 
-            with open(blast_out_file, 'w') as f:
-
-                # Give a header to blast result
-                f.write("qseqid\tqstart\tqend\tsstart\tsend\n")
-                f.write(blast_out)
-    else:
-        blast_out_file = blast_out
-        
-    # TEaid self blast output default format is separated by white space
-    if TEaid:
-        df = pd.read_csv(blast_out_file, sep='\s+', header=None, skiprows=1)
-    else: 
+        with open(blast_out_file, 'w') as f:
+            # Give a header to blast result
+            f.write("qseqid\tqstart\tqend\tsstart\tsend\n")
+            f.write(blast_out)
         df = pd.read_csv(blast_out_file, sep="\t", header=None, skiprows=1)
+    else:
+        blast_out_file = teaid_blast_out
+
+        # TEaid self blast output default format is separated by white space
+        df = pd.read_csv(blast_out_file, sep='\s+', header=None, skiprows=1)
+
+    # Return None directly when the self blast result is empty, this could happen when too many ambiguous letters
+    # are there like N.
+    if df.empty:
+        return None, None, False
 
     df_LTR = df[(df.iloc[:, 2] - df.iloc[:, 1] >= 150) &
             (df.iloc[:, 1] != df.iloc[:, 3]) &
@@ -1531,6 +1655,10 @@ def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None,
         df_LTR["5"] = df.iloc[:, 4] - df.iloc[:, 1]
         df_LTR.reset_index(drop=True, inplace=True)
 
+        if not df_LTR.empty:
+            df_LTR["5"] = df[4] - df[1]
+            df_LTR.reset_index(drop=True, inplace=True)
+
         # Find the row with the largest difference
         LTR_largest = df_LTR.iloc[df_LTR["5"].idxmax()]
 
@@ -1540,10 +1668,9 @@ def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None,
             # Because blast use index start from 1, modify the start position
             LTR_boundary = [LTR_largest[1] - 1, LTR_largest[4]]
             found_match = "LTR"
+
         else:
             LTR_boundary = None
-    else:
-        LTR_boundary = None
 
     df_TIR = df[(df.iloc[:, 2] - df.iloc[:, 1] >= 50) &
             (df.iloc[:, 1] != df.iloc[:, 3]) &
@@ -1563,8 +1690,46 @@ def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None,
         else:
             TIR_boundary = None
     else:
+        LTR_boundary = None
         TIR_boundary = None
 
     return LTR_boundary, TIR_boundary, found_match
 
 
+def filter_out_big_gap_seq(input, output=None, gap_threshold=1):
+    if output is None:
+        alignment = input
+    else:
+        # Read the alignment from the input file
+        alignment = AlignIO.read(input, "fasta")
+    alignment_len = alignment.get_alignment_length()
+
+    # Filter based on gap fraction
+    gap_alignment_filter_list = []
+    for record in alignment:
+        gap_count = record.seq.count("-")
+        gap_fraction = gap_count / alignment_len
+
+        if gap_fraction < gap_threshold:
+            gap_alignment_filter_list.append(record)
+
+    # Create a new MultipleSeqAlignment object with the filtered records
+    filtered_alignment = MultipleSeqAlignment(gap_alignment_filter_list)
+
+    if output is None:
+        return filtered_alignment
+    else:
+        # Write the filtered alignment to the output file
+        AlignIO.write(filtered_alignment, output, "fasta")
+
+
+def file_exists_and_not_empty(file_path):
+    # Check if the file exists
+    if os.path.isfile(file_path):
+        # Check if the file is not empty
+        if os.path.getsize(file_path) > 0:
+            return True
+        else:
+            return False
+    else:
+        return False

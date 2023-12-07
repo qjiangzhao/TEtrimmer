@@ -16,7 +16,7 @@ from functions import remove_gaps, generate_hmm_from_msa, extract_fasta, \
     remove_gaps_with_similarity_check, remove_gaps_block_with_similarity_check, align_sequences, \
     con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, \
     con_generater, reverse_complement_seq_file, classify_single, check_terminal_repeat, select_star_to_end, \
-    define_crop_end_simi_thr
+    define_crop_end_simi_thr, prcyan, prgre
 from selectcolumns import CleanAndSelectColumn
 import checkpattern
 from TEaid import TEAid
@@ -181,6 +181,8 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
 def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
               define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win):
 
+    terminal_repeat_found = False
+
     bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, 0, 0)
 
     # align_sequences() will return extended MSA absolute file
@@ -208,7 +210,8 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
     # Check terminal repeats
     # Define the output folder to store the temporary blast database
     check_terminal_repeat_output = f"{bed_fasta_mafft_gap_sim_cp_con}_tem"
-    LTR_boundary, TIR_boundary, found_match = check_terminal_repeat(bed_fasta_mafft_gap_sim_cp_con, check_terminal_repeat_output)
+    LTR_boundary, TIR_boundary, found_match = check_terminal_repeat(bed_fasta_mafft_gap_sim_cp_con,
+                                                                    check_terminal_repeat_output)
 
     # Check terminal repeats
     if found_match:
@@ -261,34 +264,39 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         cropped_alignment_output_file_g = bed_fasta_mafft_gap_sim_selected_cp_g
         bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_gap_sim
 
+        terminal_repeat_found = True
+
     # When LTR or TIR are not found
     else:
         bed_boundary = DefineBoundary(bed_fasta_mafft_gap_sim_cp, threshold=ext_threshold,
                                       check_window=define_boundary_win, max_X=0.2, if_con_generater=False)
-        bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=300)
+        if bed_boundary.if_continue:
+            bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=300)
 
-        # Because for LINE element bed_fasta_mafft_boundary_crop will be changed. Copy it to the other variable
-        bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_boundary_crop
+            # Because for LINE element bed_fasta_mafft_boundary_crop will be changed. Copy it to the other variable
+            bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_boundary_crop
 
-        if "LINE" in bed_file:
-            # For the high divergence region, more gaps can be found. According to this feature, remove high divergence
-            # region this function is very useful for dealing with LINE elements
-            cropped_MSA_by_gap = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
-                                              window_size=crop_end_gap_win)
-            bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
+            if "LINE" in bed_file:
+                # For the high divergence region, more gaps can be found. According to this feature, remove
+                # high divergence region this function is very useful for dealing with LINE elements
+                cropped_MSA_by_gap = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
+                                                  window_size=crop_end_gap_win)
+                bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
 
-        # Gaps are removed again after crop end process
-        cropped_alignment_output_file_g, column_mapping = crop_end_and_remove_gap(
-            bed_fasta_mafft_boundary_crop, output_dir, crop_end_threshold=crop_end_thr,
-            window_size=crop_end_win, gap_threshold=0.8)
+            # Gaps are removed again after crop end process
+            cropped_alignment_output_file_g, column_mapping = crop_end_and_remove_gap(
+                bed_fasta_mafft_boundary_crop, output_dir, crop_end_threshold=crop_end_thr,
+                window_size=crop_end_win, gap_threshold=0.8)
 
-        # Crop end can't define the final boundary, use DefineBoundary again to define start position
-        cropped_boundary = DefineBoundary(cropped_alignment_output_file_g, threshold=0.8,
-                                          check_window=4, max_X=0)
-        cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
+            # Crop end can't define the final boundary, use DefineBoundary again to define start position
+            cropped_boundary = DefineBoundary(cropped_alignment_output_file_g, threshold=0.8,
+                                              check_window=4, max_X=0)
+            cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
+        else:
+            return False
 
     return bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
-        column_mapping, bed_fasta_mafft_boundary_crop_for_select
+        column_mapping, bed_fasta_mafft_boundary_crop_for_select, terminal_repeat_found
 
 
 def crop_end_and_remove_gap(input_file, output_dir, crop_end_threshold=0.8, window_size=20, gap_threshold=0.8):
@@ -364,18 +372,25 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     #####################################################################################################
     # Code block: Define left and right sides extension number
     #####################################################################################################
-
-    left_ex = ex_step_size
-    right_ex = ex_step_size
         
     try: 
         left_bed_dic = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir,
-                                    crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win, bed_dict)
+                                  crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win, bed_dict)
 
         final_bed_dic = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir,
                                    crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win,
                                    left_bed_dic)
+    except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"\nMSA extension failed for {seq_name} with error:\n{e}")
+            f.write('\n' + tb_content + '\n\n')
+            prcyan(f"\nMSA extension failed for {seq_name} with error:\n{e}")
+            prcyan('\n' + tb_content + '\n')
+            raise Exception
 
+    try:
         # Update bed file for final MSA
         for key, value in final_bed_dic.items():
             # Find rows where the fourth column matches the key and update position by dictionary value
@@ -385,351 +400,428 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         bed_final_MSA = bed_file + "_fm.bed"
         df.to_csv(bed_final_MSA, sep='\t', index=False, header=False)
 
-        # if no error message, get final MSA
+        # final_MSA return false when the start crop point is greater than the end crop point, which means the
+        # sequence is too short. Besides, when the divergence is too high, CropEnd will all cause this problem
+        final_msa_result = final_MSA(bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
+                                     define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win)
 
-        bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
-            column_mapping, bed_fasta_mafft_boundary_crop_for_select = final_MSA(
-            bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
-            define_boundary_win,crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win)
+        # Check if the result is False, indicating an error or specific condition
+        if not final_msa_result:
+            # Handle the error or specific condition here
+            return False
+        else:
+            # Unpack the returned values if the function executed normally
+            bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
+                column_mapping, bed_fasta_mafft_boundary_crop_for_select, terminal_repeat_found = final_msa_result
 
     except Exception as e:
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"extend_end error\n")
-            f.write(tb_content + '\n\n')
-            click.echo(f"extend_end isn't working. {seq_name} left {left_ex} right {right_ex}")
-            return False
+            f.write(f"Boundary definition error {seq_name}\n")
+            f.write('\n' + tb_content + '\n\n')
+            prcyan(f"\nBoundary definition failed for {seq_name} with error:\n{e}")
+            prcyan('\n' + tb_content + '\n')
+            raise Exception
 
     #####################################################################################################
     # Code block: Check if the final MSA contains too many ambiguous letter "N"
     #####################################################################################################
+    try:
+        initial_cons = con_generater_no_file(cropped_boundary_MSA, threshold=0.6, ambiguous="N")
 
-    initial_cons = con_generater_no_file(cropped_boundary_MSA, threshold=0.7, ambiguous="N")
+        # Calculate the proportion of 'N' in the sequence
+        n_proportion = initial_cons.count("N") / len(initial_cons)
 
-    # Calculate the proportion of 'N' in the sequence
-    n_proportion = initial_cons.count("N") / len(initial_cons)
-
-    # Check if the proportion is greater than 30%
-    # If 30% of this consensus sequence is "N", stop analysis for this MSA
-    if n_proportion > 0.3:
-        return False
+        # Check if the proportion is greater than 30%
+        # If 30% of this consensus sequence is "N", stop analysis for this MSA
+        if n_proportion > 0.3:
+            return False
 
     #####################################################################################################
     # Code block: For LTR element, check if the cropped MSA starts with give patterns like TGA ACA
     #####################################################################################################
 
-    # When both start and end patterns are None, skip this block
-    if start_patterns is not None or end_patterns is not None:
-        if checkpattern.is_LTR(cropped_alignment_output_file_g):  # Check if file name contain "LTR"
-            # Generate consensus sequences
-            consensus_seq = checkpattern.generate_consensus_sequence(cropped_alignment_output_file_g,
-                                                                     threshold=0.7, ambiguous="X")
+        # When both start and end patterns are None, and terminal repeat found is false skip this block
+        # Because terminal repeat can precisely define the start and end points
+        if start_patterns is not None or end_patterns is not None and not terminal_repeat_found:
+            if checkpattern.is_LTR(cropped_alignment_output_file_g):  # Check if file name contain "LTR"
+                # Generate consensus sequences
+                consensus_seq = checkpattern.generate_consensus_sequence(cropped_alignment_output_file_g,
+                                                                         threshold=0.7, ambiguous="X")
 
-            # Four variables will be returned
-            start_matched, end_matched, check_start, check_end = checkpattern.check_and_update(
-                                        consensus_seq, start=cropped_boundary.start_post, end=cropped_boundary.end_post,
-                                        start_patterns=start_patterns, end_patterns=end_patterns)
+                # Four variables will be returned
+                start_matched, end_matched, check_start, check_end = checkpattern.check_and_update(
+                    consensus_seq, start=cropped_boundary.start_post, end=cropped_boundary.end_post,
+                    start_patterns=start_patterns, end_patterns=end_patterns)
 
-            # When the new start or end positions are different with previous, convey the new start or end position
-            # to cropped_boundary object and generate the new MSA file
-            if cropped_boundary.start_post != check_start or cropped_boundary.end_post != check_end:
-                cropped_boundary.start_post = check_start
-                cropped_boundary.end_post = check_end
-                # Generate the new MSA file based on new start and end positions
-                cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
+                # When the new start or end positions are different with previous, convey the new start or end position
+                # to cropped_boundary object and generate the new MSA file
+                if cropped_boundary.start_post != check_start or cropped_boundary.end_post != check_end:
+                    cropped_boundary.start_post = check_start
+                    cropped_boundary.end_post = check_end
+                    # Generate the new MSA file based on new start and end positions
+                    cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
+    except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"\nStart and end pattern definition failed for {seq_name} with error \n{e}\n")
+            f.write('\n' + tb_content + '\n\n')
+            prcyan(f"\nStart and end pattern like 'TGT' 'ACA' definition failed for {seq_name} with error \n{e}")
+            prgre("\nThis won't largely affect the final result, you can choose to ignore it. "
+                  "For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
+            pass
 
     #####################################################################################################
     # Code block: Generate MSA for CIAlign plot
     #####################################################################################################
+    try:
+        # Get 300 columns left the start point
+        cropped_boundary_manual_MSA_left = select_window_columns(
+            bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.start_post],
+            "left", window_size=300)
 
-    # Get 300 columns left the start point
-    cropped_boundary_manual_MSA_left = select_window_columns(
-        bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.start_post],
-        "left", window_size=300)
+        # Get 300 columns right the end point
+        cropped_boundary_manual_MSA_right = select_window_columns(
+            bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.end_post],
+            "right", window_size=300)
 
-    # Get 300 columns right the end point
-    cropped_boundary_manual_MSA_right = select_window_columns(
-        bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.end_post],
-        "right", window_size=300)
-
-    # Concatenate MSA for manual curation
-    # The concat_start and concat_end points correspond with cropped_boundary.start_post and cropped_boundary.end_post
-    # Because the input file of "concatenate_alignment()" is alignment object not file path, read "cropped_boundary_MSA"
-    # to an alignment object.
-    input_file_name = str(os.path.basename(bed_fasta_mafft_boundary_crop_for_select)) + "_proof_anno"
-    cropped_boundary_MSA_alignment = AlignIO.read(cropped_boundary_MSA, "fasta")
-    cropped_boundary_manual_MSA_concatenate, concat_start_man, concat_end_man = concatenate_alignments(
-        cropped_boundary_manual_MSA_left, cropped_boundary_MSA_alignment, cropped_boundary_manual_MSA_right,
-        input_file_name=input_file_name, output_dir=output_dir
-    )
+        # Concatenate MSA for manual curation
+        # The concat_start and concat_end points correspond with cropped_boundary.start_post and cropped_boundary.end_post
+        # Because the input file of "concatenate_alignment()" is alignment object not file path, read "cropped_boundary_MSA"
+        # to an alignment object.
+        input_file_name = str(os.path.basename(bed_fasta_mafft_boundary_crop_for_select)) + "_proof_anno"
+        cropped_boundary_MSA_alignment = AlignIO.read(cropped_boundary_MSA, "fasta")
+        cropped_boundary_manual_MSA_concatenate, concat_start_man, concat_end_man = concatenate_alignments(
+            cropped_boundary_manual_MSA_left, cropped_boundary_MSA_alignment, cropped_boundary_manual_MSA_right,
+            input_file_name=input_file_name, output_dir=output_dir
+        )
 
     #####################################################################################################
     # Code block: Concatenate beginning and end part of MSA and plotting
     #####################################################################################################
 
-    # "sequence_len" represent the length of final cropped MSA
-    # Extract the beginning and end columns of cropped MSA then join them by "----------".
-    # Return MSA length, which will be used for plotting
-    cropped_boundary_plot_select_start_end_and_joint, sequence_len = select_start_end_and_join(
-        cropped_alignment_output_file_g, output_dir, cropped_boundary.start_post, cropped_boundary.end_post
-    )
+        # "sequence_len" represent the length of final cropped MSA
+        # Extract the beginning and end columns of cropped MSA then join them by "----------".
+        # Return MSA length, which will be used for plotting
+        cropped_boundary_plot_select_start_end_and_joint, sequence_len = select_start_end_and_join(
+            cropped_alignment_output_file_g, output_dir, cropped_boundary.start_post, cropped_boundary.end_post
+        )
 
-    # "column_mapping" is a dictionary, the key represent cropped nucleotide position. The value represent the
-    # original MSA nucleotide position.
-    # Get 50 columns left the start point
-    cropped_boundary_plot_left = select_window_columns(
-        bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.start_post], "left",
-        window_size=50
-    )
+        # "column_mapping" is a dictionary, the key represent cropped nucleotide position. The value represent the
+        # original MSA nucleotide position.
+        # Get 50 columns left the start point
+        cropped_boundary_plot_left = select_window_columns(
+            bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.start_post], "left",
+            window_size=50
+        )
 
-    # Get 50 columns right the end point
-    cropped_boundary_plot_right = select_window_columns(
-        bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.end_post], "right",
-        window_size=50
-    )
+        # Get 50 columns right the end point
+        cropped_boundary_plot_right = select_window_columns(
+            bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.end_post], "right",
+            window_size=50
+        )
 
-    # Concatenate MSA
-    # The concat_start and concat_end points correspond with cropped_boundary.start_post and cropped_boundary.end_post
-    cropped_boundary_plot_concatenate, concat_start, concat_end = concatenate_alignments(
-        cropped_boundary_plot_left, cropped_boundary_plot_select_start_end_and_joint, cropped_boundary_plot_right,
-        input_file_name=cropped_boundary_MSA, output_dir=output_dir
-    )
+        # Concatenate MSA
+        # The concat_start and concat_end points correspond with cropped_boundary.start_post and cropped_boundary.end_post
+        cropped_boundary_plot_concatenate, concat_start, concat_end = concatenate_alignments(
+            cropped_boundary_plot_left, cropped_boundary_plot_select_start_end_and_joint, cropped_boundary_plot_right,
+            input_file_name=cropped_boundary_MSA, output_dir=output_dir
+        )
+    except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"\nConcatenate MSA for proof reading plot failed for {seq_name} with error:\n{e}")
+            f.write('\n' + tb_content + '\n\n')
+            prcyan(f"\nConcatenate MSA for proof reading plot failed for {seq_name} with error:\n{e}")
+            prcyan('\n' + tb_content + '\n')
+            raise Exception
 
     #####################################################################################################
     # Code block: Predict ORF and Pfam domain, determine sequence direction
     #####################################################################################################
+    try:
+        # Generate consensus sequence for ORF prediction
+        # Use lower threshold to enable give more pfam results
+        orf_cons = con_generater(cropped_boundary_MSA, output_dir, threshold=0.5)
 
-    # Generate consensus sequence for ORF prediction
-    # Use lower threshold to enable give more pfam results
-    orf_cons = con_generater(cropped_boundary_MSA, output_dir, threshold=0.5)
+        # Predict orf, scan with Pfam
+        orf_domain_plot_object = PlotPfam(orf_cons, output_dir, pfam_database_dir=pfam_dir, mini_orf=mini_orf)
 
-    # Predict orf, scan with Pfam
-    orf_domain_plot_object = PlotPfam(orf_cons, output_dir, pfam_database_dir=pfam_dir, mini_orf=mini_orf)
+        # "run_getorf()" function will return True when any ORF are detected. Otherwise, it will be False
+        orf_domain_plot = None
+        if_pfam_domain = False
+        if orf_domain_plot_object.run_getorf():
 
-    # "run_getorf()" function will return True when any ORF are detected. Otherwise, it will be False
-    orf_domain_plot = None
-    if_pfam_domain = False
-    if orf_domain_plot_object.run_getorf():
+            # "run_pfam_scan()" will return True when pfam domains are found, otherwise it will return False
+            if_pfam_domain, pfam_result_file = orf_domain_plot_object.run_pfam_scan()
+            if if_pfam_domain:
 
-        # "run_pfam_scan()" will return True when pfam domains are found, otherwise it will return False
-        if_pfam_domain, pfam_result_file = orf_domain_plot_object.run_pfam_scan()
-        if if_pfam_domain:
+                # "determine_sequence_direction()" will return True when the direction is right, otherwise, it will be False
+                if determine_sequence_direction(pfam_result_file):
 
-            # "determine_sequence_direction()" will return True when the direction is right, otherwise, it will be False
-            if determine_sequence_direction(pfam_result_file):
+                    # When the direction is right, plot the orf and pfam directly
+                    orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
+                else:
+                    # When the direction is wrong, reverse complement the corresponded sequence and MSA
+                    # Reverse complement consensus sequence
 
-                # When the direction is right, plot the orf and pfam directly
-                orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
+                    # The reverse complemented file will overwrite the old file
+                    orf_cons = reverse_complement_seq_file(
+                        input_file=orf_cons, output_file=orf_cons)
+
+                    # Reverse complement MSA files
+                    cropped_boundary_MSA = reverse_complement_seq_file(
+                        input_file=cropped_boundary_MSA, output_file=cropped_boundary_MSA
+                    )
+                    cropped_boundary_manual_MSA_concatenate = reverse_complement_seq_file(
+                        input_file=cropped_boundary_manual_MSA_concatenate,
+                        output_file=cropped_boundary_manual_MSA_concatenate
+                    )
+
+                    cropped_boundary_plot_concatenate = reverse_complement_seq_file(
+                        input_file=cropped_boundary_plot_concatenate,
+                        output_file=cropped_boundary_plot_concatenate
+                    )
+
+                    # Define the new start and end points for cropped_boundary_manual_MSA_concatenate
+                    # cropped_boundary_manual_MSA_concatenate will be used for CIAlign plot
+                    # Get MSA sequence length
+                    cropped_boundary_manual_MSA_concatenate_align = AlignIO.read(cropped_boundary_manual_MSA_concatenate, "fasta")
+
+                    # get_alignment_length() is a build in function
+                    cropped_boundary_manual_MSA_concatenate_length = cropped_boundary_manual_MSA_concatenate_align.get_alignment_length()
+
+                    # Use intermediate number to get the new start and end number
+                    concat_start_man_intermediate = cropped_boundary_manual_MSA_concatenate_length - concat_end_man - 1
+                    concat_end_man_intermediate = cropped_boundary_manual_MSA_concatenate_length - concat_start_man - 1
+                    concat_start_man = concat_start_man_intermediate
+                    concat_end_man = concat_end_man_intermediate
+
+                    # Define the new start and end points for cropped_boundary_plot_concatenate
+                    # cropped_boundary_plot_concatenate will be used for te_trimmer plot
+                    # Get MSA sequence length
+                    cropped_boundary_plot_concatenate_align = AlignIO.read(cropped_boundary_plot_concatenate, "fasta")
+                    cropped_boundary_plot_concatenate_length = cropped_boundary_plot_concatenate_align.get_alignment_length()
+
+                    # Use intermediate number to get the new start and end number
+                    concat_start_intermediate = cropped_boundary_plot_concatenate_length - concat_end - 1
+                    concat_end_intermediate = cropped_boundary_plot_concatenate_length - concat_start - 1
+                    concat_start = concat_start_intermediate
+                    concat_end = concat_end_intermediate
+
+                    # Based on the new consensus sequence, predict orf and pfam domain again. At the end plot
+                    orf_domain_plot_object = PlotPfam(orf_cons, output_dir, pfam_database_dir=pfam_dir, mini_orf=mini_orf)
+                    if orf_domain_plot_object.run_getorf():
+                        # "run_pfam_scan()" will return when pfam domains are found, otherwise it will return False
+                        if_pfam_domain, pfam_result_file = orf_domain_plot_object.run_pfam_scan()
+                        if if_pfam_domain:
+                            orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
+
             else:
-                # When the direction is wrong, reverse complement the corresponded sequence and MSA
-                # Reverse complement consensus sequence
-
-                # The reverse complemented file will overwrite the old file
-                orf_cons = reverse_complement_seq_file(
-                    input_file=orf_cons, output_file=orf_cons)
-
-                # Reverse complement MSA files
-                cropped_boundary_MSA = reverse_complement_seq_file(
-                    input_file=cropped_boundary_MSA, output_file=cropped_boundary_MSA
-                )
-                cropped_boundary_manual_MSA_concatenate = reverse_complement_seq_file(
-                    input_file=cropped_boundary_manual_MSA_concatenate,
-                    output_file=cropped_boundary_manual_MSA_concatenate
-                )
-
-                cropped_boundary_plot_concatenate = reverse_complement_seq_file(
-                    input_file=cropped_boundary_plot_concatenate,
-                    output_file=cropped_boundary_plot_concatenate
-                )
-
-                # Define the new start and end points for cropped_boundary_manual_MSA_concatenate
-                # cropped_boundary_manual_MSA_concatenate will be used for CIAlign plot
-                # Get MSA sequence length
-                cropped_boundary_manual_MSA_concatenate_align = AlignIO.read(cropped_boundary_manual_MSA_concatenate, "fasta")
-
-                # get_alignment_length() is a build in function
-                cropped_boundary_manual_MSA_concatenate_length = cropped_boundary_manual_MSA_concatenate_align.get_alignment_length()
-
-                # Use intermediate number to get the new start and end number
-                concat_start_man_intermediate = cropped_boundary_manual_MSA_concatenate_length - concat_end_man - 1
-                concat_end_man_intermediate = cropped_boundary_manual_MSA_concatenate_length - concat_start_man - 1
-                concat_start_man = concat_start_man_intermediate
-                concat_end_man = concat_end_man_intermediate
-
-                # Define the new start and end points for cropped_boundary_plot_concatenate
-                # cropped_boundary_plot_concatenate will be used for te_trimmer plot
-                # Get MSA sequence length
-                cropped_boundary_plot_concatenate_align = AlignIO.read(cropped_boundary_plot_concatenate, "fasta")
-                cropped_boundary_plot_concatenate_length = cropped_boundary_plot_concatenate_align.get_alignment_length()
-
-                # Use intermediate number to get the new start and end number
-                concat_start_intermediate = cropped_boundary_plot_concatenate_length - concat_end - 1
-                concat_end_intermediate = cropped_boundary_plot_concatenate_length - concat_start - 1
-                concat_start = concat_start_intermediate
-                concat_end = concat_end_intermediate
-
-                # Based on the new consensus sequence, predict orf and pfam domain again. At the end plot
-                orf_domain_plot_object = PlotPfam(orf_cons, output_dir, pfam_database_dir=pfam_dir, mini_orf=mini_orf)
-                if orf_domain_plot_object.run_getorf():
-                    # "run_pfam_scan()" will return when pfam domains are found, otherwise it will return False
-                    if_pfam_domain, pfam_result_file = orf_domain_plot_object.run_pfam_scan()
-                    if if_pfam_domain:
-                        orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
-
-        else:
-            # When only ORF is found but Pfam domain isn't found, plot ORF
-            orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
+                # When only ORF is found but Pfam domain isn't found, plot ORF
+                orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
+    except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"\nConcatenate MSA for proof reading plot failed for {seq_name} with error:\n{e}")
+            f.write('\n' + tb_content + '\n\n')
+            prcyan(f"\nORF or Pfam prediction failed for {seq_name} with error:\n{e}")
+            prcyan('\n' + tb_content + '\n')
+            raise Exception
 
     #####################################################################################################
-    # Code block: Plot multiple sequence alignment
+    # Code block: Plot multiple sequence alignment. Plot must be behind Pfam prediction in case wrong direction
     #####################################################################################################
-
-    # Plot MSA, which can easily verify if the start and end crop points are right
-    MSA_plot = process_msa(cropped_boundary_plot_concatenate, output_dir, concat_start, concat_end, sequence_len)
+    try:
+        # Plot MSA, which can easily verify if the start and end crop points are right
+        MSA_plot = process_msa(cropped_boundary_plot_concatenate, output_dir, concat_start, concat_end, sequence_len)
 
     #####################################################################################################
     # Code block: Plot whole MSA by CIAlign style with start and end points
     #####################################################################################################
 
-    # Define while MSA plot output file
-    cropped_boundary_manual_MSA_concatenate_plot = f"{cropped_boundary_manual_MSA_concatenate}_plot.pdf"
+        # Define while MSA plot output file
+        cropped_boundary_manual_MSA_concatenate_plot = f"{cropped_boundary_manual_MSA_concatenate}_plot.pdf"
 
-    # Convert MSA to array
-    cropped_boundary_manual_MSA_concatenate_array, nams = cialign.FastaToArray(cropped_boundary_manual_MSA_concatenate)
+        # Convert MSA to array
+        cropped_boundary_manual_MSA_concatenate_array, nams = cialign.FastaToArray(cropped_boundary_manual_MSA_concatenate)
 
-    # Draw the whole MSA
-    cialign.drawMiniAlignment(cropped_boundary_manual_MSA_concatenate_array,
-                              nams, cropped_boundary_manual_MSA_concatenate_plot, concat_start_man, concat_end_man)
+        # Draw the whole MSA
+        cialign.drawMiniAlignment(cropped_boundary_manual_MSA_concatenate_array, nams,
+                                  cropped_boundary_manual_MSA_concatenate_plot, concat_start_man, concat_end_man)
+    except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"\nMSA plot failed {seq_name} with error:\n{e}")
+            f.write('\n' + tb_content + '\n\n')
+            prcyan(f"\nMSA plot failed {seq_name} with error:\n{e}")
+            prgre("\nMSA plots are only used to evaluate TE Trimmer and won't affect the final TE consensus library."
+                  " For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
+            pass
 
     #####################################################################################################
     # Code block: Generate TE-Aid plot
     #####################################################################################################
+    try:
+        # so.path.abspath(__file__) will return the current executable python file
+        # TE-Aid package is stored at the same directory as this function file.
+        TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
 
-    # so.path.abspath(__file__) will return the current executable python file
-    # TE-Aid package is stored at the same directory as this function file.
-    TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
+        # Run TE_aid, if low_copy self-blast will be performed
+        TE_aid_object = TEAid(orf_cons, output_dir, genome_file, error_file=error_files, TE_aid_dir=TE_aid_path)
+        TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
 
-    # Run TE_aid, if low_copy self-blast will be performed
-    TE_aid_object = TEAid(orf_cons, output_dir, genome_file, TE_aid_dir=TE_aid_path)
-    TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
-
-    # Run TE_aid to plot the query sequence if it is required, because one query file can have multiple
-    # clusters, TEAid will test if this has been created before.
-    if plot_query:
-        query_file = seq_obj.get_input_fasta()
-        TE_aid_object_query = TEAid(query_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
-        TE_aid_plot_query, found_match_query = TE_aid_object_query.run(low_copy=False)
-    else:
-        TE_aid_plot_query = None
-
-    #####################################################################################################
-    # Code block: Merge plot files
-    #####################################################################################################
-
-    # Code block: Merge plot files
-    merger = PdfMerger()
-
-    # List with your PDF file paths. Ensure they are not None before adding them to the list.
-    pdf_files = [pdf for pdf in [MSA_plot, cropped_boundary_manual_MSA_concatenate_plot,
-                                 TE_aid_plot, orf_domain_plot, TE_aid_plot_query] if pdf is not None]
-
-    valid_pdf_count = 0  # Counter to keep track of valid PDFs added
-
-    # Iterate over the list of the file paths
-    for pdf_file in pdf_files:
-        # Check if the file exists before appending
-        if os.path.exists(pdf_file):
-            # Append PDF files
-            merger.append(pdf_file)
-            valid_pdf_count += 1
+        # Run TE_aid to plot the query sequence if it is required, because one query file can have multiple
+        # clusters, TEAid will test if this has been created before.
+        if plot_query:
+            query_file = seq_obj.get_input_fasta()
+            TE_aid_object_query = TEAid(query_file, output_dir, genome_file, error_file=error_files,
+                                        TE_aid_dir=TE_aid_path)
+            TE_aid_plot_query, found_match_query = TE_aid_object_query.run(low_copy=False)
         else:
-            click.echo(f"Note: {os.path.basename(pdf_file)} does not exist and will not be merged. This won't affect "
-                       f"the final result")
+            TE_aid_plot_query = None
+    except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"\nTE Aid plot failed for {seq_name} with error:\n{e}")
+            f.write('\n' + tb_content + '\n\n')
+            prcyan(f"\nTE Aid plot failed for {seq_name} with error:\n{e}")
+            prcyan('\n' + tb_content + '\n')
+            raise Exception
 
-    # Write out the merged PDF file only if there's at least one valid PDF appended
-    if valid_pdf_count > 0:
-        merged_pdf_path = os.path.join(output_dir, f"{os.path.basename(cropped_boundary_MSA)}_me_plot.pdf")
-        merger.write(merged_pdf_path)
+    #####################################################################################################
+    # Code block: Merge plot files
+    #####################################################################################################
+    try:
+        # Code block: Merge plot files
+        merger = PdfMerger()
 
-    merger.close()
+        # List with your PDF file paths. Ensure they are not None before adding them to the list.
+        pdf_files = [pdf for pdf in [MSA_plot, cropped_boundary_manual_MSA_concatenate_plot,
+                                     TE_aid_plot, orf_domain_plot, TE_aid_plot_query] if pdf is not None]
+
+        valid_pdf_count = 0  # Counter to keep track of valid PDFs added
+
+        # Iterate over the list of the file paths
+        for pdf_file in pdf_files:
+            # Check if the file exists before appending
+            if os.path.exists(pdf_file):
+                # Append PDF files
+                merger.append(pdf_file)
+                valid_pdf_count += 1
+            else:
+                click.echo(f"Note: {os.path.basename(pdf_file)} does not exist and will not be merged. "
+                           f"This won't affect the final result")
+
+        # Write out the merged PDF file only if there's at least one valid PDF appended
+        if valid_pdf_count > 0:
+            merged_pdf_path = os.path.join(output_dir, f"{os.path.basename(cropped_boundary_MSA)}_me_plot.pdf")
+            merger.write(merged_pdf_path)
+
+        merger.close()
+
+    except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"\nPlot merge to pdf failed for {seq_name} with error:\n{e}")
+            f.write('\n' + tb_content + '\n\n')
+            prcyan(f"\nPlot merge to pdf failed for {seq_name} with error:\n{e}")
+            prcyan('\n' + tb_content + '\n')
+            raise Exception
 
     #####################################################################################################
     # Code block: Update sequence object (seq_obj)
     #####################################################################################################
+    try:
+        # Create a folder at the same directory with output_dir to store proof annotation files
+        parent_output_dir = os.path.dirname(output_dir)
 
-    # Create a folder at the same directory with output_dir to store proof annotation files
-    parent_output_dir = os.path.dirname(output_dir)
+        # Define final consensus file
+        final_con_file = os.path.join(parent_output_dir, "TE_Trimmer_consensus.fasta")
 
-    # Define final consensus file
-    final_con_file = os.path.join(parent_output_dir, "TE_Trimmer_consensus.fasta")
+        # Define proof_annotation folder path
+        proof_annotation_dir = os.path.join(parent_output_dir, "TE_Trimmer_for_proof_annotation")
 
-    # Define proof_annotation folder path
-    proof_annotation_dir = os.path.join(parent_output_dir, "TE_Trimmer_for_proof_annotation")
+        # Construct the path for the Classification folder
+        classification_dir = os.path.join(parent_output_dir, "Classification")
 
-    # Construct the path for the Classification folder
-    classification_dir = os.path.join(parent_output_dir, "Classification")
+        # Define different levels of proof annotation folder
+        perfect_proof = os.path.join(proof_annotation_dir, "Perfect_annotation")
+        good_proof = os.path.join(proof_annotation_dir, "Good_annotation")
+        intermediate_proof = os.path.join(proof_annotation_dir, "Recommend_check_annotation")
+        need_check_proof = os.path.join(proof_annotation_dir, "Need_check_annotation")
 
-    # Define different levels of proof annotation folder
-    perfect_proof = os.path.join(proof_annotation_dir, "Perfect_annotation")
-    good_proof = os.path.join(proof_annotation_dir, "Good_annotation")
-    intermediate_proof = os.path.join(proof_annotation_dir, "Recommend_check_annotation")
-    need_check_proof = os.path.join(proof_annotation_dir, "Need_check_annotation")
+        # Create the directory if it doesn't exist
+        os.makedirs(proof_annotation_dir, exist_ok=True)
+        os.makedirs(classification_dir, exist_ok=True)
+        os.makedirs(perfect_proof, exist_ok=True)
+        os.makedirs(good_proof, exist_ok=True)
+        os.makedirs(intermediate_proof, exist_ok=True)
+        os.makedirs(need_check_proof, exist_ok=True)
 
-    # Create the directory if it doesn't exist
-    os.makedirs(proof_annotation_dir, exist_ok=True)
-    os.makedirs(classification_dir, exist_ok=True)
-    os.makedirs(perfect_proof, exist_ok=True)
-    os.makedirs(good_proof, exist_ok=True)
-    os.makedirs(intermediate_proof, exist_ok=True)
-    os.makedirs(need_check_proof, exist_ok=True)
+        # Define temporary classified and unknown final consensus file, which will be used for
+        # reclassification by RepeatMasker
+        final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
+        final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classified_consensus.fasta")
 
-    # Define temporary classified and unknown final consensus file, which will be used for
-    # reclassification by RepeatMasker
-    final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
-    final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classified_consensus.fasta")
+        # Define unique sequence names
+        consi_n = len(seq_obj.consi_obj_list)
 
-    # Define unique sequence names
-    consi_n = len(seq_obj.consi_obj_list)
+        if consi_n > 0:
+            consi_n = consi_n
+            uniq_seq_name = f"{seq_name}_{consi_n:02}"
+        else:
+            uniq_seq_name = seq_name
 
-    if consi_n > 0:
-        consi_n = consi_n
-        uniq_seq_name = f"{seq_name}_{consi_n:02}"
-    else:
-        uniq_seq_name = seq_name
+        # Create consensus object
+        consi_obj = seq_obj.create_consi_obj(uniq_seq_name)
 
-    # Create consensus object
-    consi_obj = seq_obj.create_consi_obj(uniq_seq_name)
+        # Generate final consensus sequence
+        # Comparing initial consensus, the final consensus sequence might have different orientation.
+        # For this reason, generate consensus again
+        final_con = con_generater_no_file(cropped_boundary_MSA, threshold=cons_threshold)
+        sequence = str(final_con).upper()
 
-    # Generate final consensus sequence
-    # Comparing initial consensus, the final consensus sequence might have different orientation.
-    # For this reason, generate consensus again
-    final_con = con_generater_no_file(cropped_boundary_MSA, threshold=cons_threshold)
-    sequence = str(final_con).upper()
+        # Store consensus sequence length into consi_obj
+        consi_obj.set_new_length(len(sequence))
 
-    # Store consensus sequence length into consi_obj
-    consi_obj.set_new_length(len(sequence))
+        # Store consensus sequence into consi_obj not necessary
+        # consi_obj.set_cons_seq(sequence)
 
-    # Store consensus sequence into consi_obj not necessary
-    # consi_obj.set_cons_seq(sequence)
+        # Store MSA sequence number into consi_obj
+        MSA_for_final_cons = AlignIO.read(cropped_boundary_MSA, "fasta")
+        MSA_for_final_cons_seq_n = len(MSA_for_final_cons)
+        consi_obj.set_cons_MSA_n(MSA_for_final_cons_seq_n)
 
-    # Store MSA sequence number into consi_obj
-    MSA_for_final_cons = AlignIO.read(cropped_boundary_MSA, "fasta")
-    MSA_for_final_cons_seq_n = len(MSA_for_final_cons)
-    consi_obj.set_cons_MSA_n(MSA_for_final_cons_seq_n)
+        # Store terminal repeat to consi_obj
+        if found_match == "LTR" or found_match == "TIR":
+            consi_obj.set_new_terminal_repeat(found_match)
 
-    # Store terminal repeat to consi_obj
-    if found_match == "LTR" or found_match == "TIR":
-        consi_obj.set_new_terminal_repeat(found_match)
+        # Store blast full length sequence number into consi_obj
+        # check_blast_full_n is a function in TE_Aid class. TE Trimmer will use the blast result of TE Aid
+        blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj, engine=engine)
+        consi_obj.set_blast_full_n(blast_full_length_n)
 
-    # Store blast full length sequence number into consi_obj
-    # check_blast_full_n is a function in TE_Aid class. TE Trimmer will use the blast result of TE Aid
-    blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj, engine=engine)
-    consi_obj.set_blast_full_n(blast_full_length_n)
+        # Store pfam prediction to consi_obj
+        if if_pfam_domain:
+            consi_obj.set_cons_pfam(if_pfam_domain)
 
-    # Store pfam prediction to consi_obj
-    if if_pfam_domain:
-        consi_obj.set_cons_pfam(if_pfam_domain)
+    except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"\nUpdate sequence object failed for {seq_name} with error:\n{e}")
+            f.write('\n' + tb_content + '\n\n')
+            prcyan(f"\nUpdate sequence object failed for {seq_name} with error:\n{e}")
+            prcyan('\n' + tb_content + '\n')
+            raise Exception
 
     #####################################################################################################
     # Code block: Run RepeatClassifier in RepeatModeler to classify TE_trimmer consensus sequences
@@ -743,9 +835,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # fast_mode will supress RepeatClassifier step
     # Classification isn't mandatory, skip this step when error is encountered
     try:
-        if fast_mode:
-            classify_all = False
-            classify_unknown = False
 
         if classify_all or (
                 classify_unknown and (seq_obj.check_unknown() or (abs(consi_obj.new_length - seq_obj.old_length) >= 1000))):
@@ -771,9 +860,12 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"RepeatClassifier classification error\n")
-            f.write(tb_content + '\n\n')
-        click.echo("Note: Classification isn't working. This won't affect final consensus sequences.")
+            f.write(f"\nRepeatClassifier classification error for {seq_name}")
+            f.write('\n' + tb_content + '\n\n')
+        prcyan(f"\nNote: RepeatClassifier doesn't work for {seq_name} with error {e}")
+        prgre("\nThis won't affect final TE consensus sequences but only the name. You can choose to ignore this. "
+              "For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
+        pass
 
     # Update final con_TE_type. get_TE_type_for_file will evaluate if TE_type is Unknown. If so, use the
     # original TE classification name
@@ -789,84 +881,97 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Good:         True               Not_required  >=10                   >=2                         Not_required
     # Reco_check    Not_required       Not_required  >=20                   >=2                         Not_required
     # Need_check    Not_required       Not_required  Not_required           Not_required                Not_required
+    try:
+        if (consi_obj.new_TE_terminal_repeat != "False" and
+                consi_obj.new_TE_type != "NaN" and "unknown" not in consi_obj.new_TE_type.lower() and
+                consi_obj.new_TE_MSA_seq_n >= 30 and
+                consi_obj.new_TE_blast_full_length_n >= 5 and
+                consi_obj.cons_pfam):
+            consi_obj.set_cons_evaluation("Perfect")
 
-    if (consi_obj.new_TE_terminal_repeat != "False" and
-            consi_obj.new_TE_type != "NaN" and "unknown" not in consi_obj.new_TE_type.lower() and
-            consi_obj.new_TE_MSA_seq_n >= 30 and
-            consi_obj.new_TE_blast_full_length_n >= 5 and
-            consi_obj.cons_pfam):
-        consi_obj.set_cons_evaluation("Perfect")
+        elif (consi_obj.new_TE_terminal_repeat != "False" and
+              consi_obj.new_TE_MSA_seq_n >= 10 and
+              consi_obj.new_TE_blast_full_length_n >= 2):
+            consi_obj.set_cons_evaluation("Good")
 
-    elif (consi_obj.new_TE_terminal_repeat != "False" and
-          consi_obj.new_TE_MSA_seq_n >= 10 and
-          consi_obj.new_TE_blast_full_length_n >= 2):
-        consi_obj.set_cons_evaluation("Good")
+        elif (consi_obj.new_TE_MSA_seq_n >= 20 and
+              consi_obj.new_TE_blast_full_length_n >= 2):
+            consi_obj.set_cons_evaluation("Reco_check")
 
-    elif (consi_obj.new_TE_MSA_seq_n >= 20 and
-          consi_obj.new_TE_blast_full_length_n >= 2):
-        consi_obj.set_cons_evaluation("Reco_check")
-
-    else:
-        consi_obj.set_cons_evaluation("Need_check")
+        else:
+            consi_obj.set_cons_evaluation("Need_check")
 
     #####################################################################################################
     # Code block: Move file for proof annotation and HMM
     #####################################################################################################
 
-    consi_obj.set_proof_annotation_file()
+        consi_obj.set_proof_annotation_file()
 
-    # Define proof annotation file name
-    file_copy_pattern = [
-        (merged_pdf_path, str(consi_obj.proof_pdf)),
-        (cropped_boundary_MSA, str(consi_obj.proof_fasta)),
-        (bed_fasta_mafft_boundary_crop_for_select, str(consi_obj.proof_anno)),
-        (bed_out_flank_file, str(consi_obj.proof_bed))  # bed file used for further extension
-    ]
+        # Define proof annotation file name
+        file_copy_pattern = [
+            (merged_pdf_path, str(consi_obj.proof_pdf)),
+            (cropped_boundary_MSA, str(consi_obj.proof_fasta)),
+            (bed_fasta_mafft_boundary_crop_for_select, str(consi_obj.proof_anno)),
+            (bed_out_flank_file, str(consi_obj.proof_bed))  # bed file used for further extension
+        ]
 
-    files_moved_successfully = True
+        files_moved_successfully = True
 
-    for pattern, new_name in file_copy_pattern:
-        try:
-            if consi_obj.cons_evaluation == "Perfect":
-                destination_dir = perfect_proof
-            elif consi_obj.cons_evaluation == "Good":
-                destination_dir = good_proof
-            elif consi_obj.cons_evaluation == "Reco_check":
-                destination_dir = intermediate_proof
-            else:
-                destination_dir = need_check_proof
+        for pattern, new_name in file_copy_pattern:
+            try:
+                if consi_obj.cons_evaluation == "Perfect":
+                    destination_dir = perfect_proof
+                elif consi_obj.cons_evaluation == "Good":
+                    destination_dir = good_proof
+                elif consi_obj.cons_evaluation == "Reco_check":
+                    destination_dir = intermediate_proof
+                else:
+                    destination_dir = need_check_proof
 
-            # Copy the file to the new location with the unique new name
-            shutil.copy(pattern, os.path.join(destination_dir, new_name))
+                # Copy the file to the new location with the unique new name
+                shutil.copy(pattern, os.path.join(destination_dir, new_name))
 
-        except Exception as e:
-            with open(error_files, "a") as f:
-                # Get the traceback content as a string
-                tb_content = traceback.format_exc()
-                f.write(f"Copy file error for {pattern}\n")
-                f.write(tb_content + '\n\n')
-            click.echo(f"Error copying {pattern} to {new_name}: {e}")
-            files_moved_successfully = False
+            except Exception as e:
+                with open(error_files, "a") as f:
+                    # Get the traceback content as a string
+                    tb_content = traceback.format_exc()
+                    f.write(f"Copy file error for {pattern}\n")
+                    f.write(tb_content + '\n\n')
+                click.echo(f"Error copying {pattern} to {new_name}: {e}")
+                files_moved_successfully = False
 
-    if hmm:  # Generate HMM files
+        if hmm:  # Generate HMM files
 
-        # Define HMM file folder
-        hmm_dir = os.path.join(parent_output_dir, "HMM_files")
-        os.makedirs(hmm_dir, exist_ok=True)
-        consi_obj.set_hmm_file()
-        hmm_output_file = os.path.join(hmm_dir, consi_obj.hmm_file)
-        generate_hmm_from_msa(cropped_boundary_MSA, hmm_output_file)
+            # Define HMM file folder
+            hmm_dir = os.path.join(parent_output_dir, "HMM_files")
+            os.makedirs(hmm_dir, exist_ok=True)
+            consi_obj.set_hmm_file()
+            hmm_output_file = os.path.join(hmm_dir, consi_obj.hmm_file)
+            generate_hmm_from_msa(cropped_boundary_MSA, hmm_output_file, error_files)
 
-    # The unknown TE consensus will be classified again later by using successfully classified sequence
-    if "Unknown" in updated_TE_type:
-        with open(final_unknown_con_file, "a") as f:  # 'a' mode for appending
-            f.write(">" + uniq_seq_name + "\n" + sequence + "\n")
-    else:
-        with open(final_classified_con_file, "a") as f:
+        # The unknown TE consensus will be classified again later by using successfully classified sequence
+        if "Unknown" in updated_TE_type:
+            with open(final_unknown_con_file, "a") as f:  # 'a' mode for appending
+                f.write(">" + uniq_seq_name + "\n" + sequence + "\n")
+        else:
+            with open(final_classified_con_file, "a") as f:
+                f.write(">" + uniq_seq_name + "#" + updated_TE_type + "\n" + sequence + "\n")
+
+        # Write all consensus sequence to final_cons_file.
+        with open(final_con_file, "a") as f:
             f.write(">" + uniq_seq_name + "#" + updated_TE_type + "\n" + sequence + "\n")
 
-    # Write all consensus sequence to final_cons_file.
-    with open(final_con_file, "a") as f:
-        f.write(">" + uniq_seq_name + "#" + updated_TE_type + "\n" + sequence + "\n")
+        return files_moved_successfully
 
-    return files_moved_successfully
+    except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"\nMove files failed for {seq_name} with error:\n{e}")
+            f.write('\n' + tb_content + '\n\n')
+            prcyan(f"\nMove files failed for {seq_name} with error:\n{e}")
+            prcyan('\n' + tb_content + '\n')
+            raise Exception
+
+
+

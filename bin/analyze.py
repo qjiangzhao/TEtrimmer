@@ -6,7 +6,7 @@ import pandas as pd
 
 # Local imports
 from functions import blast, remove_files_with_start_pattern, check_bed_uniqueness, \
-    extract_fasta, handle_sequence_low_copy, handle_sequence_skipped, update_low_copy_cons_file
+    extract_fasta, handle_sequence_low_copy, handle_sequence_skipped, update_low_copy_cons_file, prcyan, prgre
 # from Class_bed_filter import BEDFile
 import bedfilter
 from boundarycrop import find_boundary_and_crop
@@ -60,7 +60,6 @@ def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=
     # click.echo(f'\r{prefix} |{bar}| {iteration}/{total} = {percent}% {suffix}', nl=False)
     click.echo(f'{prefix} |{bar}| {iteration}/{total} = {percent}% {suffix}', nl=True)
     # print(f'{prefix} |{bar}| {iteration}/{total} = {percent}% {suffix}', end='\n', flush=True)
-
 
     # Print New Line on Complete
     if iteration == total:
@@ -133,7 +132,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             tb_content = traceback.format_exc()
             f.write(f"Error while running blast for sequence: {seq_name}\n")
             f.write(tb_content + '\n\n')
-        click.echo(f"Error while running blast for sequence: {seq_name}. Main Error: {str(e)}")
+        prcyan(f"Error while running blast for sequence: {seq_name}. Main Error: {str(e)}")
         return
 
     try:
@@ -142,7 +141,6 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         if blast_hits_count == 0:
             click.echo(f"\n{seq_name} is skipped due to blast hit number is 0\n")
             handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir)
-
             return
 
         # Check if blast hit number is smaller than "min_seq_num", not include "min_seq_num"
@@ -171,12 +169,16 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             return  # when blast hit number is smaller than 10, code will execute next fasta file
 
     except Exception as e:
+        # Add sequence to skip when check low copy module gets errors
+        handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir)
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
             f.write(f"\nError while checking low copy for sequence: {seq_name}\n")
             f.write(tb_content + '\n\n')
-        click.echo(f"\nError while checking low copy for sequence: {seq_name}. Error: {str(e)}\n")
+        prcyan(f"\nError while checking low copy for sequence: {seq_name}. Error: {str(e)}\n")
+        prgre("\nLow copy TE check module is not very important, you can ignore this error message, which won't affect "
+              "your final result too much.\n")
         return
 
     try:
@@ -210,7 +212,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             tb_content = traceback.format_exc()
             f.write(f"Error when group MSA: {seq_name}\n")
             f.write(tb_content + '\n\n')
-        click.echo(f"\nError when group MSA for sequence: {seq_name}. Error: {str(e)}\n")
+        prcyan(f"\nError when group MSA for sequence: {seq_name}. Error: {str(e)}\n")
+        prcyan('\n' + tb_content + '\n')
         return
     
     #####################################################################################################
@@ -248,7 +251,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             all_inner_skipped = True
             for i in range(len(cluster_bed_files_list)):
 
-                inner_find_boundary_result = find_boundary_and_crop(
+                find_boundary_result = find_boundary_and_crop(
                     cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
                     hmm, classify_all, classify_unknown, error_files, plot_query, cons_threshold=cons_thr,
                     ext_threshold=ext_thr, ex_step_size=ex_step, max_extension=max_extension,
@@ -259,12 +262,10 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     mini_orf=mini_orf, define_boundary_win=check_extension_win,
                     fast_mode=fast_mode, engine=engine)
 
-                if inner_find_boundary_result == "Short_sequence":
+                if not find_boundary_result:
                     continue
-                elif inner_find_boundary_result:
+                elif find_boundary_result:
                     all_inner_skipped = False
-                elif not inner_find_boundary_result:  # This means the errors happen in the function
-                    continue
 
             # Check the flag after the loop. If all inner clusters were skipped, write the progress file
             if all_inner_skipped:
@@ -289,9 +290,10 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"Error during boundary finding and cropping for sequence: {seq_name}\n")
+            f.write(f"\nError during boundary finding and cropping for sequence: {seq_name}\n")
             f.write(tb_content + '\n\n')
-        click.echo(f"Error during boundary finding and cropping for sequence: {seq_name}. Error: {str(e)}\n")
+        prcyan(f"\nError during boundary finding and cropping for sequence: {seq_name}. Error: {str(e)}\n")
+        prcyan(tb_content + '\n')
         return
 
     # After all processing is done, change status to process and write the name of the file to the progress file
@@ -317,30 +319,32 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file, plot_skip):
 
     if not os.path.isfile(input_file):
-        raise FileNotFoundError(f"The fasta file {input_file} does not exist.")
+        prcyan(f"The fasta file {input_file} does not exist. Please check your input file path!")
+        raise FileNotFoundError
     input_file = os.path.abspath(input_file)  # get input absolute path
 
     # check if genome file exist
     if not os.path.isfile(genome_file):
-        raise FileNotFoundError(f"The genome fasta file {genome_file} does not exist.")
+        prcyan(f"The genome fasta file {genome_file} does not exist. Please check your genome file path!")
+        raise FileNotFoundError
     genome_file = os.path.abspath(genome_file)  # get genome absolute path
 
     # bin_py_path contains all classes and bash code
     # so.path.abspath(__file__) will return the current executable python file
     bin_py_path = os.path.dirname(os.path.abspath(__file__))
 
-    # check if path exist otherwise create one
+    # check if output path exist otherwise create it
     os.makedirs(output_dir, exist_ok=True)
     output_dir = os.path.abspath(output_dir)  # get absolute path
 
     # Check if output directory is empty when --continue_analysis is False
     if os.listdir(output_dir) and not continue_analysis:
-        click.echo(
-            f"WARNING: The output directory {output_dir} is not empty. Please empty your output directory or "
-            f"choose another empty directory\n")
+        prcyan(f"\nWARNING: The output directory {output_dir} is not empty. Please empty your output directory or "
+               f"choose another empty directory.")
+        prgre("\nNOTE: TE Trimmer can create output directory when it is not exist.")
 
         # Stop the whole program when the output directory is not empty
-        return
+        raise Exception
 
     # Make a new folder for single fasta sequence
     single_file_dir = os.path.join(output_dir, "Single_fasta_files")
@@ -407,10 +411,12 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
         pfam_dir = os.path.join(os.path.dirname(bin_py_path), "pfam_database")
         os.makedirs(pfam_dir, exist_ok=True)
     try:
+        os.makedirs(pfam_dir, exist_ok=True)
         if_pfam = prepare_pfam_database(pfam_dir)
 
         if not if_pfam:  # Check if if_pfam is False
-            raise ValueError("PFAM database preparation failed.")  # Raise an exception to be caught below
+            raise Exception
+
     except Exception as e:
         with open(error_files, "a") as f:
             # Get the traceback content as a string
@@ -418,22 +424,22 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
             f.write(f"PFAM database building error\n")
             f.write(tb_content + '\n\n')
 
-        click.echo(f"Note: Can't download PFAM database from internet, please use your own PFAM database\n"
-                   f"For example: --pfam_dir <your_PFAM_directory>\n"
-                   f"Your PFAM directory should contain: \n"
-                   f"Pfam-A.hmm\n"
-                   f"Pfam-A.hmm.h3f\n"
-                   f"Pfam-A.hmm.h3m\n"
-                   f"Pfam-A.hmm.dat\n"
-                   f"Pfam-A.hmm.h3i\n"
-                   f"Pfam-A.hmm.h3p\n\n"
-                   f"PFAM prediction will be used to determine the direction of TEs, it is necessary to make it run\n\n"
-                   f"You can download <Pfam-A.hmm.gz> and <Pfam-A.hmm.dat.gz> from "
-                   f"https://www.ebi.ac.uk/interpro/download/pfam/\n"
-                   f"After: \n"
-                   f"gzip -d Pfam-A.hmm.gz\n"
-                   f"gzip -d Pfam-A.hmm.dat.gz\n"
-                   f"hmmpress Pfam-A.hmm\n\n")
+        prgre(f"Note: Can't download PFAM database from internet, please use your own PFAM database\n"
+              f"For example: --pfam_dir <your_PFAM_directory>\n"
+              f"Your PFAM directory should contain: \n"
+              f"Pfam-A.hmm\n"
+              f"Pfam-A.hmm.h3f\n"
+              f"Pfam-A.hmm.h3m\n"
+              f"Pfam-A.hmm.dat\n"
+              f"Pfam-A.hmm.h3i\n"
+              f"Pfam-A.hmm.h3p\n\n"
+              f"PFAM prediction will be used to determine the direction of TEs, it is mandatory to have it\n\n"
+              f"You can download <Pfam-A.hmm.gz> and <Pfam-A.hmm.dat.gz> from "
+              f"https://www.ebi.ac.uk/interpro/download/pfam/\n"
+              f"After: \n"
+              f"gzip -d Pfam-A.hmm.gz\n"
+              f"gzip -d Pfam-A.hmm.dat.gz\n"
+              f"hmmpress Pfam-A.hmm\n\n")
         return
 
     # Define consensus files. temp files will be used for the final RepeatMasker classification

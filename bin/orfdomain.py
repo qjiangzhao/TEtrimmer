@@ -11,6 +11,7 @@ import requests
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from Bio import SeqIO
+from functions import prcyan, prgre
 
 
 def check_and_download(directory, filename, url):
@@ -34,28 +35,31 @@ def check_and_download(directory, filename, url):
             response = requests.get(url, stream=True)
             response.raise_for_status()  # Raise an exception if the GET request was unsuccessful
         except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
-            click.echo(f"\nFailed to reach the server at {url} for PFMA database downloading\n")
-            click.echo(f"Error:, {str(e)}")
-            return
+            prcyan(f"\nFailed to reach the server at {url} for Pfam database downloading\n")
+            return False
 
-        gz_file_path = file_path + ".gz"  # Give a defined name for the file will be downloaded
-        urllib.request.urlretrieve(url, gz_file_path)
+        try:
+            gz_file_path = file_path + ".gz"  # Give a defined name for the file will be downloaded
+            urllib.request.urlretrieve(url, gz_file_path)
 
-        # Unzipping
-        with gzip.open(gz_file_path, 'rb') as f_in:
-            with open(file_path, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
+            # Unzipping
+            with gzip.open(gz_file_path, 'rb') as f_in:
+                with open(file_path, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
 
-        # Delete gz file after extraction
-        os.remove(gz_file_path)
-        click.echo(f"\n{filename} is downloaded and unzipped.\n")
+            # Delete gz file after extraction
+            os.remove(gz_file_path)
+            click.echo(f"\n{filename} is downloaded and unzipped.\n")
+        except Exception:
+            prcyan("TE Trimmer can't properly unzip the downloaded Pfam file")
+            return False
 
     # Check if download is successful
     if os.path.isfile(file_path):
         return True
     else:
-        click.echo(f"{filename} found. Pfam can't be downloaded by TE Trimmer. Please check your internet connection "
-                   f"or download Pfam by yourself")
+        prcyan(f"{filename} found. Pfam can't be downloaded by TE Trimmer. Please check your internet connection "
+               f"or download Pfam by yourself")
         return False
 
 
@@ -93,16 +97,21 @@ def prepare_pfam_database(pfam_database_dir):
                 # Creates binary files that allow for faster access by other HMMER
                 hmmpress_pfam_command = ["hmmpress", os.path.join(pfam_database_dir, "Pfam-A.hmm")]
                 try:
-                    subprocess.run(hmmpress_pfam_command, check=True)
+                    subprocess.run(hmmpress_pfam_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
                 except FileNotFoundError:
-                    click.echo("\nhmmpress command not found. Please ensure that hmmpress is installed and "
-                               "available in your PATH.\n")
+                    prcyan("'hmmpress' command not found. Please ensure 'hmmpress' is correctly installed.")
+                    return False
+
+                except subprocess.CalledProcessError as e:
+                    prcyan(f"\nhmmpress index files generation failed with error code {e.returncode}")
+                    prgre("Please check if your 'hmmpress' has been correctly installed.\n"
+                          "Try 'hmmpress <your_downloaded_pfam_file> Pfam-A.hmm")
                     return False
         else:
             return False
 
-    except Exception as e:
-        click.echo(f"Error while downloading or preparing Pfam-A.hmm: {str(e)}")
+    except Exception:
         return False
 
     try:
@@ -111,8 +120,7 @@ def prepare_pfam_database(pfam_database_dir):
         else:
             return False
 
-    except Exception as e:
-        click.echo(f"Error while downloading Pfam-A.hmm.dat: {str(e)}")
+    except Exception:
         return False
 
 
@@ -155,6 +163,7 @@ class PlotPfam:
         :param mini_orf: num default 200, minimum orf length.
         """
         self.input_file = input_file
+        self.input_file_n = os.path.basename(self.input_file)
         self.output_dir = output_dir
         self.pfam_database_dir = pfam_database_dir
         self.mini_orf = mini_orf
@@ -162,15 +171,14 @@ class PlotPfam:
         self.output_orf_file_name_modified_table = None
         self.output_pfam_file_modified = None
 
-
     def run_getorf(self):
         """
         Run getorf to extract orfs from given sequence.
         """
-        output_orf_file = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_orf.txt")
+        output_orf_file = os.path.join(self.output_dir, f"{self.input_file_n}_orf.txt")
         self.output_orf_file_name_modified = os.path.join(self.output_dir,
-                                                          f"{os.path.basename(self.input_file)}_orfm.txt")
-        self.output_orf_file_name_modified_table = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_orf_modi_t.txt")
+                                                          f"{self.input_file_n}_orfm.txt")
+        self.output_orf_file_name_modified_table = os.path.join(self.output_dir, f"{self.input_file_n}_orf_modi_t.txt")
 
         get_orf_command = [
             "getorf",
@@ -180,13 +188,16 @@ class PlotPfam:
         ]
 
         try:
-            subprocess.run(get_orf_command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(get_orf_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
         except FileNotFoundError:
-            click.echo("getorf command not found. Please ensure that getorf is installed and available in your PATH.")
-            return False
-        except subprocess.CalledProcessError:
-            click.echo(f"getorf command failed for {self.input_file}. Please check your input parameters.")
-            return False
+            prcyan("getorf command not found. Please ensure that getorf is installed and available in your PATH.")
+            raise Exception
+
+        except subprocess.CalledProcessError as e:
+            prcyan(f"\ngetorf failed for {self.input_file_n} with error code {e.returncode}.")
+            prcyan('\n' + e.stderr + '\n')
+            raise Exception
 
         # Check if the output_orf_file is empty
         if os.path.getsize(output_orf_file) == 0:
@@ -194,7 +205,12 @@ class PlotPfam:
 
         change_orf_name = f"cat {output_orf_file} | awk '{{if(/>/){{print $1$2$3$4}}else{{print}}}}' > {self.output_orf_file_name_modified}"
 
-        subprocess.run(change_orf_name, shell=True, check=True)
+        try:
+            subprocess.run(change_orf_name, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as e:
+            prcyan(f"\nFilter ORF columns failed for {self.input_file_n} with error code {e.returncode}")
+            prcyan('\n' + e.stderr + '\n')
+            raise Exception
 
         # Generate orf table for orf plot
         output_orf_file_name_modified_table = (
@@ -204,17 +220,23 @@ class PlotPfam:
             f"if($3>$2){{print $1, $2, $3, \"+\", \"ORF\"arr[n]}}else{{print $1, $3, $2, \"-\", \"ORF\"arr[n]}}}}' "
             f"> {self.output_orf_file_name_modified_table}"
         )
-
-        subprocess.run(output_orf_file_name_modified_table, shell=True, check=True)
-        return True
+        try:
+            subprocess.run(output_orf_file_name_modified_table, shell=True, check=True,
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            return True
+        except subprocess.CalledProcessError as e:
+            prcyan(f"\nConvert ORF result to table failed for {self.input_file_n} with "
+                   f"error code {e.returncode}")
+            prcyan('\n' + e.stderr + '\n')
+            raise Exception
 
     def run_pfam_scan(self):
         """
         Run pfam_scan.pl to check orfs against Pfam database
         """
         # Define output file name and the modified pfam output file name.
-        output_pfam_file = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_orfm_pf.txt")
-        self.output_pfam_file_modified = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_orfm_pfm.txt")
+        output_pfam_file = os.path.join(self.output_dir, f"{self.input_file_n}_orfm_pf.txt")
+        self.output_pfam_file_modified = os.path.join(self.output_dir, f"{self.input_file_n}_orfm_pfm.txt")
 
         # Delete the output file if it already exists
         if os.path.exists(output_pfam_file):
@@ -228,10 +250,16 @@ class PlotPfam:
             "-cpu", str("1")
         ]
         try:
-            subprocess.run(pfam_sacn_command, check=True)
+            subprocess.run(pfam_sacn_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
         except FileNotFoundError:
-            click.echo("pfam_scal.pl command not found. Please ensure that tool is installed "
-                       "and available in your PATH.")
+            prcyan("'pfam_scan.pl' command not found. Please ensure 'pfam_scan.pl' is correctly installed.")
+            raise Exception
+
+        except subprocess.CalledProcessError as e:
+            prcyan(f"\npfam_scan.pl failed for {self.input_file_n} with error code {e.returncode}")
+            prcyan('\n' + e.stderr + '\n')
+            raise Exception
 
         # Modify pfam output file for plot
 
@@ -243,7 +271,12 @@ class PlotPfam:
             f"> {self.output_pfam_file_modified}"
         )
 
-        subprocess.run(modify_pfam_result, shell=True, check=True)
+        try:
+            subprocess.run(modify_pfam_result, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as e:
+            prcyan(f"\nTransform Pfam result failed for {self.input_file_n} with error code {e.returncode}")
+            prcyan('\n' + e.stderr + '\n')
+            raise Exception
 
         # Check if the output file only have one line, one line means the Pfam prediction is None.
         with open(self.output_pfam_file_modified, 'r') as file:
@@ -256,7 +289,7 @@ class PlotPfam:
             sequence = SeqIO.read(f, "fasta")
             return len(sequence.seq)
 
-    def load_orfs(self,orf_filepath):
+    def load_orfs(self, orf_filepath):
         """
         Loads the ORF data from the file at orf_filepath.
         """
@@ -282,7 +315,6 @@ class PlotPfam:
                     domains[key] = {'start': key[0], 'end': key[1], 'direction': key[2], 'name': key[3]}
         return domains
 
-    
     def plot_features(self, features, base_level, color, fasta_length):
         levels = []
 
@@ -313,7 +345,6 @@ class PlotPfam:
                 plt.arrow(end, base_level + i * 0.2, -length, 0, color=color, head_width=0.08,
                         head_length=0.003 * fasta_length, linewidth=1.5, shape='full')
                 plt.text(mid, base_level + i * 0.2 + 0.05, feature['name'], fontsize=11, ha='center')
-
 
     def plot(self,input_file, output_dir, orf_filepath, domain_filepath):
         fasta_length = self.calculate_fasta_length(input_file)
