@@ -87,13 +87,17 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=None):
     treefile = f"{alignment}.treefile"
     distance_file = calculate_tree_dis(treefile)
     cluster, sequence_names = dbscan_cluster(distance_file, pca=False)
+
     # map sequence_names name to cluster 
     sequence_cluster_mapping = dict(zip(sequence_names, cluster))
+
     # Use Counter to count occurrences
     counter = Counter(cluster)
+
     # Find cluster with size > min_cluster_size
     filter_cluster = [element for element, count in counter.items() if count > min_cluster_size]
     seq_cluster_list = []
+
     # if only -1 in filter_cluster and cluster size > 60% number of sequences in MSA:
     if filter_cluster == [-1]:
         if counter[-1] > 0.6 * len(sequence_names):

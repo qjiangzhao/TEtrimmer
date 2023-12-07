@@ -1601,6 +1601,8 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
     record = SeqIO.read(input_file, "fasta")
     record_len = len(record.seq)
     found_match = False
+    LTR_boundary = None
+    TIR_boundary = None
 
     # teaid output is not given or the given file doesn't exist or is empty, do self blast
     if teaid_blast_out is None or not file_exists_and_not_empty(teaid_blast_out):
@@ -1655,10 +1657,6 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
         df_LTR["5"] = df.iloc[:, 4] - df.iloc[:, 1]
         df_LTR.reset_index(drop=True, inplace=True)
 
-        if not df_LTR.empty:
-            df_LTR["5"] = df[4] - df[1]
-            df_LTR.reset_index(drop=True, inplace=True)
-
         # Find the row with the largest difference
         LTR_largest = df_LTR.iloc[df_LTR["5"].idxmax()]
 
@@ -1668,7 +1666,6 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
             # Because blast use index start from 1, modify the start position
             LTR_boundary = [LTR_largest[1] - 1, LTR_largest[4]]
             found_match = "LTR"
-
         else:
             LTR_boundary = None
 
@@ -1690,7 +1687,6 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
         else:
             TIR_boundary = None
     else:
-        LTR_boundary = None
         TIR_boundary = None
 
     return LTR_boundary, TIR_boundary, found_match
