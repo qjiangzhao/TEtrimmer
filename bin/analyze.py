@@ -290,9 +290,10 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"Error during boundary finding and cropping for sequence: {seq_name}\n")
+            f.write(f"\nError during boundary finding and cropping for sequence: {seq_name}\n")
             f.write(tb_content + '\n\n')
-        click.echo(f"Error during boundary finding and cropping for sequence: {seq_name}. Error: {str(e)}\n")
+        prcyan(f"\nError during boundary finding and cropping for sequence: {seq_name}. Error: {str(e)}\n")
+        prcyan(tb_content + '\n')
         return
 
     # After all processing is done, change status to process and write the name of the file to the progress file

@@ -1586,7 +1586,7 @@ def classify_single(consensus_fasta):
     return seq_TE_type
 
 
-def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None):
+def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None, distance=3000):
 
     # Read input file and get sequence length
     record = SeqIO.read(input_file, "fasta")
@@ -1640,7 +1640,7 @@ def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None)
 
             # Check if the terminal repeat spans the most part of the query sequence. Because the query is after extension,
             # assuming the maximum redundant extension for left and right side are both 2000.
-            if abs(LTR_largest[4] - LTR_largest[1]) >= (record_len - 4000):
+            if abs(LTR_largest[4] - LTR_largest[1]) >= (record_len - distance):
                 # Because blast use index start from 1, modify the start position
                 LTR_boundary = [LTR_largest[1] - 1, LTR_largest[4]]
             else:
@@ -1656,7 +1656,7 @@ def check_terminal_repeat(input_file, output_dir, if_blast=True, blast_out=None)
 
             # Same like LTR check the terminal repeat spanning region
             TIR_largest = df_TIR.iloc[df_TIR["5"].idxmax()]
-            if abs(TIR_largest[3] - TIR_largest[1]) >= (record_len - 2000):
+            if abs(TIR_largest[3] - TIR_largest[1]) >= (record_len - distance):
                 TIR_boundary = [TIR_largest[1] - 1, TIR_largest[3]]
             else:
                 TIR_boundary = None

@@ -203,7 +203,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # _orf_modi_t.txt ORF modified table
     # _pfam.txt Pfam prediction
     # _me.fa merged. Merged fasta file
-    # _proof_anno_me.fa proof annotation merged.
+    # _proof_anno_me.fa proof annotation merged
+    # .b blast
 
     #####################################################################################################
     # Code block: Change permissions of Aliview and TE_Aid

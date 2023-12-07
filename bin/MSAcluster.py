@@ -114,7 +114,7 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=None):
     return seq_cluster_list, if_cluster
 
 
-def dbscan_cluster(input_file, pca=False):
+def dbscan_cluster(input_file, pca=True):
     # Read the distance matrix from the file
     with open(input_file, "r") as f:
         lines = f.readlines()
