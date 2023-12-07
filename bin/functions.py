@@ -133,7 +133,6 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
 
                 # Check if # is in the seq.id. If # is present, the string before # is the seq_name, and the string
                 # after # is the seq_TE_type
-                # TODO need to check if assigning seq_name in this way will create duplicates
                 else:
                     sanitized_id = record.id.replace('/', '_').replace(' ', '_').replace('-', '_')\
                         .replace(':', '_').replace('...', '_')
@@ -142,10 +141,11 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                     record.id = f"{record.id}#{te_type}"
                     record.description = record.id
 
-                 # double check if sanitized_id is unique. If not, modify sanitized_id
+                # double check if sanitized_id is unique. If not, modify sanitized_id
                 if sanitized_id not in id_list:
                     id_list.append(sanitized_id)
                 else:
+                    print (f"duplicated seq_name {sanitized_id} during separate_sequences")
                     id_list.append(sanitized_id)
                     count = id_list.count(sanitized_id)
                     sanitized_id = f"{sanitized_id}_n{count}"

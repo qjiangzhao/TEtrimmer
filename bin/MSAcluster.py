@@ -277,7 +277,6 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     # if false, meaning no enough divergent column for cluster
     # Do full length alignment cluster and only keep the biggest cluster
     else:
-        print(f"{bed_file} divergent column <100, use full length alignment with gap_removed")
         filtered_cluster_records, if_cluster = cluster_msa_iqtree_DBSCAN(
             fasta_out_flank_mafft_file_gap_filter, min_cluster_size=min_length_num, max_cluster=cluster_num)
         if if_cluster:
