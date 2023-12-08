@@ -1609,7 +1609,17 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
         os.makedirs(output_dir, exist_ok=True)
         database_file = os.path.join(output_dir, "Tem_blast_database")
         makeblastdb_cmd = f"makeblastdb -in {input_file} -dbtype nucl -out {database_file}"
-        subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        # If error encountered, return directly
+        try:
+            subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError:
+            return None, None, False
+
+        # Proof check if database is built, otherwise return directly
+        if not file_exists_and_not_empty(f"{database_file}.nhr") or not \
+                file_exists_and_not_empty(f"{database_file}.nin") or not file_exists_and_not_empty(f"{database_file}.nsq"):
+            return None, None, False
 
         blast_cmd = f"blastn -query {input_file} -db {database_file} " \
                     f"-outfmt \"6 qseqid qstart qend sstart send \" " \

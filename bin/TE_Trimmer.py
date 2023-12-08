@@ -453,7 +453,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
             else:
                 prcyan("One of the consensus file does not exist, RepeatMasker reclassify does not run, "
-                        "This will not affect the final consensus sequences.")
+                       "This will not affect the final consensus sequences.")
     except Exception as e:
         with open(error_files, "a") as f:
             # Get the traceback content as a string
@@ -589,17 +589,20 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
         # Based on missing_ids delete files in proof annotation folder and HMM folder
         for missing_id in missing_ids:
-            evaluation_leve = sequence_info[missing_id]["evaluation"]
+
+            # if not, set evaluation_leve to "Need_check". get method will return the default value
+            # when the key doesn't exist
+            evaluation_level = sequence_info.get(missing_id, {"evaluation": "Need_check"})["evaluation"]
 
             # Addd # to the end of missing_id
             missing_id = f"{missing_id}#"
-            if evaluation_leve == "Perfect":
+            if evaluation_level == "Perfect":
                 remove_files_with_start_pattern(perfect_proof, missing_id, if_seq_name=False)
-            elif evaluation_leve == "Good":
+            elif evaluation_level == "Good":
                 remove_files_with_start_pattern(good_proof, missing_id, if_seq_name=False)
-            elif evaluation_leve == "Reco_check":
+            elif evaluation_level == "Reco_check":
                 remove_files_with_start_pattern(intermediate_proof, missing_id, if_seq_name=False)
-            elif evaluation_leve == "Need_check":
+            elif evaluation_level == "Need_check":
                 remove_files_with_start_pattern(need_check_proof, missing_id, if_seq_name=False)
             else:
                 remove_files_with_start_pattern(low_copy_dir, missing_id, if_seq_name=False)

@@ -370,7 +370,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         bed_dict[key] = value_list
 
     #####################################################################################################
-    # Code block: Define left and right sides extension number
+    # Code block: Define left and right sides extension number and define the boundary
     #####################################################################################################
         
     try: 
@@ -710,8 +710,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
         # Iterate over the list of the file paths
         for pdf_file in pdf_files:
-            # Check if the file exists before appending
-            if os.path.exists(pdf_file):
+            # Check if the file exists and is not empty before appending
+            if os.path.exists(pdf_file) and os.path.getsize(pdf_file) > 0:
                 # Append PDF files
                 merger.append(pdf_file)
                 valid_pdf_count += 1
