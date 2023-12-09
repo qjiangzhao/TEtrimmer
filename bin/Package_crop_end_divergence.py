@@ -1,3 +1,22 @@
+import subprocess
+import sys
+
+
+def install_and_import(package):
+    try:
+        __import__(package)
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        __import__(package)
+
+
+# Replace 'click', 'Bio' with the actual packages you need
+required_packages = ['click', 'biopython', 'numpy', 'pandas']
+
+for package in required_packages:
+    install_and_import(package)
+
+
 import click
 import os.path
 import os

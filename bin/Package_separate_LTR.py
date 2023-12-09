@@ -73,7 +73,14 @@ def detect_ltr_for_sequence(record, output_dir):
     # Prepare BLAST database and output paths
     database_file = os.path.join(sequence_folder, "temp_blast_database")
     makeblastdb_cmd = f"makeblastdb -in {sequence_file} -dbtype nucl -out {database_file}"
-    subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    try:
+        subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        print(f"\nmakeblastdb error for sequence {record_name} with error code {e.returncode}\n")
+        print(e.stdout)
+        print(e.stderr)
+        return None
 
     blast_cmd = f"blastn -query {sequence_file} -db {database_file} " \
                 f"-outfmt \"6 qseqid qstart qend sstart send\" " \

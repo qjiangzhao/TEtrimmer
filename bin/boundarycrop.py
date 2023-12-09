@@ -288,6 +288,10 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
                 bed_fasta_mafft_boundary_crop, output_dir, crop_end_threshold=crop_end_thr,
                 window_size=crop_end_win, gap_threshold=0.8)
 
+            # This means the sequence len after gap remove is shorter than 50
+            if not cropped_alignment_output_file_g:
+                return False
+
             # Crop end can't define the final boundary, use DefineBoundary again to define start position
             cropped_boundary = DefineBoundary(cropped_alignment_output_file_g, threshold=0.8,
                                               check_window=4, max_X=0)

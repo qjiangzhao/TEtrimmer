@@ -408,8 +408,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     if processed_count == single_fasta_n:
         click.echo(f"All sequences have been analysed!\n"
-                   f"In the analysed sequences {skipped_count} are skipped.\n"
-                   f"In the analysed sequences {low_copy_count} are identified as low copy TE\n"
+                   f"In the analysed sequences {skipped_count} are skipped. Note: not all skipped sequences can have "
+                   f"TE Aid plot in the 'TE_Trimmer_for_proof_annotation' folder.\n"
+                   f"In the analysed sequences {low_copy_count} are identified as low copy TE.\n"
                    f"TE Trimmer is doing the final classification, merging, or whole genome annotation step.")
 
     else:

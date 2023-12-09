@@ -848,6 +848,11 @@ def remove_gaps_with_similarity_check(input_file, output_dir, gap_threshold=0.8,
     # The index in python won't include the second value. That it is to say the returned end_posit from
     # DefineBoundary() will one more index than the final len(keep_list) -1] for this reason, you have to
     # add one more value
+    if len(keep_list) < 50:
+        if return_map:
+            return False, False
+        else:
+            return False
     column_mapping[len(keep_list)] = column_mapping[len(keep_list) - 1] + 1
 
     # Keep the columns
@@ -1331,11 +1336,12 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, m
     # The regex '\s+' matches one or more whitespace characters
     # error_bad_lines=False to skip errors
     try:
-        df = pd.read_csv(repeatmasker_out, delim_whitespace=True, header=None, skiprows=3)
+        df = pd.read_csv(repeatmasker_out, delim_whitespace=True, header=None, skiprows=3, usecols=range(15))
     except pandas.errors.EmptyDataError:
         return False
-    except pd.errors.ParserError as e:
-        df = pd.read_csv(repeatmasker_out, delim_whitespace=True, header=None, skiprows=3, error_bad_lines=False)
+    except pd.errors.ParserError:
+        df = pd.read_csv(repeatmasker_out, delim_whitespace=True, header=None, skiprows=3,
+                         error_bad_lines=False, usecols=range(15))
 
     # Rename columns for easier reference
     df.columns = [

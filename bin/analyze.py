@@ -26,7 +26,7 @@ def check_progress_file(progress_file_path):
     unknown_n = df[df['reclassified_type'].str.contains('Unknown', na=False)].shape[0]
     classifid_n = df[df['reclassified_type'].str.contains('/', na=False)].shape[0]
 
-    # Calculate classified_pro
+    # Calculate classified proportion
     if classifid_n != 0 and unknown_n != 0:
         classified_pro = classifid_n / (unknown_n + classifid_n)
     else:
