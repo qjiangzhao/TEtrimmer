@@ -178,8 +178,7 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
 
 def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
               define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win):
-
-    terminal_repeat_found = False
+    found_match_crop = False
 
     bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, 0, 0)
 
@@ -208,11 +207,11 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
     # Check terminal repeats
     # Define the output folder to store the temporary blast database
     check_terminal_repeat_output = f"{bed_fasta_mafft_gap_sim_cp_con}_tem"
-    LTR_boundary, TIR_boundary, found_match = check_terminal_repeat(bed_fasta_mafft_gap_sim_cp_con,
-                                                                    check_terminal_repeat_output)
+    LTR_boundary, TIR_boundary, found_match_crop = check_terminal_repeat(bed_fasta_mafft_gap_sim_cp_con,
+                                                                         check_terminal_repeat_output)
 
     # Check terminal repeats
-    if found_match:
+    if found_match_crop:
         # Check LTR first
         if LTR_boundary is not None:
             left = LTR_boundary[0]
@@ -228,11 +227,11 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         # Because the boundary of the MSA has been defined.
         pro_mean = define_crop_end_simi_thr(bed_fasta_mafft_gap_sim_selected)
 
-        if pro_mean < 32:
+        if pro_mean < crop_end_win * 0.8:
             # Set crop_end_sim_thr to be smaller than pro_mean to avoid over cropping.
             crop_end_sim_thr = int(pro_mean) - 3
         else:
-            crop_end_sim_thr = 32
+            crop_end_sim_thr = crop_end_thr * 0.8
 
         # Do crop end by similarity to clean MSA
         bed_fasta_mafft_gap_sim_selected_cp_object = CropEnd(
@@ -261,8 +260,6 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
 
         cropped_alignment_output_file_g = bed_fasta_mafft_gap_sim_selected_cp_g
         bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_gap_sim
-
-        terminal_repeat_found = True
 
     # When LTR or TIR are not found
     else:
@@ -298,7 +295,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
             return False
 
     return bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
-        column_mapping, bed_fasta_mafft_boundary_crop_for_select, terminal_repeat_found
+        column_mapping, bed_fasta_mafft_boundary_crop_for_select, found_match_crop
 
 
 def crop_end_and_remove_gap(input_file, output_dir, crop_end_threshold=0.8, window_size=20, gap_threshold=0.8):
@@ -323,7 +320,7 @@ def crop_end_and_remove_gap(input_file, output_dir, crop_end_threshold=0.8, wind
 
 def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj, hmm, classify_all, classify_unknown,
                            error_files, plot_query, cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000,
-                           max_extension=7000, gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=0.8, crop_end_win=20,
+                           max_extension=7000, gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=0.8, crop_end_win=40,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
                            mini_orf=200, define_boundary_win=150, fast_mode=False, engine="blast"):
     """
@@ -414,7 +411,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         else:
             # Unpack the returned values if the function executed normally
             bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
-                column_mapping, bed_fasta_mafft_boundary_crop_for_select, terminal_repeat_found = final_msa_result
+                column_mapping, bed_fasta_mafft_boundary_crop_for_select, found_match_crop = final_msa_result
 
     except Exception as e:
         with open(error_files, "a") as f:
@@ -446,7 +443,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
         # When both start and end patterns are None, and terminal repeat found is false skip this block
         # Because terminal repeat can precisely define the start and end points
-        if start_patterns is not None or end_patterns is not None and not terminal_repeat_found:
+        if start_patterns is not None or end_patterns is not None and not found_match_crop:
             if checkpattern.is_LTR(cropped_alignment_output_file_g):  # Check if file name contain "LTR"
                 # Generate consensus sequences
                 consensus_seq = checkpattern.generate_consensus_sequence(cropped_alignment_output_file_g,
@@ -674,9 +671,20 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         # TE-Aid package is stored at the same directory as this function file.
         TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
 
+        # Because terminal is checked before if it is found before use the previous result
         # Run TE_aid, if low_copy self-blast will be performed
-        TE_aid_object = TEAid(orf_cons, output_dir, genome_file, error_file=error_files, TE_aid_dir=TE_aid_path)
-        TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
+        if not found_match_crop:
+            TE_aid_object = TEAid(orf_cons, output_dir, genome_file, error_file=error_files, TE_aid_dir=TE_aid_path)
+            TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
+        else:
+            # low_copy=False will not do self blast and check terminal repeat
+            TE_aid_object = TEAid(orf_cons, output_dir, genome_file, error_file=error_files, TE_aid_dir=TE_aid_path)
+
+            # found_match here will be False
+            TE_aid_plot, found_match = TE_aid_object.run(low_copy=False)
+
+            # Assign found_match_crop ("LTR" or "TIR") to found_match for further analysis
+            found_match = found_match_crop
 
         # Run TE_aid to plot the query sequence if it is required, because one query file can have multiple
         # clusters, TEAid will test if this has been created before.

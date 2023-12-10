@@ -7,7 +7,9 @@ from functions import blast, check_terminal_repeat, file_exists_and_not_empty
 
 
 def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=False):
-
+    """
+    plot_skip: if use TE Aid to plot the query sequence when it is skipped.
+    """
     blast_full_length_n = check_blast_full_length(seq_obj, blast_out_file, identity=85, coverage=0.8,
                                                   min_hit_length=100, te_aid_blast=False, if_low_copy=True)
     TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
@@ -110,6 +112,8 @@ class TEAid:
         found_match = False
 
         # Check if this pdf exist if so skip the downstream analysis, when low_copy is False
+        # TE Trimmer will plot the query sequence by TE Aid, one query file can have multiple clusters,
+        # TEAid will test if this has been created before.
         if not low_copy and os.path.exists(final_pdf_file):
             return final_pdf_file, found_match
 

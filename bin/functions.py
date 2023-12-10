@@ -1685,6 +1685,9 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
         else:
             LTR_boundary = None
 
+        # Return directly when LTR is found
+        return LTR_boundary, TIR_boundary, found_match
+
     df_TIR = df[(df.iloc[:, 2] - df.iloc[:, 1] >= 50) &
             (df.iloc[:, 1] != df.iloc[:, 3]) &
             (df.iloc[:, 2] != df.iloc[:, 4]) &
