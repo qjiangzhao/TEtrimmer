@@ -10,10 +10,8 @@ from scipy import stats
 
 # Local imports
 from boundaryclass import DefineBoundary
-from Package_crop_end_divergence import CropEnd
-from Package_crop_end_gap import CropEndByGap
-from functions import remove_gaps, generate_hmm_from_msa, extract_fasta, \
-    remove_gaps_with_similarity_check, remove_gaps_block_with_similarity_check, align_sequences, \
+from clean_MSA import CropEnd, CropEndByGap
+from functions import generate_hmm_from_msa, extract_fasta, remove_gaps_with_similarity_check, align_sequences, \
     con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, \
     con_generater, reverse_complement_seq_file, classify_single, check_terminal_repeat, select_star_to_end, \
     define_crop_end_simi_thr, prcyan, prgre

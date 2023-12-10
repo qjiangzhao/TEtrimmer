@@ -138,9 +138,9 @@ with open(species_config_path, "r") as config_file:
                    'alignment into a proportion value. This function will iteratively choose a sliding window from '
                    'each end of each sequence of the MSA and sum up the proportion numbers in this window. '
                    'The cropping will continue until the sum of proportions is larger than <--crop_end_div_thr>. '
-                   'Cropped nucleotides will be converted to -. Default: 0.8')
+                   'Cropped nucleotides will be converted to -. Default: 0.7')
 @click.option('--crop_end_div_win', type=int,
-              help='Window size used for the end-cropping process. Used with --crop_end_div_thr option. Default: 20')
+              help='Window size used for the end-cropping process. Used with --crop_end_div_thr option. Default: 40')
 @click.option('--crop_end_gap_thr', type=float,
               help='The crop end by gap function will iteratively choose a sliding window from '
                    'each end of each sequence of the MSA and calculate the gap proportion in this window. '

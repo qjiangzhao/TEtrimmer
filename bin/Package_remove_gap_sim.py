@@ -2,19 +2,24 @@ import subprocess
 import sys
 
 
-def install_and_import(package):
-    try:
-        __import__(package)
-    except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-        __import__(package)
+def install_and_import(required_packages_dic):
+    for package in required_packages:
+        try:
+            __import__(package)
+        except ImportError:
+            try:
+                print(f"{package} is not installed, installing it automatically.")
+                subprocess.check_call([sys.executable, "-m", "pip", "install", required_packages_dic[package]])
+                print(f"{package} is successfully installed.")
+            except subprocess.CalledProcessError as e:
+                print(
+                    f"\nRequired python packages are missing and can't be installed automatically. with error {e.stderr}"
+                    "\nPlease install 'click' and 'biopython' by pip.\n")
+                return
 
 
-# Replace 'click', 'Bio' with the actual packages you need
-required_packages = ['click', 'biopython']
-
-for package in required_packages:
-    install_and_import(package)
+required_packages = {'click': 'click', 'Bio': 'biopython'}
+install_and_import(required_packages)
 
 
 import click
