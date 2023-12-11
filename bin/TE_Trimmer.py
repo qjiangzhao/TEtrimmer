@@ -625,6 +625,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         prgre("\nYou can choose to ignore this error. For traceback text, please refer to 'error_file.txt' "
               "under 'Multiple_sequence_alignment' folder\n")
 
+
     #####################################################################################################
     # Code block: Whole genome TE annotation
     #####################################################################################################

@@ -692,7 +692,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             query_file = seq_obj.get_input_fasta()
             TE_aid_object_query = TEAid(query_file, output_dir, genome_file, error_file=error_files,
                                         TE_aid_dir=TE_aid_path)
-            TE_aid_plot_query, found_match_query = TE_aid_object_query.run(low_copy=False)
+            TE_aid_plot_query, found_match_query = TE_aid_object_query.run(low_copy=False, label=False)
         else:
             TE_aid_plot_query = None
     except Exception as e:
@@ -714,7 +714,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
         # List with your PDF file paths. Ensure they are not None before adding them to the list.
         pdf_files = [pdf for pdf in [MSA_plot, cropped_boundary_manual_MSA_concatenate_plot,
-                                     TE_aid_plot, orf_domain_plot, TE_aid_plot_query] if pdf is not None]
+                                     TE_aid_plot, TE_aid_plot_query, orf_domain_plot] if pdf is not None]
 
         valid_pdf_count = 0  # Counter to keep track of valid PDFs added
 

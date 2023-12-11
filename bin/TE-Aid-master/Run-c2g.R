@@ -25,16 +25,36 @@ output		=	as.character(Args[13])
 selfdb		=	as.character(Args[14]) # bool 
 blastp      =   as.character(Args[15]) # includes orfs position
 osize		=	as.numeric(Args[16])
-wdir        =   as.character(Args[17]) # from the shell: path to running directory 
-tables      =   as.character(Args[18])
+wdir        =   as.character(Args[17]) # from the shell: path to running directory
+tm          =   as.character(Args[18])
+tables      =   as.character(Args[19])
 
 source(paste(wdir, "/", "consensus2genome.R", sep = ""))
 source(paste(wdir, "/", "blastndotplot.R", sep = ""))
 
-pdf(width = 12, height = 12, file = paste(output, "/", tail(strsplit(as.character(query), "/")[[1]],1), ".c2g.pdf", sep=""))
+library(grid)
+# Set the default title
+pdf_title <- "Default Title"
+
+# Check the value of tm and update the title accordingly
+if (tm) {
+  pdf_title <- "After TE Trimmer treatment"
+} else {
+  pdf_title <- "Without TE Trimmer treatment"
+}
+
+pdf(
+  width = 27,
+  height = 7,
+  file = paste(output, "/", tail(strsplit(as.character(query), "/")[[1]], 1), ".c2g.pdf", sep = "")
+)
 #pdf(width = 16, height = 16, file = paste(tail(strsplit(as.character(query), "/")[[1]],1), ".c2g.pdf", sep=""))
 
-par(mfrow=c(2,2))
+# Adjust margins to leave space for the title at the top
+par(mar = c(6, 5, 4 + 4, 2) + 0.5)
+
+# Set layout for a 2x2 plot
+par(mfrow = c(1, 4))
 
 print("R: ploting genome blastn results and computing coverage...")
 
@@ -61,5 +81,5 @@ blastdotplot(query  =  query,
              os     =  osize,
              tables =  tables,
              output =  output)
-
+title(main = pdf_title, outer = TRUE, line = -3, cex.main = 3)
 dev.off()

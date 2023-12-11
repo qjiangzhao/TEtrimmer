@@ -74,6 +74,8 @@ WARNING: This is a development version, please report bugs to goubert.clement@gm
 
     -D | --emboss-dotmatcher      Produce a dotplot with EMBOSS dotmatcher
 
+    -TM | --tetrimmer             Add different title to final plot to show if it is after TE Trimmer analysis
+
 HEREDOC
 } 
 
@@ -94,7 +96,7 @@ while (( "$#" )); do
     -q|--query)
       if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
         QUERY=$2
-        shift 2
+        shift 2  # Remove the processed argument from the list of the command line arguments
       else
         echo "Error: no query (-q) provided (fasta)" >&2
         usage
@@ -169,7 +171,11 @@ while (( "$#" )); do
     -D | --emboss-dotmatcher)
         DOTMA=TRUE
         shift
-       ;;         
+       ;;
+    -TM | --tetrimmer)
+        TETRIMMER=TRUE
+        shift
+       ;;
     -*|--*=) # unsupported flags
       echo "Error: Unsupported argument $1" >&2
       usage
@@ -202,6 +208,7 @@ MINORF="${MINORF:-400}"
 TABLES="${TABLES:-FALSE}"
 ALLTAB="${ALLTAB:-FALSE}"
 DOTMA="${DOTMA:-FALSE}"
+TETRIMMER="${TETRIMMER:-FALSE}"
 
 # param check
 echo "query:                         $QUERY"
@@ -303,9 +310,9 @@ fi
 # run R script with user-defined parameters
 if [ $ALLTAB == "TRUE" ]
   then
-  Rscript $DIR/Run-c2g.R $QUERY $GENOME $EVALUE $FL $ALPHA $FULL_ALPHA $AUTO_Y $OUTPUT $OUTPUT/TE.db $OUTPUT/orftetable $MINORF $DIR $ALLTAB
+  Rscript $DIR/Run-c2g.R $QUERY $GENOME $EVALUE $FL $ALPHA $FULL_ALPHA $AUTO_Y $OUTPUT $OUTPUT/TE.db $OUTPUT/orftetable $MINORF $DIR $TETRIMMER $ALLTAB
   else
-  Rscript $DIR/Run-c2g.R $QUERY $GENOME $EVALUE $FL $ALPHA $FULL_ALPHA $AUTO_Y $OUTPUT $OUTPUT/TE.db $OUTPUT/orftetable $MINORF $DIR $TABLES
+  Rscript $DIR/Run-c2g.R $QUERY $GENOME $EVALUE $FL $ALPHA $FULL_ALPHA $AUTO_Y $OUTPUT $OUTPUT/TE.db $OUTPUT/orftetable $MINORF $DIR $TETRIMMER $TABLES
 fi
 
 # clean-up

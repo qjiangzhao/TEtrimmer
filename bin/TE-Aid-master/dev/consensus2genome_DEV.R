@@ -23,7 +23,7 @@ consensus2genome=function(query=NULL, db=NULL, evalue=10e-8, FL_thresh=0.9, alph
   #graph
   if(auto_y == T){
     par(mar=c(5,5,5,5))
-    plot(range(0, cons_len), range(0, max(100-blast$V3)), type = "n", main=paste("TE: ", as.character(blast[1,1]), "\n consensus size: ", as.character(cons_len), "bp; fragments: ", as.character(length(blast$V1)), "; full length: ", as.character(length(full$V1))," (>=",as.character(as.numeric(FL_thresh)*100),"%)", sep = ""), cex.main = 0.9, xlab = "TE consensus (bp)", ylab = "divergence to consensus (%)")
+    plot(range(0, cons_len), range(0, max(100-blast$V3)), type = "n", main=paste("TE: ", as.character(blast[1,1]), "\n consensus size: ", as.character(cons_len), "bp; fragments: ", as.character(length(blast$V1)), "; full length: ", as.character(length(full$V1))," (>=",as.character(as.numeric(FL_thresh)*100),"%)", sep = ""), cex.main = 1.5, xlab = "TE consensus (bp)", ylab = "divergence to consensus (%)", cex.lab = 2)
     for(i in 1:length(blast$V1)){
       segments(blast$V7[i], 100-blast$V3[i], blast$V8[i], 100-blast$V3[i], col=rgb(0,0,0,alpha=alpha))
     }
@@ -32,7 +32,7 @@ consensus2genome=function(query=NULL, db=NULL, evalue=10e-8, FL_thresh=0.9, alph
     }}
   else{
     par(mar=c(5,5,5,5))
-    plot(range(0, cons_len), range(0, auto_y), type = "n", main=paste("TE: ", as.character(blast[1,1]), "\n consensus size: ", as.character(cons_len), "bp; fragments: ", as.character(length(blast$V1)), "; full length: ", as.character(length(full$V1))," (>=",as.character(as.numeric(FL_thresh)*100),"%)", sep = ""), cex.main = 0.9, xlab = "TE consensus (bp)", ylab = "divergence to consensus (%)")
+    plot(range(0, cons_len), range(0, auto_y), type = "n", main=paste("TE: ", as.character(blast[1,1]), "\n consensus size: ", as.character(cons_len), "bp; fragments: ", as.character(length(blast$V1)), "; full length: ", as.character(length(full$V1))," (>=",as.character(as.numeric(FL_thresh)*100),"%)", sep = ""), cex.main = 1.5, xlab = "TE consensus (bp)", ylab = "divergence to consensus (%)", cex.lab = 2)
     for(i in 1:length(blast$V1)){
       segments(blast$V7[i], 100-blast$V3[i], blast$V8[i], 100-blast$V3[i], col=rgb(0,0,0,alpha=alpha))
     }

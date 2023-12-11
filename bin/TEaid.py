@@ -37,7 +37,7 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
         if plot_skip:
             # Plot skipped elements if it is required
             TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
-            TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
+            TE_aid_plot, found_match = TE_aid_object.run(low_copy=True, label=False)
         else:
             TE_aid_plot = None
         check_low_copy = False
@@ -95,7 +95,7 @@ class TEAid:
         self.min_orf = min_orf
         self.full_length_threshold = full_length_threshold
 
-    def run(self, low_copy=False):
+    def run(self, low_copy=False, label=True):
         # Define TE_Aid software executable path
         TE_aid = os.path.join(self.TE_aid_dir, "TE-Aid")
 
@@ -129,6 +129,8 @@ class TEAid:
         # If it is low copy element add -t option to enable to keep self blast file from TE_Aid
         if low_copy:
             command.extend(["-T"])
+        if label:
+            command.extend(["-TM"])
 
         try:
             subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

@@ -32,9 +32,11 @@ blastdotplot=function(query = NULL, db = NULL, blast = NULL, os = NULL, tables =
   ###########################
 
   plot(x = 1, type = "n", xlim = c(0,bl$V3[1]),ylim = c(0,bl$V3[1]), col = "white",
-       main = "TE consensus self dotplot (blastn)",
-       ylab = paste(as.character(bl$V1[1]), "(bp)", sep = " "),
-       xlab = paste(as.character(bl$V1[1]), "(bp)", sep = " ")
+       main = "",
+       ylab = "TE consensus self dotplot (bp)",
+       xlab = "TE consensus self dotplot (bp)",
+       cex.lab = 2,
+       cex.axis = 1.5
        )
     for(i in 1:length(bl$V1)){
       if(bl$V5[i] > bl$V4[i]){
@@ -52,9 +54,11 @@ blastdotplot=function(query = NULL, db = NULL, blast = NULL, os = NULL, tables =
   ## Arrows layer ##
 
   plot(x = 1, type = "n", xlim = c(0,bl$V3[1]),ylim = c(-max(length(orfs$V1),10),length(bl$V1)), col = "white", yaxt="n",
-       main = "TE consensus structure and protein hits",
-       xlab = paste(as.character(bl$V1[1]), "(bp)", sep = " "),
-       ylab = ""
+       main = "",
+       xlab = "TE consensus structure and protein hits (bp)",
+       ylab = "",
+       cex.lab = 2,
+       cex.axis = 1.5
   )
   for(i in seq(1:length(bl$V1))){
     if(bl$V4[i] > bl$V2[i]){

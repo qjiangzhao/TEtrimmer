@@ -6,10 +6,30 @@ import click
 from functools import partial
 import platform
 
+
+# Change Aliview permission
+def change_permissions_recursive(input_dir, mode):
+    try:
+        for dirpath, dirnames, filenames in os.walk(input_dir):
+            os.chmod(dirpath, mode)
+            for filename in filenames:
+                os.chmod(os.path.join(dirpath, filename), mode)
+    except PermissionError:
+        click.echo("TE Trimmer don't have right to change permissions. Pleas use sudo to run TE Trimmer")
+        return False
+    return True
+
+
+# Define Aliview software path and change permission
+bin_py_path = os.path.dirname(os.path.abspath(__file__))
+aliview_path = os.path.join(bin_py_path, "aliview/aliview")
+change_permissions_recursive(aliview_path, 0o755)
+
 copy_history = []
 
 # Detect OS
 os_type = platform.system()
+
 
 @click.command()
 @click.option('--te_trimmer_proof_annotation_dir', '-i', required=True, type=str,
@@ -26,8 +46,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     # If the -o option is not given, use the parent directory of -i as output directory.
     if output_dir is None:
         output_dir = te_trimmer_proof_annotation_dir
-
-    # Define Aliview software path
+    # Define Aliview software path and change permission
     bin_py_path = os.path.dirname(os.path.abspath(__file__))
     aliview_path = os.path.join(bin_py_path, "aliview/aliview")
     if os_type == "Windows":
