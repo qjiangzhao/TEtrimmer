@@ -434,7 +434,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
         # Check if the proportion is greater than 30%
         # If 30% of this consensus sequence is "N", stop analysis for this MSA
-        if n_proportion > 0.3:
+        if n_proportion > 0.4:
             return False
 
     #####################################################################################################
@@ -847,7 +847,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     try:
 
         if classify_all or (
-                classify_unknown and (seq_obj.check_unknown() or (abs(consi_obj.new_length - seq_obj.old_length) >= 1000))):
+                classify_unknown and (seq_obj.check_unknown() or (abs(consi_obj.new_length - seq_obj.old_length) >= 2000))):
             # Define different folder for each sequence
             classification_seq_folder = os.path.join(classification_dir, uniq_seq_name)
             os.makedirs(classification_seq_folder, exist_ok=True)

@@ -1550,7 +1550,10 @@ def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, f
     low_copy_te_aid_pdf_file = os.path.join(proof_dir, f"{seq_name}#{te_type_modified}_TE_Aid.pdf")
 
     shutil.copy(input_fasta, low_copy_single_fasta_file)
-    shutil.copy(te_aid_pdf, low_copy_te_aid_pdf_file)
+
+    # Sometimes TE Aid can't be plotted properly because the input sequence quality. Only move plot when it is existed.
+    if os.path.exists(te_aid_pdf) and os.path.getsize(te_aid_pdf) > 0:
+        shutil.copy(te_aid_pdf, low_copy_te_aid_pdf_file)
 
 
 # Classify single fasta

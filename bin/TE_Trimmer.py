@@ -168,7 +168,8 @@ with open(species_config_path, "r") as config_file:
               help='Threads numbers used for TE Trimmer. Default: 10')
 @click.option('--classify_unknown', default=False, is_flag=True,
               help='Use RepeatClassifier to classify the consensus sequence if the input sequence is not classified or '
-                   'is unknown.')
+                   'is unknown or the processed sequence length by TE Trimmer is 2000 bps longer or shorter '
+                   'than the query sequence.')
 @click.option('--classify_all', default=False, is_flag=True,
               help='Use RepeatClassifier to classify every consensus sequence.  WARNING: it will take longer time.')
 def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_blast_len, num_threads, max_msa_lines,
@@ -634,7 +635,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
         # Run RepeatMasker
         if genome_anno:
-            click.echo("\nTE Trimmer is performing whole genome TE annotation by RepeatMasker\n")
+            click.echo("\nTE Trimmer is performing whole genome TE annotation by RepeatMasker. This could take "
+                       "long time. \nBut the final TE consensus library is finished. You can use it now.\n")
 
             if final_merge_success and os.path.exists(cd_hit_est_final_merged):
                 repeatmakser_lib = cd_hit_est_final_merged

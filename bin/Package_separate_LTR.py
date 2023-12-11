@@ -16,13 +16,14 @@ def process_sequences(input_file, output_dir):
     """
     input_dir = os.path.dirname(input_file)
     input_name = os.path.basename(input_file)
+    sep_seq_n = 0
 
     if output_dir is None:
         output_dir = os.path.join(input_dir, f"{input_name}_LTR_separate")
         output_file = f"{input_file}_LTR_separated.fa"
     else:
         output_dir = os.path.join(output_dir, f"{input_name}_LTR_separate")
-        output_file = os.path.join(output_dir, f"{input_name}_LTR_separated")
+        output_file = os.path.join(output_dir, f"{input_name}_LTR_separated.fa")
 
     os.makedirs(output_dir, exist_ok=True)
     sequences = list(SeqIO.parse(input_file, "fasta"))
@@ -48,9 +49,13 @@ def process_sequences(input_file, output_dir):
             INT_record = SeqRecord(Seq(INT_seq), id=new_id_INT, description="")
 
             processed_sequences.extend([LTR_record, INT_record])
+            print(f"{record.id} contains 'LTR' and was separated.")
+            sep_seq_n += 1
         else:
             # Keep sequence unchanged if LTR is not identified
             processed_sequences.append(record)
+    print(f"\n{sep_seq_n} sequences were found to contain 'LTR' and separated."
+          f"\nSeparation is finished")
 
     # Write processed sequences to a new file
     with open(output_file, "w") as f:
