@@ -231,7 +231,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
             # Set crop_end_sim_thr to be smaller than pro_mean to avoid over cropping.
             crop_end_sim_thr = int(pro_mean) - 3
         else:
-            crop_end_sim_thr = crop_end_thr * 0.8
+            crop_end_sim_thr = crop_end_win * 0.8
 
         # Do crop end by similarity to clean MSA
         bed_fasta_mafft_gap_sim_selected_cp_object = CropEnd(
