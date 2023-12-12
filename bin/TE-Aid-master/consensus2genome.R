@@ -71,7 +71,7 @@ for(i in 1:length(blast$V1)){
     removator<-function(covM){
       as.data.frame(covM)->covMT
       covMT$bp=rownames(covMT)
-      plot(covM, type = "l", main = "", xlab = "TE consensus genomic coverage plot (bp)", ylab = "coverage (%)", cex.lab = 2, cex.axis = 1.5)
+      plot(covM, type = "l", main = "", xlab = "TE consensus genomic coverage plot (bp)", ylab = "coverage (bp)", cex.lab = 2, cex.axis = 1.5)
      } # removator function
     
     removator(colSums(coverage)) # makes the second graph
