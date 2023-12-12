@@ -39,6 +39,7 @@ For Window WSL, you can follow the same instruction used for linux.
 
 For macOS, you can use the same instruction but by [TE_Trimmer_env_for_macOS.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_macOS.yml).
 
+**Currently, macOS yml file isn't usable. Please install according to [dependency file](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TE_Trimmer_dependencies)**
 
 We will develop Conda and Docker packages for TE Trimmer.
 
@@ -56,8 +57,8 @@ RAM:
 
 | Threads | RAM    |
 |---------|--------|
-| 40      | 250 GB |
-| 100     | 600 GB |
+| 40      | 150 GB |
+| 100     | 400 GB |
 
 - For PC macOS user, because Virtual Memory can be used. You can simply use 20 threads to push the CPU to its limits. We did
 test on Macbook Pro (2020 M1 chip 16 GB) and compared with HPC, you can find the running time here:
@@ -65,7 +66,7 @@ test on Macbook Pro (2020 M1 chip 16 GB) and compared with HPC, you can find the
 | Query sequence number | Platform       | Threads | RAM                    | Running time |
 |-----------------------|----------------|---------|------------------------|--------------| 
 | 1700                  | Macbook Pro M1 | 20      | 16 GB + Virtual Memory | 60 hours     |
-| 1700                  | HPC            | 40      | 250 GB                 | 7 hours      | 
+| 1700                  | HPC            | 40      | 150 GB                 | 7 hours      | 
 
 - We haven't tested it on WLS of Windows, it should be feasible to run TE Trimmer on it too. 
 
@@ -122,7 +123,6 @@ More options are available:
   --genome_anno                   Perform genome TE annotation using the TE Trimmer curated database. Requires RepeatMasker.
   --hmm                           Generate HMM files for each consensus sequences.
   --fast_mode                     Reduce running time but at the cost of lower accuracy and specificity.
-  --plot_skip                     Perform TE_Aid plot for skipped elements
   --pfam_dir TEXT                 Pfam database directory. Omit this if you do not have a local PFAM database. TE Trimmer will download the database automatically.
   --cons_thr FLOAT                Threshold used for the final consensus sequence generation. Default: 0.8
   --mini_orf INTEGER              Define the minimum ORF length that will be predicted by TE Trimmer. Default: 200
@@ -200,11 +200,7 @@ Options:
   --debug                         Open debug mode. This will keep all raw files. WARNING: Many files will be produced.
   
   --fast_mode                     Reduce running time but at the cost of lower accuracy and specificity.
-  
-  --plot_query                    Perform TE_Aid plot for each query sequences before TE Trimmer analysis.
-  
-  --plot_skip                     Perform TE_Aid plot for skipped elements.
-  
+    
   --pfam_dir TEXT                 Pfam database directory. Omit this option if you do not have a local PFAM database.
                                   TE Trimmer will download the database automatically in this case.
                                   

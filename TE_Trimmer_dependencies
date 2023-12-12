@@ -29,7 +29,7 @@ pfam_scan                 1.6                     pl526_2    bioconda/label/cf20
 repeatmasker              4.1.1                   pl526_1    bioconda
 samtools                  1.11                 h6270b1f_0    bioconda	(only for genome.fai file generation)
 repeatmodeler             2.0.1                   pl526_0    bioconda
-
+iqtree                    2.2.5                h21ec9f0_0    bioconda
 
 
 
