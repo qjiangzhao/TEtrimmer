@@ -70,7 +70,7 @@ blastdotplot=function(query = NULL, db = NULL, blast = NULL, os = NULL, tables =
 
   ## Orfs layers ##
   if(class(test) != "data.frame"){ # if orf table is empty
-     text(paste("no orf >",os," bp detected", sep=""), x=bl$V3[1]/2, y=-5, cex = 2)
+     text("no TE domain detected", x=bl$V3[1]/2, y=-5, cex = 2)
     } else { # if ORF table, plot orfs
       for(i in seq(1:length(orfs$V1))){
         if(orfs$V1[i] < orfs$V2[i]){ # checking ORF orientation

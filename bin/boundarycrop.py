@@ -115,8 +115,11 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
                                                             gap_threshold=0.6, simi_check_gap_thre=0.4,
                                                             similarity_threshold=0.7,
                                                             min_nucleotide=5
-                                                            )
+                                                           )
 
+        # bed_fasta_mafft will be false when MSA column number is smaller than 50 after remove gap
+        if not bed_fasta_mafft:
+            break
         bed_fasta_mafft_object = CropEndByGap(bed_fasta_mafft, gap_threshold=crop_end_gap_thr,
                                               window_size=crop_end_gap_win)
         large_crop_ids, remain_n, remain_ids = bed_fasta_mafft_object.find_large_crops()
