@@ -95,7 +95,7 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=None):
     counter = Counter(cluster)
 
     # Find cluster with size > min_cluster_size
-    filter_cluster = [element for element, count in counter.items() if count > min_cluster_size]
+    filter_cluster = [element for element, count in counter.items() if count >= min_cluster_size]
     seq_cluster_list = []
 
     # if only -1 in filter_cluster and cluster size > 60% number of sequences in MSA:
@@ -105,8 +105,8 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=None):
             seq_records = [sequence for sequence, cluster_label in sequence_cluster_mapping.items() if cluster_label == -1]
             seq_cluster_list.append(seq_records)
     else: 
-        # has 0 cluster, or 1 cluster that's not -1, or multiple clusters, elimininate cluster that is -1
-        filter_cluster = [c for c in filter_cluster if c != -1]
+        # has 0 cluster, or 1 cluster that's not -1, or multiple clusters, eliminate cluster that is -1
+        # filter_cluster = [c for c in filter_cluster if c != -1]
         top_cluster = Counter({element: count for element, count in counter.items() if element in filter_cluster}).most_common
         # Pick the top max_cluster
         if max_cluster is not None:
@@ -236,8 +236,9 @@ def subset_bed_file(input_file, bed_dfs, output_dir):
     return output_file_list
 
 
-def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, clean_column_threshold=0.08,
-                          min_length_num=10, cluster_num=2, cluster_col_thr=500, muscle_ite_times=4, fast_mode=False):
+def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, clean_column_threshold=0.01,
+                          min_length_num=10, cluster_num=2, cluster_col_thr=500, muscle_ite_times=4, fast_mode=False,
+                          input_msa=None):
     """
     This function will cluster multiple sequence alignment file
     :param input_file: str, The direct fasta file derived from bed file
@@ -251,24 +252,27 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     :return: A list of subset pattern alignment and bed files
     """
 
-    # Align_sequences will return the absolute file path of alignment file
-    if fast_mode:
-        muscle_ite_times = 2
-    try:
-        fasta_out_flank_mafft_file = muscle_align(input_file, output_dir, ite_times=muscle_ite_times)
-    except Exception as e:
-        fasta_out_flank_mafft_file = False
-        pass
+    # When the input file is after multiple sequence alignment, don't do this again here
+    if input_msa is None:
+        # Align_sequences will return the absolute file path of alignment file
+        if fast_mode:
+            muscle_ite_times = 2
+        try:
+            fasta_out_flank_mafft_file = muscle_align(input_file, output_dir, ite_times=muscle_ite_times)
+        except Exception as e:
+            fasta_out_flank_mafft_file = False
+            pass
 
-    # When muscle goes wrong, use mafft
-    if not fasta_out_flank_mafft_file:
-        fasta_out_flank_mafft_file = align_sequences(input_file, output_dir)
+        # When muscle goes wrong, use mafft
+        if not fasta_out_flank_mafft_file:
+            fasta_out_flank_mafft_file = align_sequences(input_file, output_dir)
 
-    # Remove gaps. Return absolute path for gap removed alignment file
-    fasta_out_flank_mafft_file_gap_filter = remove_gaps_with_similarity_check(
-        fasta_out_flank_mafft_file, output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
-        similarity_threshold=0.85, min_nucleotide=5)
-
+        # Remove gaps. Return absolute path for gap removed alignment file
+        fasta_out_flank_mafft_file_gap_filter = remove_gaps_with_similarity_check(
+            fasta_out_flank_mafft_file, output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
+            similarity_threshold=0.85, min_nucleotide=5)
+    else:
+        fasta_out_flank_mafft_file_gap_filter = input_msa
     # Extract columns that contain different alignment patter, use this for group separation.
     # This threshold will be used to replace nucleotides that are less than threshold with a gap character for each column
     pattern_alignment = CleanAndSelectColumn(fasta_out_flank_mafft_file_gap_filter, threshold=clean_column_threshold)

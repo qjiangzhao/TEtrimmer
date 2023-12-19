@@ -12,16 +12,20 @@ class CropEnd:
     Crop each single sequence end of MSA by the nucleotide divergence.
     """
 
-    def __init__(self, input_file, threshold=16, window_size=20):
+    def __init__(self, input_file, threshold=16, window_size=20, crop_l=True, crop_r=True):
         """
         :param input_file: str, path to the multiple sequence alignment
         :param threshold: default 16, nucleotides number inside the check window whose proportion greater than 80%
         :param window_size: default 20, check window size to define start and end position
+        :param crop_l and crop_r: decide if crop both ends or only one side
         """
         self.input_file = input_file
         self.alignment = AlignIO.read(self.input_file, "fasta")
         self.threshold = threshold
         self.window_size = window_size
+        self.crop_l = crop_l
+        self.crop_r = crop_r
+        self.alignment_len = self.alignment.get_alignment_length()
         # Define a dictionary the key are sequence names, the values are a list contains nucleotides proportion
         self.proportions_dict = {record.id: [] for record in self.alignment}
         # Define a dictionary to hold start and end positions
@@ -38,7 +42,7 @@ class CropEnd:
         :return: a data frame contains all sequence names and nucleotide proportion information
         """
         # Loop through each column of the alignment
-        for i in range(self.alignment.get_alignment_length()):
+        for i in range(self.alignment_len):
             # Count the number of each nucleotide in this column
             counts = {"a": 0, "c": 0, "g": 0, "t": 0}
             for record in self.alignment:
@@ -69,7 +73,7 @@ class CropEnd:
         self.df = pd.DataFrame(self.proportions_dict)
         self.df = self.df.transpose()  # transpose the DataFrame so that each row represents a sequence
         self.df.columns = range(1,
-                                self.alignment.get_alignment_length() + 1)  # rename the columns to represent positions
+                                self.alignment_len + 1)  # rename the columns to represent positions
         # Convert to two decimal numbers
         self.df = self.df.round(2)
 
@@ -82,18 +86,27 @@ class CropEnd:
         """
         # Loop over the DataFrame's rows
         for index, row in self.df.iterrows():
-            # Find start position
-            for i in range(len(row) - self.window_size + 1):
-                window = row[i:i + self.window_size]
-                if window.sum() > self.threshold:
-                    self.position_dict[index][0] = i
-                    break
-            # Find end position
-            for i in range(len(row) - 1, self.window_size - 2, -1):
-                window = row[i - self.window_size + 1:i + 1]
-                if window.sum() > self.threshold:
-                    self.position_dict[index][1] = i + 1  # add 1 to make the position 1-indexed
-                    break
+            if self.crop_l:
+                # Find start position
+                for i in range(len(row) - self.window_size + 1):
+                    window = row[i:i + self.window_size]
+                    if window.sum() > self.threshold:
+                        self.position_dict[index][0] = i
+                        break
+            else:
+                # Set the start position to 0 when crop left is not used
+                self.position_dict[index][0] = 0
+
+            if self.crop_r:
+                # Find end position
+                for i in range(len(row) - 1, self.window_size - 2, -1):
+                    window = row[i - self.window_size + 1:i + 1]
+                    if window.sum() > self.threshold:
+                        self.position_dict[index][1] = i + 1  # add 1 to make the position 1-indexed
+                        break
+            else:
+                # Set the end position to the end of the alignment when crop right is not used
+                self.position_dict[index][1] = self.alignment_len - 1
 
     def crop_alignment(self):
         # Create a new list to hold the cropped sequences
@@ -127,7 +140,15 @@ class CropEnd:
         return average_proportions, overall_average
 
     def write_to_file(self, output_dir):
-        output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_ce.fa")
+
+        # Define different names for different direction of cropping.
+        if self.crop_l and self.crop_r:
+            output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_ce.fa")
+        elif self.crop_l and not self.crop_r:
+            output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_cel.fa")
+        elif not self.crop_l and self.crop_r:
+            output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_cer.fa")
+
         with open(output_file, "w") as f:
             AlignIO.write(self.cropped_alignment, f, "fasta")
         return output_file

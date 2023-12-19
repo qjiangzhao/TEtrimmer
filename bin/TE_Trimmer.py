@@ -193,11 +193,16 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # _fm.bed: final multiple sequence alignment.
     # _u: uniqueness.
     # _bcl.fa bed clean. Use awk to remove letters that aren't A G C T a g c t in the fasta file
+    # _bcln.fa bed clean and use name column as fasta header
+    # _n.bed use bed file name column as fasta header
+    # _n.fa use bed file name column as fasta header
     # _aln.fa alignment. File after alignment
     # _cl.fa clean. Convert nucleotide with very proportion in MSA into gap
     # _gs.fa gap similarity. Remove gaps in MSA with similarity check
     # _se.fa start end. Selected MSA based on given start and end position
-    # _ce.fa crop end. MSA after crop end by similarity
+    # _ce.fa crop end for both left and right sides. MSA after crop end by similarity
+    # _cel.fa crop end left. Only crop left side of the MSA
+    # _cer.fa crop end right. Only crop right side of the MSA
     # _bc.fa boundary crop.
     # _co.fa consensus. Consensus sequence file
     # _orf.txt ORF prediction file
@@ -484,7 +489,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
         # Round 1 merge only require that the alignment coverage for the shorter sequence is greater than 0.8
         # and the similarity is greater than 0.85
-        cd_hit_est(final_con_file, cd_hit_merge_output_round1, identity_thr=0.85, aS=0.8, s=0, thread=num_threads)
+        cd_hit_est(final_con_file, cd_hit_merge_output_round1, identity_thr=0.9, aS=0.9, s=0, thread=num_threads)
 
         # Read progress file
         progress_df = pd.read_csv(progress_file)
@@ -521,15 +526,25 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         # Define list to store sequence in clusters that don't contain Perfect or Good sequences
         sequence_for_round2 = []
         for cluster_name, sequences in clusters.items():
+            perfect_sequences = []
+            good_sequences = []
             best_seq = None
-            best_length = 0
+
             for seq in sequences:
                 if seq in sequence_info:
                     evaluation = sequence_info[seq]["evaluation"]
                     length = sequence_info[seq]["length"]
-                    if evaluation in ["Perfect", "Good"] and length > best_length:
-                        best_length = length
-                        best_seq = seq
+                    if evaluation == "Perfect":
+                        perfect_sequences.append((seq, length))
+                    elif evaluation == "Good":
+                        good_sequences.append((seq, length))
+            # Choose the longest 'Perfect' sequence, if have Perfect
+            if perfect_sequences:
+                best_seq = max(perfect_sequences, key=lambda x: x[1])[0]
+            # If no 'Perfect', choose the longest 'Good' sequence
+            elif good_sequences:
+                best_seq = max(good_sequences, key=lambda x: x[1])[0]
+
             if best_seq:
                 best_sequences.append(best_seq)
             else:
@@ -624,7 +639,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                "be higher but the sensitive won't be affected. You can remove duplicated sequence by yourself.")
         prgre("\nYou can choose to ignore this error. For traceback text, please refer to 'error_file.txt' "
               "under 'Multiple_sequence_alignment' folder\n")
-
 
     #####################################################################################################
     # Code block: Whole genome TE annotation

@@ -20,7 +20,7 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
 
         # Check self-alignment of terminal repeats
         TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
-        TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
+        TE_aid_plot, found_match = TE_aid_object.run(low_copy=True, label=False)
 
         seq_obj.update_blast_hit_n(blast_hits_count)
 

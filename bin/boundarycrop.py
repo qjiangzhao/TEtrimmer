@@ -19,7 +19,7 @@ from selectcolumns import CleanAndSelectColumn
 import checkpattern
 from TEaid import TEAid
 from orfdomain import PlotPfam, determine_sequence_direction
-from MSAcluster import process_msa
+from MSAcluster import process_msa, clean_and_cluster_MSA
 import cialign
 
 
@@ -183,7 +183,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
               define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win):
     found_match_crop = False
 
-    bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, 0, 0)
+    bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, 0, 0, nameonly=True)
 
     # align_sequences() will return extended MSA absolute file
     bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
@@ -205,7 +205,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
     bed_fasta_mafft_gap_sim_cp = bed_fasta_mafft_gap_sim_cp_object.write_to_file(output_dir)
 
     # Generate consensus sequence, use low threshold to reduce N numbers in the consensus sequence
-    bed_fasta_mafft_gap_sim_cp_con = con_generater(bed_fasta_mafft_gap_sim_cp, output_dir, threshold=0.6, ambiguous="N")
+    bed_fasta_mafft_gap_sim_cp_con = con_generater(bed_fasta_mafft_gap_sim_cp, output_dir, threshold=0.45, ambiguous="N")
 
     # Check terminal repeats
     # Define the output folder to store the temporary blast database
@@ -224,23 +224,35 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
             right = TIR_boundary[1]
 
         # Extract MSA based on terminal repeat boundary
-        bed_fasta_mafft_gap_sim_selected = select_star_to_end(bed_fasta_mafft_gap_sim, output_dir, left, right)
+        bed_fasta_mafft_gap_sim_selected = select_star_to_end(bed_fasta_mafft_gap_sim_cp, output_dir, left, right)
 
         # Define the threshold use for cropping end by similarity to make sure the ends of MSA won't be totally removed
         # Because the boundary of the MSA has been defined.
-        pro_mean = define_crop_end_simi_thr(bed_fasta_mafft_gap_sim_selected)
+        start_pro_mean, end_pro_mean = define_crop_end_simi_thr(bed_fasta_mafft_gap_sim_selected)
 
-        if pro_mean < crop_end_win * 0.8:
+        if start_pro_mean < crop_end_win * 0.8:
             # Set crop_end_sim_thr to be smaller than pro_mean to avoid over cropping.
-            crop_end_sim_thr = int(pro_mean) - 3
+            start_pro_mean = int(start_pro_mean) - 3
         else:
-            crop_end_sim_thr = crop_end_win * 0.8
+            start_pro_mean = crop_end_win * 0.7
 
-        # Do crop end by similarity to clean MSA
-        bed_fasta_mafft_gap_sim_selected_cp_object = CropEnd(
-            bed_fasta_mafft_gap_sim_selected, threshold=crop_end_sim_thr, window_size=40)
-        bed_fasta_mafft_gap_sim_selected_cp_object.crop_alignment()
-        bed_fasta_mafft_gap_sim_selected_cp = bed_fasta_mafft_gap_sim_selected_cp_object.write_to_file(output_dir)
+        # Because the divergence for start and end part of MSA can be different, do crop separately.
+        if end_pro_mean < crop_end_win * 0.8:
+            end_pro_mean = int(end_pro_mean) - 3
+        else:
+            end_pro_mean = crop_end_win * 0.7
+
+        # Do crop end by similarity to clean MSA for left side
+        bed_fasta_mafft_gap_sim_selected_cp_object_left = CropEnd(
+            bed_fasta_mafft_gap_sim_selected, threshold=start_pro_mean, window_size=40, crop_l=True, crop_r=False)
+        bed_fasta_mafft_gap_sim_selected_cp_object_left.crop_alignment()
+        bed_fasta_mafft_gap_sim_selected_cp_left = bed_fasta_mafft_gap_sim_selected_cp_object_left.write_to_file(output_dir)
+
+        # Do crop end by similarity to clean MSA for right side
+        bed_fasta_mafft_gap_sim_selected_cp_object_right = CropEnd(
+            bed_fasta_mafft_gap_sim_selected_cp_left, threshold=end_pro_mean, window_size=40, crop_l=False, crop_r=True)
+        bed_fasta_mafft_gap_sim_selected_cp_object_right.crop_alignment()
+        bed_fasta_mafft_gap_sim_selected_cp = bed_fasta_mafft_gap_sim_selected_cp_object_right.write_to_file(output_dir)
 
         # Remove gap by similarity again
         bed_fasta_mafft_gap_sim_selected_cp_g, column_mapping = remove_gaps_with_similarity_check(
@@ -355,76 +367,119 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     if"LINE" in seq_obj.old_TE_type:
         ext_threshold = ext_threshold - 0.2
 
-    # Read bed file and build dictionary to store sequence position
-    df = pd.read_csv(bed_file, sep='\t', header=None)
+    msa_loop_n = 1
 
-    # Initialize an empty dictionary to store your desired key-value pairs
-    bed_dict = {}
+    while msa_loop_n <= 2:
 
-    # Iterate through the DataFrame to populate the dictionary
-    for index, row in df.iterrows():
-        key = row.iloc[3]
+        # Read bed file and build dictionary to store sequence position
+        df = pd.read_csv(bed_file, sep='\t', header=None)
 
-        # Use sequence position and strand as dictionary values
-        value_list = [row.iloc[1], row.iloc[2], row.iloc[5]]
+        # Initialize an empty dictionary to store your desired key-value pairs
+        bed_dict = {}
 
-        # Add the key-value pair to the dictionary
-        bed_dict[key] = value_list
+        # Iterate through the DataFrame to populate the dictionary
+        for index, row in df.iterrows():
+            key = row.iloc[3]
 
-    #####################################################################################################
-    # Code block: Define left and right sides extension number and define the boundary
-    #####################################################################################################
-        
-    try: 
-        left_bed_dic = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir,
-                                  crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win, bed_dict)
+            # Use sequence position and strand as dictionary values
+            value_list = [row.iloc[1], row.iloc[2], row.iloc[5]]
 
-        final_bed_dic = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir,
-                                   crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win,
-                                   left_bed_dic)
-    except Exception as e:
-        with open(error_files, "a") as f:
-            # Get the traceback content as a string
-            tb_content = traceback.format_exc()
-            f.write(f"\nMSA extension failed for {seq_name} with error:\n{e}")
-            f.write('\n' + tb_content + '\n\n')
-            prcyan(f"\nMSA extension failed for {seq_name} with error:\n{e}")
-            prcyan('\n' + tb_content + '\n')
-            raise Exception
+            # Add the key-value pair to the dictionary
+            bed_dict[key] = value_list
 
-    try:
-        # Update bed file for final MSA
-        for key, value in final_bed_dic.items():
-            # Find rows where the fourth column matches the key and update position by dictionary value
-            df.loc[df[3] == key, [1, 2]] = value[:2]
+        #####################################################################################################
+        # Code block: Define left and right sides extension number and define the boundary
+        #####################################################################################################
+        try:
+            left_bed_dic = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir,
+                                      crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win, bed_dict)
 
-        # Define bed file name for final MSA
-        bed_final_MSA = bed_file + "_fm.bed"
-        df.to_csv(bed_final_MSA, sep='\t', index=False, header=False)
+            final_bed_dic = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir,
+                                       crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win,
+                                       left_bed_dic)
+        except Exception as e:
+            with open(error_files, "a") as f:
+                # Get the traceback content as a string
+                tb_content = traceback.format_exc()
+                f.write(f"\nMSA extension failed for {seq_name} with error:\n{e}")
+                f.write('\n' + tb_content + '\n\n')
+                prcyan(f"\nMSA extension failed for {seq_name} with error:\n{e}")
+                prcyan('\n' + tb_content + '\n')
+                raise Exception
 
-        # final_MSA return false when the start crop point is greater than the end crop point, which means the
-        # sequence is too short. Besides, when the divergence is too high, CropEnd will all cause this problem
-        final_msa_result = final_MSA(bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
-                                     define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win)
+        try:
+            # Update bed file for final MSA
+            for key, value in final_bed_dic.items():
+                # Find rows where the fourth column matches the key and update position by dictionary value
+                df.loc[df[3] == key, [1, 2]] = value[:2]
 
-        # Check if the result is False, indicating an error or specific condition
-        if not final_msa_result:
-            # Handle the error or specific condition here
-            return False
-        else:
-            # Unpack the returned values if the function executed normally
-            bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
-                column_mapping, bed_fasta_mafft_boundary_crop_for_select, found_match_crop = final_msa_result
+            # Define bed file name for final MSA
+            bed_final_MSA = bed_file + "_fm.bed"
+            df.to_csv(bed_final_MSA, sep='\t', index=False, header=False)
 
-    except Exception as e:
-        with open(error_files, "a") as f:
-            # Get the traceback content as a string
-            tb_content = traceback.format_exc()
-            f.write(f"Boundary definition error {seq_name}\n")
-            f.write('\n' + tb_content + '\n\n')
-            prcyan(f"\nBoundary definition failed for {seq_name} with error:\n{e}")
-            prcyan('\n' + tb_content + '\n')
-            raise Exception
+            # final_MSA return false when the start crop point is greater than the end crop point, which means the
+            # sequence is too short. Besides, when the divergence is too high, CropEnd will all cause this problem
+            final_msa_result = final_MSA(bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
+                                         define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win)
+
+            # Check if the result is False, indicating an error or specific condition
+            if not final_msa_result:
+                # Handle the error or specific condition here
+                return False
+            else:
+                # Unpack the returned values if the function executed normally
+                bed_out_flank_file, cropped_boundary_MSA, cropped_alignment_output_file_g, cropped_boundary, \
+                    column_mapping, bed_fasta_mafft_boundary_crop_for_select, found_match_crop = final_msa_result
+
+        except Exception as e:
+            with open(error_files, "a") as f:
+                # Get the traceback content as a string
+                tb_content = traceback.format_exc()
+                f.write(f"Boundary definition error {seq_name}\n")
+                f.write('\n' + tb_content + '\n\n')
+                prcyan(f"\nBoundary definition failed for {seq_name} with error:\n{e}")
+                prcyan('\n' + tb_content + '\n')
+                raise Exception
+
+        #####################################################################################################
+        # Code block: Check the consistency of the final MSA
+        #####################################################################################################
+        try:
+            if msa_loop_n <= 1:
+                final_msa_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file,
+                                                              output_dir, input_msa=cropped_boundary_MSA,
+                                                              clean_column_threshold=0.01,
+                                                              min_length_num=10, cluster_num=2, cluster_col_thr=500)
+
+                # len(final_msa_consistency) == 1 means don't need to do clustering
+                if not final_msa_consistency:
+                    break
+
+                # When clustered msa contain only 1 element, check if the bed file have same line number with original
+                elif len(final_msa_consistency) == 1:
+                    df_new = pd.read_csv(final_msa_consistency[0], sep='\t', header=None)
+
+                    if len(df) == len(df_new):
+                        break
+                    else:
+                        bed_file = final_msa_consistency[0]
+                else:
+                    # Only use the top 1 cluster for further analysis
+                    bed_file = final_msa_consistency[0]
+        except Exception as e:
+            with open(error_files, "a") as f:
+                # Get the traceback content as a string
+                tb_content = traceback.format_exc()
+                f.write(f"Boundary definition clustering error {seq_name}\n")
+                f.write('\n' + tb_content + '\n\n')
+                prcyan(f"\nBoundary definition clustering failed for {seq_name} with error:\n{e}")
+                prcyan('\n' + tb_content + '\n')
+                raise Exception
+
+        msa_loop_n += 1
+
+        # Use smaller extension step for the next round extension
+        ex_step_size = 700
 
     #####################################################################################################
     # Code block: Check if the final MSA contains too many ambiguous letter "N"

@@ -376,6 +376,15 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
 
     fasta_out_flank_file_nucleotide_clean = os.path.join(output_dir,
                                                          f"{os.path.basename(input_file)}_{left_ex}_{right_ex}_bcl.fa")
+
+    if nameonly:
+        bed_out_flank_file_dup = os.path.join(output_dir, f"{os.path.basename(input_file)}_{left_ex}_{right_ex}_n.bed")
+
+        fasta_out_flank_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_{left_ex}_{right_ex}_n.fa")
+
+        fasta_out_flank_file_nucleotide_clean = os.path.join(output_dir,
+                                                             f"{os.path.basename(input_file)}_{left_ex}_{right_ex}_bcln.fa")
+
     bed_cmd = f"bedtools slop -s -i {input_file} -g {genome_file}.length -l {left_ex} -r {right_ex} > {bed_out_flank_file_dup}"
 
     try:
@@ -561,12 +570,12 @@ def define_crop_end_simi_thr(input_file, window_size=40, max_steps=100):
         # End window
         end_window = array[-(i + window_size): -i if i != 0 else None]
         end_sum += np.sum(end_window)
-
         steps += 1
-
+    mean_start_sum = start_sum / steps
+    mean_end_sum = end_sum / steps
     # Calculate mean of the sum of proportions
-    mean_sum = (start_sum + end_sum) / (steps * 2)
-    return mean_sum
+    # mean_sum = (start_sum + end_sum) / (steps * 2)
+    return mean_start_sum, mean_end_sum
 
 
 def calc_conservation(col):
@@ -1492,7 +1501,7 @@ def handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir, classificat
         click.echo(f"\nAn error occurred while handling low copy sequence {seq_name}:\n {e}\n")
 
 
-def handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir, plot_skip=False,
+def handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir, plot_skip=True,
                             te_aid_plot=None, skip_proof_dir=None):
     seq_name = seq_obj.get_seq_name()
     try:

@@ -164,7 +164,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
                 # handle_sequence_skipped will update skipped status
                 handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
-                                        plot_skip=plot_skip,te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
+                                        plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
 
             return  # when blast hit number is smaller than 10, code will execute next fasta file
 
@@ -203,7 +203,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         # Return False when cluster number is 0. Return True when divergent column number is smaller than 100
         # Otherwise it will return the subset bed and alignment file
         cluster_MSA_result = clean_and_cluster_MSA(fasta_out_flank_file, bed_out_filter_file, MSA_dir,
-                                                   clean_column_threshold=0.08,
+                                                   clean_column_threshold=0.02,
                                                    min_length_num=min_seq_num, cluster_num=max_cluster_num,
                                                    cluster_col_thr=100, fast_mode=fast_mode)
     except Exception as e:
@@ -227,7 +227,6 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                 seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=plot_skip)
 
             if check_low_copy is True:
-
                 # Update terminal repeat and blast full length number, remove low copy intermediate files
                 handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir,
                                          classification_dir, found_match=found_match,
@@ -241,9 +240,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     f"than {min_seq_num} and check_low_copy is {check_low_copy}\n")
                 handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
                                         plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
-
             return
-
         else:
             cluster_bed_files_list = cluster_MSA_result
 
