@@ -11,7 +11,7 @@ def install_and_import(required_packages_dic):
             try:
                 print(f"{package} was not found. Installing it automatically.")
                 subprocess.check_call([sys.executable, "-m", "pip", "install", required_packages_dic[package]])
-                print(f"{package} is successfully installed.")
+                print(f"{package} was successfully installed.")
             except subprocess.CalledProcessError as e:
                 print(f"\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}"
                       "\nPlease install 'click', 'numpy', 'pandas', and 'biopython' using 'pip install'.\n")
