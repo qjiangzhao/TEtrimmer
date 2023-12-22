@@ -18,7 +18,7 @@ General usage:
 python ./path_to_TE_Trimmer_bin/TE_Trimmer.py -i <TE_consensus_file> -o <genome_file>
 ```
 
-TE Trimmer is designed to replace transposable element (TE) manual curation. Two mandatory arguments are required, which are <genome file> and <TE consensus file> from TE annotation software like RepeatModeler, EDTA, and REPET et al. TE Trimmer can perform BLAST searches, extend matching sequence regions, multiple sequence alignment, and define TE boundaries.
+TE Trimmer is designed to replace manual curation of transposable elements (TEs). Two mandatory arguments are required, which are <genome file>, which is the genome FASTA file to analyze, and <TE consensus file> from TE annotation software like RepeatModeler, EDTA, and REPET _et al_. TE Trimmer can perform BLAST searches, extend matching sequence regions, multiple sequence alignment (MSA), and define TE boundaries.
 
 Options:
 ```
