@@ -200,10 +200,10 @@ def plot_pca(distance_matrix, labels, output_file, title="PCA Plot"):
 
 def process_labels(input_file, filtered_cluster_records):
     """
-    during the iqtree process, the sequence name is modified to remove special characters
-    this step extract bed info based on the index of sequence name in bedfile created by nameOnly
-    :param input_file: str, the absolute path of bed file
-    :return: a list contain the clustered bed files
+    During the IQtree process, the sequence name is modified to remove special characters.
+    This step extracts BED info based on the index of sequence name in the BEDfile created by nameOnly
+    :param input_file: str, the absolute path of the BED file
+    :return: a list containing the clustered BED files
     """
     bed_dfs = []
     bed_df = pd.read_csv(input_file, sep='\t', header=None)
@@ -221,9 +221,9 @@ def process_labels(input_file, filtered_cluster_records):
 
 def subset_bed_file(input_file, bed_dfs, output_dir):
     """
-    Subset the give bed files by clusters
-    :param input_file: str, the absolute path of bed file
-    :return: a list contain the clustered bed files
+    Subset the given BED files by clusters.
+    :param input_file: str, the absolute path of the BED file
+    :return: a list containing the clustered BED files
     """
 
     output_file_list = []
@@ -240,16 +240,16 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
                           min_length_num=10, cluster_num=2, cluster_col_thr=500, muscle_ite_times=4, fast_mode=False,
                           input_msa=None):
     """
-    This function will cluster multiple sequence alignment file
-    :param input_file: str, The direct fasta file derived from bed file
-    :param bed_file: The bed file used to generate pattern alignment
+    This function will cluster multiple sequence alignment files.
+    :param input_file: str, The direct FASTA file derived from the BED file
+    :param bed_file: The BED file used to generate pattern alignments
     :param output_dir: Output directory
-    :param gap_threshold: num (0-1) default 0.8, columns with gap percentage higher than "gap_threshold" will be removed
-    :param clean_column_threshold: num (0-1) default 0.08, nucleotide percentage (gap not count)
+    :param gap_threshold: num (0-1), default 0.8, columns with gap percentage higher than "gap_threshold" will be removed
+    :param clean_column_threshold: num (0-1), default 0.08, nucleotide percentage (gaps not count)
     lower than threshold will be converted to "-"
     :param min_length_num: num default 10, the minimum line number for each cluster
     :param cluster_num: num default 2, the maximum cluster number for each MSA
-    :return: A list of subset pattern alignment and bed files
+    :return: A list of subset pattern alignments and BED files
     """
 
     # When the input file is after multiple sequence alignment, don't do this again here
@@ -286,9 +286,9 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
         # write_alignment_filtered() function return pattern_alignment absolute path
         pattern_alignment = pattern_alignment.write_alignment_filtered(output_dir)
         """
-        "min_lines" will define the minimum line numbers for each cluster
-        "max_cluster" will define the maximum cluster numbers that will be returned
-        this function will return a list contain all cluster file absolute path
+        "min_lines" will define the minimum line numbers for each cluster.
+        "max_cluster" will define the maximum cluster numbers that will be returned.
+        This function will return a list containing the absolute paths of all cluster files.
         """
 
         filtered_cluster_records, if_cluster = cluster_msa_iqtree_DBSCAN(pattern_alignment,
@@ -313,9 +313,9 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
         return cluster_bed_files_list
     else:
         """
-        if cluster = False, it means no cluster has line numbers greater than "min_lines" or only has small -1 cluster. In this case, 
-        it will be hard to still use multiple sequence alignment method to define consensus sequence.
-        that isn't to say this won't be a TE, but with less copy numbers. Low copy TE will also be checked later
+        if cluster = False, it means no cluster has line numbers greater than "min_lines" or only has a small '-1' cluster. In this case, 
+        it will be difficult to use the multiple sequence alignment method to define the consensus sequence.
+        This does not mean the sequence is not a TE, but has few copies in the genome. Low-copy TEs will be checked later.
         """
         return False
 
@@ -340,23 +340,23 @@ def create_base_mapping(alignment_df):
     """Create a dictionary with bases mapped to unique integers"""
 
     """
-    The ravel function is a numpy method that converts a multi-dimensional numpy array into a flattened 1D array.
+    The ravel function is a NumPy method that converts a multi-dimensional NumPy array into a flattened 1D array.
     The 'K' argument is an optional order parameter that specifies the memory layout of the result.
-    The alignment_df.values part of the code gets the underlying numpy array of the dataframe.
-    The pd.unique function is used to find the unique elements of an array or a series. Here, it's used to identify the
-    unique nucleotide bases (or gaps) that occur in your alignment.
+    The "alignment_df.values" part of the code retrieves the underlying NumPy array from the dataframe.
+    The "pd.unique" function is used to find the unique elements of an array or a series. Here, it is used to identify
+    the unique nucleotide bases (or gaps) that occur in the alignment.
     """
     unique_bases = pd.unique(alignment_df.values.ravel('K'))
     """
-    The expression base == base is a clever way of testing whether base is "NaN". This works because, according to IEEE
-    floating point standards (which Python follows), "NaN" is not equal to anything, including itself.
+    The expression "base == base" is a way of testing whether a base has the value "NaN". This works because, according
+    to IEEE floating point standards (which Python follows), "NaN" is not equal to anything, including itself.
         "NaN" is used to represent missing or undefined values.
     """
     unique_bases = [base for base in unique_bases if base == base]
     """
-    zip(unique_bases, range(len(unique_bases))) is creating a pairing of each base with a unique integer in the range
+    "zip(unique_bases, range(len(unique_bases)))" is creating a pairing of each base with a unique integer in the range
     of the total number of unique bases.
-    dict() is converting these pairings into a dictionary.
+    "dict()" is converting these pairings into a dictionary.
     """
     base_mapping = dict(zip(unique_bases, range(len(unique_bases))))
     return base_mapping
@@ -421,13 +421,13 @@ def plot_msa(alignment_df, alignment_color_df, unique_bases, start_point, end_po
     plt.yticks([])  # Remove labels
 
     """
-    plt.annotate() is a function from the matplotlib library that is used to add text annotations to a figure.
-    xy=(start_point, -0.5) specifies the point (x, y) that you want your arrow annotation to point to. 
-    xytext=(start_point, -3) specifies the position (x, y) to place the text.
-    arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05) is a dictionary containing properties of the arrow 
-    that is drawn from the text to the point. 
-    ha='center' specifies the horizontal alignment of the text annotation. 
-    color='r' sets the color of the text to red.
+    "plt.annotate()" is a function from the Matplotlib library that is used to add text annotations to a figure.
+    "xy=(start_point, -0.5)" specifies the point (x, y) that you want your arrow annotation to point to. 
+    "xytext=(start_point, -3)" specifies the position (x, y) to place the text.
+    "arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05)" is a dictionary containing properties of the 
+    arrow that is drawn between the text and the point. 
+    "ha='center'" specifies the horizontal alignment of the text annotation. 
+    "color='r'" sets the color of the text to red.
     """
     plt.annotate('Start crop Point', xy=(start_point, -0.5), xytext=(start_point, -3),
                  arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05), ha='center', color='r')
