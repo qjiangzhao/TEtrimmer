@@ -49,13 +49,13 @@ def process_sequences(input_file, output_dir):
             INT_record = SeqRecord(Seq(INT_seq), id=new_id_INT, description="")
 
             processed_sequences.extend([LTR_record, INT_record])
-            print(f"{record.id} contains 'LTR' and was separated.")
+            print(f"{record.id} contains 'LTR' and was written into separate sequence file.")
             sep_seq_n += 1
         else:
-            # Keep sequence unchanged if LTR is not identified
+            # Keep sequence unchanged if LTR was not identified
             processed_sequences.append(record)
-    print(f"\n{sep_seq_n} sequences were found to contain 'LTR' and separated."
-          f"\nSeparation is finished")
+    print(f"\n{sep_seq_n} sequences were found to contain 'LTR' and written into separate sequence file."
+          f"\nSeparation is finished.")
 
     # Write processed sequences to a new file
     with open(output_file, "w") as f:
@@ -64,7 +64,7 @@ def process_sequences(input_file, output_dir):
 
 def detect_ltr_for_sequence(record, output_dir):
     """
-    Detect LTR for a single sequence using BLAST.
+    Detect LTR in a single sequence using BLASTn.
     """
     record_len = record_len = len(record.seq)
     record_name = record.id.split("#")[0].replace("/", "_")
@@ -82,7 +82,7 @@ def detect_ltr_for_sequence(record, output_dir):
     try:
         subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
-        print(f"\nmakeblastdb error for sequence {record_name} with error code {e.returncode}\n")
+        print(f"\nmakeblastdb encountered an error for sequence {record_name} and returned error code {e.returncode}.\n")
         print(e.stdout)
         print(e.stderr)
         return None
@@ -127,10 +127,10 @@ def detect_ltr_for_sequence(record, output_dir):
         # Find the row with the largest difference
         LTR_largest = df_LTR.iloc[df_LTR["diff"].idxmax()]
 
-        # Check if the terminal repeat spans the most part of the query sequence. Because the query is after extension,
-        # assuming the maximum redundant extension for left and right side are both 2000.
+        # Check if the terminal repeat spans the majority of the query sequence. Because the query was extended,
+        # assume the maximum redundant extension for left and right side at 2000.
         if abs(LTR_largest['send'] - LTR_largest['qstart']) >= (record_len - 200):
-            # Because blast use index start from 1, modify the start position
+            # Because BLAST uses index starting from 1, modify the start position
             LTR_boundary = [LTR_largest['qstart'] - 1, LTR_largest['qend'], LTR_largest['sstart'], LTR_largest['send']]
             # print(record_len)
             # print(LTR_boundary)
@@ -143,7 +143,7 @@ def detect_ltr_for_sequence(record, output_dir):
 
 def update_fasta_header(header, suffix):
     """
-    Update fasta header with suffix before '#', or add suffix at the end if '#' not present.
+    Update FASTA header with suffix before '#', or add suffix at the end if '#' not present.
     """
     if '#' in header:
         parts = header.split('#')
