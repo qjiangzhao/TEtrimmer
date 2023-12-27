@@ -12,7 +12,7 @@ import bedfilter
 from boundarycrop import find_boundary_and_crop
 from TEaid import check_self_alignment
 from MSAcluster import clean_and_cluster_MSA
-from orfdomain import prepare_pfam_database
+from orfdomain import prepare_pfam_database, PlotPfam
 
 
 # Define a function to check progress file, which will be used for continue analysis
@@ -83,13 +83,13 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                      final_classified_con_file, low_copy_dir, fast_mode, error_files, plot_skip, skipped_dir,
                      plot_query, engine):
     #####################################################################################################
-    # Code block: Elongate query sequence when it is too short
+    # Code block: Set different elongation number for different elements and do blast
     #####################################################################################################
     try:
         # Get query fasta file path
         seq_name = seq_obj.get_seq_name()
         seq_type = seq_obj.get_old_TE_type()
-        seq_file = seq_obj.get_input_fasta()
+        seq_file = seq_obj.get_input_fasta()  # Return full file path
 
         # Due to DNA element will be much shorter than LTR and LINE elements, set different parameters
         if "DNA" in seq_type:
@@ -132,11 +132,39 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             tb_content = traceback.format_exc()
             f.write(f"Error while running blast for sequence: {seq_name}\n")
             f.write(tb_content + '\n\n')
-        prcyan(f"Error while running blast for sequence: {seq_name}. Main Error: {str(e)}")
+        prcyan(f"Error while running blast for sequence: {seq_name}. Main Error: {str(e)}. \n"
+               f"Trace back content: {tb_content}\n")
         return
 
-    try:
+    #####################################################################################################
+    # Code block: Do ORF and PFAM prediction for input sequence
+    #####################################################################################################
 
+    try:
+        input_orf_pfam_obj = PlotPfam(seq_file, MSA_dir, pfam_database_dir=pfam_dir, mini_orf=mini_orf,
+                                      after_tetrimmer=False)
+        input_orf_domain_plot = None
+
+        # "run_getorf()" function will return True when any ORF are detected. Otherwise, it will be False
+        if input_orf_pfam_obj.run_getorf():
+            # "run_pfam_scan()" will return True when pfam domains are found, otherwise it will return False
+            pfam_scan_result = input_orf_pfam_obj.run_pfam_scan()
+            input_orf_domain_plot = input_orf_pfam_obj.orf_domain_plot()
+
+    except Exception as e:
+        with open(error_files, "a") as f:
+            tb_content = traceback.format_exc()
+            f.write(f"Error when doing ORF and PFAM prediction for input sequence {seq_name}\n")
+            f.write(tb_content + '\n\n')
+        prcyan(f"Error while doing input sequence ORF and PFAM prediction: {seq_name}. Main Error: {str(e)}. \n"
+               f"Trace back content: {tb_content}\n")
+        return
+
+    #####################################################################################################
+    # Code block: Check blast hits number
+    #####################################################################################################
+
+    try:
         # Check if blast hit number is equal 0, then skip this sequence
         if blast_hits_count == 0:
             click.echo(f"\n{seq_name} is skipped due to blast hit number is 0\n")
@@ -149,11 +177,11 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                 seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=plot_skip)
 
             if check_low_copy is True:
-
                 # Update terminal repeat and blast full length number, remove low copy intermediate files
                 handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir,
                                          classification_dir, found_match=found_match,
-                                         blast_full_length_n=blast_full_length_n)
+                                         blast_full_length_n=blast_full_length_n, te_aid_plot=TE_aid_plot,
+                                         orf_plot=input_orf_domain_plot, low_copy_dir=low_copy_dir)
 
                 # Integrate low copy element sequence into consensus file
                 update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
@@ -164,7 +192,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
                 # handle_sequence_skipped will update skipped status
                 handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
-                                        plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
+                                        plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir,
+                                        orf_plot=input_orf_domain_plot)
 
             return  # when blast hit number is smaller than 10, code will execute next fasta file
 
@@ -180,6 +209,10 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         prgre("\nLow copy TE check module is not very important, you can ignore this error message, which won't affect "
               "your final result too much.\n")
         return
+
+    #####################################################################################################
+    # Code block: Separate MSA based on sequence relatedness
+    #####################################################################################################
 
     try:
         # remove duplicated lines
@@ -230,7 +263,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                 # Update terminal repeat and blast full length number, remove low copy intermediate files
                 handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir,
                                          classification_dir, found_match=found_match,
-                                         blast_full_length_n=blast_full_length_n)
+                                         blast_full_length_n=blast_full_length_n, te_aid_plot=TE_aid_plot,
+                                         orf_plot=input_orf_domain_plot, low_copy_dir=low_copy_dir)
                 update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
                                           final_classified_con_file, low_copy_dir, TE_aid_plot)
 
@@ -239,7 +273,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     f"\n{seq_name} is skipped due to sequence number in each cluster is smaller "
                     f"than {min_seq_num} and check_low_copy is {check_low_copy}\n")
                 handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
-                                        plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
+                                        plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir,
+                                        orf_plot=input_orf_domain_plot)
             return
         else:
             cluster_bed_files_list = cluster_MSA_result
@@ -257,7 +292,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
                     start_patterns=start_patterns, end_patterns=end_patterns,
                     mini_orf=mini_orf, define_boundary_win=check_extension_win,
-                    fast_mode=fast_mode, engine=engine)
+                    fast_mode=fast_mode, engine=engine, input_orf_pfam=input_orf_domain_plot)
 
                 if not find_boundary_result:
                     continue
@@ -273,12 +308,14 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     # Update terminal repeat and blast full length number, remove low copy intermediate files
                     handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir,
                                              classification_dir, found_match=found_match,
-                                             blast_full_length_n=blast_full_length_n)
+                                             blast_full_length_n=blast_full_length_n, te_aid_plot=TE_aid_plot,
+                                             orf_plot=input_orf_domain_plot, low_copy_dir=low_copy_dir)
                     update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
                                               final_classified_con_file, low_copy_dir, TE_aid_plot)
                 else:
                     handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
-                                            plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir)
+                                            plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir,
+                                            orf_plot=input_orf_domain_plot)
                     click.echo(
                         f"\n{seq_name} is skipped due to sequence is too short and check_low_copy is {check_low_copy}\n")
                 return

@@ -6,7 +6,7 @@ import pandas as pd
 from functions import blast, check_terminal_repeat, file_exists_and_not_empty
 
 
-def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=False):
+def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=True):
     """
     plot_skip: if use TE Aid to plot the query sequence when it is skipped.
     """
@@ -15,7 +15,7 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
     TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
 
     # At least 2 lines need to meet the requirement
-    if blast_full_length_n >= 2:
+    if blast_full_length_n >= 1:
         check_blast = True
 
         # Check self-alignment of terminal repeats
@@ -25,7 +25,8 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
         seq_obj.update_blast_hit_n(blast_hits_count)
 
         # Convert found_match to True when LTR or TIR is found
-        if found_match == "LTR" or found_match == "TIR":
+        # Require at least 2 full length blast hits for LTR and 1 for TIR
+        if (found_match == "LTR" and blast_full_length_n >= 2) or found_match == "TIR":
             found_match_boolean = True
         else:
             found_match_boolean = False
@@ -174,12 +175,12 @@ class TEAid:
 
         # If blast.txt file is found use the TE Aid output directly. Otherwise, do blast. This can save resource
         if os.path.exists(te_aid_blast_file):
-            full_length_n = check_blast_full_length(seq_obj, te_aid_blast_file, identity=90, coverage=0.9,
+            full_length_n = check_blast_full_length(seq_obj, te_aid_blast_file, identity=85, coverage=0.9,
                                                     min_hit_length=100, te_aid_blast=True)
         else:
             bed_out_file, blast_hits_count, blast_out_file = blast(self.input_file, self.genome_file,
                                                                    self.output_dir, search_type=engine)
-            full_length_n = check_blast_full_length(seq_obj, blast_out_file, identity=90, coverage=0.9,
+            full_length_n = check_blast_full_length(seq_obj, blast_out_file, identity=85, coverage=0.9,
                                                     min_hit_length=100, te_aid_blast=False)
 
         return full_length_n

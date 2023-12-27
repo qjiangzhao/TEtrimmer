@@ -38,9 +38,9 @@ pdf_title <- "Default Title"
 
 # Check the value of tm and update the title accordingly
 if (tm) {
-  pdf_title <- "After TE Trimmer treatment"
+  pdf_title <- "After TETrimmer treatment"
 } else {
-  pdf_title <- "Without TE Trimmer treatment"
+  pdf_title <- "Without TETrimmer treatment"
 }
 
 pdf(

@@ -41,18 +41,18 @@ with open(species_config_path, "r") as config_file:
                   ██║   ███████╗       ██║   ██║  ██║██║██║ ╚═╝ ██║██║ ╚═╝ ██║███████╗██║  ██║
                   ╚═╝   ╚══════╝       ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝
                   
-                Version: v1.1 (27/OCT/2023) 
+                Version: v1.0.2 (19/Dec/2023) 
 
                 Github: https://github.com/qjiangzhao/TE-Trimmer
 
                 Developers:                                                                                                       
-                Jiangzhao Qian;  RWTH Aachen University;                Email: jqian@bio1.rwth-aachen.de                          
-                Hang Xue;        University of California, Berkeley;    Email: hang_xue@berkeley.edu
+                Jiangzhao Qian;      RWTH Aachen University;                Email: jqian@bio1.rwth-aachen.de                          
+                Hang Xue;            University of California, Berkeley;    Email: hang_xue@berkeley.edu                                
+                Stefan Kusch;        Research Center Juelich;               Email: s.kusch@fz-juelich.de
 
-                Funding source:                                                                                         
-                Panstruga's Lab. Website: https://www.bio1.rwth-aachen.de/PlantMolCellBiology/index.html                 
-
-                Many thanks to Dr. Stefan Kusch                                                           
+                Funding source:                                                                                                        
+                Ralph Panstruga Lab; RWTH Aachen University;                Email: panstruga@bio1.rwth-aachen.de            
+                Website: https://www.bio1.rwth-aachen.de/PlantMolCellBiology/index.html                                                                            
 
                 ##########################################################################################              
 
@@ -209,8 +209,14 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # _orf_modi_t.txt ORF modified table
     # _pfam.txt Pfam prediction
     # _me.fa merged. Merged fasta file
+    # _me.pdf merged. Merged pdf file
     # _proof_anno_me.fa proof annotation merged
     # .b blast
+    # _orfm.txt ORF modified
+    # _orfmt.txt ORF modified table
+    # _pf.txt PFAM
+    # _pfm.txt PFAM modified
+    # _gr.fa gap remove. Remove sequences that contain too many gaps from MSA.
 
     #####################################################################################################
     # Code block: Change permissions of Aliview and TE_Aid

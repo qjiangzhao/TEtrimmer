@@ -99,14 +99,14 @@ class CropEnd:
 
             if self.crop_r:
                 # Find end position
-                for i in range(len(row) - 1, self.window_size - 2, -1):
-                    window = row[i - self.window_size + 1:i + 1]
+                for i in range(len(row) - 1, self.window_size - 1, -1):
+                    window = row[i - self.window_size:i + 1]
                     if window.sum() > self.threshold:
                         self.position_dict[index][1] = i + 1  # add 1 to make the position 1-indexed
                         break
             else:
                 # Set the end position to the end of the alignment when crop right is not used
-                self.position_dict[index][1] = self.alignment_len - 1
+                self.position_dict[index][1] = self.alignment_len
 
     def crop_alignment(self):
         # Create a new list to hold the cropped sequences
