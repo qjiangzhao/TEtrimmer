@@ -8,13 +8,13 @@ def install_and_import(required_packages_dic):
             __import__(package)
         except ImportError:
             try:
-                print(f"{package} is not installed, installing it automatically.")
+                print(f"{package} was not found. Installing it automatically.")
                 subprocess.check_call([sys.executable, "-m", "pip", "install", required_packages_dic[package]])
-                print(f"{package} is successfully installed.")
+                print(f"{package} was successfully installed.")
             except subprocess.CalledProcessError as e:
                 print(
-                    f"\nRequired python packages are missing and can't be installed automatically. with error {e.stderr}"
-                    "\nPlease install 'click' and 'biopython' by pip.\n")
+                    f"\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}"
+                    "\nPlease install 'click' and 'biopython' using 'pip install'.\n")
                 return
 
 
@@ -30,8 +30,8 @@ from Bio import AlignIO
 def calc_conservation(col):
     """
     Calculate the conservation of a column as the fraction of the most common nucleotide.
-    :param col: one single column content for multiple sequence alignment
-    :return: most abundant nucleotide proportion for this column (gap isn't included)
+    :param col: content of a single column from the multiple sequence alignment
+    :return: most abundant nucleotide proportion for this column (excluding gaps)
     """
     # Convert all nucleotides to lowercase
     col = [nucleotide.lower() for nucleotide in col]
@@ -49,28 +49,27 @@ def calc_conservation(col):
 
 @click.command()
 @click.option("--input_file", "-i", required="True", type=str,
-              help="Multiple sequence alignment fasta file path")
+              help="Multiple sequence alignment FASTA file path")
 @click.option("--output_file", "-o", required="True", type=str,
               help="Output file")
 @click.option("--gap_threshold", default=0.8, type=float,
-              help="Columns with gap percentage greater (not include equal) than threshold will be removed directly")
+              help="Columns with gap percentage greater than and not equal to threshold will be removed directly")
 @click.option("--simi_check_gap_thr", default=0.4, type=float,
               help="Columns with gap percentage between --simi_check_gap_thr and --gap_threshold will be deleted "
                    "when the most abundant nucleotide proportion is smaller than --similarity_thr")
 @click.option("--similarity_thr", default=0.7, type=float,
-              help="If the most abundant nucleotide proportion is smaller than --similarity_thr and gap proportion is"
+              help="If the most abundant nucleotide proportion is smaller than --similarity_thr and gap proportion is "
                    "greater than --simi_check_gap_thr, this colum will be removed")
 @click.option("--min_nucleotide", default=5, type=int,
               help="Columns with less than --min_nucleotide nucleotides will be removed")
 def remove_gaps_with_similarity_check(input_file, output_file, gap_threshold,
                                       simi_check_gap_thr, similarity_thr, min_nucleotide):
     """
-    Remove columns directly when gap percentage is bigger than --gap_threshold. Remove columns when nucleotide number
+    Remove columns directly when gap percentage is larger than --gap_threshold. Remove columns when nucleotide number
     is less than --min_nucleotide.
-    When gap percentage is equal or bigger than --simi_check_gap_thr and smaller than --gap_threshold,
-    it will calculate most abundant nucleotide proportion for this column. If it is less than --similarity_thr
-    this column will be removed
-
+    When gap percentage is equal to or larger than --simi_check_gap_thr and smaller than --gap_threshold,
+    TE Trimmer will calculate the most abundant nucleotide proportion for this column. If the gap percentage is less
+    than --similarity_thr, this column will be removed.
     """
     if os.path.isfile(input_file):
         keep_list = []
@@ -109,9 +108,8 @@ def remove_gaps_with_similarity_check(input_file, output_file, gap_threshold,
                         # Store the mapping of original MSA index to filtered MSA index
                         column_mapping[len(keep_list) - 1] = col_idx
 
-        # The index in python won't include the second value. That it is to say the returned end_posit from
-        # DefineBoundary() will one more index than the final len(keep_list) -1] for this reason, you have to
-        # add one more value
+        # The index in Python will not include the second value. Thus, the returned end_posit from DefineBoundary() will
+        # will contain one more index than the final len(keep_list) -1]. One additional value needs to be added.
         column_mapping[len(keep_list)] = column_mapping[len(keep_list) - 1] + 1
 
         # Keep the columns
