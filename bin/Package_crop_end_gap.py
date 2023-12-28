@@ -8,13 +8,13 @@ def install_and_import(required_packages_dic):
             __import__(package)
         except ImportError:
             try:
-                print(f"{package} is not installed, installing it automatically.")
+                print(f"{package} was not installed. Installing it automatically.")
                 subprocess.check_call([sys.executable, "-m", "pip", "install", required_packages_dic[package]])
-                print(f"{package} is successfully installed.")
+                print(f"{package} was successfully installed.")
             except subprocess.CalledProcessError as e:
                 print(
-                    f"\nRequired python packages are missing and can't be installed automatically. with error {e.stderr}"
-                    "\nPlease install 'click' and 'biopython' by pip.\n")
+                    f"\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}"
+                    "\nPlease install 'click' and 'biopython' using 'pip install'.\n")
                 return
 
 
@@ -38,9 +38,9 @@ class CropEndByGap:
         self.gap_threshold = gap_threshold  # Threshold for gap proportion. Default is 0.05
         self.window_size = window_size  # The size of the window to check for gaps. Default is 50
 
-        # Initialize a dictionary to hold the start and end positions of each sequence
+        # Initialize a dictionary to keep the start and end positions of each sequence
         self.position_dict = {record.id: [0, 0] for record in self.alignment}
-        self.cropped_alignment = []  # Initialize an empty list to hold the cropped alignment
+        self.cropped_alignment = []  # Initialize an empty list to keep the cropped alignment
         self.find_positions()  # Call the method to find the start and end positions of each sequence
 
     # This method finds the start and end positions of each sequence in the alignment based on the gap proportion
@@ -111,7 +111,7 @@ class CropEndByGap:
 
             # Create a new SeqRecord with the cropped sequence and add it to the list
             self.cropped_alignment.append(SeqRecord(Seq(cropped_seq), id=record.id, description=""))
-        # Convert the list of SeqRecords into a MultipleSeqAlignment
+        # Convert the list of SeqRecords into a MultipleSeqAlignment (MSA)
         self.cropped_alignment = MultipleSeqAlignment(self.cropped_alignment)
         return self.cropped_alignment
     
@@ -126,7 +126,7 @@ class CropEndByGap:
 
 @click.command()
 @click.option("--input_file", "-i", required="True", type=str,
-              help="Multiple sequence alignment fasta file path")
+              help="Multiple sequence alignment FASTA file path")
 @click.option("--output_file", "-o", required="True", type=str,
               help="Output file")
 @click.option("--gap_threshold", "-thr", default=0.05, type=float,
