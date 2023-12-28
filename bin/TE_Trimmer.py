@@ -16,17 +16,17 @@ from functions import separate_sequences, remove_files_with_start_pattern, \
     rename_cons_file, rename_files_based_on_dict, prcyan, prgre
 
 #####################################################################################################
-# Code block: Import json species_config file and define the default parameters
+# Code block: Import JSON species_config file and define the default parameters
 #####################################################################################################
 
-# Load species-specific default values from the JSON config
+# Load species-specific default values from the JSON config file
 species_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'species_config.json')
 # Load the JSON configuration file
 with open(species_config_path, "r") as config_file:
     species_config = json.load(config_file)
 
 #####################################################################################################
-# Code block: Mian function of TE Trimmer
+# Code block: Main functions of TE Trimmer
 #####################################################################################################
 
 
@@ -58,71 +58,76 @@ with open(species_config_path, "r") as config_file:
 
                 python ./path_to_TE_Trimmer_bin/TE_Trimmer.py -i <TE_consensus_file> -g <genome_file>
 
-                TE Trimmer is designed to replace transposable element (TE) manual curation. 
+                TE Trimmer is designed to replace manual curation of transposable elements (TEs). 
 
-                Two mandatory arguments are required including <genome file> and <TE consensus file> from TE 
-                annotation software like RepeatModeler or EDTA et al. TE Trimmer can do blast, extension, multiple sequence alignment, and defining TE boundaries.
+                Two mandatory arguments are required, including 
+                <genome file>, the genome FASTA file, and 
+                <TE consensus file> from TE annotation software like RepeatModeler, EDTA, or REPET. 
+                TE Trimmer can do BLAST searches, sequence extension, multiple sequence alignment, and defining TE boundaries.
 
 """)
 @click.option('--input_file', '-i', required=True, type=str,
-              help='Path to TE consensus file (FASTA format). Use the output from RepeatModeler or EDTA et al.')
+              help='Path to TE consensus file (FASTA format). Use the output from RepeatModeler, EDTA, REPET, et al.')
 @click.option('--genome_file', '-g', required=True, type=str,
               help='Path to genome FASTA file.')
 @click.option('--output_dir', '-o', default=os.getcwd(), type=str,
-              help='Output directory. Default: current directory.')
+              help='Output directory. Default: current working directory.')
 @click.option('--species', '-s', default='fungi', type=click.Choice(species_config.keys()),
-              help='Select the species for which you want to run TE Trimmer.')
+              help='Select the type of organism for which to run TE Trimmer.')
 #@click.option('--engine', '-e', default='blast', type=click.Choice(["blast", "mmseqs"]),
 #             help='Select the similar sequence search engine. "blast" or "mmseqs". Default: blast')
 @click.option('--continue_analysis', '-ca', default=False, is_flag=True,
-              help='Continue to analysis after interruption.')
+              help='Continue analysis after interruption.')
 @click.option('--dedup', default=False, is_flag=True,
               help='Remove duplicate sequences in input file.')
 @click.option('--genome_anno', '-ga', default=False, is_flag=True,
               help='Perform genome TE annotation using the TE Trimmer curated database. Requires RepeatMasker.')
 @click.option('--hmm', default=False, is_flag=True,
-              help='Generate HMM files for each consensus sequences.')
+              help='Generate HMM files for each consensus sequence.')
 @click.option('--debug', default=False, is_flag=True,
-              help='Open debug mode. This will keep all raw files. WARNING: Many files will be produced.')
+              help='Open debug mode. This will keep all raw files. WARNING: Many files will be generated.')
 @click.option('--fast_mode', default=False, is_flag=True,
-              help='Reduce running time but at the cost of lower accuracy and specificity.')
+              help='Reduce running time at the cost of lower accuracy and specificity.')
 #@click.option('--plot_query', default=False, is_flag=True,
-#              help='Perform TE_Aid plot for each query sequences before TE Trimmer analysis.')
+#              help='Generate TE_Aid plot for each query sequence before TE Trimmer analysis.')
 #@click.option('--plot_skip', default=False, is_flag=True,
-#              help='Perform TE_Aid plot for skipped elements.')
+#              help='Generate TE_Aid plot for skipped elements.')
 @click.option('--pfam_dir', '-pd', default=None, type=str,
-              help='Pfam database directory. Omit this option if you do not have a local PFAM database. '
+              help='PFAM database directory. Omit this option if you do not have a local PFAM database '
                    'TE Trimmer will download the database automatically in this case.')
 @click.option('--cons_thr', type=float,
               help='Threshold used for the final consensus sequence generation. Default: 0.8')
 @click.option('--mini_orf', type=int,
-              help='Define the minimum ORF length that will be predicted by TE Trimmer. Default: 200')
+              help='Define the minimum ORF length to be predicted by TE Trimmer. Default: 200')
 @click.option('--max_msa_lines', type=int,
-              help='Set the maximum sequences number for multiple sequence alignment. Default: 100')
-@click.option('--top_mas_lines', type=int,
+              help='Set the maximum sequence number for multiple sequence alignment. Default: 100')
+@click.option('--top_msa_lines', type=int,
               help='When the sequence number of multiple sequence alignment (MSA) is greater than <--max_msa_lines>, '
                    'TE Trimmer will sort sequences by length and choose <--top_msa_lines> number '
                    'of sequences. Then, TE Trimmer will randomly select sequences from all remaining BLAST hits until '
                    '<--max_msa_lines> sequences are found for the multiple sequence alignment. Default: 70')
 @click.option('--min_seq_num', type=int,
-              help='The minimum sequence number for each multiple sequence alignment. Note: can not smaller than 10. '
+              help='The minimum sequence number for each multiple sequence alignment. Note: cannot be smaller than 10. '
                    'Default: 10')
 @click.option('--min_blast_len', type=int,
-              help='The minimum sequence length for blast hits. Default: 150')
+              help='The minimum sequence length for BLAST hits. Default: 150')
 @click.option('--max_cluster_num', type=int,
-              help='The maximum cluster number for each multiple sequence alignment. Each multiple '
-                   'sequence alignment can be divided into different clusters. TE Trimmer will sort '
-                   'clusters by sequence number and choose the top <--max_cluster_num> of clusters for '
-                   'further analysis. WARNING: Big number will dramatically increase running time. Default: 2')
+              help='The maximum cluster number for each multiple sequence alignment. Each multiple sequence alignment '
+                   'can be divided into different clusters. TE Trimmer will sort clusters by sequence number and choose '
+                   'the top <--max_cluster_num> of clusters for further analysis. WARNING: A large number of clusters '
+                   'will dramatically increase running time. Default: 2')
 @click.option('--ext_thr', type=float,
-              help="Threshold used for define the extension extent. The lower the value of <--ext_thr>, the easier the "
-                   "extensions on both ends be longer. Reduce <--ext_thr> if TE Trimmer fails to determine the correct "
-                   "ends of repeat elements. Default: 0.7")
+              help="Sequence similarity threshold used for defining start and end of the consensus sequence, based on "
+                   "the multiple sequence alignment. Nucleotides in each position with a similarity proportion smaller "
+                   "than <--ext_thr> will be assigned the value N. If no N values are found, the algorithm will extend "
+                   "the multiple sequence alignment to determine the limits of the consensus sequence. The lower the value "
+                   "of <--ext_thr>, the longer the extensions on both ends. "
+                   "Reduce <--ext_thr> if TE Trimmer fails to determine the correct ends of repeat elements. Default: 0.7")
 @click.option('--ext_check_win', type=str,
-              help='Define check windows size for extension. Default: 150')
+              help='Define check window size for extension. Default: 150')
 @click.option('--ext_step', type=int,
               help='Number of nucleotides to be added to the left and right ends of the multiple sequence alignment. '
-                   'TE_Trimmer will iteratively add <--ext_step> number of nucleotides until finding the boundary. '
+                   'TE Trimmer will iteratively add <--ext_step> number of nucleotides until finding the boundary. '
                    'Default: 1000')
 @click.option('--max_ext', type=int,
               help='The maximum extension in nucleotides at both ends of the multiple sequence alignment. Default: 7000')
@@ -140,38 +145,38 @@ with open(species_config_path, "r") as config_file:
                    'The cropping will continue until the sum of proportions is larger than <--crop_end_div_thr>. '
                    'Cropped nucleotides will be converted to -. Default: 0.7')
 @click.option('--crop_end_div_win', type=int,
-              help='Window size used for the end-cropping process. Used with --crop_end_div_thr option. Default: 40')
+              help='Window size used for the end-cropping process. Used with the <--crop_end_div_thr> option. Default: 40')
 @click.option('--crop_end_gap_thr', type=float,
-              help='The crop end by gap function will iteratively choose a sliding window from '
-                   'each end of each sequence of the MSA and calculate the gap proportion in this window. '
-                   'The cropping will continue until the sum of gap proportions is smaller than <--crop_end_gap_thr>. '
-                   'Cropped nucleotides will be converted to -. Default: 0.1')
+              help='The crop end by gap function will iteratively choose a sliding window from each end of each sequence '
+                   'of the MSA and calculate the gap proportion in this window. The cropping will continue until the sum '
+                   'of gap proportions is smaller than <--crop_end_gap_thr>. Cropped nucleotides will be converted to -. '
+                   'Default: 0.1')
 @click.option('--crop_end_gap_win', type=int,
-              help='Define window size used to crop end by gap, used with <--crop_end_gap_thr> option. Default: 250')
+              help='Define window size used to crop end by gap, used with the <--crop_end_gap_thr> option. Default: 250')
 @click.option('--start_patterns', type=str,
               help='LTR elements always start with a conserved sequence pattern. TE Trimmer searches the '
                    'beginning of the consensus sequence for these patterns. If the pattern is not found, '
-                   'it will extend the search of <--start_patterns> to up to 15 nucleotides from the beginning '
-                   'of the consensus sequence and redefine the start of the consensus sequence '
+                   'TE Trimmer will extend the search of <--start_patterns> to up to 15 nucleotides from the '
+                   'beginning of the consensus sequence and redefine the start of the consensus sequence '
                    'if the pattern is found. Note: The user can provide multiple LTR start patterns in a '
                    'comma-separated list, like: TG,TA,TC (no spaces; the order of patterns determines '
                    'the priority for the search). Default: TG')
 @click.option('--end_patterns', type=str,
               help='LTR elements always end with a conserved sequence pattern. TE Trimmer searches the '
                    'end of the consensus sequence for these patterns. If the pattern is not found, '
-                   'it will extend the search of <--end_patterns> to up to 15 nucleotides from the end '
-                   'of the consensus sequence and redefine the end of the consensus sequence '
+                   'TE Trimmer will extend the search of <--end_patterns> to up to 15 nucleotides from the '
+                   'end of the consensus sequence and redefine the end of the consensus sequence '
                    'if the pattern is found. Note: The user can provide multiple LTR end patterns in a '
                    'comma-separated list, like: CA,TA,GA (no spaces; the order of patterns determines '
                    'the priority for the search). Default: CA')
 @click.option('--num_threads', '-t', default=10, type=int,
-              help='Threads numbers used for TE Trimmer. Default: 10')
+              help='Thread number used for TE Trimmer. Default: 10')
 @click.option('--classify_unknown', default=False, is_flag=True,
               help='Use RepeatClassifier to classify the consensus sequence if the input sequence is not classified or '
-                   'is unknown or the processed sequence length by TE Trimmer is 2000 bps longer or shorter '
+                   'is unknown or the processed sequence length by TE Trimmer is 2000 bp longer or shorter '
                    'than the query sequence.')
 @click.option('--classify_all', default=False, is_flag=True,
-              help='Use RepeatClassifier to classify every consensus sequence.  WARNING: it will take longer time.')
+              help='Use RepeatClassifier to classify every consensus sequence. WARNING: This may take a long time.')
 def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_blast_len, num_threads, max_msa_lines,
          top_mas_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ext_step,
          max_ext, gap_thr, gap_nul_thr, crop_end_div_thr, crop_end_div_win, crop_end_gap_thr, crop_end_gap_win,
@@ -185,7 +190,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     plot_query = True
     plot_skip = True
     start_time = datetime.now()
-    print(f"\nTE Trimmer started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n", flush=True)
+    print(f"\nTE Trimmer started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}.\n", flush=True)
 
     #####################################################################################################
     # Code block: File ends
@@ -243,7 +248,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         max_msa_lines = default_values.get("max_msa_lines")
 
     if top_mas_lines is None:
-        top_mas_lines = default_values.get("top_mas_lines")
+        top_mas_lines = default_values.get("top_msa_lines")
 
     if min_seq_num is None:
         min_seq_num = default_values.get("min_seq_num")
@@ -303,7 +308,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         ext_check_win = default_values.get("ext_check_win")
 
     #####################################################################################################
-    # Code block: Define input file, output directory, genome, check blast database
+    # Code block: Define input file, output directory, genome, check BLAST database
     #####################################################################################################
     try:
         bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, \
@@ -315,12 +320,12 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         return
 
     #####################################################################################################
-    # Code block: Remove duplications in input file when it is required and generate single fasta file
+    # Code block: Remove duplications in input file if required and generate single FASTA file
     #####################################################################################################
 
     # Generate single files when continue_analysis is false
     if not continue_analysis:
-        # Do cd-hit-est merge when merge is true and continue_analysis is false
+        # Do CD-HIT-EST merge if merge is true and continue_analysis is false
         if dedup:
             click.echo("\nTE Trimmer is merging input sequences, this might take some time.\n")
             merge_output = os.path.join(output_dir, f"{input_file}_cd_hit.fa")
@@ -333,27 +338,28 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                 input_file = merge_output
                 click.echo("Merge finished.\n")
             except Exception as e:
-                prcyan("TE Trimmer can't do de-duplication step by cd-hit-est and will use the input sequences "
-                       "directly. This might talk longer running time but won't affect the final result.")
-                prgre("You can also run cd-hit-est by yourself to remove redundant sequences\n"
+                prcyan("TE Trimmer cannot perform the de-duplication step by CD-HIT-EST and will use the "
+                       "input sequences directly. This may cause a significantly longer running time but "
+                       "will not affect the final result.")
+                prgre("You can also run CD-HIT-EST separately to remove redundant sequences:\n"
                       "cd-hit-est -i <input_file> -o <output_file> -T <thread number> -c 0.95 "
                       "-aL 0.95 -aS 0.95 -s 0.95 -l 50")
                 pass
 
-        # Separate fasta to single files, if fasta header contain "/" or " " or ":" convert them to "_"
-        # Call this function to separate to single fasta files and create objects from input file
+        # Separate FASTA into single files; if FASTA headers contain "/", " " or ":" convert to "_"
+        # Call this function to separate to single FASTA files and create objects from input file
         seq_list = separate_sequences(input_file, single_file_dir, continue_analysis=False)
 
         # Calculate the total sequence number 
         single_fasta_n = len(seq_list)
         click.echo(f"{single_fasta_n} sequences are detected from the input file")
 
-        # Create new object to check blast database availability
-        # Check if blast database and genome length files are available, otherwise create them at the
+        # Create new object to check BLAST database availability
+        # Check if BLAST database and genome length files are available, otherwise create these in the
         # same directory of genome file
         database_result = check_database(genome_file, search_type=engine)
 
-        # If database got errors stop the whole program
+        # If database returns errors, stop the whole analysis
         if not database_result:
             return
         # Initial call to print 0% progress
@@ -362,14 +368,14 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     else:
         # Check if it can perform continue analysis
         if not os.listdir(single_file_dir):
-            prgre("\nWARNING: TE Trimmer can't do continue analysis, please make sure the output directory is same"
-                  " with your previous analysis.\n")
+            prgre("\nWARNING: TE Trimmer cannot continue analysis. Please make sure the output directory is "
+                  "the same as in the previous interrupted run.\n")
             return
 
         else:
-            click.echo("\nTE Trimmer will continue to analyze based on previous results.\n")
+            click.echo("\nTE Trimmer will continue analysis based on previous results.\n")
 
-            # Create seq_list, which contain sequence objects using the single fasta files.
+            # Create seq_list, which contains sequence objects using the single FASTA files.
             seq_list = separate_sequences(input_file, single_file_dir, continue_analysis=True)
             single_fasta_n = len(seq_list)
 
@@ -377,7 +383,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             complete_sequences, skipped_count, low_copy_count, classified_pro = analyze.check_progress_file(
                 progress_file)
 
-            # Filter out already complete sequences from the total sequences
+            # Filter out already complete sequences
             seq_list = [seq for seq in seq_list if seq.name not in complete_sequences]
             click.echo(f"\n{single_fasta_n - len(seq_list)} sequences has been processed previously.\n")
 
@@ -424,10 +430,10 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         click.echo(f"\n\n{remaining} sequences have not been analysed.\n")
 
     #####################################################################################################
-    # Code block: Finish classifying unknown consensus file and writing sequences back to consensus file
+    # Code block: Finish classifying unknown consensus sequences and write sequences to consensus file
     #####################################################################################################
 
-    # Final RepeatMasker classification isn't necessary, skip it when errors are there
+    # Final RepeatMasker classification is not necessary, skip in case of errors
     try:
         if 0.3 <= classified_pro < 0.99:
             temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmasker_classification")
@@ -445,7 +451,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                                                                      min_iden=60, min_len=80, min_cov=0.5)
                     if reclassified_dict:
                         click.echo(
-                            f"{len(reclassified_dict)} TE elements were re-classified by final classification module")
+                            f"{len(reclassified_dict)} TE elements were re-classified by the final classification module.")
 
                         # Update final consensus file
                         rename_cons_file(final_con_file, reclassified_dict)
@@ -467,13 +473,14 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             tb_content = traceback.format_exc()
             f.write(f"\nFinal RepeatMasker classification is wrong.\n")
             f.write(tb_content + '\n\n')
-        prcyan(f"\nThe final classification failed with error {e}")
-        prgre("\nThis won't affect final TE consensus sequences but only the name. You can choose to ignore this. "
-              "For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
+        prcyan(f"\nThe final classification module failed with error {e}")
+        prgre("\nThis does not affect the final TE consensus sequences but TE consensus annotations may not be accurate. "
+              "You can choose to ignore this. "
+              "For traceback output, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' directory.\n")
         pass
 
     #####################################################################################################
-    # Code block: merge consensus_file to remove duplications
+    # Code block: Merge consensus_file to remove duplications
     #####################################################################################################
 
     final_merge_success = True
@@ -483,11 +490,11 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     try:
         click.echo("TE Trimmer is removing sequence duplications")
 
-        # Do first round cd-hit-est
+        # Do first round of CD-HIT-EST
         cd_hit_merge_output_round1 = os.path.join(classification_dir, "TE_Trimmer_consensus_merged_round1.fasta")
         cd_hit_merge_output_round1_clstr = f"{cd_hit_merge_output_round1}.clstr"
 
-        # Round 1 merge only require that the alignment coverage for the shorter sequence is greater than 0.8
+        # Round 1 merge only requires that the alignment coverage for the shorter sequence is greater than 0.8
         # and the similarity is greater than 0.85
         cd_hit_est(final_con_file, cd_hit_merge_output_round1, identity_thr=0.9, aS=0.9, s=0, thread=num_threads)
 
@@ -503,14 +510,16 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             length = row["cons_length"] if pd.notna(row["cons_length"]) else 0  # Default value for NaN
             sequence_info[sequence_name] = {"evaluation": evaluation, "type": te_type, "length": length}
 
-        # Parse cd-hit-est result
+        # Parse CD-HIT-EST result
         clusters = {}  # The key is cluster name, the values are sequence names in this cluster (list)
         current_cluster = []  # This corresponds to the list above
         with open(cd_hit_merge_output_round1_clstr, "r") as f:
             for line in f:
-                # To be honest, I hate cd-hit output format a lot.
+                # To be honest, I hate CD-HIT-EST output format a lot.
+                # CD-HIT-EST introduces empty spaces in FASTA headers, which can cause errors in downstream analysis.
+                # The following code fixes the issue.
                 if line.startswith(">Cluster"):
-                    if current_cluster:  # If the current_cluster isn't empty
+                    if current_cluster:  # If the current_cluster is not empty
                         clusters[cluster_name] = current_cluster
                     cluster_name = line.strip().replace(" ", "")  # Remove the empty space in the cluster name
                     current_cluster = []
@@ -520,10 +529,10 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             if current_cluster:
                 clusters[cluster_name] = current_cluster
 
-        # Check if "Perfect" and "Good" level sequences are included inside cluster and choose the longest one
-        best_sequences = []  # Define list to store Perfect or Good sequence names
+        # Check if sequences scored "Perfect" and "Good" are included in the cluster and choose the longest sequence
+        best_sequences = []  # Define list to store "Perfect" or "Good" sequence names
 
-        # Define list to store sequence in clusters that don't contain Perfect or Good sequences
+        # Define list to store sequence in clusters that do not contain "Perfect" or "Good" sequences
         sequence_for_round2 = []
         for cluster_name, sequences in clusters.items():
             perfect_sequences = []
@@ -538,25 +547,25 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                         perfect_sequences.append((seq, length))
                     elif evaluation == "Good":
                         good_sequences.append((seq, length))
-            # Choose the longest 'Perfect' sequence, if have Perfect
+            # Choose the longest "Perfect" sequence, if have Perfect
             if perfect_sequences:
                 best_seq = max(perfect_sequences, key=lambda x: x[1])[0]
-            # If no 'Perfect', choose the longest 'Good' sequence
+            # If no "Perfect", choose the longest "Good" sequence
             elif good_sequences:
                 best_seq = max(good_sequences, key=lambda x: x[1])[0]
 
             if best_seq:
                 best_sequences.append(best_seq)
             else:
-                sequence_for_round2.extend(clusters[cluster_name])  # extend() will make a flat a list
+                sequence_for_round2.extend(clusters[cluster_name])  # extend() will create a flat list
 
         # Read the original consensus file
         consensus_sequences = SeqIO.parse(final_con_file, "fasta")
 
-        # Define temporary file to store Perfect or Good sequences
+        # Define temporary file to store "Perfect" and "Good" sequences
         temp_consensus_round1 = os.path.join(classification_dir, "temp_consensus_round1.fasta")
 
-        # Define temporary file to store rest sequence for round2 cd-hit-est
+        # Define temporary file to store remaining sequences for second round of CD-HIT-EST
         temp_consensus_round2_input = os.path.join(classification_dir, "temp_consensus_round2_input.fasta")
 
         # Write sequences to files
@@ -564,7 +573,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                 open(temp_consensus_round2_input, 'w') as round2_file:
 
             for seq_record in consensus_sequences:
-                # Sequence names in best_sequences and sequence_for_round2 dont' contain classification
+                # Sequence names in best_sequences and sequence_for_round2 do not contain classification
                 seq_id = seq_record.id.split("#")[0]
 
                 if seq_id in best_sequences:
@@ -572,15 +581,15 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                 elif seq_id in sequence_for_round2:
                     SeqIO.write(seq_record, round2_file, 'fasta')
 
-        # Do second round cd-hit-est based on temp_consensus_round2_input
+        # Do second round of CD-HIT-EST based on temp_consensus_round2_input
         cd_hit_merge_output_round2 = os.path.join(classification_dir, "TE_Trimmer_consensus_merged_round2.fasta")
 
-        # Round 2 merge require that the alignment coverage for the long and short sequence are both greater than 0.8
+        # Round 2 merge requires that the alignment coverage for the long and short sequence are both greater than 0.8
         # and the similarity is greater than 0.85
         cd_hit_est(temp_consensus_round2_input, cd_hit_merge_output_round2, identity_thr=0.85, aL=0.8, aS=0.8, s=0.8,
                    thread=num_threads)
 
-        # Combine the two files into merged file
+        # Combine the two files into a merged file
         with open(temp_consensus_round1, 'r') as file1, \
                 open(cd_hit_merge_output_round2, 'r') as file2, \
                 open(cd_hit_est_final_merged, 'w') as combined_file:
@@ -592,7 +601,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             for line in file2:
                 combined_file.write(line)
 
-        # Find sequence names that aren't included inside in cd_hit_est_final_merged file
+        # Find sequence names that are not included inside in cd_hit_est_final_merged file
         # Parse the sequences in the original and merged files
         original_sequences = SeqIO.parse(final_con_file, "fasta")
         merged_sequences = SeqIO.parse(cd_hit_est_final_merged, "fasta")
@@ -601,17 +610,17 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         original_ids = {seq_record.id.split("#")[0] for seq_record in original_sequences}
         merged_ids = {seq_record.id.split("#")[0] for seq_record in merged_sequences}
 
-        # Find the difference between the two sets to get sequence names not included in the merged file
+        # Find the difference between the two sets to identify sequence names not included in the merged file
         missing_ids = original_ids - merged_ids
 
         # Based on missing_ids delete files in proof annotation folder and HMM folder
         for missing_id in missing_ids:
 
-            # if not, set evaluation_leve to "Need_check". get method will return the default value
-            # when the key doesn't exist
+            # if not, set evaluation_level to "Need_check". The "get" method will return the default value
+            # when the key does not exist.
             evaluation_level = sequence_info.get(missing_id, {"evaluation": "Need_check"})["evaluation"]
 
-            # Addd # to the end of missing_id
+            # Add '#' to the end of missing_id
             missing_id = f"{missing_id}#"
             if evaluation_level == "Perfect":
                 remove_files_with_start_pattern(perfect_proof, missing_id, if_seq_name=False)
@@ -633,25 +642,25 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"\nFinal cd-hit-est deduplication error\n")
+            f.write(f"\nFinal CD-HIT-EST deduplication error.\n")
             f.write(tb_content + '\n')
-        prcyan("\nThe final cd-hit-est merge step can't be performed. Final TE consensus library redundancy can "
-               "be higher but the sensitive won't be affected. You can remove duplicated sequence by yourself.")
-        prgre("\nYou can choose to ignore this error. For traceback text, please refer to 'error_file.txt' "
-              "under 'Multiple_sequence_alignment' folder\n")
+        prcyan("\nThe final CD-HIT-EST merge step cannot be performed. Final TE consensus library redundancy can "
+               "be higher but the sensitivity is not affected. You can remove duplicated sequence by yourself.")
+        prgre("\nYou can choose to ignore this error. For traceback output, please refer to 'error_file.txt' "
+              "in the 'Multiple_sequence_alignment' directory.\n")
 
     #####################################################################################################
-    # Code block: Whole genome TE annotation
+    # Code block: Whole-genome TE annotation
     #####################################################################################################
 
     try:
-        # If 90% of the query sequences are processed, RepeatMasker is allowed to be performed whole genome annotation
+        # If 90% of the query sequences have been processed, RepeatMasker is allowed to perform whole genome annotation
         # if processed_count >= single_fasta_n * 0.9:
 
         # Run RepeatMasker
         if genome_anno:
-            click.echo("\nTE Trimmer is performing whole genome TE annotation by RepeatMasker. This could take "
-                       "long time. \nBut the final TE consensus library is finished. You can use it now.\n")
+            click.echo("\nTE Trimmer is performing whole-genome TE annotation by RepeatMasker. This could take "
+                       "long time. \nThe final TE consensus library has been completed. You can use it now.\n")
 
             if final_merge_success and os.path.exists(cd_hit_est_final_merged):
                 repeatmakser_lib = cd_hit_est_final_merged
@@ -681,13 +690,13 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     duration_without_microseconds = timedelta(days=duration.days, seconds=duration.seconds)
 
     # if not debug:
-    # Remove all single files when all the sequences are processed
+    # Remove all single files after all sequences have been processed
     # shutil.rmtree(single_file_dir)
 
     analyze.printProgressBar(processed_count, single_fasta_n, prefix='Progress:', suffix='Complete', length=50,
                              final=True)
-    print(f"\nTE Trimmer finished at {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-    print(f"TE Trimmer runtime was {duration_without_microseconds}")
+    print(f"\nTE Trimmer analysis finished at {start_time.strftime('%Y-%m-%d %H:%M:%S')}.\n")
+    print(f"TE Trimmer runtime was {duration_without_microseconds}.")
 
 
 # The following is necessary to make the script executable, i.e., python myscript.py.
