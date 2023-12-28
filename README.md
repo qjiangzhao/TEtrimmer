@@ -47,7 +47,7 @@ We will develop Conda and Docker packages for TE Trimmer.
 Use --help to access all [options](#All-available-options)
 
 ```commandline
-python {path to TE Trimmer}/TE_Trimmer.py --help
+python {path to TE Trimmer}/TETrimmer.py --help
 ```
 ## Hardware requirement
 System: Linux, macOS
@@ -78,7 +78,7 @@ python {path to TE Trimmer}/test.py
 or
 ```commandline
 # The {output directory} must be empty. Unittest is not performed. 
-python {path to TE Trimmer}/TE_Trimmer.py --input_file {path to TE Trimmer}/tests/test_input.fa \
+python {path to TE Trimmer}/TETrimmer.py --input_file {path to TE Trimmer}/tests/test_input.fa \
                                           --genome_file {path to TE Trimmer}/tests/test_genome.fasta \
                                           --output_dir {output directory} \
                                           --num_threads 10
@@ -96,7 +96,7 @@ Example:
 
 ```commandline
 # The {output directory} must be empty.
-python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
+python {path to TE Trimmer}/TETrimmer.py --input_file {TE consensus library} \
                                           --genome_file {genome file} \
                                           --output_dir {output directory} \
                                           --num_threads 10
@@ -104,7 +104,7 @@ python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
 ```
 If you want to **continue the analysis based on previous unfinished result**:
 ```commandline
-python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
+python {path to TE Trimmer}/TETrimmer.py --input_file {TE consensus library} \
                                           --genome_file {genome file} \
                                           --output_dir {directory contains previous unfinished result} \
                                           --num_threads 10 \
@@ -112,7 +112,7 @@ python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
 ```
 If you want to **remove duplicate sequences** in the input file:
 ```commandline
-python {path to TE Trimmer}/TE_Trimmer.py --input_file {TE consensus library} \
+python {path to TE Trimmer}/TETrimmer.py --input_file {TE consensus library} \
                                           --genome_file {genome file} \
                                           --output_dir {output directory} \
                                           --num_threads 10 \

@@ -178,7 +178,7 @@ with open(species_config_path, "r") as config_file:
 @click.option('--classify_all', default=False, is_flag=True,
               help='Use RepeatClassifier to classify every consensus sequence. WARNING: This may take a long time.')
 def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_blast_len, num_threads, max_msa_lines,
-         top_mas_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ext_step,
+         top_msa_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ext_step,
          max_ext, gap_thr, gap_nul_thr, crop_end_div_thr, crop_end_div_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, mini_orf, species, ext_check_win, dedup, genome_anno, hmm,
          debug, fast_mode, classify_unknown, classify_all):
@@ -253,8 +253,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     if max_msa_lines is None:
         max_msa_lines = default_values.get("max_msa_lines")
 
-    if top_mas_lines is None:
-        top_mas_lines = default_values.get("top_msa_lines")
+    if top_msa_lines is None:
+        top_msa_lines = default_values.get("top_msa_lines")
 
     if min_seq_num is None:
         min_seq_num = default_values.get("min_seq_num")
@@ -399,7 +399,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     analyze_sequence_params = [
         (seq, genome_file, MSA_dir, min_blast_len, min_seq_num, max_msa_lines,
-         top_mas_lines, max_cluster_num, cons_thr, ext_thr, ext_step, classification_dir,
+         top_msa_lines, max_cluster_num, cons_thr, ext_thr, ext_step, classification_dir,
          max_ext, gap_thr, gap_nul_thr, crop_end_div_thr, crop_end_div_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, single_fasta_n, hmm,
          ext_check_win, debug, progress_file, classify_unknown, classify_all,

@@ -1,5 +1,6 @@
 # Standard library imports
 import os
+import time
 import traceback
 import click
 import pandas as pd
@@ -373,12 +374,22 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
 
     # Check if output directory is empty when --continue_analysis is False
     if os.listdir(output_dir) and not continue_analysis:
+
+        """
         prcyan(f"\nWARNING: The output directory {output_dir} is not empty. Please empty your output directory or "
                f"choose another empty directory.")
         prgre("\nNOTE: TE Trimmer can create output directory when it is not exist.")
+        """
+        # When the current folder isn't empty, create a new folder with current time
+        current_time = time.strftime("%Y%m%d_%H%M%S")
+        new_output_dir = os.path.join(output_dir, f"TETrimmer_output_{current_time}")
+        os.makedirs(new_output_dir, exist_ok=True)
+        output_dir = new_output_dir
+        prgre(f"\nThe given output directory is not empty. Results are in folder: \n"
+              f"{output_dir}\n")
 
         # Stop the whole program when the output directory is not empty
-        raise Exception
+        #  raise Exception
 
     # Make a new folder for single fasta sequence
     single_file_dir = os.path.join(output_dir, "Single_fasta_files")

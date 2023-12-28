@@ -360,7 +360,7 @@ class PlotPfam:
         self.plot_features(list(domains.values()), -0.2, 'red', fasta_length)
         # Create legend for plot
         blue_patch = mpatches.Patch(color='blue', label='ORFs')
-        red_patch = mpatches.Patch(color='red', label='Pfam domains')
+        red_patch = mpatches.Patch(color='red', label='PFAM domains')
         plt.legend(handles=[blue_patch, red_patch], fontsize=17)
 
         # Set x-axis tick font size
@@ -369,9 +369,9 @@ class PlotPfam:
         plt.ylim(-1, 2)
         plt.gca().axes.get_yaxis().set_visible(False)  # hides the y-axis
         if self.after_tetrimmer:
-            plt.title('After TETrimmer ORF and Pfam domain plot', fontsize=20, fontweight="bold")
+            plt.title('After TETrimmer treatment ORF and PFAM domain plot', fontsize=20, fontweight="bold")
         else:
-            plt.title('Without TETrimmer ORF and Pfam domain plot', fontsize=20, fontweight="bold")
+            plt.title('Without TETrimmer treatment ORF and PFAM domain plot', fontsize=20, fontweight="bold")
 
         output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_orf_pfam.pdf")
         plt.savefig(output_file, format="pdf")

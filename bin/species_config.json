@@ -2,7 +2,7 @@
   "fungi": {
     "cons_thr": 0.8,
     "max_msa_lines": 100,
-    "top_mas_lines": 70,
+    "top_msa_lines": 70,
     "min_seq_num": 10,
     "min_blast_len": 150,
     "max_cluster_num": 2,
@@ -23,7 +23,7 @@
   "rice": {
     "cons_thr": 0.8,
     "max_msa_lines": 100,
-    "top_mas_lines": 70,
+    "top_msa_lines": 70,
     "min_seq_num": 10,
     "min_blast_len": 150,
     "max_cluster_num": 2,
@@ -44,7 +44,7 @@
   "animal": {
     "cons_thr": 0.8,
     "max_msa_lines": 100,
-    "top_mas_lines": 100,
+    "top_msa_lines": 100,
     "min_seq_num": 10,
     "min_blast_len": 150,
     "max_cluster_num": 2,
@@ -65,7 +65,7 @@
   "powdery_mildew": {
     "cons_thr": 0.8,
     "max_msa_lines": 100,
-    "top_mas_lines": 100,
+    "top_msa_lines": 100,
     "min_seq_num": 10,
     "min_blast_len": 150,
     "max_cluster_num": 2,
