@@ -57,7 +57,8 @@ class DefineBoundary:
             nucleotide_counts = {nucleotide: column.count(nucleotide) for nucleotide in set(column) if nucleotide in self.nucl}
 
             # Check if the column has at least 5 nucleotides and is greater than one tenth of alignment sequence number
-            #if sum(nucleotide_counts.values()) < 5 or sum(nucleotide_counts.values()) <= round(len(self.alignment) / 10):
+            # if sum(nucleotide_counts.values()) < 5 or
+            # sum(nucleotide_counts.values()) <= round(len(self.alignment) / 10):
             if sum(nucleotide_counts.values()) < 5:
                 self.consensus_seq[i] = self.ambiguous  # if column has fewer than 5 nucleotides, mark as ambiguous
         # Convert list to a string by join function
@@ -107,7 +108,7 @@ class DefineBoundary:
                 # print("Need more extension for right side")
                 self.right_ext = True
         else:
-            # When if_continue if false, that means the MSA is too short
+            # When if_continue is false, that means the MSA is too short
             self.if_continue = False
 
     # Iterate through each sequence in the MSA

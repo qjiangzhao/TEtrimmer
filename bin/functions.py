@@ -11,6 +11,7 @@ import pandas as pd
 import pandas.errors
 from seqclass import SeqObject
 import numpy as np
+from PyPDF2 import PdfMerger
 
 
 def prcyan(text):
@@ -1486,14 +1487,20 @@ def remove_files_with_start_pattern(input_dir, start_pattern, if_seq_name=True):
 
 # Define a function to handle sequence skipping and removal of files
 def handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir, classification_dir,
-                             found_match=None, blast_full_length_n=None):
+                             found_match=None, blast_full_length_n=None, te_aid_plot=None, orf_plot=None,
+                             low_copy_dir=None):
     seq_name = seq_obj.get_seq_name()
+    te_type = seq_obj.get_old_TE_type()
+    te_type_modified = te_type.replace("/", "__")
     try:
         if found_match is not None and blast_full_length_n is not None:
             seq_obj.set_old_terminal_repeat(found_match)
             seq_obj.set_old_blast_full_n(blast_full_length_n)
             seq_obj.update_status("processed", progress_file)
 
+            if (te_aid_plot is not None or orf_plot is not None) and low_copy_dir is not None:
+                # Merge TE Aid and ORF plots
+                merge_pdfs(low_copy_dir, f"{seq_name}#{te_type_modified}", te_aid_plot, orf_plot)
         if not debug:
             remove_files_with_start_pattern(MSA_dir, seq_name)
             remove_files_with_start_pattern(classification_dir, seq_name)
@@ -1502,18 +1509,17 @@ def handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir, classificat
 
 
 def handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir, plot_skip=True,
-                            te_aid_plot=None, skip_proof_dir=None):
+                            te_aid_plot=None, orf_plot=None, skip_proof_dir=None):
     seq_name = seq_obj.get_seq_name()
+    te_type = seq_obj.get_old_TE_type()
+    te_type_modified = te_type.replace("/", "__")
     try:
         seq_obj.update_status("skipped", progress_file)
-        if plot_skip and te_aid_plot is not None and skip_proof_dir is not None:
-            te_aid_skipped_plot = os.path.join(skip_proof_dir, f"{seq_name}_TE_Aid.pdf")
-            shutil.copy(te_aid_plot, te_aid_skipped_plot)
-
+        if plot_skip and (te_aid_plot is not None or orf_plot is not None) and skip_proof_dir is not None:
+            merge_pdfs(skip_proof_dir, f"{seq_name}#{te_type_modified}", te_aid_plot, orf_plot)
         if not debug:
             remove_files_with_start_pattern(MSA_dir, seq_name)
             remove_files_with_start_pattern(classification_dir, seq_name)
-
     except Exception as e:
         click.echo(f"\nAn error occurred while handling skipped sequence {seq_name}:\n {e}\n")
 
@@ -1556,13 +1562,13 @@ def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, f
         f.write(">" + seq_name + "#" + te_type + "\n" + sequence + "\n")
 
     low_copy_single_fasta_file = os.path.join(proof_dir, f"{seq_name}#{te_type_modified}.fa")
-    low_copy_te_aid_pdf_file = os.path.join(proof_dir, f"{seq_name}#{te_type_modified}_TE_Aid.pdf")
+    #low_copy_te_aid_pdf_file = os.path.join(proof_dir, f"{seq_name}#{te_type_modified}_TE_Aid.pdf")
 
     shutil.copy(input_fasta, low_copy_single_fasta_file)
 
     # Sometimes TE Aid can't be plotted properly because the input sequence quality. Only move plot when it is existed.
-    if os.path.exists(te_aid_pdf) and os.path.getsize(te_aid_pdf) > 0:
-        shutil.copy(te_aid_pdf, low_copy_te_aid_pdf_file)
+    #if os.path.exists(te_aid_pdf) and os.path.getsize(te_aid_pdf) > 0:
+        #shutil.copy(te_aid_pdf, low_copy_te_aid_pdf_file)
 
 
 # Classify single fasta
@@ -1760,3 +1766,33 @@ def file_exists_and_not_empty(file_path):
             return False
     else:
         return False
+
+
+def merge_pdfs(output_dir, output_file_n, *pdfs):
+    """
+    Merge PDF files to one single file. the file path order in *pdfs is the file order in the final single file
+    """
+    merger = PdfMerger()
+    valid_pdf_count = 0  # Counter to keep track of valid PDFs added
+
+    # Iterate over the list of file paths
+    for pdf in pdfs:
+        # Check if the file exists and is not empty before appending
+        if pdf is not None and os.path.exists(pdf) and os.path.getsize(pdf) > 0:
+            # Append PDF files
+            merger.append(pdf)
+            valid_pdf_count += 1
+
+    if valid_pdf_count > 0:
+        merged_pdf_path = os.path.join(output_dir, os.path.join(output_dir, f"{output_file_n}_me.pdf"))
+        merger.write(merged_pdf_path)
+        merger.close()
+        return merged_pdf_path
+
+    if valid_pdf_count == 0:
+        merger.close()
+        return False
+
+
+
+

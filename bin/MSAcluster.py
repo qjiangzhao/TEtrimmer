@@ -274,7 +274,9 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     else:
         fasta_out_flank_mafft_file_gap_filter = input_msa
     # Extract columns that contain different alignment patter, use this for group separation.
-    # This threshold will be used to replace nucleotides that are less than threshold with a gap character for each column
+    # This threshold will be used to replace nucleotides that are less than threshold with a gap character
+    # for each column
+    # CleanAndSelectColumn removes sequences that have too many gaps along the sequence
     pattern_alignment = CleanAndSelectColumn(fasta_out_flank_mafft_file_gap_filter, threshold=clean_column_threshold)
 
     # Clean_column() function will help MSA cluster and return the absolute path of column cleaned alignment file
@@ -299,10 +301,11 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     else:
 
         # Remove sequences that contain many gaps. This can cause problem for iqtree clustering.
-        filter_out_big_gap_seq(fasta_out_flank_mafft_file_gap_filter, fasta_out_flank_mafft_file_gap_filter,
+        filter_out_big_gap_seq(fasta_out_flank_mafft_file_gap_filter, f"{fasta_out_flank_mafft_file_gap_filter}_gr.fa",
                                gap_threshold=0.9)
+
         filtered_cluster_records, if_cluster = cluster_msa_iqtree_DBSCAN(
-            fasta_out_flank_mafft_file_gap_filter, min_cluster_size=min_length_num, max_cluster=cluster_num)
+            f"{fasta_out_flank_mafft_file_gap_filter}_gr.fa", min_cluster_size=min_length_num, max_cluster=cluster_num)
         if if_cluster:
             # keep the biggest cluster only
             filtered_cluster_records = [max(filtered_cluster_records, key=len)]

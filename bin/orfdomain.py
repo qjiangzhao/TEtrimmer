@@ -155,7 +155,7 @@ def determine_sequence_direction(filename):
 
 
 class PlotPfam:
-    def __init__(self, input_file, output_dir, pfam_database_dir, mini_orf=200):
+    def __init__(self, input_file, output_dir, pfam_database_dir, mini_orf=200, after_tetrimmer=True):
         """
         :param input_file: str, input fasta file path.
         :param output_dir: str, output file directory.
@@ -167,6 +167,7 @@ class PlotPfam:
         self.output_dir = output_dir
         self.pfam_database_dir = pfam_database_dir
         self.mini_orf = mini_orf
+        self.after_tetrimmer = after_tetrimmer
         self.output_orf_file_name_modified = None
         self.output_orf_file_name_modified_table = None
         self.output_pfam_file_modified = None
@@ -178,7 +179,7 @@ class PlotPfam:
         output_orf_file = os.path.join(self.output_dir, f"{self.input_file_n}_orf.txt")
         self.output_orf_file_name_modified = os.path.join(self.output_dir,
                                                           f"{self.input_file_n}_orfm.txt")
-        self.output_orf_file_name_modified_table = os.path.join(self.output_dir, f"{self.input_file_n}_orf_modi_t.txt")
+        self.output_orf_file_name_modified_table = os.path.join(self.output_dir, f"{self.input_file_n}_orf_mt.txt")
 
         get_orf_command = [
             "getorf",
@@ -262,9 +263,8 @@ class PlotPfam:
             raise Exception
 
         # Modify pfam output file for plot
-
         modify_pfam_result = (
-            f"cat {output_pfam_file} | grep -v '#' | grep -v '^$' | "
+            f"cat {output_pfam_file} | grep -v '^#' | grep -v '^$' | "
             f"sed -e 's/\\[/ /g' -e 's/-/ /g' -e 's/\\]//g' | "
             f"awk 'BEGIN{{OFS=\"\\t\";print \"TE_name\", \"orf_start\", \"orf_end\", \"domain_start\", \"domain_end\", \"direction\", \"domain_name\", \"domain_reference\"}} "
             f"{{if($3>$2){{print $1, $2, $3, $2+$4*3-3, $2+$5*3-1, \"+\", $9, $8}}else{{print $1, $3, $2, $2-$5*3+1, $2-$4*3+3, \"-\", $9, $8}}}}' "
@@ -346,7 +346,7 @@ class PlotPfam:
                         head_length=0.003 * fasta_length, linewidth=1.5, shape='full')
                 plt.text(mid, base_level + i * 0.2 + 0.05, feature['name'], fontsize=11, ha='center')
 
-    def plot(self,input_file, output_dir, orf_filepath, domain_filepath):
+    def plot(self, input_file, output_dir, orf_filepath, domain_filepath):
         fasta_length = self.calculate_fasta_length(input_file)
         orfs = self.load_orfs(orf_filepath)
         domains = self.load_domains(domain_filepath)
@@ -360,13 +360,18 @@ class PlotPfam:
         self.plot_features(list(domains.values()), -0.2, 'red', fasta_length)
         # Create legend for plot
         blue_patch = mpatches.Patch(color='blue', label='ORFs')
-        red_patch = mpatches.Patch(color='red', label='Domains')
-        plt.legend(handles=[blue_patch, red_patch])
+        red_patch = mpatches.Patch(color='red', label='Pfam domains')
+        plt.legend(handles=[blue_patch, red_patch], fontsize=17)
 
+        # Set x-axis tick font size
+        ax.tick_params(axis='x', labelsize=20)
         plt.xlim(0, fasta_length)
         plt.ylim(-1, 2)
-        plt.gca().axes.get_yaxis().set_visible(False)# hides the y-axis
-        plt.title('Orf and domain plot')
+        plt.gca().axes.get_yaxis().set_visible(False)  # hides the y-axis
+        if self.after_tetrimmer:
+            plt.title('After TETrimmer ORF and Pfam domain plot', fontsize=20, fontweight="bold")
+        else:
+            plt.title('Without TETrimmer ORF and Pfam domain plot', fontsize=20, fontweight="bold")
 
         output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_orf_pfam.pdf")
         plt.savefig(output_file, format="pdf")
@@ -376,5 +381,5 @@ class PlotPfam:
 
     def orf_domain_plot(self):
         orf_domain_plot = self.plot(self.input_file, self.output_dir,
-                                               self.output_orf_file_name_modified_table, self.output_pfam_file_modified)
+                                    self.output_orf_file_name_modified_table, self.output_pfam_file_modified)
         return orf_domain_plot

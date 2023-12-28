@@ -14,7 +14,7 @@ from clean_MSA import CropEnd, CropEndByGap
 from functions import generate_hmm_from_msa, extract_fasta, remove_gaps_with_similarity_check, align_sequences, \
     con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, \
     con_generater, reverse_complement_seq_file, classify_single, check_terminal_repeat, select_star_to_end, \
-    define_crop_end_simi_thr, prcyan, prgre
+    define_crop_end_simi_thr, prcyan, prgre, merge_pdfs
 from selectcolumns import CleanAndSelectColumn
 import checkpattern
 from TEaid import TEAid
@@ -337,7 +337,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                            error_files, plot_query, cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000,
                            max_extension=7000, gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=0.8, crop_end_win=40,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
-                           mini_orf=200, define_boundary_win=150, fast_mode=False, engine="blast"):
+                           mini_orf=200, define_boundary_win=150, fast_mode=False, engine="blast",
+                           input_orf_pfam=False):
     """
     :param bed_file: str, bed file directory
     :param genome_file: str, genome directory
@@ -605,7 +606,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         orf_cons = con_generater(cropped_boundary_MSA, output_dir, threshold=0.5)
 
         # Predict orf, scan with Pfam
-        orf_domain_plot_object = PlotPfam(orf_cons, output_dir, pfam_database_dir=pfam_dir, mini_orf=mini_orf)
+        orf_domain_plot_object = PlotPfam(orf_cons, output_dir, pfam_database_dir=pfam_dir, mini_orf=mini_orf,
+                                          after_tetrimmer=True)
 
         # "run_getorf()" function will return True when any ORF are detected. Otherwise, it will be False
         orf_domain_plot = None
@@ -615,16 +617,14 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             # "run_pfam_scan()" will return True when pfam domains are found, otherwise it will return False
             if_pfam_domain, pfam_result_file = orf_domain_plot_object.run_pfam_scan()
             if if_pfam_domain:
-
-                # "determine_sequence_direction()" will return True when the direction is right, otherwise, it will be False
+                # "determine_sequence_direction()" will return True when the direction is right, otherwise,
+                # it will be False
                 if determine_sequence_direction(pfam_result_file):
-
                     # When the direction is right, plot the orf and pfam directly
                     orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
                 else:
                     # When the direction is wrong, reverse complement the corresponded sequence and MSA
                     # Reverse complement consensus sequence
-
                     # The reverse complemented file will overwrite the old file
                     orf_cons = reverse_complement_seq_file(
                         input_file=orf_cons, output_file=orf_cons)
@@ -767,32 +767,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Code block: Merge plot files
     #####################################################################################################
     try:
-        # Code block: Merge plot files
-        merger = PdfMerger()
-
-        # List with your PDF file paths. Ensure they are not None before adding them to the list.
-        pdf_files = [pdf for pdf in [MSA_plot, cropped_boundary_manual_MSA_concatenate_plot,
-                                     TE_aid_plot, TE_aid_plot_query, orf_domain_plot] if pdf is not None]
-
-        valid_pdf_count = 0  # Counter to keep track of valid PDFs added
-
-        # Iterate over the list of the file paths
-        for pdf_file in pdf_files:
-            # Check if the file exists and is not empty before appending
-            if os.path.exists(pdf_file) and os.path.getsize(pdf_file) > 0:
-                # Append PDF files
-                merger.append(pdf_file)
-                valid_pdf_count += 1
-            else:
-                click.echo(f"Note: {os.path.basename(pdf_file)} does not exist and will not be merged. "
-                           f"This won't affect the final result")
-
-        # Write out the merged PDF file only if there's at least one valid PDF appended
-        if valid_pdf_count > 0:
-            merged_pdf_path = os.path.join(output_dir, f"{os.path.basename(cropped_boundary_MSA)}_me_plot.pdf")
-            merger.write(merged_pdf_path)
-
-        merger.close()
+        merged_pdf_path = merge_pdfs(output_dir, os.path.basename(cropped_boundary_MSA),
+                                     MSA_plot, cropped_boundary_manual_MSA_concatenate_plot,
+                                     TE_aid_plot, TE_aid_plot_query, orf_domain_plot, input_orf_pfam)
 
     except Exception as e:
         with open(error_files, "a") as f:
@@ -840,10 +817,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classified_consensus.fasta")
 
         # Define unique sequence names
+        # Becase seq_obj.create_consi_obj() is after the unique name definition, the len(seq_obj.consi_obj_list) is the
+        # appended number for the uniq name.
         consi_n = len(seq_obj.consi_obj_list)
 
         if consi_n > 0:
-            consi_n = consi_n
             uniq_seq_name = f"{seq_name}_{consi_n:02}"
         else:
             uniq_seq_name = seq_name
@@ -997,7 +975,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                     destination_dir = need_check_proof
 
                 # Copy the file to the new location with the unique new name
-                shutil.copy(pattern, os.path.join(destination_dir, new_name))
+                if pattern:
+                    shutil.copy(pattern, os.path.join(destination_dir, new_name))
 
             except Exception as e:
                 with open(error_files, "a") as f:
@@ -1009,7 +988,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 files_moved_successfully = False
 
         if hmm:  # Generate HMM files
-
             # Define HMM file folder
             hmm_dir = os.path.join(parent_output_dir, "HMM_files")
             os.makedirs(hmm_dir, exist_ok=True)
