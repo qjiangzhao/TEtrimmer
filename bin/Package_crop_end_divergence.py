@@ -9,12 +9,12 @@ def install_and_import(required_packages_dic):
             __import__(package)
         except ImportError:
             try:
-                print(f"{package} is not installed, installing it automatically.")
+                print(f"{package} was not found. Installing it automatically.")
                 subprocess.check_call([sys.executable, "-m", "pip", "install", required_packages_dic[package]])
-                print(f"{package} is successfully installed.")
+                print(f"{package} was successfully installed.")
             except subprocess.CalledProcessError as e:
-                print(f"\nRequired python packages are missing and can't be installed automatically. with error {e.stderr}"
-                      "\nPlease install 'click', 'numpy', 'pandas', and 'biopython' by pip.\n")
+                print(f"\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}"
+                      "\nPlease install 'click', 'numpy', 'pandas', and 'biopython' using 'pip install'.\n")
                 return
 
 
@@ -34,14 +34,14 @@ from Bio.Align import MultipleSeqAlignment
 
 class CropEnd:
     """
-    Crop each single sequence end of MSA by the nucleotide divergence.
+    Crop each single sequence end of the MSA by nucleotide divergence.
     """
 
     def __init__(self, input_file, threshold=16, window_size=20):
         """
         :param input_file: str, path to the multiple sequence alignment
-        :param threshold: default 16, nucleotides number inside the check window whose proportion greater than 80%
-        :param window_size: default 20, check window size to define start and end position
+        :param threshold: default 16, nucleotide number inside the checking window whose proportion should be greater than 80%
+        :param window_size: default 20, checking window size to define start and end position
         """
         self.input_file = input_file
         self.alignment = AlignIO.read(self.input_file, "fasta")
@@ -59,8 +59,8 @@ class CropEnd:
 
     def pro_calculation(self):
         """
-        :function pro_calculation: calculate nucleotides proportion at each column per sequence
-        :return: a data frame contains all sequence names and nucleotide proportion information
+        :function pro_calculation: calculate nucleotide proportion in each column of the MSA
+        :return: a data frame containing all sequence names and the respective nucleotide proportion information for each position
         """
         # Loop through each column of the alignment
         for i in range(self.alignment.get_alignment_length()):
@@ -100,10 +100,10 @@ class CropEnd:
 
     def find_positions(self):
         """
-         this function will define the start and end position for each sequence
+        This function will define the start and end position for each sequence
             by nucleotide proportions.
 
-        :return: a dictionary that contain sequence name, start, and end positions
+        :return: a dictionary that contains sequence name, start, and end positions
         """
         # Loop over the DataFrame's rows
         for index, row in self.df.iterrows():
@@ -161,7 +161,7 @@ class CropEnd:
 
 @click.command()
 @click.option("--input_file", "-i", required="True", type=str,
-              help="Multiple sequence alignment fasta file path")
+              help="Multiple sequence alignment FASTA file path")
 @click.option("--output_file", "-o", required="True", type=str,
               help="Output file")
 @click.option("--threshold", "-thr", default=0.8, type=float,
