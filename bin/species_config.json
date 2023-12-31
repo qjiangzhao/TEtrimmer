@@ -21,14 +21,14 @@
     "ext_check_win": 150
   },
   "rice": {
-    "cons_thr": 0.8,
+    "cons_thr": 0.6,
     "max_msa_lines": 100,
     "top_msa_lines": 70,
     "min_seq_num": 10,
     "min_blast_len": 150,
     "max_cluster_num": 2,
     "ext_thr": 0.6,
-    "ext_step": 2000,
+    "ext_step": 1500,
     "max_ext": 8000,
     "gap_thr": 0.4,
     "gap_nul_thr": 0.7,

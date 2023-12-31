@@ -89,7 +89,7 @@ def detect_ltr_for_sequence(record, output_dir):
 
     blast_cmd = f"blastn -query {sequence_file} -db {database_file} " \
                 f"-outfmt \"6 qseqid qstart qend sstart send\" " \
-                f"-evalue 0.05"  # Set a higher evalue for self-blast
+                f"-evalue 0.05 -word_size 11 -gapopen 5 -gapextend 2 -reward 2 -penalty -3"  # Set a higher evalue for self-blast
 
     # Execute the command
     result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

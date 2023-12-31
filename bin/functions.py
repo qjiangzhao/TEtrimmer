@@ -542,8 +542,13 @@ def calc_proportion(input_file):
 
         # Calculate the proportion of each nucleotide
         total = sum(counts.values())
-        proportions = {nucleotide: count / total for nucleotide, count in counts.items()}
-        max_props.append(max(proportions.values()))  # Append the maximum proportion
+
+        # Check if total is zero
+        if total == 0:
+            max_props.append(0)
+        else:
+            proportions = {nucleotide: count / total for nucleotide, count in counts.items()}
+            max_props.append(max(proportions.values()))  # Append the maximum proportion
 
     return np.array(max_props)  # Convert the list to a NumPy array and return it
 

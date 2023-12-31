@@ -1,6 +1,5 @@
 import os
 import os.path
-
 import click
 import csv
 import subprocess

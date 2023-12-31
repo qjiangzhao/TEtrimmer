@@ -157,9 +157,9 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             tb_content = traceback.format_exc()
             f.write(f"Error when doing ORF and PFAM prediction for input sequence {seq_name}\n")
             f.write(tb_content + '\n\n')
-        prcyan(f"Error while doing input sequence ORF and PFAM prediction: {seq_name}. Main Error: {str(e)}. \n"
-               f"Trace back content: {tb_content}\n")
-        return
+        #prcyan(f"Error while doing input sequence ORF and PFAM prediction: {seq_name}. Main Error: {str(e)}. \n"
+               #f"Trace back content: {tb_content}\n")
+        pass
 
     #####################################################################################################
     # Code block: Check blast hits number
