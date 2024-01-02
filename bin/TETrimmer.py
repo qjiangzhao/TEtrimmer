@@ -222,6 +222,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # _pf.txt PFAM
     # _pfm.txt PFAM modified
     # _gr.fa gap remove. Remove sequences that contain too many gaps from MSA.
+    # ps.pdf pdf file converted from ps format
+    # su.pdf scale up pdf file
 
     #####################################################################################################
     # Code block: Change permissions of Aliview and TE_Aid

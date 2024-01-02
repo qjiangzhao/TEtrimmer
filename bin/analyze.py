@@ -385,7 +385,7 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
         new_output_dir = os.path.join(output_dir, f"TETrimmer_output_{current_time}")
         os.makedirs(new_output_dir, exist_ok=True)
         output_dir = new_output_dir
-        prgre(f"\nThe given output directory is not empty. Results are in folder: \n"
+        prgre(f"\nThe given output directory is not empty. Results are stored into folder: \n"
               f"{output_dir}\n")
 
         # Stop the whole program when the output directory is not empty

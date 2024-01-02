@@ -11,7 +11,7 @@ import pandas as pd
 import pandas.errors
 from seqclass import SeqObject
 import numpy as np
-from PyPDF2 import PdfMerger
+from PyPDF2 import PdfMerger, PdfFileReader, PdfFileWriter
 
 
 def prcyan(text):
@@ -1799,5 +1799,75 @@ def merge_pdfs(output_dir, output_file_n, *pdfs):
         return False
 
 
+def dotplot(sequence1, sequence2, output_dir):
+
+    # Define after TETrimmer treatment file name
+    n_after_tetrimmer = os.path.basename(sequence1)
+
+    # Define the output filenames
+    pdf_out = os.path.join(output_dir, f"{n_after_tetrimmer}.ps.pdf")
+
+    # Define command for dotmatcher
+    dotmatcher_command = [
+        "dotmatcher",
+        "-asequence", sequence2,
+        "-bsequence", sequence1,
+        "-windowsize", "25",
+        "-threshold", "50",
+        "-gtitle", "Dotplot",
+        "-gxtitle", "After TETrimmer treatment",
+        "-gytitle", "Without TETrimmer treatment",
+        "-graph", "ps",
+        "-goutfile", sequence1
+    ]
+
+    try:
+        subprocess.run(dotmatcher_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    except FileNotFoundError:
+        prcyan("'\ndotmatcher' command not found. Please ensure 'emboss' is correctly installed.")
+        prgre("\ndotmatcher won't affect the final consensus sequence. You can choose to ignore this error\n")
+        raise Exception
+
+    except subprocess.CalledProcessError as e:
+        prcyan(f"\ndotmatcher failed for {n_after_tetrimmer} with error code {e.returncode}")
+        prgre("\ndotmatcher won't affect the final consensus sequence. You can choose to ignore this error")
+        raise Exception
+
+    # Define command to convert ps to pdf
+    ps2pdf_command = [
+        "ps2pdf",
+        f"{sequence1}.ps",
+        pdf_out
+    ]
+
+    try:
+        subprocess.run(ps2pdf_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    except FileNotFoundError:
+        prcyan("'\nps2pdf' command not found. Please install it by 'sudo apt-get install ghostscript'")
+        prgre("ps2pdf won't affect the final consensus file. You can choose to ignore it.")
+        raise Exception
+
+    except subprocess.CalledProcessError as e:
+        prcyan(f"\nps2pdf failed for {n_after_tetrimmer} with error code {e.returncode}")
+        prgre("\nps2pdf won't affect the final consensus sequence. You can choose to ignore this error\n")
+        raise Exception
+
+    return pdf_out
+
+
+def scale_single_page_pdf(input_pdf_path, output_pdf_path, scale_ratio):
+    pdf_reader = PdfFileReader(input_pdf_path)
+    pdf_writer = PdfFileWriter()
+
+    page = pdf_reader.getPage(0)  # Get the first (and only) page
+    page.scale_by(scale_ratio)  # Scale the page
+    pdf_writer.addPage(page)
+
+    with open(output_pdf_path, 'wb') as out_file:
+        pdf_writer.write(out_file)
+
+    return output_pdf_path
 
 

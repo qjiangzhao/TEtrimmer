@@ -14,7 +14,7 @@ from clean_MSA import CropEnd, CropEndByGap
 from functions import generate_hmm_from_msa, extract_fasta, remove_gaps_with_similarity_check, align_sequences, \
     con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, \
     con_generater, reverse_complement_seq_file, classify_single, check_terminal_repeat, select_star_to_end, \
-    define_crop_end_simi_thr, prcyan, prgre, merge_pdfs
+    define_crop_end_simi_thr, prcyan, prgre, merge_pdfs, dotplot, scale_single_page_pdf
 from selectcolumns import CleanAndSelectColumn
 import checkpattern
 from TEaid import TEAid
@@ -365,6 +365,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Check if this is a LINE element, if so decrease the ext_threshold number,
     # because LINE have higher divergence at 5' end
     seq_name = seq_obj.name
+    seq_file = seq_obj.get_input_fasta()  # Return full file path
     if"LINE" in seq_obj.old_TE_type:
         ext_threshold = ext_threshold - 0.2
 
@@ -764,12 +765,29 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             raise Exception
 
     #####################################################################################################
+    # Code block: Generate dotplot
+    #####################################################################################################
+    dotplot_pdf = None
+    try:
+        dotplot_pdf = dotplot(orf_cons, seq_file, output_dir)
+    except Exception as e:
+        # dotpolt isn't mandatory to show, skip this part when any error happened
+        pass
+
+    try:
+        # Because dotmatcher can't change output size, scale it up to make it more clear in the merged pdf
+        scale_dotplot_pdf = scale_single_page_pdf(dotplot_pdf, f"{dotplot_pdf}_su.pdf", scale_ratio=2)
+        dotplot_pdf = scale_dotplot_pdf
+    except Exception:
+        # This is not mandatory, skip this step when error happens
+        pass
+    #####################################################################################################
     # Code block: Merge plot files
     #####################################################################################################
     try:
         merged_pdf_path = merge_pdfs(output_dir, os.path.basename(cropped_boundary_MSA),
                                      MSA_plot, cropped_boundary_manual_MSA_concatenate_plot,
-                                     TE_aid_plot, TE_aid_plot_query, orf_domain_plot, input_orf_pfam)
+                                     TE_aid_plot, TE_aid_plot_query, orf_domain_plot, input_orf_pfam, dotplot_pdf)
 
     except Exception as e:
         with open(error_files, "a") as f:
