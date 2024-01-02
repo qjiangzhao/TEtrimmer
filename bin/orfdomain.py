@@ -178,7 +178,7 @@ class PlotPfam:
         output_orf_file = os.path.join(self.output_dir, f"{self.input_file_n}_orf.txt")
         self.output_orf_file_name_modified = os.path.join(self.output_dir,
                                                           f"{self.input_file_n}_orfm.txt")
-        self.output_orf_file_name_modified_table = os.path.join(self.output_dir, f"{self.input_file_n}_orf_mt.txt")
+        self.output_orf_file_name_modified_table = os.path.join(self.output_dir, f"{self.input_file_n}_orfmt.txt")
 
         get_orf_command = [
             "getorf",

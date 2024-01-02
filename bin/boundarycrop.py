@@ -903,14 +903,14 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         if classify_all or (
                 classify_unknown and (seq_obj.check_unknown() or (abs(consi_obj.new_length - seq_obj.old_length) >= 2000))):
             # Define different folder for each sequence
-            classification_seq_folder = os.path.join(classification_dir, uniq_seq_name)
+            # .fasta is important, this can makesure this folder can be deleted later
+            classification_seq_folder = os.path.join(classification_dir, f"{uniq_seq_name}.fasta")
             os.makedirs(classification_seq_folder, exist_ok=True)
 
             # Define consensus file path used for classification
             classification_seq_file = os.path.join(classification_seq_folder, uniq_seq_name)
 
             with open(classification_seq_file, "w") as f:
-
                 # RepeatClassifier input cannot be single sequence, add >Add to enable to run RepeatClassifier
                 f.write(">" + uniq_seq_name + "\n" + sequence + "\n" + ">Dummy" + "\n" + "T" + "\n")
 

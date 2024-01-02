@@ -211,8 +211,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # _bc.fa boundary crop.
     # _co.fa consensus. Consensus sequence file
     # _orf.txt ORF prediction file
-    # _orf_modi_t.txt ORF modified table
-    # _pfam.txt Pfam prediction
     # _me.fa merged. Merged fasta file
     # _me.pdf merged. Merged pdf file
     # _proof_anno_me.fa proof annotation merged

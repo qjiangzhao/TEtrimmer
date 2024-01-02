@@ -149,23 +149,33 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
     seq_list = []
 
     if not continue_analysis:
-
         print(
-            "TE Trimmer is modifying sequence names, '/', '-', ':', '...', '|' and empty space before '#' will "
-            "be converted to '_'")
+            "TE Trimmer is modifying sequence names; All '/', '-', ':', '...', '|' and empty space before '#' will "
+            "be converted to '_'\n"
+            "You can find the original and modified name relationship from 'Name_mapping.txt' file under "
+            "the output directory.\n ")
+        # Initialize the name mapping file
+        name_mapping_file = os.path.join(os.path.dirname(output_dir), "Name_mapping.txt")
+
         detected_pound = False
-        with open(input_file, 'r') as fasta_file:
+        with open(input_file, 'r') as fasta_file, open(name_mapping_file, 'w') as mapping_file:
+            # Write header to the mapping file
+            mapping_file.write("original_input_seq_name\tTETrimmer_modified_seq_name\n")
             id_list = []
             # Have to add 'fasta' at the end, this pattern will be used for file deletion
             for record in SeqIO.parse(fasta_file, 'fasta'):
+                # Check if # is in the seq.id. If # is present, the string before # is the seq_name, and the string
+                # after # is the seq_TE_type
                 if len(record.id.split("#")) > 1:
                     detected_pound = True
                     sanitized_id = record.id.split("#")[0].replace('/', '_').replace(' ', '_').\
                         replace('-', '_').replace(':', '_').replace('...', '_').replace('|', '_')
-                    te_type = record.id.split("#")[-1]
+                    te_type = record.id.split("#")[0]
 
-                # Check if # is in the seq.id. If # is present, the string before # is the seq_name, and the string
-                # after # is the seq_TE_type
+                    # Normally SeqIO.parse only takes content before " " as record.id. Separate with " " to make
+                    # the code stronger
+                    te_type = te_type.split(" ")[0]
+
                 else:
                     sanitized_id = record.id.replace('/', '_').replace(' ', '_').replace('-', '_')\
                         .replace(':', '_').replace('...', '_')
@@ -178,16 +188,23 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                 if sanitized_id not in id_list:
                     id_list.append(sanitized_id)
                 else:
-                    print (f"duplicated seq_name {sanitized_id} during separate_sequences")
+                    # print(f"duplicated seq_name {sanitized_id} during separate_sequences.")
                     id_list.append(sanitized_id)
                     count = id_list.count(sanitized_id)
                     sanitized_id = f"{sanitized_id}_n{count}"
+
+                # Write original and modified names to the mapping file
+                mapping_file.write(f"{record.id}\t{sanitized_id}\n")
+
                 # Define output file name
                 output_filename = os.path.join(output_dir, f"{sanitized_id}.fasta")
                 seq_obj = SeqObject(str(sanitized_id), str(output_filename), len(record.seq), te_type)
 
                 # Store all input file information (object manner) to seq_list
                 seq_list.append(seq_obj)
+
+                # Convert sequence name to sanitized_id
+                record.id = sanitized_id
 
                 # Write single fasta file with sanitized name
                 with open(output_filename, 'w') as output_file:
@@ -200,14 +217,11 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
         print("\nFinish to generate single sequence files.\n")
 
     elif continue_analysis:
-
         # When continue_analysis is true, generate seq_list based on single fasta files
         for filename in os.listdir(output_dir):
-
             file = os.path.join(output_dir, filename)
             with open(file, 'r') as fasta_file:
                 for record in SeqIO.parse(fasta_file, 'fasta'):
-
                     # Get sanitized_id from single fasta file name
                     sanitized_id = os.path.splitext(filename)[0]
 
