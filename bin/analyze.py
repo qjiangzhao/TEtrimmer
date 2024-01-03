@@ -283,17 +283,21 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             # cluster_pattern_alignment_list have the same index with cluster_bed_files_list
             all_inner_skipped = True
             for i in range(len(cluster_bed_files_list)):
-
-                find_boundary_result = find_boundary_and_crop(
-                    cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
-                    hmm, classify_all, classify_unknown, error_files, plot_query, cons_threshold=cons_thr,
-                    ext_threshold=ext_thr, ex_step_size=ex_step, max_extension=max_extension,
-                    gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
-                    crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
-                    crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
-                    start_patterns=start_patterns, end_patterns=end_patterns,
-                    mini_orf=mini_orf, define_boundary_win=check_extension_win,
-                    fast_mode=fast_mode, engine=engine, input_orf_pfam=input_orf_domain_plot)
+                try:
+                    find_boundary_result, uniq_seq_name = find_boundary_and_crop(
+                        cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
+                        hmm, classify_all, classify_unknown, error_files, plot_query, cons_threshold=cons_thr,
+                        ext_threshold=ext_thr, ex_step_size=ex_step, max_extension=max_extension,
+                        gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
+                        crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
+                        crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
+                        start_patterns=start_patterns, end_patterns=end_patterns,
+                        mini_orf=mini_orf, define_boundary_win=check_extension_win,
+                        fast_mode=fast_mode, engine=engine, input_orf_pfam=input_orf_domain_plot, debug=debug)
+                except Exception as e:
+                    # Because find_boundary_and_crop can properly handle error message. Return directly to
+                    # avoid to print error message repetitively
+                    return
 
                 if not find_boundary_result:
                     continue
@@ -337,7 +341,6 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
     # If all this sequence is finished remove all files contain this name
     if not debug:
         remove_files_with_start_pattern(MSA_dir, seq_name)
-        remove_files_with_start_pattern(classification_dir, seq_name)
 
     # Read and count sequences from Finished_sequence_name.txt
     completed_sequence, skipped_count, low_copy_count, classified_pro = check_progress_file(progress_file)

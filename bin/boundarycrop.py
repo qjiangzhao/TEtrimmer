@@ -14,7 +14,7 @@ from clean_MSA import CropEnd, CropEndByGap
 from functions import generate_hmm_from_msa, extract_fasta, remove_gaps_with_similarity_check, align_sequences, \
     con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, \
     con_generater, reverse_complement_seq_file, classify_single, check_terminal_repeat, select_star_to_end, \
-    define_crop_end_simi_thr, prcyan, prgre, merge_pdfs, dotplot, scale_single_page_pdf
+    define_crop_end_simi_thr, prcyan, prgre, merge_pdfs, dotplot, scale_single_page_pdf, remove_files_with_start_pattern
 from selectcolumns import CleanAndSelectColumn
 import checkpattern
 from TEaid import TEAid
@@ -176,7 +176,7 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
                 df_filtered.to_csv(reset_right_long_bed, sep='\t', index=False, header=None)
             ite += 1
 
-    return bed_dic
+    return bed_dic, ex_total
 
 
 def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
@@ -338,7 +338,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                            max_extension=7000, gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=0.8, crop_end_win=40,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
                            mini_orf=200, define_boundary_win=150, fast_mode=False, engine="blast",
-                           input_orf_pfam=False):
+                           input_orf_pfam=False, debug=False):
     """
     :param bed_file: str, bed file directory
     :param genome_file: str, genome directory
@@ -393,12 +393,13 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         # Code block: Define left and right sides extension number and define the boundary
         #####################################################################################################
         try:
-            left_bed_dic = extend_end(max_extension, ex_step_size, "left", bed_file, genome_file, output_dir,
-                                      crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win, bed_dict)
+            left_bed_dic, left_ex_total = extend_end(
+                max_extension, ex_step_size, "left", bed_file, genome_file, output_dir, crop_end_gap_thr,
+                crop_end_gap_win, ext_threshold, define_boundary_win, bed_dict)
 
-            final_bed_dic = extend_end(max_extension, ex_step_size, "right", bed_file, genome_file, output_dir,
-                                       crop_end_gap_thr, crop_end_gap_win, ext_threshold, define_boundary_win,
-                                       left_bed_dic)
+            final_bed_dic, right_ex_total = extend_end(
+                max_extension, ex_step_size, "right", bed_file, genome_file, output_dir, crop_end_gap_thr,
+                crop_end_gap_win, ext_threshold, define_boundary_win, left_bed_dic)
         except Exception as e:
             with open(error_files, "a") as f:
                 # Get the traceback content as a string
@@ -487,7 +488,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Code block: Check if the final MSA contains too many ambiguous letter "N"
     #####################################################################################################
     try:
-        initial_cons = con_generater_no_file(cropped_boundary_MSA, threshold=0.6, ambiguous="N")
+        initial_cons = con_generater_no_file(cropped_boundary_MSA, threshold=0.55, ambiguous="N")
 
         # Calculate the proportion of 'N' in the sequence
         n_proportion = initial_cons.count("N") / len(initial_cons)
@@ -771,6 +772,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     try:
         dotplot_pdf = dotplot(orf_cons, seq_file, output_dir)
     except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"\nDotplot failed for {seq_name} with error:\n{e}")
+            f.write('\n' + tb_content + '\n\n')
         # dotpolt isn't mandatory to show, skip this part when any error happened
         pass
 
@@ -779,6 +785,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         scale_dotplot_pdf = scale_single_page_pdf(dotplot_pdf, f"{dotplot_pdf}_su.pdf", scale_ratio=2)
         dotplot_pdf = scale_dotplot_pdf
     except Exception:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"\nps file to pdf conversion failed for {seq_name} with error:\n{e}")
+            f.write('\n' + tb_content + '\n\n')
         # This is not mandatory, skip this step when error happens
         pass
     #####################################################################################################
@@ -899,9 +910,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # fast_mode will supress RepeatClassifier step
     # Classification isn't mandatory, skip this step when error is encountered
     try:
-
         if classify_all or (
-                classify_unknown and (seq_obj.check_unknown() or (abs(consi_obj.new_length - seq_obj.old_length) >= 2000))):
+                classify_unknown and (seq_obj.check_unknown() or (left_ex_total + right_ex_total >= 4000))):
             # Define different folder for each sequence
             # .fasta is important, this can makesure this folder can be deleted later
             classification_seq_folder = os.path.join(classification_dir, f"{uniq_seq_name}.fasta")
@@ -920,6 +930,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             if TE_type:
                 # Set TE_type after RepeatClassifier
                 consi_obj.set_new_TE_type(TE_type)
+
+            # Clean classification folder when debug is True
+            if not debug:
+                remove_files_with_start_pattern(classification_dir, uniq_seq_name)
     except Exception as e:
         with open(error_files, "a") as f:
             # Get the traceback content as a string
@@ -927,7 +941,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             f.write(f"\nRepeatClassifier classification error for {seq_name}")
             f.write('\n' + tb_content + '\n\n')
         prcyan(f"\nNote: RepeatClassifier doesn't work for {seq_name} with error {e}")
-        prgre("\nThis won't affect final TE consensus sequences but only the name. You can choose to ignore this. "
+        prgre("\nThis won't affect final TE consensus sequences but only the classification. You can choose to ignore this. "
               "For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
         pass
 
@@ -1025,7 +1039,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         with open(final_con_file, "a") as f:
             f.write(">" + uniq_seq_name + "#" + updated_TE_type + "\n" + sequence + "\n")
 
-        return files_moved_successfully
+        return files_moved_successfully, uniq_seq_name
 
     except Exception as e:
         with open(error_files, "a") as f:

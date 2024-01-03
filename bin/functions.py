@@ -483,8 +483,13 @@ def align_sequences(input_file, output_dir):
         raise Exception
 
     except subprocess.CalledProcessError as e:
-        prcyan(f"MAFFT failed for {input_file_n} with error code {e.returncode}")
+        error_message = e.stderr
+        prcyan(f"MAFFT failed for {input_file_n} with error code {e.returncode}\n")
         prcyan(e.stderr)
+
+        if "Killed" in error_message and "disttbfast" in error_message and "memopt" in error_message:
+            prgre(f"It seems not enough 'RAM' was given for Mafft multiple sequence alignment. Please assign more "
+                  f"RAM or lower the thread number to solve this problem.\n")
         raise Exception
 
     # Write the output to the file
@@ -1501,7 +1506,11 @@ def remove_files_with_start_pattern(input_dir, start_pattern, if_seq_name=True):
             if os.path.isfile(file_path):  # This check ensures you're only removing files, not directories
                 os.remove(file_path)
             elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
+                try:
+                    shutil.rmtree(file_path)
+                except Exception:
+                    # File deletion doesn't affect the final consensus sequence. Skip when error happens
+                    pass
 
 
 # Define a function to handle sequence skipping and removal of files

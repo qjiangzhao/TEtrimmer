@@ -485,6 +485,21 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
               "For traceback output, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' directory.\n")
         pass
 
+    try:
+        # Delete the empty folder inside Classification_dir. For some reason, thr RepeatClassifier folder can't be
+        # totally deleted within a short time. Delete all the empty folder here
+        for foldername in os.listdir(classification_dir):
+            folder_path = os.path.join(classification_dir, foldername)
+
+            # Check if it is a directory
+            if os.path.isdir(folder_path):
+                # Check if the directory is empty
+                if not os.listdir(folder_path):
+                    os.rmdir(folder_path)
+    except Exception:
+        # This won't affect the final result, pass it when any error happens
+        pass
+
     #####################################################################################################
     # Code block: Merge consensus_file to remove duplications
     #####################################################################################################
@@ -626,7 +641,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             # when the key does not exist.
             evaluation_level = sequence_info.get(missing_id, {"evaluation": "Need_check"})["evaluation"]
 
-            # Add '#' to the end of missing_id
+            # Add '#' to the end of missing_id, this can avoid to delete 140 when the id is 14
             missing_id = f"{missing_id}#"
             if evaluation_level == "Perfect":
                 remove_files_with_start_pattern(perfect_proof, missing_id, if_seq_name=False)
