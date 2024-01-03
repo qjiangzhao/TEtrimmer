@@ -155,7 +155,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
             "You can find the original and modified name relationship from 'Name_mapping.txt' file under "
             "the output directory.\n ")
         # Initialize the name mapping file
-        name_mapping_file = os.path.join(os.path.dirname(output_dir), "Name_mapping.txt")
+        name_mapping_file = os.path.join(os.path.dirname(output_dir), "Sequence_name_mapping.txt")
 
         detected_pound = False
         with open(input_file, 'r') as fasta_file, open(name_mapping_file, 'w') as mapping_file:

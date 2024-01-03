@@ -284,7 +284,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             all_inner_skipped = True
             for i in range(len(cluster_bed_files_list)):
                 try:
-                    find_boundary_result, uniq_seq_name = find_boundary_and_crop(
+                    find_boundary_result = find_boundary_and_crop(
                         cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
                         hmm, classify_all, classify_unknown, error_files, plot_query, cons_threshold=cons_thr,
                         ext_threshold=ext_thr, ex_step_size=ex_step, max_extension=max_extension,
@@ -295,8 +295,6 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                         mini_orf=mini_orf, define_boundary_win=check_extension_win,
                         fast_mode=fast_mode, engine=engine, input_orf_pfam=input_orf_domain_plot, debug=debug)
                 except Exception as e:
-                    # Because find_boundary_and_crop can properly handle error message. Return directly to
-                    # avoid to print error message repetitively
                     return
 
                 if not find_boundary_result:
