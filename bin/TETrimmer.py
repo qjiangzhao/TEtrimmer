@@ -509,7 +509,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     cd_hit_est_final_merged = os.path.join(output_dir, "TE_Trimmer_consensus_merged.fasta")
 
     try:
-        click.echo("TE Trimmer is removing sequence duplications")
+        click.echo("TE Trimmer is removing sequence duplications.")
 
         # Do first round of CD-HIT-EST
         cd_hit_merge_output_round1 = os.path.join(classification_dir, "TE_Trimmer_consensus_merged_round1.fasta")

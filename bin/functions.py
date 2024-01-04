@@ -67,7 +67,7 @@ def check_database(genome_file, search_type="blast"):
     if search_type == "blast":
         blast_database_file = genome_file + ".nin"
         if not os.path.isfile(blast_database_file):
-            print(f"\nBlast database doesn't exist. Running makeblastdb")
+            print(f"\nBlast database doesn't exist. Running makeblastdb!")
 
             try:
                 makeblastdb_cmd = f"makeblastdb -in {genome_file} -dbtype nucl -out {genome_file} "
@@ -116,13 +116,13 @@ def check_database(genome_file, search_type="blast"):
     # Check if genome length files exists, otherwise create it at the same folder with genome file
     length_file = genome_file + ".length"
     if not os.path.isfile(length_file):
-        print(f"\nFile with genome lengths not found. Making it now\n")
+        print(f"\nFile with genome lengths not found. Making it now!\n")
         calculate_genome_length(genome_file)
 
     # Check if .fai index file exists, otherwise create it using bedtools
     fai_file = genome_file + ".fai"
     if not os.path.isfile(fai_file):
-        print(f"\nIndex file {fai_file} not found. Creating it by samtools faidx\n")
+        print(f"\nIndex file {fai_file} not found. Creating it by samtools faidx!\n")
         faidx_cmd = f"samtools faidx {genome_file}"
 
         try:
@@ -170,7 +170,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                     detected_pound = True
                     sanitized_id = record.id.split("#")[0].replace('/', '_').replace(' ', '_').\
                         replace('-', '_').replace(':', '_').replace('...', '_').replace('|', '_')
-                    te_type = record.id.split("#")[0]
+                    te_type = record.id.split("#")[1]
 
                     # Normally SeqIO.parse only takes content before " " as record.id. Separate with " " to make
                     # the code stronger
