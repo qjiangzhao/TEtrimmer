@@ -489,7 +489,7 @@ def align_sequences(input_file, output_dir):
 
         if "Killed" in error_message and "disttbfast" in error_message and "memopt" in error_message:
             prgre(f"It seems not enough 'RAM' was given for Mafft multiple sequence alignment. Please assign more "
-                  f"RAM or lower the thread number to solve this problem.\n")
+                  f"RAM to TETrimmer or reduce the thread number to solve this problem.\n")
         raise Exception
 
     # Write the output to the file

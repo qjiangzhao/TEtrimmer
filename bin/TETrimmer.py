@@ -437,7 +437,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Final RepeatMasker classification is not necessary, skip in case of errors
     try:
         if 0.3 <= classified_pro < 0.99:
-            click.echo("\nTETrimmer is doing the final classification. It uses the classified TE to classify"
+            click.echo("\nTETrimmer is doing the final classification. It uses the classified TE to classify "
                        "Unknown elements.")
             temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmasker_classification")
 
@@ -467,6 +467,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                         rename_files_based_on_dict(low_copy_dir, reclassified_dict, seq_name=True)
                         if hmm:
                             rename_files_based_on_dict(hmm_dir, reclassified_dict)
+                    else:
+                        click.echo("0 TE elements were re-classified by the final classification module.")
 
             else:
                 prcyan(f"\nThe final classification module failed.")
