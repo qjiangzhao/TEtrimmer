@@ -416,15 +416,19 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     processed_count = len(completed_sequence)
 
     if processed_count == single_fasta_n:
-        click.echo(f"All sequences have been analysed!\n"
+        click.echo(f"\n\nAll sequences have been analysed!\n"
                    f"In the analysed sequences {skipped_count} are skipped. Note: not all skipped sequences can have "
                    f"TE Aid plot in the 'TE_Trimmer_for_proof_annotation' folder.\n"
-                   f"In the analysed sequences {low_copy_count} are identified as low copy TE.\n"
-                   f"TE Trimmer is doing the final classification, merging, or whole genome annotation step.")
+                   f"In the analysed sequences {low_copy_count} are identified as low copy TE.")
 
     else:
         remaining = single_fasta_n - processed_count
-        click.echo(f"\n\n{remaining} sequences have not been analysed.\n")
+        click.echo(f"\n\n{remaining} sequences have not been analysed.\n"
+                   f"In the analysed sequences {skipped_count} are skipped. Note: not all skipped sequences can have "
+                   f"TE Aid plot in the 'TE_Trimmer_for_proof_annotation' folder.\n"
+                   f"In the analysed sequences {low_copy_count} are identified as low copy TE.\n")
+        prgre("You might find the reasons why those sequences were not analysed from the 'error_file.txt' in the "
+              "'Multiple_sequence_alignment' directory.")
 
     #####################################################################################################
     # Code block: Finish classifying unknown consensus sequences and write sequences to consensus file
@@ -433,6 +437,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Final RepeatMasker classification is not necessary, skip in case of errors
     try:
         if 0.3 <= classified_pro < 0.99:
+            click.echo("\nTETrimmer is doing the final classification. It uses the classified TE to classify"
+                       "Unknown elements.")
             temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmasker_classification")
 
             if os.path.exists(final_unknown_con_file) and os.path.exists(final_classified_con_file):
@@ -448,7 +454,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                                                                      min_iden=60, min_len=80, min_cov=0.5)
                     if reclassified_dict:
                         click.echo(
-                            f"{len(reclassified_dict)} TE elements were re-classified by the final classification module.")
+                            f"\n{len(reclassified_dict)} TE elements were re-classified by the "
+                            f"final classification module.")
 
                         # Update final consensus file
                         rename_cons_file(final_con_file, reclassified_dict)
@@ -462,8 +469,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                             rename_files_based_on_dict(hmm_dir, reclassified_dict)
 
             else:
-                prcyan("One of the consensus file does not exist, RepeatMasker reclassify does not run, "
-                       "This will not affect the final consensus sequences.")
+                prcyan(f"\nThe final classification module failed.")
+                prgre("\nThis does not affect the final TE consensus sequences "
+                      "You can choose to ignore this error.\n")
     except Exception as e:
         with open(error_files, "a") as f:
             # Get the traceback content as a string
@@ -471,9 +479,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             f.write(f"\nFinal RepeatMasker classification is wrong.\n")
             f.write(tb_content + '\n\n')
         prcyan(f"\nThe final classification module failed with error {e}")
-        prgre("\nThis does not affect the final TE consensus sequences but TE consensus annotations may not be accurate. "
-              "You can choose to ignore this. "
-              "For traceback output, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' directory.\n")
+        prgre("\nThis does not affect the final TE consensus sequences "
+              "You can choose to ignore this error. For traceback content, please refer to 'error_file.txt' "
+              "in the 'Multiple_sequence_alignment' directory.\n")
         pass
 
     try:
@@ -500,14 +508,14 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     cd_hit_est_final_merged = os.path.join(output_dir, "TE_Trimmer_consensus_merged.fasta")
 
     try:
-        click.echo("TE Trimmer is removing sequence duplications.")
+        click.echo("\nTE Trimmer is removing sequence duplications.")
 
         # Do first round of CD-HIT-EST
         cd_hit_merge_output_round1 = os.path.join(classification_dir, "TE_Trimmer_consensus_merged_round1.fasta")
         cd_hit_merge_output_round1_clstr = f"{cd_hit_merge_output_round1}.clstr"
 
-        # Round 1 merge only requires that the alignment coverage for the shorter sequence is greater than 0.8
-        # and the similarity is greater than 0.85
+        # Round 1 merge only requires that the alignment coverage for the shorter sequence is greater than 0.9
+        # and the similarity is greater than 0.9
         cd_hit_est(final_con_file, cd_hit_merge_output_round1, identity_thr=0.9, aS=0.9, s=0, thread=num_threads)
 
         # Read progress file
@@ -647,7 +655,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
         if hmm:
             remove_files_with_start_pattern(hmm_dir, missing_ids)
-        click.echo("\nFinished to remove sequence duplications.\n")
+        click.echo(f"\nFinished to remove sequence duplications.\n")
 
     except Exception as e:
         final_merge_success = False

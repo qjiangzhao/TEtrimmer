@@ -37,8 +37,19 @@ def process_sequences(input_file, output_dir):
         # Handle the sequence based on LTR detection
         if LTR_boundary:
             # Split the sequence at LTR boundary
-            LTR_seq = record.seq[:LTR_boundary[1]]
-            INT_seq = record.seq[LTR_boundary[1]-1:LTR_boundary[2]]
+            left_LTR_seq = record.seq[LTR_boundary[0]:LTR_boundary[1]]
+            INT_seq = record.seq[LTR_boundary[1]:LTR_boundary[2]]
+            right_LTR_seq = record.seq[LTR_boundary[2]:LTR_boundary[3]]
+
+            # Count 'N' characters in each side LTR sequence
+            left_LTR_N_count = left_LTR_seq.count('N')
+            right_LTR_N_count = right_LTR_seq.count('N')
+
+            # Choose the LTR sequence with fewer 'N's
+            if left_LTR_N_count <= right_LTR_N_count:
+                LTR_seq = left_LTR_seq
+            else:
+                LTR_seq = right_LTR_seq
 
             # Update headers
             new_id_LTR = update_fasta_header(record.id, "_LTR")
@@ -91,11 +102,13 @@ def detect_ltr_for_sequence(record, output_dir):
                 f"-outfmt \"6 qseqid qstart qend sstart send\" " \
                 f"-evalue 0.05 -word_size 11 -gapopen 5 -gapextend 2 -reward 2 -penalty -3"  # Set a higher evalue for self-blast
 
-    # Execute the command
-    result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    if result.returncode != 0:
-        print(f"An error occurred in BLAST: {result.stderr.decode('utf-8')}")
+    try:
+        # Execute the command
+        result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        print(f"\nblast encountered an error for sequence {record_name} and returned error code {e.returncode}.\n")
+        print(e.stdout)
+        print(e.stderr)
         return None
 
     blast_out = result.stdout.decode('utf-8').strip()
@@ -127,11 +140,10 @@ def detect_ltr_for_sequence(record, output_dir):
         # Find the row with the largest difference
         LTR_largest = df_LTR.iloc[df_LTR["diff"].idxmax()]
 
-        # Check if the terminal repeat spans the majority of the query sequence. Because the query was extended,
-        # assume the maximum redundant extension for left and right side at 2000.
+        # Check if the terminal repeat spans the majority of the query sequence. Because the query was extended
         if abs(LTR_largest['send'] - LTR_largest['qstart']) >= (record_len - 200):
             # Because BLAST uses index starting from 1, modify the start position
-            LTR_boundary = [LTR_largest['qstart'] - 1, LTR_largest['qend'], LTR_largest['sstart'], LTR_largest['send']]
+            LTR_boundary = [LTR_largest['qstart'] - 1, LTR_largest['qend'], LTR_largest['sstart'] - 1, LTR_largest['send']]
             # print(record_len)
             # print(LTR_boundary)
             return LTR_boundary
