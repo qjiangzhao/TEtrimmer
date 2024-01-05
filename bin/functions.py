@@ -1578,7 +1578,6 @@ def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, f
     sequence = str(record.seq)
 
     if "Unknown" in te_type:
-
         with open(final_unknown_con_file, "a") as f:  # 'a' mode for appending
             f.write(">" + seq_name + "\n" + sequence + "\n")
     else:

@@ -86,6 +86,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
     #####################################################################################################
     # Code block: Set different elongation number for different elements and do blast
     #####################################################################################################
+
     try:
         # Get query fasta file path
         seq_name = seq_obj.get_seq_name()

@@ -36,11 +36,15 @@ library(grid)
 # Set the default title
 pdf_title <- "Default Title"
 
+# Calculate the length of the sequence by calling the getlength.sh script
+sequence_length <- as.numeric(system(paste(wdir,"/getlength.sh ", query, sep = ""), intern = TRUE))
+
+
 # Check the value of tm and update the title accordingly
 if (tm) {
-  pdf_title <- "After TETrimmer treatment"
+  pdf_title <- paste("After TETrimmer treatment ", as.character(sequence_length), "bp")
 } else {
-  pdf_title <- "Without TETrimmer treatment"
+  pdf_title <- paste("Without TETrimmer treatment ", as.character(sequence_length), "bp")
 }
 
 pdf(

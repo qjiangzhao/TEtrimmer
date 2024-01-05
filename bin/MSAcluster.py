@@ -59,7 +59,7 @@ def read_msa(input_file):
     return AlignIO.read(input_file, "fasta")
 
 
-def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=None):
+def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=2):
     # this function uses iqtree to separate alignment into branches and then do dbscan_cluster on sequences
     # based on maximum likelihood tree distance
     # dependencies: calculate_tree_dis, dbscan_cluster
@@ -91,42 +91,52 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=None):
     # map sequence_names name to cluster 
     sequence_cluster_mapping = dict(zip(sequence_names, cluster))
 
+    """
+    # if all cluster size < 10, there is no meaningful cluster, if_cluster = False, skip this sequence
+    # When no -1 cluster number is greater or equal to max_cluster, use no -1 cluster for further analysis
+    # otherwise, check if -1 cluster have more than or equal 15 sequence and the sequence number more than 60% of the 
+    # total sequence, if so count -1 cluster into the further analysis process. 
     # Use Counter to count occurrences
+    -1 cluster has to be treated carefully. 
+    """
     counter = Counter(cluster)
 
     # Find cluster with size > min_cluster_size
     filter_cluster = [element for element, count in counter.items() if count >= min_cluster_size]
     seq_cluster_list = []
 
-    # if only -1 in filter_cluster and cluster size > 60% number of sequences in MSA:
-    if filter_cluster == [-1]:
-        if counter[-1] > 0.6 * len(sequence_names):
-            #print (f"only -1 cluster > 10, size = {counter[-1]}, thr = {0.6 * len(sequence_names)}")
-            seq_records = [sequence for sequence, cluster_label in sequence_cluster_mapping.items() if cluster_label == -1]
-            seq_cluster_list.append(seq_records)
-    else: 
-        # has 0 cluster, or 1 cluster that's not -1, or multiple clusters, eliminate cluster that is -1
-        # filter_cluster = [c for c in filter_cluster if c != -1]
-        top_cluster = Counter({element: count for element, count in counter.items() if element in filter_cluster}).most_common
-        # Pick the top max_cluster
-        if max_cluster is not None:
-            top_cluster = top_cluster(max_cluster)
+    # pre-define if_cluster to true
+    if_cluster = True
+
+    if len(filter_cluster) > 0:
+        negative_n = counter.get(-1, 0)
+        top_cluster_obj = Counter({element: count for element, count in counter.items() if element in filter_cluster
+                                   and element != -1}).most_common
+        if negative_n >= 15 and negative_n >= 0.6 * len(sequence_names):
+            # top_cluster_obj() returns all elements sorted by frequency
+            if len(top_cluster_obj()) >= max_cluster:
+                # top_cluster is assigned to be a list
+                top_cluster = top_cluster_obj(max_cluster)
+            else:
+                # Add -1 cluster when it has more than 15 sequences and the total sequence inside this cluster occupy
+                # more than 60% of the total sequence
+                top_cluster = top_cluster_obj(max_cluster).append(-1)
         else:
-            top_cluster = top_cluster()
-        # Find the seq name in selected cluster
+            # Pick the top max_cluster
+            top_cluster = top_cluster_obj(max_cluster)
+            # Find the seq name in selected cluster
+
         if len(top_cluster) > 0:
             for i in top_cluster:
                 # Extract sequence id for each cluster
                 seq_records = [sequence for sequence, cluster_label in sequence_cluster_mapping.items() if cluster_label == i[0]]
                 seq_cluster_list.append(seq_records)
-    
-    if_cluster = (len(seq_cluster_list) > 0)
-    # if all cluster size < 10, there is no meaningful cluster, if_cluster = False, skip this sequence
-    # if only one cluster has size >10 and it is -1,
-    #       if -1 cluster > 60% number of sequences in MSA, use this -1 cluster
-    #       else, skip this sequence 
-    # if at least one cluster has size >10 and it is not just -1, 
-    #   only keep the max_cluster that are not -1
+        else:
+            # len(top_cluster) == 0 means no cluster fit the requirement, set if_cluster to False
+            if_cluster = False
+    else:
+        if_cluster = False
+
     return seq_cluster_list, if_cluster
 
 
@@ -147,7 +157,7 @@ def dbscan_cluster(input_file, pca=True):
     # Convert distance values to a NumPy array
     distance_np = np.array(distance_values, dtype=np.float64)
 
-    # Replace NaN values with a large number
+    # Replace NaN values with a large number, NaN value can hamper DBSCAN clustering
     distance_np[np.isnan(distance_np)] = np.nanmax(distance_np) + 1
 
     # Apply DBSCAN clustering with the recommended eps value

@@ -531,7 +531,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 f.write('\n' + tb_content + '\n\n')
                 prcyan(f"\nStart and end pattern like 'TGT' 'ACA' definition failed for {seq_name} with error \n{e}")
                 prgre("\nThis won't largely affect the final result, you can choose to ignore it. "
-                      "For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
+                      "For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder.\n")
                 pass
 
         #####################################################################################################
@@ -615,6 +615,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             # "run_getorf()" function will return True when any ORF are detected. Otherwise, it will be False
             orf_domain_plot = None
             if_pfam_domain = False
+            reverse_complement = False
             if orf_domain_plot_object.run_getorf():
 
                 # "run_pfam_scan()" will return True when pfam domains are found, otherwise it will return False
@@ -645,6 +646,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                             input_file=cropped_boundary_plot_concatenate,
                             output_file=cropped_boundary_plot_concatenate
                         )
+                        # Reverse complement input sequence
+                        seq_file_reverse_c = reverse_complement_seq_file(input_file=seq_file,
+                                                                         output_file=f"{seq_file}_rc.fa")
+                        reverse_complement = True
 
                         # Define the new start and end points for cropped_boundary_manual_MSA_concatenate
                         # cropped_boundary_manual_MSA_concatenate will be used for CIAlign plot
@@ -771,7 +776,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         #####################################################################################################
         dotplot_pdf = None
         try:
-            dotplot_pdf = dotplot(orf_cons, seq_file, output_dir)
+            # Use reverse complemented input sequence file, when reverse_complement is true
+            if reverse_complement:
+                dotplot_pdf = dotplot(orf_cons, seq_file_reverse_c, output_dir)
+            else:
+                dotplot_pdf = dotplot(orf_cons, seq_file, output_dir)
         except Exception as e:
             with open(error_files, "a") as f:
                 # Get the traceback content as a string

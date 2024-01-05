@@ -135,7 +135,7 @@ class TEAid:
             command.extend(["-TM"])
 
         try:
-            subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         except subprocess.CalledProcessError as e:
             if self.error_file is not None:
                 with open(self.error_file, 'a') as f:

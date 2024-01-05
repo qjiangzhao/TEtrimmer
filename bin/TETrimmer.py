@@ -111,7 +111,7 @@ with open(species_config_path, "r") as config_file:
                    'Default: 10')
 @click.option('--min_blast_len', type=int,
               help='The minimum sequence length for BLAST hits. Default: 150')
-@click.option('--max_cluster_num', type=int,
+@click.option('--max_cluster_num', default=2, type=int,
               help='The maximum cluster number for each multiple sequence alignment. Each multiple sequence alignment '
                    'can be divided into different clusters. TE Trimmer will sort clusters by sequence number and choose '
                    'the top <--max_cluster_num> of clusters for further analysis. WARNING: A large number of clusters '
@@ -222,6 +222,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # _gr.fa gap remove. Remove sequences that contain too many gaps from MSA.
     # ps.pdf pdf file converted from ps format
     # su.pdf scale up pdf file
+    # rc.fa reverse complement fasta file
 
     #####################################################################################################
     # Code block: Change permissions of Aliview and TE_Aid
@@ -263,16 +264,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     if min_blast_len is None:
         min_blast_len = default_values.get("min_blast_len")
-
-    if max_cluster_num is None:
-        max_cluster_num = default_values.get("max_cluster_num")
-
-        # Convert string "False" to boolean
-        if max_cluster_num == "False":
-            max_cluster_num = False
-
-        if fast_mode:
-            max_cluster_num = 2
 
     if ext_thr is None:
         ext_thr = default_values.get("ext_thr")
