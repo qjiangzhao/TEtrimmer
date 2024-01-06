@@ -82,21 +82,13 @@ python {path to TETrimmer}/test.py
 or
 ```commandline
 # The {output directory} must be empty. Unittest is not performed. 
-<<<<<<< HEAD
-python {path to TETrimmer}/TETrimmer.py --input_file {path to TE Trimmer}/tests/test_input.fa \
-                                          --genome_file {path to TETrimmer}/tests/test_genome.fasta \
-                                          --output_dir {output directory} \
-                                          --num_threads 10
-                                          --species fungi
-                                          --classify_unknown
-=======
+
 python {path to TETrimmer}/TETrimmer.py --input_file {path to TETrimmer}/tests/test_input.fa \
                                         --genome_file {path to TETrimmer}/tests/test_genome.fasta \
                                         --output_dir {output directory} \
                                         --num_threads 10
                                         --species fungi
                                         --classify_unknown
->>>>>>> main
                                           
 ```
 ## Inputs
