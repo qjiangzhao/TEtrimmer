@@ -15,7 +15,7 @@ def change_permissions_recursive(input_dir, mode):
             for filename in filenames:
                 os.chmod(os.path.join(dirpath, filename), mode)
     except PermissionError:
-        click.echo("TE Trimmer don't have right to change permissions. Pleas use sudo to run TE Trimmer")
+        click.echo("TETrimmer don't have right to change permissions. Pleas use sudo to run TETrimmer")
         return False
     return True
 
@@ -33,14 +33,14 @@ os_type = platform.system()
 
 @click.command()
 @click.option('--te_trimmer_proof_annotation_dir', '-i', required=True, type=str,
-              help='Supply the TE Trimmer output directory path')
+              help='Supply the TETrimmer output directory path')
 @click.option('--output_dir', '-o', default=None, type=str,
               help='Define the output directory for TE proof annotation. Default: input folder directory')
 def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     """
     This tool can help do quick proof annotation
 
-    python ./path_to_TE_Trimmer_bin/Class_TKinter_proof_annotation.py -i "TE_Trimmer_output_folder"
+    python ./path_to_TETrimmer_bin/Class_TKinter_proof_annotation.py -i "TETrimmer_output_folder"
     """
 
     # If the -o option is not given, use the parent directory of -i as output directory.
@@ -63,7 +63,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
 
     # Initialize Tk window
     root = Tk()
-    root.title("TE Trimmer proof annotation tool")
+    root.title("TETrimmer proof annotation tool")
     root.geometry('1200x800')
 
     # Initialize the BooleanVar here, after the root Tk instance is created
@@ -184,15 +184,15 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     global logo_label
     global text_label
 
-    log_text = "████████╗███████╗    ████████╗██████╗ ██╗███╗   ███╗███╗   ███╗███████╗██████╗\n"\
-               "╚══██╔══╝██╔════╝    ╚══██╔══╝██╔══██╗██║████╗ ████║████╗ ████║██╔════╝██╔══██╗\n"\
-               "   ██║   █████╗         ██║   ██████╔╝██║██╔████╔██║██╔████╔██║█████╗  ██████╔╝\n"\
-               "   ██║   ██╔══╝         ██║   ██╔══██╗██║██║╚██╔╝██║██║╚██╔╝██║██╔══╝  ██╔══██╗\n"\
-               "   ██║   ███████╗       ██║   ██║  ██║██║██║ ╚═╝ ██║██║ ╚═╝ ██║███████╗██║  ██║\n"\
-               "   ╚═╝   ╚══════╝       ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝\n"\
+    log_text = "████████╗███████╗████████╗██████╗ ██╗███╗   ███╗███╗   ███╗███████╗██████╗\n"\
+               "╚══██╔══╝██╔════╝╚══██╔══╝██╔══██╗██║████╗ ████║████╗ ████║██╔════╝██╔══██╗\n"\
+               "   ██║   █████╗     ██║   ██████╔╝██║██╔████╔██║██╔████╔██║█████╗  ██████╔╝\n"\
+               "   ██║   ██╔══╝     ██║   ██╔══██╗██║██║╚██╔╝██║██║╚██╔╝██║██╔══╝  ██╔══██╗\n"\
+               "   ██║   ███████╗   ██║   ██║  ██║██║██║ ╚═╝ ██║██║ ╚═╝ ██║███████╗██║  ██║\n"\
+               "   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝\n"\
 
 
-    initial_text = "TE Trimmer proof annotation assistant tool\n\n" \
+    initial_text = "TETrimmer proof annotation assistant tool\n\n" \
                    "Introduction:\n\n" \
                    "We highly recommend to do proof annotation for 'Recommend_check_annotation' and 'Need_check_annotation" \
                    " ,which can dramatically increase your TE annotation quality.\n\n"\

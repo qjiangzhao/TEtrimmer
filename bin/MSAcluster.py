@@ -108,33 +108,40 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=2):
     # pre-define if_cluster to true
     if_cluster = True
 
-    if len(filter_cluster) > 0:
-        negative_n = counter.get(-1, 0)
-        top_cluster_obj = Counter({element: count for element, count in counter.items() if element in filter_cluster
-                                   and element != -1}).most_common
-        if negative_n >= 15 and negative_n >= 0.6 * len(sequence_names):
-            # top_cluster_obj() returns all elements sorted by frequency
-            if len(top_cluster_obj()) >= max_cluster:
-                # top_cluster is assigned to be a list
-                top_cluster = top_cluster_obj(max_cluster)
-            else:
-                # Add -1 cluster when it has more than 15 sequences and the total sequence inside this cluster occupy
-                # more than 60% of the total sequence
-                top_cluster = top_cluster_obj(max_cluster).append(-1)
-        else:
-            # Pick the top max_cluster
-            top_cluster = top_cluster_obj(max_cluster)
-            # Find the seq name in selected cluster
+    # Return empty list and False directly when filter_cluster is empty. This  means no cluster have sequence number
+    # greater than min_cluster_size
+    if not filter_cluster:
+        return [], False
 
-        if len(top_cluster) > 0:
-            for i in top_cluster:
-                # Extract sequence id for each cluster
-                seq_records = [sequence for sequence, cluster_label in sequence_cluster_mapping.items() if cluster_label == i[0]]
-                seq_cluster_list.append(seq_records)
+    negative_n = counter.get(-1, 0)
+
+    # Filter and sort clusters excluding -1
+    top_cluster_obj = Counter({element: count for element, count in counter.items() if element in filter_cluster
+                               and element != -1}).most_common
+    if negative_n >= 15 and negative_n >= 0.6 * len(sequence_names):
+        # top_cluster_obj() returns all elements sorted by frequency
+        if len(top_cluster_obj()) >= max_cluster:
+            # top_cluster is assigned to be a list
+            top_cluster = top_cluster_obj(max_cluster)
         else:
-            # len(top_cluster) == 0 means no cluster fit the requirement, set if_cluster to False
-            if_cluster = False
+            # Add -1 cluster when it has more than 15 sequences and the total sequence inside this cluster occupy
+            # more than 60% of the total sequence
+            top_cluster = top_cluster_obj(max_cluster)
+            top_cluster.append((-1, negative_n))
     else:
+        # Pick the top max_cluster
+        top_cluster = top_cluster_obj(max_cluster)
+        # Find the seq name in selected cluster
+
+    if len(top_cluster) > 0:
+        for i in top_cluster:
+            # Extract sequence id for each cluster
+            # i[0] represents the cluster number
+            seq_records = [sequence for sequence, cluster_label in sequence_cluster_mapping.items()
+                           if cluster_label == i[0]]
+            seq_cluster_list.append(seq_records)
+    else:
+        # len(top_cluster) == 0 means no cluster fit the requirement, set if_cluster to False
         if_cluster = False
 
     return seq_cluster_list, if_cluster

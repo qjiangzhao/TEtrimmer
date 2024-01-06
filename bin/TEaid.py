@@ -114,7 +114,7 @@ class TEAid:
         found_match = False
 
         # Check if the PDF c2g.pdf exists. If so, skip the downstream analysis, if low_copy is 'False'.
-        # TE Trimmer will plot the query sequence using TE Aid. One query file can contain multiple clusters,
+        # TETrimmer will plot the query sequence using TE Aid. One query file can contain multiple clusters,
         # TE-Aid will test if this has been created before.
         if not low_copy and os.path.exists(final_pdf_file):
             return final_pdf_file, found_match

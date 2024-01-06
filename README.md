@@ -12,8 +12,8 @@
 
 ## Introduction
 Many tools have been developed for *de novo* transposable element (TE) identification. But manual 
-curation is still required for high quality TE annotation by experts. TE Trimmer is designed to replace and assistant
-TE manual curation. You can find more details from TE Trimmer [flowchart](#Flowchart).
+curation is still required for high quality TE annotation by experts. TETrimmer is designed to replace and assistant
+TE manual curation. You can find more details from TETrimmer [flowchart](#Flowchart).
 
 ## Installation
 You can find required packages from [here](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TE_Trimmer_dependencies). 
@@ -31,7 +31,7 @@ We highly recommend install by "mamba" that is much faster.
 # Install mamaba first
 conda install -c conda-forge mamba
 
-# Create TE Trimmer environment by mamba
+# Create TETrimmer environment by mamba
 mamba env create -f TE_Trimmer_env_for_linux.yml
 ```
 For Window WSL, you can follow the same instruction used for linux. 
@@ -41,13 +41,13 @@ For macOS, you can use the same instruction but by [TE_Trimmer_env_for_macOS.yml
 
 **Currently, macOS yml file isn't usable. Please install according to [dependency file](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TE_Trimmer_dependencies)**
 
-We will develop Conda and Docker packages for TE Trimmer.
+We will develop Conda and Docker packages for TETrimmer.
 
 ## Usage:
 Use --help to access all [options](#All-available-options)
 
 ```commandline
-python {path to TE Trimmer}/TETrimmer.py --help
+python {path to TETrimmer}/TETrimmer.py --help
 ```
 ## Hardware requirement
 System: Linux, macOS
@@ -68,18 +68,18 @@ test on Macbook Pro (2020 M1 chip 16 GB) and compared with HPC, you can find the
 | 1700                  | Macbook Pro M1 | 20      | 16 GB + Virtual Memory | 60 hours     |
 | 1700                  | HPC            | 40      | 150 GB                 | 7 hours      | 
 
-- We haven't tested it on WLS of Windows, it should be feasible to run TE Trimmer on it too. 
+- We haven't tested it on WLS of Windows, it should be feasible to run TETrimmer on it too. 
 
 ## Test
 ```commandline
 # Unittest is performed. 
-python {path to TE Trimmer}/test.py
+python {path to TETrimmer}/test.py
 ```
 or
 ```commandline
 # The {output directory} must be empty. Unittest is not performed. 
-python {path to TE Trimmer}/TETrimmer.py --input_file {path to TE Trimmer}/tests/test_input.fa \
-                                          --genome_file {path to TE Trimmer}/tests/test_genome.fasta \
+python {path to TETrimmer}/TETrimmer.py --input_file {path to TE Trimmer}/tests/test_input.fa \
+                                          --genome_file {path to TETrimmer}/tests/test_genome.fasta \
                                           --output_dir {output directory} \
                                           --num_threads 10
                                           --species fungi
@@ -136,7 +136,7 @@ More options are available:
 - 📁**Multiple_sequence_alignment** - *All raw files will be kept in this folder when < --debug > is enables.*
   - 📄**error_file.txt** - *Error file to store all error messages, only visible when error is found.*
 - 📁**Single_fasta_files** - *All sequences in the input file will be separated to single fasta files and be stored here.*
-- 📁**TE_Trimmer_for_proof_annotation** - *This folder contains files used for proof annotation.* 
+- 📁**TETrimmer_for_proof_annotation** - *This folder contains files used for proof annotation.* 
   - 📁**Perfect_annotation** - *For each sequence, three files are associate with it (anno.fa; fa; pdf).*
     - 📄**TE_name.anno.fa** - *Multiple sequence alignment file before cleaning.*
     - 📄**TE_name.fa** - *Multiple sequence alignment file after cleaning.*
@@ -234,7 +234,7 @@ Options:
   --ext_check_win TEXT            Define check windows size for extension. Default: 150
   
   --ext_step INTEGER              Number of nucleotides to be added to the left and right ends of the multiple
-                                  sequence alignment. TE_Trimmer will iteratively add <--ext_step> number of
+                                  sequence alignment. TETrimmer will iteratively add <--ext_step> number of
                                   nucleotides until finding the boundary. Default: 1000
                                   
   --max_ext INTEGER               The maximum extension in nucleotides at both ends of the multiple sequence

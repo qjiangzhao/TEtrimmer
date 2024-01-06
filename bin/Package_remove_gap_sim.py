@@ -68,7 +68,7 @@ def remove_gaps_with_similarity_check(input_file, output_file, gap_threshold,
     Remove columns directly when gap percentage is larger than --gap_threshold. Remove columns when nucleotide number
     is less than --min_nucleotide.
     When gap percentage is equal to or larger than --simi_check_gap_thr and smaller than --gap_threshold,
-    TE Trimmer will calculate the most abundant nucleotide proportion for this column. If the gap percentage is less
+    TETrimmer will calculate the most abundant nucleotide proportion for this column. If the gap percentage is less
     than --similarity_thr, this column will be removed.
     """
     if os.path.isfile(input_file):

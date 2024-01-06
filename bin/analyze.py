@@ -256,7 +256,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
     #####################################################################################################
 
     try:
-        # cluster false means no sufficient cluster (all cluster size < 10), TE Trimmer will skip this sequence.
+        # cluster false means no sufficient cluster (all cluster size < 10), TETrimmer will skip this sequence.
         if cluster_MSA_result is False:
             check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
                 seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=plot_skip)
@@ -347,7 +347,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
     # Calculate the total count
     processed_count = len(completed_sequence)
 
-    # Calculate sequences number that hasn't been processed by TE Trimmer
+    # Calculate sequences number that hasn't been processed by TETrimmer
     rest_sequence = single_fasta_n - processed_count
 
     printProgressBar(processed_count, single_fasta_n, prefix='Progress:', suffix='Complete', length=50)
@@ -380,7 +380,7 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
         """
         prcyan(f"\nWARNING: The output directory {output_dir} is not empty. Please empty your output directory or "
                f"choose another empty directory.")
-        prgre("\nNOTE: TE Trimmer can create output directory when it is not exist.")
+        prgre("\nNOTE: TETrimmer can create output directory when it is not exist.")
         """
         # When the current folder isn't empty, create a new folder with current time
         current_time = time.strftime("%Y%m%d_%H%M%S")
@@ -413,7 +413,7 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
         hmm_dir = ''
 
     # Define proof_annotation folder path
-    proof_annotation_dir = os.path.join(output_dir, "TE_Trimmer_for_proof_annotation")
+    proof_annotation_dir = os.path.join(output_dir, "TETrimmer_for_proof_annotation")
     os.makedirs(proof_annotation_dir, exist_ok=True)
 
     # Define skipped folder if it is required
@@ -450,9 +450,9 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     # RepeatMasker classification, PFAM scanning, muscle alignment
     error_files = os.path.join(MSA_dir, "error_file.txt")
 
-    # If pfam database isn't provided, create pfam database at TE Trimmer software folder,
+    # If pfam database isn't provided, create pfam database at TETrimmer software folder,
     # the database will be downloaded into there.
-    # If the pfam_dir is given, but the database can't be found there, TE Trimmer will download pfam database there
+    # If the pfam_dir is given, but the database can't be found there, TETrimmer will download pfam database there
     # and generate index file
     if pfam_dir is None:
         pfam_dir = os.path.join(os.path.dirname(bin_py_path), "pfam_database")
@@ -490,9 +490,9 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
         return
 
     # Define consensus files. temp files will be used for the final RepeatMasker classification
-    final_con_file = os.path.join(output_dir, "TE_Trimmer_consensus.fasta")
-    final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
-    final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classified_consensus.fasta")
+    final_con_file = os.path.join(output_dir, "TETrimmer_consensus.fasta")
+    final_unknown_con_file = os.path.join(classification_dir, "temp_TETrimmer_unknown_consensus.fasta")
+    final_classified_con_file = os.path.join(classification_dir, "temp_TETrimmer_classified_consensus.fasta")
 
     return bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, low_copy_dir, perfect_proof, \
     good_proof, intermediate_proof, need_check_proof, progress_file, pfam_dir, final_con_file, final_unknown_con_file, final_classified_con_file, \

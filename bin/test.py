@@ -42,14 +42,14 @@ class TestMainFunction(unittest.TestCase):
         summary_size = os.path.getsize(os.path.join(output_dir, 'summary.txt'))
         self.assertGreater(summary_size, 800, 'summary.txt is not complete')
 
-        # check TE_Trimmer_consensus.fasta
-        self.assertTrue(os.path.exists('test_output_dir/TE_Trimmer_consensus.fasta'), 'TE_Trimmer_consensus.fasta not found')
-        te_trimmer_size = os.path.getsize(os.path.join(output_dir, 'TE_Trimmer_consensus.fasta'))
-        self.assertGreater(te_trimmer_size, 10000, 'TE_Trimmer_consensus.fasta is not complete')
+        # check TETrimmer_consensus.fasta
+        self.assertTrue(os.path.exists('test_output_dir/TETrimmer_consensus.fasta'), 'TETrimmer_consensus.fasta not found')
+        te_trimmer_size = os.path.getsize(os.path.join(output_dir, 'TETrimmer_consensus.fasta'))
+        self.assertGreater(te_trimmer_size, 10000, 'TETrimmer_consensus.fasta is not complete')
 
         # check proof_annotation
-        contents = os.listdir(f"{output_dir}/TE_Trimmer_for_proof_annotation/Need_check_annotation")
-        self.assertGreater(len(contents), 0, f"{output_dir}/TE_Trimmer_for_proof_annotation/Need_check_annotation is empty.")
+        contents = os.listdir(f"{output_dir}/TETrimmer_for_proof_annotation/Need_check_annotation")
+        self.assertGreater(len(contents), 0, f"{output_dir}/TETrimmer_for_proof_annotation/Need_check_annotation is empty.")
 
 
 if __name__ == '__main__':

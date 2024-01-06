@@ -50,14 +50,14 @@ def check_and_download(directory, filename, url):
             os.remove(gz_file_path)
             click.echo(f"\n{filename} is downloaded and unzipped.\n")
         except Exception:
-            prcyan("TE Trimmer can't properly unzip the downloaded Pfam file")
+            prcyan("TETrimmer can't properly unzip the downloaded Pfam file")
             return False
 
     # Check if download is successful
     if os.path.isfile(file_path):
         return True
     else:
-        prcyan(f"{filename} found. Pfam can't be downloaded by TE Trimmer. Please check your internet connection "
+        prcyan(f"{filename} found. Pfam can't be downloaded by TETrimmer. Please check your internet connection "
                f"or download Pfam by yourself")
         return False
 

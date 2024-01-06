@@ -150,9 +150,9 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
 
     if not continue_analysis:
         print(
-            "TE Trimmer is modifying sequence names; All '/', '-', ':', '...', '|' and empty space before '#' will "
+            "TETrimmer is modifying sequence names; All '/', '-', ':', '...', '|' and empty space before '#' will "
             "be converted to '_'\n"
-            "You can find the original and modified name relationship from 'Name_mapping.txt' file under "
+            "You can find the original and modified name relationship from 'Sequence_name_mapping.txt' file under "
             "the output directory.\n ")
         # Initialize the name mapping file
         name_mapping_file = os.path.join(os.path.dirname(output_dir), "Sequence_name_mapping.txt")
@@ -211,7 +211,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                     SeqIO.write(record, output_file, 'fasta')
 
             if detected_pound:
-                print("TE Trimmer detects # in your input fasta sequence. The string before # is denoted as the "
+                print("TETrimmer detects # in your input fasta sequence. The string before # is denoted as the "
                       "seq_name, and the string after # is denoted as the TE type\n")
 
         print("\nFinish to generate single sequence files.\n")
@@ -1273,7 +1273,7 @@ def change_permissions_recursive(input_dir, mode):
             for filename in filenames:
                 os.chmod(os.path.join(dirpath, filename), mode)
     except PermissionError:
-        click.echo("TE Trimmer don't have right to change permissions. Pleas use sudo to run TE Trimmer")
+        click.echo("TETrimmer don't have right to change permissions. Pleas use sudo to run TETrimmer")
         return False
     return True
 

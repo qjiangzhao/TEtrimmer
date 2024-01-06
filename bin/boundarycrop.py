@@ -735,7 +735,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             f.write(f"\nMSA plot failed {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
             prcyan(f"\nMSA plot failed {seq_name} with error:\n{e}")
-            prgre("\nMSA plots are only used to evaluate TE Trimmer and won't affect the final TE consensus library."
+            prgre("\nMSA plots are only used to evaluate TETrimmer and won't affect the final TE consensus library."
                   " For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
             pass
 
@@ -838,10 +838,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         parent_output_dir = os.path.dirname(output_dir)
 
         # Define final consensus file
-        final_con_file = os.path.join(parent_output_dir, "TE_Trimmer_consensus.fasta")
+        final_con_file = os.path.join(parent_output_dir, "TETrimmer_consensus.fasta")
 
         # Define proof_annotation folder path
-        proof_annotation_dir = os.path.join(parent_output_dir, "TE_Trimmer_for_proof_annotation")
+        proof_annotation_dir = os.path.join(parent_output_dir, "TETrimmer_for_proof_annotation")
 
         # Construct the path for the Classification folder
         classification_dir = os.path.join(parent_output_dir, "Classification")
@@ -862,8 +862,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
         # Define temporary classified and unknown final consensus file, which will be used for
         # reclassification by RepeatMasker
-        final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
-        final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classified_consensus.fasta")
+        final_unknown_con_file = os.path.join(classification_dir, "temp_TETrimmer_unknown_consensus.fasta")
+        final_classified_con_file = os.path.join(classification_dir, "temp_TETrimmer_classified_consensus.fasta")
 
         # Define unique sequence names
         # Becase seq_obj.create_consi_obj() is after the unique name definition, the len(seq_obj.consi_obj_list) is the
@@ -900,7 +900,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             consi_obj.set_new_terminal_repeat(found_match)
 
         # Store blast full length sequence number into consi_obj
-        # check_blast_full_n is a function in TE_Aid class. TE Trimmer will use the blast result of TE Aid
+        # check_blast_full_n is a function in TE_Aid class. TETrimmer will use the blast result of TE Aid
         blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj, engine=engine)
         consi_obj.set_blast_full_n(blast_full_length_n)
 
