@@ -79,10 +79,10 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                      top_mas_lines, max_cluster_num, cons_thr, ext_thr, ex_step, classification_dir,
                      max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr,
                      crop_end_gap_win, start_patterns, end_patterns, output_dir, pfam_dir, mini_orf,
-                     single_fasta_n, hmm, check_extension_win, debug, progress_file,
-                     classify_unknown, classify_all, final_con_file, final_unknown_con_file,
+                     single_fasta_n, hmm, hmm_dir, check_extension_win, debug, progress_file,
+                     classify_unknown, classify_all, final_con_file, final_con_file_no_low_copy, final_unknown_con_file,
                      final_classified_con_file, low_copy_dir, fast_mode, error_files, plot_skip, skipped_dir,
-                     plot_query, engine):
+                     plot_query, engine, proof_annotation_dir):
     #####################################################################################################
     # Code block: Set different elongation number for different elements and do blast
     #####################################################################################################
@@ -160,7 +160,6 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             f.write(tb_content + '\n\n')
         #prcyan(f"Error while doing input sequence ORF and PFAM prediction: {seq_name}. Main Error: {str(e)}. \n"
                #f"Trace back content: {tb_content}\n")
-        pass
 
     #####################################################################################################
     # Code block: Check blast hits number
@@ -287,7 +286,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                 try:
                     find_boundary_result = find_boundary_and_crop(
                         cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
-                        hmm, classify_all, classify_unknown, error_files, plot_query, cons_threshold=cons_thr,
+                        hmm, classify_all, classify_unknown, error_files, plot_query, classification_dir,
+                        final_con_file, final_con_file_no_low_copy, proof_annotation_dir, hmm_dir, cons_threshold=cons_thr,
                         ext_threshold=ext_thr, ex_step_size=ex_step, max_extension=max_extension,
                         gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
                         crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
@@ -402,7 +402,7 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     os.makedirs(MSA_dir, exist_ok=True)
 
     # Make a new folder for classification
-    classification_dir = os.path.join(output_dir, "Classification")
+    classification_dir = os.path.join(output_dir, "Classification_and_deduplication")
     os.makedirs(classification_dir, exist_ok=True)
 
     # make a new folder for HMM file
@@ -415,6 +415,10 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     # Define proof_annotation folder path
     proof_annotation_dir = os.path.join(output_dir, "TETrimmer_for_proof_annotation")
     os.makedirs(proof_annotation_dir, exist_ok=True)
+
+    # Define clustered proof annotation folder inside proof_annotation_dir
+    cluster_proof_anno_dir = os.path.join(proof_annotation_dir, "Clustered_proof_annotation")
+    os.makedirs(cluster_proof_anno_dir, exist_ok=True)
 
     # Define skipped folder if it is required
     if plot_skip:
@@ -494,7 +498,11 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     final_unknown_con_file = os.path.join(classification_dir, "temp_TETrimmer_unknown_consensus.fasta")
     final_classified_con_file = os.path.join(classification_dir, "temp_TETrimmer_classified_consensus.fasta")
 
-    return bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, low_copy_dir, perfect_proof, \
-    good_proof, intermediate_proof, need_check_proof, progress_file, pfam_dir, final_con_file, final_unknown_con_file, final_classified_con_file, \
-    error_files, input_file, genome_file, skipped_dir
+    # Define consensus file without low copy
+    final_con_file_no_low_copy = os.path.join(classification_dir, "TETrimmer_consensus_no_low_copy.fasta")
+
+    return bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, \
+        low_copy_dir, perfect_proof, good_proof, intermediate_proof, need_check_proof, progress_file, pfam_dir, \
+        final_con_file, final_con_file_no_low_copy, final_unknown_con_file, final_classified_con_file, \
+        error_files, input_file, genome_file, skipped_dir, cluster_proof_anno_dir
 

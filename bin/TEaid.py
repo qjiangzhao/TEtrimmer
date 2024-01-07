@@ -141,7 +141,6 @@ class TEAid:
                 with open(self.error_file, 'a') as f:
                     f.write(f"\nTE Aid error for {os.path.basename(self.input_file)} with error code {e.returncode}")
                     f.write('\n' + e.stderr + '\n')
-            pass
 
         if low_copy:
 

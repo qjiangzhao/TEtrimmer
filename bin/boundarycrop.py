@@ -334,7 +334,9 @@ def crop_end_and_remove_gap(input_file, output_dir, crop_end_threshold=0.8, wind
 
 
 def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj, hmm, classify_all, classify_unknown,
-                           error_files, plot_query, cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000,
+                           error_files, plot_query, classification_dir, final_con_file, final_con_file_no_low_copy,
+                           proof_annotation_dir, hmm_dir,
+                           cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000,
                            max_extension=7000, gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=0.8, crop_end_win=40,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
                            mini_orf=200, define_boundary_win=150, fast_mode=False, engine="blast",
@@ -542,7 +544,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             prcyan(f"\nStart and end pattern like 'TGT' 'ACA' definition failed for {seq_name} with error \n{e}")
             prgre("\nThis won't largely affect the final result, you can choose to ignore it. "
                   "For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder.\n")
-            pass
 
     #####################################################################################################
     # Code block: Generate MSA for CIAlign plot
@@ -657,8 +658,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                         output_file=cropped_boundary_plot_concatenate
                     )
                     # Reverse complement input sequence
+                    seq_file_reverse_c_path = os.path.join(output_dir, f"{os.path.basename(seq_name)}_rc.fa")
                     seq_file_reverse_c = reverse_complement_seq_file(input_file=seq_file,
-                                                                     output_file=f"{seq_file}_rc.fa")
+                                                                     output_file=seq_file_reverse_c_path)
                     reverse_complement = True
 
                     # Define the new start and end points for cropped_boundary_manual_MSA_concatenate
@@ -737,7 +739,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             prcyan(f"\nMSA plot failed {seq_name} with error:\n{e}")
             prgre("\nMSA plots are only used to evaluate TETrimmer and won't affect the final TE consensus library."
                   " For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
-            pass
 
     #####################################################################################################
     # Code block: Generate TE-Aid plot
@@ -798,7 +799,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             f.write(f"\nDotplot failed for {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
         # dotpolt isn't mandatory to show, skip this part when any error happened
-        pass
 
     try:
         # Because dotmatcher can't change output size, scale it up to make it more clear in the merged pdf
@@ -811,7 +811,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             f.write(f"\nps file to pdf conversion failed for {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
         # This is not mandatory, skip this step when error happens
-        pass
+
     #####################################################################################################
     # Code block: Merge plot files
     #####################################################################################################
@@ -837,15 +837,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         # Create a folder at the same directory with output_dir to store proof annotation files
         parent_output_dir = os.path.dirname(output_dir)
 
-        # Define final consensus file
-        final_con_file = os.path.join(parent_output_dir, "TETrimmer_consensus.fasta")
-
-        # Define proof_annotation folder path
-        proof_annotation_dir = os.path.join(parent_output_dir, "TETrimmer_for_proof_annotation")
-
-        # Construct the path for the Classification folder
-        classification_dir = os.path.join(parent_output_dir, "Classification")
-
         # Define different levels of proof annotation folder
         perfect_proof = os.path.join(proof_annotation_dir, "Perfect_annotation")
         good_proof = os.path.join(proof_annotation_dir, "Good_annotation")
@@ -854,7 +845,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
         # Create the directory if it doesn't exist
         os.makedirs(proof_annotation_dir, exist_ok=True)
-        os.makedirs(classification_dir, exist_ok=True)
         os.makedirs(perfect_proof, exist_ok=True)
         os.makedirs(good_proof, exist_ok=True)
         os.makedirs(intermediate_proof, exist_ok=True)
@@ -963,7 +953,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         prcyan(f"\nNote: RepeatClassifier doesn't work for {seq_name} with error {e}")
         prgre("\nThis won't affect final TE consensus sequences but only the classification. You can choose to ignore this. "
               "For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
-        pass
 
     # Update final con_TE_type. get_TE_type_for_file will evaluate if TE_type is Unknown. If so, use the
     # original TE classification name
@@ -1040,9 +1029,6 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 files_moved_successfully = False
 
         if hmm:  # Generate HMM files
-            # Define HMM file folder
-            hmm_dir = os.path.join(parent_output_dir, "HMM_files")
-            os.makedirs(hmm_dir, exist_ok=True)
             consi_obj.set_hmm_file()
             hmm_output_file = os.path.join(hmm_dir, consi_obj.hmm_file)
             generate_hmm_from_msa(cropped_boundary_MSA, hmm_output_file, error_files)
@@ -1057,6 +1043,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
         # Write all consensus sequence to final_cons_file.
         with open(final_con_file, "a") as f:
+            f.write(">" + uniq_seq_name + "#" + updated_TE_type + "\n" + sequence + "\n")
+
+        # Write all consensus sequence to final_cons_file_no_low_copy.
+        with open(final_con_file_no_low_copy, "a") as f:
             f.write(">" + uniq_seq_name + "#" + updated_TE_type + "\n" + sequence + "\n")
 
         return files_moved_successfully

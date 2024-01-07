@@ -13,7 +13,7 @@ from Bio import SeqIO
 import analyze
 from functions import separate_sequences, remove_files_with_start_pattern, \
     change_permissions_recursive, repeatmasker, check_database, cd_hit_est, repeatmasker_output_classify, \
-    rename_cons_file, rename_files_based_on_dict, prcyan, prgre
+    rename_cons_file, rename_files_based_on_dict, prcyan, prgre, parse_cd_hit_est_result, copy_files_with_start_pattern
 
 #####################################################################################################
 # Code block: Import JSON species_config file and define the default parameters
@@ -63,7 +63,7 @@ with open(species_config_path, "r") as config_file:
                 Two mandatory arguments are required, including 
                 <genome file>, the genome FASTA file, and 
                 <TE consensus file> from TE annotation software like RepeatModeler, EDTA, or REPET. 
-                TETrimmer can do BLAST searches, sequence extension, multiple sequence alignment, and defining TE boundaries.
+                TETrimmer can do BLAST, sequence extension, multiple sequence alignment, and defining TE boundaries.
 
 """)
 @click.option('--input_file', '-i', required=True, type=str,
@@ -223,6 +223,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # ps.pdf pdf file converted from ps format
     # su.pdf scale up pdf file
     # rc.fa reverse complement fasta file
+    # cd.fa cd-hit-est output file
 
     #####################################################################################################
     # Code block: Change permissions of Aliview and TE_Aid
@@ -310,9 +311,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     try:
         bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, \
             low_copy_dir, perfect_proof, good_proof, intermediate_proof, need_check_proof, progress_file, pfam_dir, \
-            final_con_file, final_unknown_con_file, final_classified_con_file, error_files, input_file, genome_file, \
-            skipped_dir = analyze.create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file,
-                                             plot_skip)
+            final_con_file, final_con_file_no_low_copy, final_unknown_con_file, final_classified_con_file, \
+            error_files, input_file, genome_file, skipped_dir, cluster_proof_anno_dir\
+            = analyze.create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file, plot_skip)
     except Exception:
         return
 
@@ -324,13 +325,13 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     if not continue_analysis:
         # Do CD-HIT-EST merge if merge is true and continue_analysis is false
         if dedup:
-            click.echo("\nTETrimmer is merging input sequences, this might take some time.\n")
+            click.echo("\nTETrimmer is removing input sequences duplications, this might take some time.\n")
             merge_output = os.path.join(output_dir, f"{input_file}_cd_hit.fa")
 
             # Remove duplicates
             try:
-                cd_hit_est(input_file, merge_output, identity_thr=0.95, aL=0.95, aS=0.95,
-                           s=0.95, thread=num_threads)
+                cd_hit_est(input_file, merge_output, identity_thr=0.9, aL=0.9, aS=0.9,
+                           s=0.9, thread=num_threads)
                 # Convert input_file to merged input_file
                 input_file = merge_output
                 click.echo("Merge finished.\n")
@@ -339,9 +340,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                        "input sequences directly. This may cause a significantly longer running time but "
                        "will not affect the final result.")
                 prgre("You can also run CD-HIT-EST separately to remove redundant sequences:\n"
-                      "cd-hit-est -i <input_file> -o <output_file> -T <thread number> -c 0.95 "
-                      "-aL 0.95 -aS 0.95 -s 0.95 -l 50")
-                pass
+                      "cd-hit-est -i <input_file> -o <output_file> -T <thread number> -c 0.9 "
+                      "-aL 0.9 -aS 0.9 -s 0.9 -l 30")
 
         # Separate FASTA into single files; if FASTA headers contain "/", " " or ":" convert to "_"
         # Call this function to separate to single FASTA files and create objects from input file
@@ -392,10 +392,10 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         (seq, genome_file, MSA_dir, min_blast_len, min_seq_num, max_msa_lines,
          top_msa_lines, max_cluster_num, cons_thr, ext_thr, ext_step, classification_dir,
          max_ext, gap_thr, gap_nul_thr, crop_end_div_thr, crop_end_div_win, crop_end_gap_thr, crop_end_gap_win,
-         start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, single_fasta_n, hmm,
+         start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, single_fasta_n, hmm, hmm_dir,
          ext_check_win, debug, progress_file, classify_unknown, classify_all,
-         final_con_file, final_unknown_con_file, final_classified_con_file, low_copy_dir, fast_mode, error_files,
-         plot_skip, skipped_dir, plot_query, engine
+         final_con_file, final_con_file_no_low_copy, final_unknown_con_file, final_classified_con_file, low_copy_dir,
+         fast_mode, error_files, plot_skip, skipped_dir, plot_query, engine, proof_annotation_dir
          ) for seq in seq_list]
 
     # Using a ProcessPoolExecutor to run the function in parallel
@@ -484,7 +484,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         prgre("\nThis does not affect the final TE consensus sequences "
               "You can choose to ignore this error. For traceback content, please refer to 'error_file.txt' "
               "in the 'Multiple_sequence_alignment' directory.\n")
-        pass
 
     try:
         # Delete the empty folder inside Classification_dir. For some reason, thr RepeatClassifier folder can't be
@@ -502,7 +501,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         pass
 
     #####################################################################################################
-    # Code block: Merge consensus_file to remove duplications
+    # Code block: Merge consensus_file to remove output duplications
     #####################################################################################################
 
     final_merge_success = True
@@ -518,7 +517,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
         # Round 1 merge only requires that the alignment coverage for the shorter sequence is greater than 0.9
         # and the similarity is greater than 0.9
-        cd_hit_est(final_con_file, cd_hit_merge_output_round1, identity_thr=0.9, aS=0.9, s=0, thread=num_threads)
+        cd_hit_est(final_con_file, cd_hit_merge_output_round1, identity_thr=0.9, aL=0, aS=0.9, s=0, thread=num_threads)
 
         # Read progress file
         progress_df = pd.read_csv(progress_file)
@@ -532,24 +531,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             length = row["cons_length"] if pd.notna(row["cons_length"]) else 0  # Default value for NaN
             sequence_info[sequence_name] = {"evaluation": evaluation, "type": te_type, "length": length}
 
-        # Parse CD-HIT-EST result
-        clusters = {}  # The key is cluster name, the values are sequence names in this cluster (list)
-        current_cluster = []  # This corresponds to the list above
-        with open(cd_hit_merge_output_round1_clstr, "r") as f:
-            for line in f:
-                # To be honest, I hate CD-HIT-EST output format a lot.
-                # CD-HIT-EST introduces empty spaces in FASTA headers, which can cause errors in downstream analysis.
-                # The following code fixes the issue.
-                if line.startswith(">Cluster"):
-                    if current_cluster:  # If the current_cluster is not empty
-                        clusters[cluster_name] = current_cluster
-                    cluster_name = line.strip().replace(" ", "")  # Remove the empty space in the cluster name
-                    current_cluster = []
-                else:
-                    seq_info = line.split(">")[1].split("...")[0].split("#")[0]
-                    current_cluster.append(seq_info)
-            if current_cluster:
-                clusters[cluster_name] = current_cluster
+        # Parse cd-hit-est result, clusters is a dictionary, the key is cluster number, value is a list
+        # contain all sequence names in this cluster
+        clusters, detailed_clusters = parse_cd_hit_est_result(cd_hit_merge_output_round1_clstr)
 
         # Check if sequences scored "Perfect" and "Good" are included in the cluster and choose the longest sequence
         best_sequences = []  # Define list to store "Perfect" or "Good" sequence names
@@ -635,6 +619,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         # Find the difference between the two sets to identify sequence names not included in the merged file
         missing_ids = original_ids - merged_ids
 
+        """
         # Based on missing_ids delete files in proof annotation folder and HMM folder
         for missing_id in missing_ids:
 
@@ -655,8 +640,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             else:
                 remove_files_with_start_pattern(low_copy_dir, missing_id, if_seq_name=False)
 
-        if hmm:
-            remove_files_with_start_pattern(hmm_dir, missing_ids)
+            if hmm:
+                remove_files_with_start_pattern(hmm_dir, missing_ids)
+        """
         click.echo(f"\nFinished to remove sequence duplications.\n")
 
     except Exception as e:
@@ -668,8 +654,81 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             f.write(tb_content + '\n')
         prcyan("\nThe final CD-HIT-EST merge step cannot be performed. Final TE consensus library redundancy can "
                "be higher but the sensitivity is not affected. You can remove duplicated sequence by yourself.")
-        prgre("\nYou can choose to ignore this error. For traceback output, please refer to 'error_file.txt' "
+        prgre("\nYou can choose to ignore CD-HIT-EST error. For traceback output, please refer to 'error_file.txt' "
               "in the 'Multiple_sequence_alignment' directory.\n")
+
+    #####################################################################################################
+    # Code block: Cluster proof annotation files
+    #####################################################################################################
+
+    try:
+        click.echo("\nTETrimmer is clustering proof annotation files.")
+
+        # Clean cluster_proof_anno_dir when --continue_analysis is on
+        if continue_analysis:
+            remove_files_with_start_pattern(cluster_proof_anno_dir)
+
+        # Do CD-HIT-EST for final consensus file without low copy elements
+        final_con_file_no_low_copy_cd_out = f"{final_con_file_no_low_copy}_cd.fa"
+        final_con_file_no_low_copy_clstr = f"{final_con_file_no_low_copy_cd_out}.clstr"
+
+        # Round 1 merge only requires that the alignment coverage for the shorter sequence is greater than 0.9
+        # and the similarity is greater than 0.9
+        cd_hit_est(final_con_file_no_low_copy, final_con_file_no_low_copy_cd_out,
+                   identity_thr=0.9, aL=0, aS=0.9, s=0, thread=num_threads)
+        clusters_proof_anno, detailed_clusters_proof_anno = parse_cd_hit_est_result(
+            final_con_file_no_low_copy_clstr)
+        click.echo(detailed_clusters_proof_anno.items())
+
+        for cluster_name_proof_anno, seq_info_proof_anno in detailed_clusters_proof_anno.items():
+            # Create cluster folder
+            cluster_folder = os.path.join(cluster_proof_anno_dir, cluster_name_proof_anno)
+            os.makedirs(cluster_folder, exist_ok=True)
+
+            for i in range(len(seq_info_proof_anno)):
+                try:
+                    seq_length_proof_anno = seq_info_proof_anno[i][0]
+                except Exception:
+                    seq_length_proof_anno = None
+
+                seq_name_proof_anno = seq_info_proof_anno[i][1]
+
+                try:
+                    seq_per_proof_anno = seq_info_proof_anno[i][2]
+                except Exception:
+                    seq_per_proof_anno = None
+
+                # Copy sequence files into cluster folder
+                # if not, set evaluation_level to "Need_check". The "get" method will return the default value
+                # when the key does not exist.
+                evaluation_level = sequence_info.get(seq_name_proof_anno, {"evaluation": "Need_check"})["evaluation"]
+
+                # Add '#' to the end of seq_name_proof_anno, this can avoid to delete 140 when the id is 14
+                seq_name_proof_anno = f"{seq_name_proof_anno}#"
+                if evaluation_level == "Perfect":
+                    copy_files_with_start_pattern(perfect_proof, seq_name_proof_anno, cluster_folder,
+                                                  seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
+                elif evaluation_level == "Good":
+                    copy_files_with_start_pattern(good_proof, seq_name_proof_anno, cluster_folder,
+                                                  seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
+                elif evaluation_level == "Reco_check":
+                    copy_files_with_start_pattern(intermediate_proof, seq_name_proof_anno, cluster_folder,
+                                                  seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
+                elif evaluation_level == "Need_check":
+                    copy_files_with_start_pattern(need_check_proof, seq_name_proof_anno, cluster_folder,
+                                                  seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
+
+    except Exception as e:
+        with open(error_files, "a") as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f"\nFinal clustering of proof annotation files failed.\n")
+            f.write(tb_content + '\n\n')
+        prcyan(f"\nFinal clustering of proof annotation files failed with error {e}")
+        prcyan('\n' + tb_content + '')
+        prgre("\nThis does not affect the final TE consensus sequences. But this can heavily complicate the "
+              "TE proof annotation. If you don't plan to do proof annotation, you can choose to ignore "
+              "this error.\n")
 
     #####################################################################################################
     # Code block: Whole-genome TE annotation

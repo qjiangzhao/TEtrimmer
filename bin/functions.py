@@ -640,7 +640,6 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
     except FileNotFoundError:
         prcyan("'hmmbuild' command not found. Please ensure 'hmmbuild' is correctly installed.")
         prgre("This hmm error won't affect the final TE consensus library.")
-        pass
 
     except subprocess.CalledProcessError as e:
         with open(error_file, 'a') as f:
@@ -649,7 +648,6 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
         prcyan(f"\nhmm file generation failed for {os.path.basename(output_hmm_file)} with error code {e.returncode}")
         prgre("\nThis hmm error won't affect the final TE consensus library, you can ignore it."
               "\nFor traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
-        pass
 
 
 def reverse_complement_seq_file(input_file, output_file):
@@ -1281,7 +1279,7 @@ def change_permissions_recursive(input_dir, mode):
 def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9, thread=10):
     """
     -l	length of throw_away_sequences, default 10
-    -d	length of description in .clstr file, default 20 if set to 0, it takes the fasta defline and
+    -d	length of description in .clstr file, default 20 if set to 0, it takes the fasta header and
     stops at first space
     -s	length difference cutoff, default 0.0 if set to 0.9, the shorter sequences need to be at least 90% length
     of the representative of the cluster
@@ -1300,7 +1298,7 @@ def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9,
         "-aS", str(aS),
         "-M", "0",
         "-T", str(thread),
-        "-l", "50",
+        "-l", "30",
         "-d", "0",
         "-s", str(s)
     ]
@@ -1316,6 +1314,57 @@ def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9,
         prcyan(f"\ncd-hit-est failed for {os.path.basename(input_file)} with error code {e.returncode}")
         prcyan(e.stderr)
         raise Exception
+
+
+def parse_cd_hit_est_result(input_file):
+    clusters = {}  # The key is cluster name, the values are sequence names in this cluster (list)
+    detailed_clusters = {}  # Key: cluster name, Value: list of tuples (sequence length, sequence name, percentage)
+    current_cluster = []
+    current_detailed_cluster = []
+    with open(input_file, "r") as f:
+        for line in f:
+            # cd-hit-est introduces empty spaces in cluster headers like ">Cluster 53", which can cause
+            # errors in downstream analysis. The following code fixes the issue.
+            if line.startswith(">Cluster"):
+                if current_cluster:  # If the current_cluster is not empty
+                    # clusters is a dictionary, the key is cluster_name
+                    clusters[cluster_name] = current_cluster
+                    detailed_clusters[cluster_name] = current_detailed_cluster
+                # Remove the empty space and ">" in the cluster name
+                cluster_name = line.strip().replace(" ", "").replace(">", "")
+                current_cluster = []
+                current_detailed_cluster = []
+            else:
+                """
+                This is an example of part of cd-hit-est output 
+                >Cluster 198
+                0	5965nt, >scaffold_23_3352139..3358595#scaffold_23:3352139..3358595... at +/99.55%
+                1	5966nt, >scaffold_23_1868463..1880051_01#scaffold_23:1868463..1880051... at +/99.53%
+                2	5972nt, >scaffold_25_1053723..1064724#scaffold_25:1053723..1064724... at +/99.45%
+                3	5962nt, >scaffold_29_441223..447627#scaffold_29:441223..447627... at +/99.53%
+                4	5977nt, >scaffold_32_604726..610694#scaffold_32:604726..610694... at +/99.20%
+                5	5969nt, >scaffold_8_5853353..5859876#scaffold_8:5853353..5859876... at +/99.51%
+                6	5969nt, >scaffold_8_5853353..5859876_01#scaffold_8:5853353..5859876... at +/99.53%
+                7	5970nt, >TE_00000565_INT#TE_00000565_INT... at +/99.51%
+                8	5982nt, >TE_00000545_LTR#TE_00000545_LTR... *
+                """
+                seq_name = line.split(">")[1].split("...")[0].split("#")[0].strip()
+                try:
+                    seq_length = line.split('nt,')[0].split('\t')[1].strip()
+                except Exception:
+                    seq_length = None
+                if '... at' in line:
+                    seq_per = line.split('...')[1].split('/')[1].strip()
+                elif '... *' in line:
+                    seq_per = "standard"
+                else:
+                    seq_per = None
+                current_cluster.append(seq_name)
+                current_detailed_cluster.append((seq_length, seq_name, seq_per))
+        if current_cluster:
+            clusters[cluster_name] = current_cluster
+            detailed_clusters[cluster_name] = current_detailed_cluster
+    return clusters, detailed_clusters
 
 
 def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False):
@@ -1495,22 +1544,53 @@ def rename_files_based_on_dict(directory, reclassified_dict, seq_name=False):
                         shutil.move(old_file_path, new_file_path)
 
 
-def remove_files_with_start_pattern(input_dir, start_pattern, if_seq_name=True):
+def remove_files_with_start_pattern(input_dir, start_pattern=None, if_seq_name=True):
     # Remove files and folder start with give pattern
     # Add .fasta to the end of start_pattern
     if if_seq_name:
         start_pattern = f"{start_pattern}.fasta"
     for filename in os.listdir(input_dir):
-        if filename.startswith(start_pattern):
+        # When the start_pattern is given, search the file or folder starts with start_pattern
+        # Otherwise, delete all the files and folders in the input_dir
+        if start_pattern is not None and filename.startswith(start_pattern):
             file_path = os.path.join(input_dir, filename)
-            if os.path.isfile(file_path):  # This check ensures you're only removing files, not directories
-                os.remove(file_path)
-            elif os.path.isdir(file_path):
-                try:
-                    shutil.rmtree(file_path)
-                except Exception:
-                    # File deletion doesn't affect the final consensus sequence. Skip when error happens
-                    pass
+        else:
+            file_path = os.path.join(input_dir, filename)
+
+        if os.path.isfile(file_path):  # This check ensures you're only removing files, not directories
+            os.remove(file_path)
+        elif os.path.isdir(file_path):
+            try:
+                shutil.rmtree(file_path)
+            except Exception:
+                # File deletion doesn't affect the final consensus sequence. Skip when error happens
+                pass
+
+
+def copy_files_with_start_pattern(input_dir, start_pattern, output_dir, seq_len=None, seq_pre=None, evaluation=None):
+    # List all files in the input directory
+    for file in os.listdir(input_dir):
+        # Check if the file name starts with the given pattern
+        if file.startswith(start_pattern):
+            # Construct full file path
+            full_file_path = os.path.join(input_dir, file)
+
+            # Split the file name into the name and extension
+            name, extension = os.path.splitext(file)
+
+            # Define destination file
+            if extension == ".pdf":
+                if evaluation is not None:
+                    name = f"{name}_{evaluation}"
+                if seq_len is not None:
+                    name = f"{name}_{seq_len}_bp"
+                if seq_pre is not None:
+                    name = f"{name}_{seq_pre}"
+                output_file = os.path.join(output_dir, f"{name}.pdf")
+            else:
+                output_file = os.path.join(output_dir, file)
+            # Copy file to the output directory
+            shutil.copy(full_file_path, output_file)
 
 
 # Define a function to handle sequence skipping and removal of files

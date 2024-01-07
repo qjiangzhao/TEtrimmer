@@ -278,7 +278,6 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
             fasta_out_flank_mafft_file = muscle_align(input_file, output_dir, ite_times=muscle_ite_times)
         except Exception as e:
             fasta_out_flank_mafft_file = False
-            pass
 
         # When muscle goes wrong, use mafft
         if not fasta_out_flank_mafft_file:

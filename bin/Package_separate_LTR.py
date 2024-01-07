@@ -28,7 +28,7 @@ def process_sequences(input_file, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     sequences = list(SeqIO.parse(input_file, "fasta"))
     processed_sequences = []
-    print("LTR separating is running ......")
+    print("LTR separation is running ......")
 
     for record in sequences:
         # Process each sequence to detect LTR
@@ -60,7 +60,7 @@ def process_sequences(input_file, output_dir):
             INT_record = SeqRecord(Seq(INT_seq), id=new_id_INT, description="")
 
             processed_sequences.extend([LTR_record, INT_record])
-            print(f"{record.id} contains 'LTR' and was written into separate sequence file.")
+            print(f"{record.id} contains 'LTR' and was separated.")
             sep_seq_n += 1
         else:
             # Keep sequence unchanged if LTR was not identified
