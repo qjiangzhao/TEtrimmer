@@ -16,7 +16,7 @@ from MSAcluster import clean_and_cluster_MSA
 from orfdomain import prepare_pfam_database, PlotPfam
 
 
-# Define a function to check progress file, which will be used for continue analysis
+# Define a function to check the progress file, which will be used to continue analysis if program exited prematurely
 def check_progress_file(progress_file_path):
     # Read the progress file into a pandas DataFrame
     df = pd.read_csv(progress_file_path)
@@ -31,7 +31,7 @@ def check_progress_file(progress_file_path):
     if classifid_n != 0 and unknown_n != 0:
         classified_pro = classifid_n / (unknown_n + classifid_n)
     else:
-        classified_pro = 0  # Set a default value (or any other value you deem appropriate)
+        classified_pro = 0  # Set a default value (or any other value deemed appropriate)
 
     # Get unique 'input_name' values
     local_completed_sequences = df['input_name'].unique().tolist()
@@ -84,15 +84,15 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                      final_classified_con_file, low_copy_dir, fast_mode, error_files, plot_skip, skipped_dir,
                      plot_query, engine):
     #####################################################################################################
-    # Code block: Set different elongation number for different elements and do blast
+    # Code block: Set different elongation number for different elements and do BLAST search
     #####################################################################################################
     try:
         # Get query fasta file path
         seq_name = seq_obj.get_seq_name()
         seq_type = seq_obj.get_old_TE_type()
-        seq_file = seq_obj.get_input_fasta()  # Return full file path
+        seq_file = seq_obj.get_input_fasta()  # Return complete file path
 
-        # Due to DNA element will be much shorter than LTR and LINE elements, set different parameters
+        # Since DNA element are significantly shorter than LTR and LINE elements, adjust default parameters
         if "DNA" in seq_type:
             ex_step = 500
             max_extension = 7000
@@ -100,7 +100,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             crop_end_gap_win = 100
             check_extension_win = 50
 
-        # The average length of SINE element is around 500 bp, give different default parameters
+        # The average length of SINE elements is around 500 bp, adjust default parameters
         if "SINE" in seq_type:
             ex_step = 200
             max_extension = 1400
@@ -122,7 +122,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             crop_end_gap_win = 40
             check_extension_win = 50
 
-        # run blast for each single fasta file and return a bed file absolute path
+        # run BLAST search for each FASTA file and return a BED file absolute path
         bed_out_file_dup, blast_hits_count, blast_out_file = blast(seq_file, genome_file, MSA_dir,
                                                                    min_length=min_blast_len, task="blastn",
                                                                    seq_obj=seq_obj, search_type=engine)
@@ -138,7 +138,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         return
 
     #####################################################################################################
-    # Code block: Do ORF and PFAM prediction for input sequence
+    # Code block: Perform ORF and PFAM prediction for input sequences
     #####################################################################################################
 
     try:
@@ -146,9 +146,9 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                                       after_tetrimmer=False)
         input_orf_domain_plot = None
 
-        # "run_getorf()" function will return True when any ORF are detected. Otherwise, it will be False
+        # "run_getorf()" function will return 'True' if any ORF was detected. Otherwise, it will return 'False'.
         if input_orf_pfam_obj.run_getorf():
-            # "run_pfam_scan()" will return True when pfam domains are found, otherwise it will return False
+            # "run_pfam_scan()" will return 'True' if any PFAM domains were found. Otherwise, it will return 'False'.
             pfam_scan_result = input_orf_pfam_obj.run_pfam_scan()
             input_orf_domain_plot = input_orf_pfam_obj.orf_domain_plot()
 
@@ -157,58 +157,58 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             tb_content = traceback.format_exc()
             f.write(f"Error when doing ORF and PFAM prediction for input sequence {seq_name}\n")
             f.write(tb_content + '\n\n')
-        #prcyan(f"Error while doing input sequence ORF and PFAM prediction: {seq_name}. Main Error: {str(e)}. \n"
+        #prcyan(f"Error while performing input sequence ORF and PFAM predictions: {seq_name}. Main Error: {str(e)}. \n"
                #f"Trace back content: {tb_content}\n")
         pass
 
     #####################################################################################################
-    # Code block: Check blast hits number
+    # Code block: Check BLAST hit number
     #####################################################################################################
 
     try:
-        # Check if blast hit number is equal 0, then skip this sequence
+        # Check if BLAST hit number is exactly 0. If so, skip this sequence
         if blast_hits_count == 0:
             click.echo(f"\n{seq_name} is skipped due to blast hit number is 0\n")
             handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir)
             return
 
-        # Check if blast hit number is smaller than "min_seq_num", not include "min_seq_num"
+        # Check if BLAST hit number is smaller than "min_seq_num"; do not include "min_seq_num"
         elif blast_hits_count != 0 and blast_hits_count < min_seq_num:
             check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
                 seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=plot_skip)
 
             if check_low_copy is True:
-                # Update terminal repeat and blast full length number, remove low copy intermediate files
+                # Update terminal repeat and BLAST full length number, remove low-copy intermediate files
                 handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir,
                                          classification_dir, found_match=found_match,
                                          blast_full_length_n=blast_full_length_n, te_aid_plot=TE_aid_plot,
                                          orf_plot=input_orf_domain_plot, low_copy_dir=low_copy_dir)
 
-                # Integrate low copy element sequence into consensus file
+                # Integrate low-copy element sequences into consensus file
                 update_low_copy_cons_file(seq_obj, final_con_file, final_unknown_con_file,
                                           final_classified_con_file, low_copy_dir, TE_aid_plot)
             else:
-                click.echo(f"\n{seq_name} is skipped due to blast hit number is smaller than {min_seq_num} "
-                           f"and check_low_copy is {check_low_copy}\n")
+                click.echo(f"\n{seq_name} was skipped because the BLAST hit number is smaller than {min_seq_num} "
+                           f"and check_low_copy is {check_low_copy}.\n")
 
                 # handle_sequence_skipped will update skipped status
                 handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
                                         plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir,
                                         orf_plot=input_orf_domain_plot)
 
-            return  # when blast hit number is smaller than 10, code will execute next fasta file
+            return  # if BLAST hit number is smaller than 10, code will execute next FASTA file
 
     except Exception as e:
-        # Add sequence to skip when check low copy module gets errors
+        # Add sequence to skip if check low-copy module returns errors
         handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir)
         with open(error_files, "a") as f:
-            # Get the traceback content as a string
+            # Return the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"\nError while checking low copy for sequence: {seq_name}\n")
+            f.write(f"\nError while checking low-copy status for sequence: {seq_name}\n")
             f.write(tb_content + '\n\n')
-        prcyan(f"\nError while checking low copy for sequence: {seq_name}. Error: {str(e)}\n")
-        prgre("\nLow copy TE check module is not very important, you can ignore this error message, which won't affect "
-              "your final result too much.\n")
+        prcyan(f"\nError while checking low-copy status for sequence: {seq_name}. Error: {str(e)}\n")
+        prgre("\nThe low-copy TE check module is an optional additional analysis. You may ignore this error, as it "
+              "will not affect the final result significantly.\n")
         return
 
     #####################################################################################################
@@ -216,26 +216,26 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
     #####################################################################################################
 
     try:
-        # remove duplicated lines
+        # Remove duplicated lines
         bed_out_file = check_bed_uniqueness(MSA_dir, bed_out_file_dup)
 
-        # test bed_out_file line number and extract top longest lines
-        # for process_lines() function. threshold represent the maximum number to keep for MSA
-        # top_longest_lines_count means the number of sequences with top length
-        # for example if threshold = 100, top_longest_lines_count = 50, then 50 sequences will be
-        # randomly chose from the rest of sequences
-        # top_mas_lines has to be equal or smaller than max_mas_lines
+        # Test bed_out_file line number and extract the longest lines for process_lines() function.
+        # The threshold represents the maximum number of lines to keep for MSA.
+        # top_longest_lines_count means the number of sequences with top length.
+        # For example, if threshold = 100, top_longest_lines_count = 50, then 50 sequences will be
+        # randomly selected from the remaining sequences.
+        # top_mas_lines has to be equal to or smaller than max_mas_lines.
         bed_out_filter_file = bedfilter.process_lines(bed_out_file, MSA_dir, threshold=max_msa_lines,
                                                       top_longest_lines_count=top_mas_lines)
 
-        # extract fast from bed_out_filter_file
-        # return fasta_out_flank_file absolute path
-        # because have to group MSA the first round extend for left and right side are both 0
+        # Extract FASTA from bed_out_filter_file
+        # Return fasta_out_flank_file absolute path of FASTA file
+        # It is imperative to group the sequences in the first round of MSA; extend for both ends is 0.
         fasta_out_flank_file, bed_out_flank_file = extract_fasta(
             bed_out_filter_file, genome_file, MSA_dir, left_ex=0, right_ex=0, nameonly=True)
 
-        # Return False when cluster number is 0. Return True when divergent column number is smaller than 100
-        # Otherwise it will return the subset bed and alignment file
+        # Return 'False' if cluster number is 0. Return 'True' if divergent column number is smaller than 100.
+        # Otherwise, return the subset BED and alignment files.
         cluster_MSA_result = clean_and_cluster_MSA(fasta_out_flank_file, bed_out_filter_file, MSA_dir,
                                                    clean_column_threshold=0.02,
                                                    min_length_num=min_seq_num, cluster_num=max_cluster_num,
@@ -244,24 +244,24 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"Error when group MSA: {seq_name}\n")
+            f.write(f"Error while grouping MSA: {seq_name}\n")
             f.write(tb_content + '\n\n')
-        prcyan(f"\nError when group MSA for sequence: {seq_name}. Error: {str(e)}\n")
+        prcyan(f"\nError while grouping MSA for sequence: {seq_name}. Error: {str(e)}\n")
         prcyan('\n' + tb_content + '\n')
         return
     
     #####################################################################################################
-    # Code block: perform find_boundary_and_crop on clustered MSA when necessary
+    # Code block: Perform find_boundary_and_crop on clustered MSA if necessary
     #####################################################################################################
 
     try:
-        # cluster false means no sufficient cluster (all cluster size < 10), TE Trimmer will skip this sequence.
+        # cluster_false means too few sequences were found in clusters from MSA (all_cluster_size < 10); TE Trimmer will skip this sequence.
         if cluster_MSA_result is False:
             check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
                 seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=plot_skip)
 
             if check_low_copy is True:
-                # Update terminal repeat and blast full length number, remove low copy intermediate files
+                # Update terminal repeat and BLAST full-length number, remove low-copy intermediate files
                 handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir,
                                          classification_dir, found_match=found_match,
                                          blast_full_length_n=blast_full_length_n, te_aid_plot=TE_aid_plot,
@@ -271,8 +271,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
             else:
                 click.echo(
-                    f"\n{seq_name} is skipped due to sequence number in each cluster is smaller "
-                    f"than {min_seq_num} and check_low_copy is {check_low_copy}\n")
+                    f"\n{seq_name} was skipped because the sequence number in each cluster was smaller "
+                    f"than {min_seq_num} and check_low_copy is {check_low_copy}.\n")
                 handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir,
                                         plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir,
                                         orf_plot=input_orf_domain_plot)
@@ -280,7 +280,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         else:
             cluster_bed_files_list = cluster_MSA_result
 
-            # cluster_pattern_alignment_list have the same index with cluster_bed_files_list
+            # cluster_pattern_alignment_list has the same index as cluster_bed_files_list
             all_inner_skipped = True
             for i in range(len(cluster_bed_files_list)):
                 try:
@@ -302,13 +302,13 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                 elif find_boundary_result:
                     all_inner_skipped = False
 
-            # Check the flag after the loop. If all inner clusters were skipped, write the progress file
+            # Check the flag after the loop. If all inner clusters were skipped, write the progress file.
             if all_inner_skipped:
                 check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
                     seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=plot_skip)
 
                 if check_low_copy is True:
-                    # Update terminal repeat and blast full length number, remove low copy intermediate files
+                    # Update terminal repeat and BLAST full-length number, remove low-copy intermediate files.
                     handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir,
                                              classification_dir, found_match=found_match,
                                              blast_full_length_n=blast_full_length_n, te_aid_plot=TE_aid_plot,
@@ -320,12 +320,12 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                                             plot_skip=plot_skip, te_aid_plot=TE_aid_plot, skip_proof_dir=skipped_dir,
                                             orf_plot=input_orf_domain_plot)
                     click.echo(
-                        f"\n{seq_name} is skipped due to sequence is too short and check_low_copy is {check_low_copy}\n")
+                        f"\n{seq_name} was skipped because sequence is too short and check_low_copy is {check_low_copy}.\n")
                 return
 
     except Exception as e:
         with open(error_files, "a") as f:
-            # Get the traceback content as a string
+            # Return the traceback content as a string
             tb_content = traceback.format_exc()
             f.write(f"\nError during boundary finding and cropping for sequence: {seq_name}\n")
             f.write(tb_content + '\n\n')
@@ -333,10 +333,10 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         prcyan(tb_content + '\n')
         return
 
-    # After all processing is done, change status to process and write the name of the file to the progress file
+    # After all processing is done, change status to 'process' and write the file name to the progress file
     seq_obj.update_status("processed", progress_file)
 
-    # If all this sequence is finished remove all files contain this name
+    # If analysis of this sequence has been completed, remove all files contain sequence name
     if not debug:
         remove_files_with_start_pattern(MSA_dir, seq_name)
 
@@ -346,7 +346,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
     # Calculate the total count
     processed_count = len(completed_sequence)
 
-    # Calculate sequences number that hasn't been processed by TE Trimmer
+    # Calculate number of sequences not processed by TE Trimmer
     rest_sequence = single_fasta_n - processed_count
 
     printProgressBar(processed_count, single_fasta_n, prefix='Progress:', suffix='Complete', length=50)
@@ -355,56 +355,56 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file, plot_skip):
 
     if not os.path.isfile(input_file):
-        prcyan(f"The fasta file {input_file} does not exist. Please check your input file path!")
+        prcyan(f"The FASTA file {input_file} does not exist. Please check the input file path!")
         raise FileNotFoundError
-    input_file = os.path.abspath(input_file)  # get input absolute path
+    input_file = os.path.abspath(input_file)  # get absolute path for input
 
     # check if genome file exist
     if not os.path.isfile(genome_file):
-        prcyan(f"The genome fasta file {genome_file} does not exist. Please check your genome file path!")
+        prcyan(f"The genome FASTA file {genome_file} does not exist. Please check the genome file path!")
         raise FileNotFoundError
-    genome_file = os.path.abspath(genome_file)  # get genome absolute path
+    genome_file = os.path.abspath(genome_file)  # get absolute path for genome
 
-    # bin_py_path contains all classes and bash code
-    # so.path.abspath(__file__) will return the current executable python file
+    # bin_py_path contains all classes and BASH code
+    # so.path.abspath(__file__) will return the current executable Python file
     bin_py_path = os.path.dirname(os.path.abspath(__file__))
 
-    # check if output path exist otherwise create it
+    # Check if output path exists; otherwise create it
     os.makedirs(output_dir, exist_ok=True)
     output_dir = os.path.abspath(output_dir)  # get absolute path
 
-    # Check if output directory is empty when --continue_analysis is False
+    # Check if output directory is empty when --continue_analysis is 'False'
     if os.listdir(output_dir) and not continue_analysis:
 
         """
-        prcyan(f"\nWARNING: The output directory {output_dir} is not empty. Please empty your output directory or "
+        prcyan(f"\nWARNING: The output directory {output_dir} is not empty. Please empty the output directory or "
                f"choose another empty directory.")
-        prgre("\nNOTE: TE Trimmer can create output directory when it is not exist.")
+        prgre("\nNOTE: TE Trimmer can create output directory if it does not exist.")
         """
-        # When the current folder isn't empty, create a new folder with current time
+        # If the current folder is not empty, create a new folder with current time stamp
         current_time = time.strftime("%Y%m%d_%H%M%S")
         new_output_dir = os.path.join(output_dir, f"TETrimmer_output_{current_time}")
         os.makedirs(new_output_dir, exist_ok=True)
         output_dir = new_output_dir
-        prgre(f"\nThe given output directory is not empty. Results are stored into folder: \n"
+        prgre(f"\nThe given output directory is not empty. Results will be stored into folder: \n"
               f"{output_dir}\n")
 
-        # Stop the whole program when the output directory is not empty
-        #  raise Exception
+        # Stop the whole program if the output directory is not empty and
+        # raise Exception
 
-    # Make a new folder for single fasta sequence
+    # Create a new folder for single FASTA sequences
     single_file_dir = os.path.join(output_dir, "Single_fasta_files")
     os.makedirs(single_file_dir, exist_ok=True)
 
-    # Make a new folder for MSA
+    # Create a new folder for MSA
     MSA_dir = os.path.join(output_dir, "Multiple_sequence_alignment")
     os.makedirs(MSA_dir, exist_ok=True)
 
-    # Make a new folder for classification
+    # Create a new folder for classifications
     classification_dir = os.path.join(output_dir, "Classification")
     os.makedirs(classification_dir, exist_ok=True)
 
-    # make a new folder for HMM file
+    # Create a new folder for HMM files
     if hmm:
         hmm_dir = os.path.join(output_dir, "HMM_files")
         os.makedirs(hmm_dir, exist_ok=True)
@@ -415,44 +415,44 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     proof_annotation_dir = os.path.join(output_dir, "TE_Trimmer_for_proof_annotation")
     os.makedirs(proof_annotation_dir, exist_ok=True)
 
-    # Define skipped folder if it is required
+    # Define skipped folder if required
     if plot_skip:
         skipped_dir = os.path.join(proof_annotation_dir, "Skipped_TE")
         os.makedirs(skipped_dir, exist_ok=True)
     else:
         skipped_dir = None
 
-    # Define low copy folder
+    # Define low-copy folder
     low_copy_dir = os.path.join(proof_annotation_dir, "Low_copy_TE")
     os.makedirs(low_copy_dir, exist_ok=True)
 
-    # Define proof annotation evaluation folders
-    perfect_proof = os.path.join(proof_annotation_dir, "Perfect_annotation")
-    good_proof = os.path.join(proof_annotation_dir, "Good_annotation")
-    intermediate_proof = os.path.join(proof_annotation_dir, "Recommend_check_annotation")
-    need_check_proof = os.path.join(proof_annotation_dir, "Need_check_annotation")
+    # Define annotation evaluation folders
+    perfect_proof = os.path.join(proof_annotation_dir, "Annotations_perfect")
+    good_proof = os.path.join(proof_annotation_dir, "Annotations_good")
+    intermediate_proof = os.path.join(proof_annotation_dir, "Annotations_check_recommended")
+    need_check_proof = os.path.join(proof_annotation_dir, "Annotations_check_required")
     os.makedirs(perfect_proof, exist_ok=True)
     os.makedirs(good_proof, exist_ok=True)
     os.makedirs(intermediate_proof, exist_ok=True)
     os.makedirs(need_check_proof, exist_ok=True)
 
-    # Define the progress_file, finished seq IDs will be stored here
+    # Define the progress_file, finished sequence IDs will be stored here
     progress_file = os.path.join(output_dir, "summary.txt")
 
-    # Check and create progress_file if it doesn't exist
+    # Check and create progress_file if it does not exist yet
     if not os.path.exists(progress_file):
         with open(progress_file, 'a') as f:
             f.write("input_name,consensus_name,blast_hit_n,cons_MSA_seq_n,cons_full_blast_n,input_length,cons_length,"
                     "input_TE_type,reclassified_type,terminal_repeat,low_copy,evaluation,status\n")
 
-    # Define error files to store not mandatory function errors including RepeatClassified classification,
-    # RepeatMasker classification, PFAM scanning, muscle alignment
+    # Define error files to store non-mandatory function errors including RepeatClassified classification,
+    # RepeatMasker classification, PFAM scanning, MUSCLE alignment
     error_files = os.path.join(MSA_dir, "error_file.txt")
 
-    # If pfam database isn't provided, create pfam database at TE Trimmer software folder,
-    # the database will be downloaded into there.
-    # If the pfam_dir is given, but the database can't be found there, TE Trimmer will download pfam database there
-    # and generate index file
+    # If a PFAM database was not provided, create PFAM database in the TE Trimmer software folder, so the
+    # database can be downloaded here.
+    # If the pfam_dir was provided but the database cannot be found there, TE Trimmer will download the PFAM database
+    # into the provided directory and generate the index file.
     if pfam_dir is None:
         pfam_dir = os.path.join(os.path.dirname(bin_py_path), "pfam_database")
         os.makedirs(pfam_dir, exist_ok=True)
@@ -460,17 +460,17 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
         os.makedirs(pfam_dir, exist_ok=True)
         if_pfam = prepare_pfam_database(pfam_dir)
 
-        if not if_pfam:  # Check if if_pfam is False
+        if not if_pfam:  # Check if if_pfam is 'False'
             raise Exception
 
     except Exception as e:
         with open(error_files, "a") as f:
-            # Get the traceback content as a string
+            # Return the traceback content as a string
             tb_content = traceback.format_exc()
             f.write(f"PFAM database building error\n")
             f.write(tb_content + '\n\n')
 
-        prgre(f"Note: Can't download PFAM database from internet, please use your own PFAM database\n"
+        prgre(f"Note: Cannot download PFAM database from internet, please use a local PFAM database.\n"
               f"For example: --pfam_dir <your_PFAM_directory>\n"
               f"Your PFAM directory should contain: \n"
               f"Pfam-A.hmm\n"
@@ -479,16 +479,16 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
               f"Pfam-A.hmm.dat\n"
               f"Pfam-A.hmm.h3i\n"
               f"Pfam-A.hmm.h3p\n\n"
-              f"PFAM prediction will be used to determine the direction of TEs, it is mandatory to have it\n\n"
+              f"PFAM predictions will be used to determine the direction of TEs. The database is therefore mandatory.\n\n"
               f"You can download <Pfam-A.hmm.gz> and <Pfam-A.hmm.dat.gz> from "
               f"https://www.ebi.ac.uk/interpro/download/pfam/\n"
-              f"After: \n"
+              f"Afterwards, do: \n"
               f"gzip -d Pfam-A.hmm.gz\n"
               f"gzip -d Pfam-A.hmm.dat.gz\n"
               f"hmmpress Pfam-A.hmm\n\n")
         return
 
-    # Define consensus files. temp files will be used for the final RepeatMasker classification
+    # Define consensus files. Temporary (temp) files will be used for the final RepeatMasker classification.
     final_con_file = os.path.join(output_dir, "TE_Trimmer_consensus.fasta")
     final_unknown_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_unknown_consensus.fasta")
     final_classified_con_file = os.path.join(classification_dir, "temp_TE_Trimmer_classified_consensus.fasta")
