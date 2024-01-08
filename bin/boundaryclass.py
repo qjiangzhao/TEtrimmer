@@ -23,11 +23,11 @@ class DefineBoundary:
         self.if_continue = True
         self.cut_seqs = []
         self.extension_stop_num = extension_stop_num
-        if if_con_generater:  # Default to use normal consensus sequence generation method
+        if if_con_generater:  # Default to use standard consensus sequence generation method
             self.con_generator()
             self.boundary_position()
             self.extension_check()
-        else:  # Otherwise, ues consensus generation method that have minimum sequence requirement for each column
+        else:  # Otherwise, use consensus generation method with minimum sequence requirements for each column
             self.con_generator_select_column()
             self.boundary_position()
             self.extension_check()
@@ -42,8 +42,8 @@ class DefineBoundary:
     # Generate consensus sequences
     def con_generator_select_column(self):
         """
-        Generate consensus sequence when the column have more than 5 nucleotides. For columns with less than 5 nucleotides
-        give ambiguous letter
+        Generate consensus sequence if the column has more than 5 nucleotides. For columns with less than 5 nucleotides,
+        write letter indicating ambiguity.
         """
         # Read input file
         self.alignment = AlignIO.read(self.input_file, "fasta")
@@ -53,15 +53,15 @@ class DefineBoundary:
 
         for i in range(len(self.consensus_seq)):  # iterate over columns
             column = self.alignment[:, i]
-            # set(column) get an unordered collection of unique nucleotide for that column
+            # set(column) returns an unordered collection of unique nucleotides in that column
             nucleotide_counts = {nucleotide: column.count(nucleotide) for nucleotide in set(column) if nucleotide in self.nucl}
 
-            # Check if the column has at least 5 nucleotides and is greater than one tenth of alignment sequence number
+            # Check if the column has at least 5 nucleotides and is greater than one-tenth of alignment sequence number
             # if sum(nucleotide_counts.values()) < 5 or
             # sum(nucleotide_counts.values()) <= round(len(self.alignment) / 10):
             if sum(nucleotide_counts.values()) < 5:
                 self.consensus_seq[i] = self.ambiguous  # if column has fewer than 5 nucleotides, mark as ambiguous
-        # Convert list to a string by join function
+        # Convert list to a string using the join function
         self.consensus_seq = "".join(self.consensus_seq)
         return self.consensus_seq
 
@@ -72,12 +72,12 @@ class DefineBoundary:
             if letter in self.nucl:
                 if i + self.check_window <= len(self.consensus_seq):
                     Xnum = self.consensus_seq[i: i + self.check_window].count(self.ambiguous)
-                    # Check if the number of ambiguous smaller than 30% of check_window
+                    # Check if the number of ambiguous sites is smaller than 30% of check_window
                     if Xnum <= (self.max_X*self.check_window):
                         self.start_post = i
                         break
 
-        # Set start_post to the sequence length when it is not defined
+        # Set start_post to the sequence length if it is not defined
         if self.start_post is None:
             self.start_post = len(self.consensus_seq)
 
@@ -87,28 +87,28 @@ class DefineBoundary:
                 i = i + 1
                 if i - self.check_window >= 0:
                     Xnum = self.consensus_seq[i - self.check_window: i].count(self.ambiguous)
-                    # Check if the number of ambiguous smaller than 10% of check_window
+                    # Check if the number of ambiguous sites is smaller than 10% of check_window
                     if Xnum <= (self.max_X*self.check_window):
                         self.end_post = i
                         break
 
-        # Set end_post to 1 when it is not defined
+        # Set end_post to 1 if it is not defined
         if self.end_post is None:
             self.end_post = 1
 
-    # Check if need more extension for Multiple sequence alignment
+    # Check if MSA needs further extension
     def extension_check(self):
         # Check if the start position is smaller than the end position.
         if self.start_post < self.end_post:
             if self.start_post <= self.extension_stop_num:
-                # print("Need more extension for left side")
+                # print("Needs additional extension on the left side of the MSA")
                 self.left_ext = True
 
             if self.end_post >= len(self.consensus_seq) - self.extension_stop_num:
-                # print("Need more extension for right side")
+                # print("Needs additional extension on the right side of the MSA")
                 self.right_ext = True
         else:
-            # When if_continue is false, that means the MSA is too short
+            # If if_continue is 'False', the MSA is too short
             self.if_continue = False
 
     # Iterate through each sequence in the MSA
@@ -122,7 +122,7 @@ class DefineBoundary:
         end_col = min(self.end_post + crop_extension, MSA_len)
         # Select the window columns from the alignment
         selected_alignment = self.alignment[:, start_col:end_col]
-        # Create a new MultipleSeqAlignment object with the selected alignment
+        # Create a new MultipleSeqAlignment object using the selected alignment
         selected_alignment = MultipleSeqAlignment(selected_alignment)
         # Write the cut MSA to a file
         output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_bc.fa")
