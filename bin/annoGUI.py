@@ -7,7 +7,7 @@ from functools import partial
 import platform
 
 
-# Change Aliview permission
+# Change AliView permissions
 def change_permissions_recursive(input_dir, mode):
     try:
         for dirpath, dirnames, filenames in os.walk(input_dir):
@@ -15,12 +15,12 @@ def change_permissions_recursive(input_dir, mode):
             for filename in filenames:
                 os.chmod(os.path.join(dirpath, filename), mode)
     except PermissionError:
-        click.echo("TE Trimmer don't have right to change permissions. Pleas use sudo to run TE Trimmer")
+        click.echo("TE Trimmer does not have rights to change permissions. Please use 'sudo' to run TE Trimmer")
         return False
     return True
 
 
-# Define Aliview software path and change permission
+# Define AliView software path and change permissions
 bin_py_path = os.path.dirname(os.path.abspath(__file__))
 aliview_path = os.path.join(bin_py_path, "aliview/aliview")
 change_permissions_recursive(aliview_path, 0o755)
@@ -38,21 +38,21 @@ os_type = platform.system()
               help='Define the output directory for TE proof annotation. Default: input folder directory')
 def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     """
-    This tool can help do quick proof annotation
+    This tool enables quick manual curation of TE Trimmer annotations.
 
     python ./path_to_TE_Trimmer_bin/Class_TKinter_proof_annotation.py -i "TE_Trimmer_output_folder"
     """
 
-    # If the -o option is not given, use the parent directory of -i as output directory.
+    # If the -o option is not provided, use the parent directory given by -i as output directory.
     if output_dir is None:
         output_dir = te_trimmer_proof_annotation_dir
-    # Define Aliview software path and change permission
+    # Define AliView software path and change permissions
     bin_py_path = os.path.dirname(os.path.abspath(__file__))
     aliview_path = os.path.join(bin_py_path, "aliview/aliview")
     if os_type == "Windows":
         aliview_path = os.path.join(bin_py_path, r"aliview\aliview.jar")
 
-    # Define output folders, create them when they are not found
+    # Define output folders, or create them if they are not found
     consensus_folder = os.path.abspath(os.path.join(output_dir, "Proof_annotation_consensus_folder"))
     need_more_extension = os.path.abspath(os.path.join(output_dir, "Proof_annotation_need_more_extension"))
     low_copy_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_low_copy_elements"))
@@ -66,7 +66,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     root.title("TE Trimmer proof annotation tool")
     root.geometry('1200x800')
 
-    # Initialize the BooleanVar here, after the root Tk instance is created
+    # Initialize the BooleanVar here, after the root Tk instance has been created
     show_confirmation = BooleanVar(value=True)
 
     canvas = Canvas(root, bg='white')
@@ -97,7 +97,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     canvas.bind('<Configure>', on_configure)
     frame.bind('<Configure>', update_scrollregion)
 
-    # Use Aliview to open fasta file
+    # Use AliView to open alignment FASTA file
     def open_file(filename, button, source_dir=te_trimmer_proof_annotation_dir):
         def _open_file(event):
             filepath = os.path.join(source_dir, filename)
@@ -122,7 +122,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                 elif os_type == "Darwin":  # macOS
                     subprocess.run(['open', '-a', 'TextEdit', filepath])
                 elif os_type == "Windows":
-                    notepad_path = 'notepad.exe'  # or path to another text editor if preferred
+                    notepad_path = 'notepad.exe'  # or path to another text editor, if preferred
                     subprocess.run([notepad_path, filepath])
                 else:
                     text_editor = 'gedit'  # Fallback for other systems
@@ -168,7 +168,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
         if not os.path.exists(last_copied_file):
             messagebox.showerror("Error", f"File {last_copied_file} doesn't exist. Can't undo.")
             return
-        if messagebox.askokcancel("Confirmation", f"Do you want to undo the copy of '{last_copied_file}'?"):
+        if messagebox.askokcancel("Confirmation", f"Do you want to undo the copying of '{last_copied_file}'?"):
             try:
                 os.remove(last_copied_file)
                 copy_history.pop()
@@ -192,29 +192,28 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                "   ╚═╝   ╚══════╝       ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝\n"\
 
 
-    initial_text = "TE Trimmer proof annotation assistant tool\n\n" \
+    initial_text = "TE Trimmer annotation proofing assistant tool\n\n" \
                    "Introduction:\n\n" \
-                   "We highly recommend to do proof annotation for 'Recommend_check_annotation' and 'Need_check_annotation" \
-                   " ,which can dramatically increase your TE annotation quality.\n\n"\
-                   "1, Click the buttons in the menu bar, which corresponds to the different annotation status.\n\n" \
-                   "2, All files in the chose folder (button) will be displayed.\n\n" \
-                   "3, For each TE output, you can find four files including <seq_name.anno.fa>, <seq_name.fa>, <seq_name.bed>, and " \
-                   "<seq_name.pdf>.\n\n" \
+                   "We highly recommend to do manually inspect annotations deposited in 'Annotations_check_recommended' and 'Annotations_check_required'." \
+                   "This can dramatically increase the quality of the TE annotation library.\n\n"\
+                   "1, Click the button in the menu bar that corresponds to the annotation status.\n\n" \
+                   "2, All files in the selected folder (button) will be displayed.\n\n" \
+                   "3, For each TE annotation, you can find four files: \n\n" \
                    "   <seq_name.anno.fa> is the multiple sequence alignment (MSA) file before cleaning\n" \
                    "   <seq_name.fa> is the multiple sequence alignment (MSA) file after cleaning\n" \
                    "   <seq_name.pdf> contains four plots used to evaluate annotation quality\n" \
-                   "   <seq_name.bed> contains sequence position information at the genome of MSA. Used for further extension.\n\n" \
-                   "4, Double click <seq_name.pdf> and evaluate annotation quality.\n\n" \
-                   "5, If you are satisfied with the result, click 'Consensus' button behind <seq_name.fa>. This MSA " \
-                   "file will go to <Proof_annotation_consensus_folder>.\n\n" \
-                   "6, If you are not satisfied, double click <seq_name.fa> or <seq_name.anno.fa> to modify MSA and " \
-                   "save it to consensus folder.\n\n" \
-                   "7, If you want more extension for the MSA, click 'Extension' behind <seq_name.bed> and this " \
-                   "bed file will be salved to <Proof_annotation_need_more_extension> folder.\n\n" \
-                   "8, For low copy element, check the pdf file and decide if to include it into the final consensus " \
-                   "library. Note: low copy element do not have multiple sequence alignment file"
+                   "   <seq_name.bed> contains sequence position information of the MSA in the query genome. Used for further extensions.\n\n" \
+                   "4, Double-click <seq_name.pdf> and evaluate annotation quality.\n\n" \
+                   "5, If the result is satisfactory, click the 'Consensus' button next to <seq_name.fa>. This MSA " \
+                   "file will then be moved to <Proof_annotation_consensus_folder>.\n\n" \
+                   "6, If the result is not satisfactory, double-click <seq_name.fa> or <seq_name.anno.fa> to modify the MSA and " \
+                   "subsequently save it to consensus folder.\n\n" \
+                   "7, If further extension of the MSA is required, click the 'Extension' button next to <seq_name.bed>. This will " \
+                   "move the BED file to <Proof_annotation_need_more_extension> folder.\n\n" \
+                   "8, For low-copy elements, check the PDF file to decide if the element should be included in the final consensus " \
+                   "library. Note: low-copy elements do not produce a multiple sequence alignment FASTA file."
 
-    # Display ASCII logo with 'Courier' font
+    # Display ASCII logo with font style 'Courier'
     if os_type == "Linux":
         logo_font = ('DejaVu Sans Mono', 10)
     elif os_type == "Darwin":  # macOS
@@ -224,7 +223,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     logo_label = Label(canvas, text=log_text, bg='white', font=logo_font, justify='left', wraplength=1100)
     logo_label.pack(pady=10)
 
-    # Display the explanatory text with 'Arial' font
+    # Display the explanatory text with the font style 'Arial'
     text_label = Label(canvas, text=initial_text, bg='white', font=('Arial', 15), justify='left', wraplength=1100)
     text_label.pack(pady=10)
 
@@ -277,7 +276,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     menubar = Menu(root)
     root.config(menu=menubar)
 
-    annotation_folders = ["Perfect_annotation", "Good_annotation", "Recommend_check_annotation", "Need_check_annotation", "Low_copy_TE"]
+    annotation_folders = ["Annotations_perfect", "Annotations_good", "Annotations_check_recommended", "Annotations_check_required", "Low_copy_TE"]
 
     for annotation in annotation_folders:
         annotationMenu = Menu(menubar, tearoff=0)
@@ -287,9 +286,9 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
             annotationMenu.add_command(label="Folder not detected! Use correct input folder path",
                                        command=partial(messagebox.showerror,
                                                        "Error", "Please use the correct input directory."
-                                                       " Five folder should be contained in your input path, "
-                                                       "including 'Perfect_annotation', 'Good_annotation', "
-                                                       "'Recommend_check_annotation', 'need_check_annotation', "
+                                                       "The input path should contain five folders, i.e.,"
+                                                       "'Annotations_perfect', 'Annotations_good', "
+                                                       "'Annotations_check_recommended', 'Annotations_check_required', "
                                                        "and 'Low_copy_TE'"))
             continue
         sorted_files_annotation = sorted(os.listdir(annotation_path))
@@ -303,7 +302,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     confirm_menu = Menu(menubar, tearoff=0)
     menubar.add_cascade(label="Settings", menu=confirm_menu)
     confirm_menu.add_checkbutton(label="Show Confirmation Window", onvalue=True, offvalue=False, variable=show_confirmation)
-    confirm_menu.add_command(label="Don't Show Confirmation Window", command=disable_confirmation)
+    confirm_menu.add_command(label="Do not Show Confirmation Window", command=disable_confirmation)
     menubar.add_command(label="Undo", command=undo_last_copy)
 
     canvas_frame = canvas.create_window((0, 0), window=frame, anchor='nw')
