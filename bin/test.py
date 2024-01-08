@@ -1,6 +1,6 @@
 import os
 import unittest
-from TE_Trimmer import main  # Import your main function
+from TETrimmer import main  # Import your main function
 from click.testing import CliRunner
 import click
 

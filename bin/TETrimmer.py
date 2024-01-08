@@ -196,7 +196,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Code block: File ends
     #####################################################################################################
     # _fm.bed: final multiple sequence alignment.
-    # _u: uniqueness.
+    # _u.bed: uniqueness.
+    # f.bed: When blast hit more than 100, TETrimmer will only select the top 100 long for MSA
     # _bcl.fa bed clean. Use awk to remove letters that aren't A G C T a g c t in the fasta file
     # _bcln.fa bed clean and use name column as fasta header
     # _n.bed use bed file name column as fasta header
@@ -678,7 +679,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                    identity_thr=0.9, aL=0, aS=0.9, s=0, thread=num_threads)
         clusters_proof_anno, detailed_clusters_proof_anno = parse_cd_hit_est_result(
             final_con_file_no_low_copy_clstr)
-        click.echo(detailed_clusters_proof_anno.items())
 
         for cluster_name_proof_anno, seq_info_proof_anno in detailed_clusters_proof_anno.items():
             # Create cluster folder

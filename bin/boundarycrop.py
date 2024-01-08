@@ -126,7 +126,8 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
         cropped_alignment = bed_fasta_mafft_object.crop_alignment()
         bed_fasta_mafft_cop_end_gap = bed_fasta_mafft_object.write_to_file(output_dir, cropped_alignment)
 
-        # Threshold to generate consensus sequence
+        # ext_threshold refer to option --ext_thr
+        # max_X is float number, means the proportion of X
         bed_boundary = DefineBoundary(bed_fasta_mafft_cop_end_gap, threshold=ext_threshold,
                                       check_window=define_boundary_win, max_X=0.3, if_con_generater=False)
         # Read bed_out_flank_file
@@ -268,9 +269,11 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
                                                                  gap_threshold=crop_end_gap_thr,
                                                                  window_size=crop_end_gap_win)
         """
-        # Define boundary
+        # Set max_X to 1, this will make sure this part won't cut any beginning and end columns. Because
+        # the boundary has been defined by terminal repeat. The reason to do DefineBoundary is cropped_boundary
+        # and cropped_boundary_MSA are required for the further analysis
         cropped_boundary = DefineBoundary(bed_fasta_mafft_gap_sim_selected_cp_g, threshold=0.8,
-                                          check_window=4, max_X=3)
+                                          check_window=4, max_X=1)
         cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
 
         cropped_alignment_output_file_g = bed_fasta_mafft_gap_sim_selected_cp_g

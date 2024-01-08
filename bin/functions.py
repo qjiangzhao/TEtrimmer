@@ -212,9 +212,9 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
 
             if detected_pound:
                 print("TETrimmer detects # in your input fasta sequence. The string before # is denoted as the "
-                      "seq_name, and the string after # is denoted as the TE type\n")
+                      "seq_name, and the string after # is denoted as the TE type.\n")
 
-        print("\nFinish to generate single sequence files.\n")
+        print("Finish to generate single sequence files.\n")
 
     elif continue_analysis:
         # When continue_analysis is true, generate seq_list based on single fasta files
@@ -1552,8 +1552,11 @@ def remove_files_with_start_pattern(input_dir, start_pattern=None, if_seq_name=T
     for filename in os.listdir(input_dir):
         # When the start_pattern is given, search the file or folder starts with start_pattern
         # Otherwise, delete all the files and folders in the input_dir
-        if start_pattern is not None and filename.startswith(start_pattern):
-            file_path = os.path.join(input_dir, filename)
+        if start_pattern is not None:
+            if filename.startswith(start_pattern):
+                file_path = os.path.join(input_dir, filename)
+            else:
+                continue
         else:
             file_path = os.path.join(input_dir, filename)
 

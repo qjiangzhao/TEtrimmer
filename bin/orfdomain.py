@@ -48,7 +48,8 @@ def check_and_download(directory, filename, url):
 
             # Delete gz file after extraction
             os.remove(gz_file_path)
-            click.echo(f"\n{filename} is downloaded and unzipped.\n")
+            click.echo(f"\n{filename} is downloaded and unzipped. Pfam database was stored in \n"
+                       f"{directory}\n")
         except Exception:
             prcyan("TETrimmer can't properly unzip the downloaded Pfam file")
             return False
@@ -57,8 +58,8 @@ def check_and_download(directory, filename, url):
     if os.path.isfile(file_path):
         return True
     else:
-        prcyan(f"{filename} found. Pfam can't be downloaded by TETrimmer. Please check your internet connection "
-               f"or download Pfam by yourself")
+        prcyan(f"{filename} not found. Pfam can't be downloaded by TETrimmer. Please check your internet connection "
+               f"or download Pfam by yourself and use '--pfam_dir' to indicate your Pfam database path.")
         return False
 
 

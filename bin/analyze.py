@@ -460,7 +460,6 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     # and generate index file
     if pfam_dir is None:
         pfam_dir = os.path.join(os.path.dirname(bin_py_path), "pfam_database")
-        os.makedirs(pfam_dir, exist_ok=True)
     try:
         os.makedirs(pfam_dir, exist_ok=True)
         if_pfam = prepare_pfam_database(pfam_dir)

@@ -101,41 +101,82 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     def open_file(filename, button, source_dir=te_trimmer_proof_annotation_dir):
         def _open_file(event):
             filepath = os.path.join(source_dir, filename)
-            if filename.lower().endswith(('.fa', '.fasta')):
-                if os_type == "Windows":
-                    subprocess.run(["java", "-jar", aliview_path, filepath])
-                else:
-                    subprocess.run([aliview_path, filepath])
-            elif filename.lower().endswith('.pdf'):
-                if os_type == "Linux":
-                    subprocess.run(['xdg-open', filepath])
-                elif os_type == "Darwin":  # macOS
-                    subprocess.run(['open', filepath])
-                elif os_type == "Windows":
-                    os.startfile(filepath)
-                else:
-                    subprocess.run(['xdg-open', filepath])
-            elif filename.lower().endswith(('.txt', '.py', '.csv', '.md', '.bed')):
-                if os_type == "Linux":
-                    text_editor = 'gedit'  # Replace 'gedit' with your preferred text editor
-                    subprocess.run([text_editor, filepath])
-                elif os_type == "Darwin":  # macOS
-                    subprocess.run(['open', '-a', 'TextEdit', filepath])
-                elif os_type == "Windows":
-                    notepad_path = 'notepad.exe'  # or path to another text editor if preferred
-                    subprocess.run([notepad_path, filepath])
-                else:
-                    text_editor = 'gedit'  # Fallback for other systems
-                    subprocess.run([text_editor, filepath])
-            else:  # Fallback for other file types
-                if os_type == "Linux":
-                    subprocess.run(['xdg-open', filepath])
-                elif os_type == "Darwin":  # macOS
-                    subprocess.run(['open', filepath])
-                elif os_type == "Windows":
-                    os.startfile(filepath)
-                else:
-                    subprocess.run(['xdg-open', filepath])
+            # Check if the filepath is a directory (i.e., a folder)
+            if os.path.isdir(filepath):
+                folder_window = Tk()
+                folder_window.title(f"Contents of {filename}")
+                folder_window.geometry('800x600')
+                folder_window.config(bg='white')
+
+                folder_scrollbar = Scrollbar(folder_window)
+                folder_scrollbar.pack(side='right', fill='y')
+
+                folder_canvas = Canvas(folder_window, bg='white', yscrollcommand=folder_scrollbar.set)
+                folder_canvas.pack(side='left', fill='both', expand=True)
+                folder_scrollbar.config(command=folder_canvas.yview)
+
+                folder_frame = Frame(folder_canvas, bg='white')
+                folder_canvas.create_window((0, 0), window=folder_frame, anchor='nw')
+
+                for file in sorted(os.listdir(filepath)):
+                    file_line_frame = Frame(folder_frame, bg='white')
+                    file_line_frame.pack(fill='x', expand=True)
+
+                    file_button = Button(file_line_frame, text=file, anchor='w', bg='white')
+                    file_button.grid(row=0, column=0, sticky='ew')
+                    file_line_frame.grid_columnconfigure(0, weight=1)  # Make this column expandable
+
+                    button_frame = Frame(file_line_frame, bg='white')
+                    button_frame.grid(row=0, column=1, sticky='e')
+
+                    consensus_button = Button(button_frame, text="Consensus", bg='white')
+                    consensus_button.grid(row=0, column=0, padx=5)
+                    consensus_button.bind('<Button-1>', lambda e, f=file: consensus_action(f, folder_window, filepath))
+
+                    extension_button = Button(button_frame, text="Extension", bg='white')
+                    extension_button.grid(row=0, column=1, padx=5)
+                    extension_button.bind('<Button-1>', lambda e, f=file: extension_action(f, folder_window, filepath))
+
+                    file_line_frame.grid_columnconfigure(1, weight=0)
+
+                folder_frame.bind("<Configure>",
+                                  lambda event: folder_canvas.configure(scrollregion=folder_canvas.bbox("all")))
+            else:
+                if filename.lower().endswith(('.fa', '.fasta')):
+                    if os_type == "Windows":
+                        subprocess.run(["java", "-jar", aliview_path, filepath])
+                    else:
+                        subprocess.run([aliview_path, filepath])
+                elif filename.lower().endswith('.pdf'):
+                    if os_type == "Linux":
+                        subprocess.run(['xdg-open', filepath])
+                    elif os_type == "Darwin":  # macOS
+                        subprocess.run(['open', filepath])
+                    elif os_type == "Windows":
+                        os.startfile(filepath)
+                    else:
+                        subprocess.run(['xdg-open', filepath])
+                elif filename.lower().endswith(('.txt', '.py', '.csv', '.md', '.bed')):
+                    if os_type == "Linux":
+                        text_editor = 'gedit'  # Replace 'gedit' with your preferred text editor
+                        subprocess.run([text_editor, filepath])
+                    elif os_type == "Darwin":  # macOS
+                        subprocess.run(['open', '-a', 'TextEdit', filepath])
+                    elif os_type == "Windows":
+                        notepad_path = 'notepad.exe'  # or path to another text editor if preferred
+                        subprocess.run([notepad_path, filepath])
+                    else:
+                        text_editor = 'gedit'  # Fallback for other systems
+                        subprocess.run([text_editor, filepath])
+                else:  # Fallback for other file types
+                    if os_type == "Linux":
+                        subprocess.run(['xdg-open', filepath])
+                    elif os_type == "Darwin":  # macOS
+                        subprocess.run(['open', filepath])
+                    elif os_type == "Windows":
+                        os.startfile(filepath)
+                    else:
+                        subprocess.run(['xdg-open', filepath])
             button.config(bg='yellow')
 
         return _open_file
@@ -258,14 +299,14 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
             file_button.bind('<Double-Button-1>', open_file(filename, file_button, source_dir))
             button_frame = Frame(frame, bg='white')
             button_frame.grid(row=i - start, column=2, sticky='e')
-            if not source_dir.endswith("Low_copy_TE"):
+            if not source_dir.endswith("Low_copy_TE") and not source_dir.endswith("Clustered_proof_annotation"):
                 copy_button = Button(button_frame, text="Consensus", bg='white', fg='black')
                 copy_button.grid(row=0, column=0, padx=5)
                 copy_button.bind('<Button-1>', copy_file(filename, copy_button, consensus_folder, source_dir=source_dir))
                 more_extend_button = Button(button_frame, text="Extension", bg='white', fg='black')
                 more_extend_button.grid(row=0, column=1, padx=5)
                 more_extend_button.bind('<Button-1>', copy_file(filename, more_extend_button, need_more_extension, source_dir=source_dir))
-            else:
+            if os.path.basename(source_dir) == "Low_copy_TE":
                 low_copy_button = Button(button_frame, text="Low_copy", bg='white', fg='black')
                 low_copy_button.grid(row=0, column=3, padx=5)
                 low_copy_button.bind('<Button-1>', copy_file(filename, low_copy_button, low_copy_elements, source_dir=source_dir))
@@ -277,7 +318,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     menubar = Menu(root)
     root.config(menu=menubar)
 
-    annotation_folders = ["Perfect_annotation", "Good_annotation", "Recommend_check_annotation", "Need_check_annotation", "Low_copy_TE"]
+    annotation_folders = ["Clustered_proof_annotation", "Low_copy_TE", "Skipped_TE"]
 
     for annotation in annotation_folders:
         annotationMenu = Menu(menubar, tearoff=0)
