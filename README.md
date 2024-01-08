@@ -32,11 +32,8 @@ We highly recommend install by "mamba" that is much faster.
 conda install -c conda-forge mamba
 
 # Create TETrimmer environment by mamba
-<<<<<<< HEAD
-mamba env create -f TE_Trimmer_env_for_linux.yml
-=======
+
 mamba env create -f TETrimmer_env_for_linux.yml
->>>>>>> main
 ```
 For Window WSL, you can follow the same instruction used for linux. 
 
