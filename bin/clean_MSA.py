@@ -9,15 +9,15 @@ from Bio.Align import MultipleSeqAlignment
 
 class CropEnd:
     """
-    Crop each single sequence end of MSA by the nucleotide divergence.
+    Crop each single sequence end of the MSA by nucleotide divergence.
     """
 
     def __init__(self, input_file, threshold=16, window_size=20, crop_l=True, crop_r=True):
         """
         :param input_file: str, path to the multiple sequence alignment
-        :param threshold: default 16, nucleotides number inside the check window whose proportion greater than 80%
-        :param window_size: default 20, check window size to define start and end position
-        :param crop_l and crop_r: decide if crop both ends or only one side
+        :param threshold: int, number of nucleotide sites inside the checking window with a proportion greater than 80%. Default: 16
+        :param window_size: int, check window size to define start and end position. Default: 20
+        :param crop_l and crop_r: decide if cropping one or both ends
         """
         self.input_file = input_file
         self.alignment = AlignIO.read(self.input_file, "fasta")
@@ -26,7 +26,7 @@ class CropEnd:
         self.crop_l = crop_l
         self.crop_r = crop_r
         self.alignment_len = self.alignment.get_alignment_length()
-        # Define a dictionary the key are sequence names, the values are a list contains nucleotides proportion
+        # Define a dictionary; keys are sequence names and values are a list containing nucleotide proportions
         self.proportions_dict = {record.id: [] for record in self.alignment}
         # Define a dictionary to hold start and end positions
         self.position_dict = {record.id: [0, 0] for record in self.alignment}
@@ -38,8 +38,8 @@ class CropEnd:
 
     def pro_calculation(self):
         """
-        :function pro_calculation: calculate nucleotides proportion at each column per sequence
-        :return: a data frame contains all sequence names and nucleotide proportion information
+        :function pro_calculation: calculate nucleotide proportions for each column and sequence
+        :return: a dataframe containing all sequence names and nucleotide proportion information
         """
         # Loop through each column of the alignment
         for i in range(self.alignment_len):
@@ -50,26 +50,26 @@ class CropEnd:
                 if nucleotide in counts:
                     counts[nucleotide] += 1
 
-            # Calculate the proportion of each nucleotide
+            # Calculate the proportion of each nucleotide for this column
             total = sum(counts.values())
 
-            # Generate a dictionary named proportions contains nucleotide proportion for this column
-            if total < 5:  # Ignore columns less 5 nucleotides
+            # Generate a dictionary named proportions containing nucleotide proportions for this column
+            if total < 5:  # Ignore columns with fewer than 5 nucleotides
                 proportions = {nucleotide: 0 for nucleotide in counts}
             else:
                 proportions = {nucleotide: count / total for nucleotide, count in counts.items()}
 
-            # Add the proportion of the nucleotide at this position to each sequence
-            for record in self.alignment:  # This will loop each sequences in alignment
+            # Add the proportion of each nucleotide at this position to each sequence
+            for record in self.alignment:  # This will loop through all sequences in the alignment
                 nucleotide = record.seq[i]  # Refer to that column
                 if nucleotide in proportions:
                     # Write proportion information into proportions_dict
                     self.proportions_dict[record.id].append(proportions[nucleotide])
                 else:
-                    # When there is a gap, use number 0 replace proportion
+                    # If there is a gap, use number 0 to replace proportion
                     self.proportions_dict[record.id].append(np.nan)
 
-        # Convert the dictionary to a DataFrame
+        # Convert the dictionary into a DataFrame
         self.df = pd.DataFrame(self.proportions_dict)
         self.df = self.df.transpose()  # transpose the DataFrame so that each row represents a sequence
         self.df.columns = range(1,
@@ -79,12 +79,12 @@ class CropEnd:
 
     def find_positions(self):
         """
-         this function will define the start and end position for each sequence
+         This function will define the start and end position for each sequence
             by nucleotide proportions.
 
-        :return: a dictionary that contain sequence name, start, and end positions
+        :return: a dictionary that contains sequence name, start, and end positions
         """
-        # Loop over the DataFrame's rows
+        # Loop over the DataFrame rows
         for index, row in self.df.iterrows():
             if self.crop_l:
                 # Find start position
@@ -94,7 +94,7 @@ class CropEnd:
                         self.position_dict[index][0] = i
                         break
             else:
-                # Set the start position to 0 when crop left is not used
+                # Set the start position to 0 if crop_l is not used
                 self.position_dict[index][0] = 0
 
             if self.crop_r:
@@ -105,7 +105,7 @@ class CropEnd:
                         self.position_dict[index][1] = i + 1  # add 1 to make the position 1-indexed
                         break
             else:
-                # Set the end position to the end of the alignment when crop right is not used
+                # Set the end position to the end of the alignment if crop_r is not used
                 self.position_dict[index][1] = self.alignment_len
 
     def crop_alignment(self):
@@ -141,7 +141,7 @@ class CropEnd:
 
     def write_to_file(self, output_dir):
 
-        # Define different names for different direction of cropping.
+        # Define different names for the different directions of cropping.
         if self.crop_l and self.crop_r:
             output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_ce.fa")
         elif self.crop_l and not self.crop_r:
@@ -174,7 +174,7 @@ class CropEndByGap:
             len_seq = len(seq_str)  # Get the length of the sequence
 
             # Find the start position
-            for i in range(len_seq - self.window_size + 1):  # Loop through the sequence with a sliding window
+            for i in range(len_seq - self.window_size + 1):  # Loop through the sequence using a sliding window
                 window = seq_str[i:i + self.window_size]  # Get the subsequence in the window
                 gap_proportion = window.count('-') / self.window_size  # Calculate the gap proportion in the window
 
@@ -217,7 +217,7 @@ class CropEndByGap:
             else:
                 remaining_sequence_ids.append(seq_id)  # Add the sequence ID to the remaining sequences list
 
-        # The number of sequences remaining can be calculated as the length of remaining_sequence_ids
+        # The number of sequences that remain can be calculated as the length of remaining_sequence_ids
         remaining_sequences = len(remaining_sequence_ids)
         large_crop_ids = [int(seq_id) for seq_id in large_crop_ids]
         remaining_sequence_ids = [int(seq_id) for seq_id in remaining_sequence_ids]
@@ -239,7 +239,7 @@ class CropEndByGap:
         self.cropped_alignment = MultipleSeqAlignment(self.cropped_alignment)
         return self.cropped_alignment
 
-    # Write the cropped alignment to a new file
+    # Write the cropped alignment into a new file
     def write_to_file(self, output_dir, cropped_alignment):
         output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_ceg.fa")
         with open(output_file, "w") as f:
