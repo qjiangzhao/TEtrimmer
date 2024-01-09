@@ -3,7 +3,7 @@ from Bio.Align import AlignInfo
 from Bio import AlignIO
 
 
-# Check if file name contains LTR
+# Check if file name contains the string LTR
 def is_LTR(input_file):
     input_file_name = os.path.basename(input_file)
     return 'LTR' in input_file_name
@@ -17,7 +17,7 @@ def generate_consensus_sequence(input_file, threshold, ambiguous):
     return consensus_seq
 
 
-# Check if the start and end are matchable with the given pattern
+# Check if start and end are matchable with the given pattern
 def check_start_end(consensus_seq, start, end, start_patterns, end_patterns):
     start_matched = end_matched = True
 
@@ -40,9 +40,9 @@ def check_start_end(consensus_seq, start, end, start_patterns, end_patterns):
 
 def check_and_update(consensus_seq, start, end, start_patterns, end_patterns):
     """
-    Check if the start and end of MSA equal to the given patterns
+    Check if start and end of the MSA are equal to the given patterns
     """
-    # Ensure all patterns are upper case
+    # Ensure all patterns are uppercase
     start_patterns = [pattern.upper() for pattern in start_patterns.split(',')] if start_patterns else None  
     end_patterns = [pattern.upper() for pattern in end_patterns.split(',')] if end_patterns else None
 
