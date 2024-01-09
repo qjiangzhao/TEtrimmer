@@ -437,7 +437,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             df.to_csv(bed_final_MSA, sep='\t', index=False, header=False)
 
             # final_MSA return false when the start crop point is greater than the end crop point, which means the
-            # sequence is too short. Besides, when the divergence is too high, CropEnd will all cause this problem
+            # sequence is too short. Besides, when the divergence is too high, CropEnd will cause this problem
             final_msa_result = final_MSA(bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
                                          define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win)
 
@@ -509,8 +509,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         # Calculate the proportion of 'N' in the sequence
         n_proportion = initial_cons.count("N") / len(initial_cons)
 
-        # Check if the proportion is greater than 30%
-        # If 30% of this consensus sequence is "N", stop analysis for this MSA
+        # Check if the proportion is greater than 40%
+        # If 40% of this consensus sequence is "N", stop analysis for this MSA
         if n_proportion > 0.4:
             return False
 
@@ -660,7 +660,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                         input_file=cropped_boundary_plot_concatenate,
                         output_file=cropped_boundary_plot_concatenate
                     )
-                    # Reverse complement input sequence
+                    # Reverse complement input sequence, this will be used for dotplot
                     seq_file_reverse_c_path = os.path.join(output_dir, f"{os.path.basename(seq_name)}_rc.fa")
                     seq_file_reverse_c = reverse_complement_seq_file(input_file=seq_file,
                                                                      output_file=seq_file_reverse_c_path)

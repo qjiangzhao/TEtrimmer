@@ -7,6 +7,9 @@ from functools import partial
 import platform
 
 
+#####################################################################################################
+# Code block: make Aliveiw available to be used
+#####################################################################################################
 # Change Aliview permission
 def change_permissions_recursive(input_dir, mode):
     try:
@@ -25,11 +28,9 @@ bin_py_path = os.path.dirname(os.path.abspath(__file__))
 aliview_path = os.path.join(bin_py_path, "aliview/aliview")
 change_permissions_recursive(aliview_path, 0o755)
 
-copy_history = []
-
-# Detect OS
-os_type = platform.system()
-
+#####################################################################################################
+# Code block: set click command
+#####################################################################################################
 
 @click.command()
 @click.option('--te_trimmer_proof_annotation_dir', '-i', required=True, type=str,
@@ -42,6 +43,12 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
 
     python ./path_to_TETrimmer_bin/Class_TKinter_proof_annotation.py -i "TETrimmer_output_folder"
     """
+
+    # Define empty list to store copy history, which enable undo button
+    copy_history = []
+
+    # Detect system OS type
+    os_type = platform.system()
 
     # If the -o option is not given, use the parent directory of -i as output directory.
     if output_dir is None:
@@ -61,6 +68,10 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
         if not os.path.isdir(dir_path):
             os.mkdir(dir_path)
 
+    #####################################################################################################
+    # Code block: build TKinter window
+    #####################################################################################################
+
     # Initialize Tk window
     root = Tk()
     root.title("TETrimmer proof annotation tool")
@@ -72,38 +83,128 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     # Create canvas on root
     canvas = Canvas(root, bg='white')
 
-    # Set scrollbar. command=canvas.yview links the scrollbar to the vertical view of the canvas.
-    # This means that scrolling the scrollbar will move the canvas vertically.
-    scrollbar = Scrollbar(root, orient='vertical', command=canvas.yview)
-    canvas.configure(yscrollcommand=scrollbar.set)
-    scrollbar.pack(side='right', fill='y')
-
     # fill='both'  This tells the canvas to expand and fill both the X-axis (horizontally) and Y-axis (vertically)
     # in its parent widget. The canvas will take up as much space as possible in both directions.
     # expand=True  If the window is resized, the canvas will grow or shrink accordingly.
     canvas.pack(side='left', fill='both', expand=True)
 
+    #####################################################################################################
+    # Code block: set a vertical scroll bar
+    #####################################################################################################
+    # Set scrollbar. command=canvas.yview links the scrollbar to the vertical view of the canvas.
+    # This means that scrolling the scrollbar will move the canvas vertically.
+    scrollbar = Scrollbar(root, orient='vertical', command=canvas.yview)
+    canvas.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side='right', fill='y')
     def scroll(event):
         if event.num == 4 or event.delta == 120:
             canvas.yview_scroll(-1, "units")
         elif event.num == 5 or event.delta == -120:
             canvas.yview_scroll(1, "units")
 
+    # <MouseWheel> is typically used on Windows and macOS to handel mouse wheel movements
+    # <Button-4> and <Button-5> are for Linux/Unix systems
     root.bind("<MouseWheel>", scroll)
     root.bind("<Button-4>", scroll)
     root.bind("<Button-5>", scroll)
 
-    frame = Frame(canvas, bg='white')
-    canvas_frame = canvas.create_window((0, 0), window=frame, anchor='nw')
+    #####################################################################################################
+    # Code block: re-size canvas and frame size when the windows size is modified
+    #####################################################################################################
 
-    def update_scrollregion(event):
-        canvas.configure(scrollregion=canvas.bbox('all'))
+    # Frame is a container widget, it is used to organize and group other widgets together
+    frame = Frame(canvas, bg='white')  # canvas specifies the parent widget in which this frame will be placed
+    canvas_frame = canvas.create_window((0, 0), window=frame, anchor='nw')
 
     def on_configure(event):
         canvas.itemconfig(canvas_frame, width=event.width)
+    def update_scrollregion(event):
+        canvas.configure(scrollregion=canvas.bbox('all'))
 
     canvas.bind('<Configure>', on_configure)
     frame.bind('<Configure>', update_scrollregion)
+
+    #####################################################################################################
+    # Code block: show the start page
+    #####################################################################################################
+    global logo_label
+    global text_label
+
+    log_text = "████████╗███████╗████████╗██████╗ ██╗███╗   ███╗███╗   ███╗███████╗██████╗\n"\
+               "╚══██╔══╝██╔════╝╚══██╔══╝██╔══██╗██║████╗ ████║████╗ ████║██╔════╝██╔══██╗\n"\
+               "   ██║   █████╗     ██║   ██████╔╝██║██╔████╔██║██╔████╔██║█████╗  ██████╔╝\n"\
+               "   ██║   ██╔══╝     ██║   ██╔══██╗██║██║╚██╔╝██║██║╚██╔╝██║██╔══╝  ██╔══██╗\n"\
+               "   ██║   ███████╗   ██║   ██║  ██║██║██║ ╚═╝ ██║██║ ╚═╝ ██║███████╗██║  ██║\n"\
+               "   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝\n"\
+
+
+    initial_text = "TETrimmer proof annotation assistant tool\n\n" \
+                   "Introduction:\n\n" \
+                   "We highly recommend to do proof annotation for 'Recommend_check_annotation' and 'Need_check_annotation" \
+                   " ,which can dramatically increase your TE annotation quality.\n\n"\
+                   "1, Click the buttons in the menu bar, which corresponds to the different annotation status.\n\n" \
+                   "2, All files in the chose folder (button) will be displayed.\n\n" \
+                   "3, For each TE output, you can find four files including <seq_name.anno.fa>, <seq_name.fa>, <seq_name.bed>, and " \
+                   "<seq_name.pdf>.\n\n" \
+                   "   <seq_name.anno.fa> is the multiple sequence alignment (MSA) file before cleaning\n" \
+                   "   <seq_name.fa> is the multiple sequence alignment (MSA) file after cleaning\n" \
+                   "   <seq_name.pdf> contains four plots used to evaluate annotation quality\n" \
+                   "   <seq_name.bed> contains sequence position information at the genome of MSA. Used for further extension.\n\n" \
+                   "4, Double click <seq_name.pdf> and evaluate annotation quality.\n\n" \
+                   "5, If you are satisfied with the result, click 'Consensus' button behind <seq_name.fa>. This MSA " \
+                   "file will go to <Proof_annotation_consensus_folder>.\n\n" \
+                   "6, If you are not satisfied, double click <seq_name.fa> or <seq_name.anno.fa> to modify MSA and " \
+                   "save it to consensus folder.\n\n" \
+                   "7, If you want more extension for the MSA, click 'Extension' behind <seq_name.bed> and this " \
+                   "bed file will be salved to <Proof_annotation_need_more_extension> folder.\n\n" \
+                   "8, For low copy element, check the pdf file and decide if to include it into the final consensus " \
+                   "library. Note: low copy element do not have multiple sequence alignment file"
+
+    # Display ASCII logo with 'Courier' font
+    if os_type == "Linux":
+        logo_font = ('DejaVu Sans Mono', 10)
+    elif os_type == "Darwin":  # macOS
+        logo_font = ('Courier', 13)
+    else:
+        logo_font = ('Courier', 5)
+    logo_label = Label(canvas, text=log_text, bg='white', font=logo_font, justify='left', wraplength=1100)
+    logo_label.pack(pady=50)
+
+    # Display the explanatory text with 'Arial' font
+    text_label = Label(canvas, text=initial_text, bg='white', font=('Arial', 15), justify='left', wraplength=1100)
+    text_label.pack(pady=10)
+
+    #####################################################################################################
+    # Code block: add menu bar
+    #####################################################################################################
+    menubar = Menu(root)
+    root.config(menu=menubar)
+
+    annotation_folders = ["Clustered_proof_annotation", "Low_copy_TE", "Skipped_TE"]
+
+    for annotation in annotation_folders:
+        annotationMenu = Menu(menubar, tearoff=0)
+        menubar.add_cascade(label=annotation, menu=annotationMenu)
+        annotation_path = os.path.join(te_trimmer_proof_annotation_dir, annotation)
+        if not os.path.exists(annotation_path):
+            annotationMenu.add_command(label="Folder not detected! Use correct input folder path",
+                                       command=partial(messagebox.showerror,
+                                                       "Error", "Please use the correct input directory."
+                                                                " Five folder should be contained in your input path, "
+                                                                "including 'Perfect_annotation', 'Good_annotation', "
+                                                                "'Recommend_check_annotation', 'need_check_annotation', "
+                                                                "and 'Low_copy_TE'"))
+            continue
+#    root.mainloop()
+
+        sorted_files_annotation = sorted(os.listdir(annotation_path))
+        if not sorted_files_annotation:
+            annotationMenu.add_command(label="No files found here, try another folder.")
+        else:
+            for i in range(0, len(sorted_files_annotation), 1000):
+                end = min(i + 1000, len(sorted_files_annotation))
+                annotationMenu.add_command(label=f"{i + 1}-{end}",
+                                           command=partial(load_files_with_destroy, i, end, annotation_path))
 
     # Use Aliview to open fasta file
     def open_file(filename, button, source_dir=te_trimmer_proof_annotation_dir):
@@ -230,53 +331,6 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
         for widget in frame.winfo_children():
             widget.destroy()
 
-    global logo_label
-    global text_label
-
-    log_text = "████████╗███████╗████████╗██████╗ ██╗███╗   ███╗███╗   ███╗███████╗██████╗\n"\
-               "╚══██╔══╝██╔════╝╚══██╔══╝██╔══██╗██║████╗ ████║████╗ ████║██╔════╝██╔══██╗\n"\
-               "   ██║   █████╗     ██║   ██████╔╝██║██╔████╔██║██╔████╔██║█████╗  ██████╔╝\n"\
-               "   ██║   ██╔══╝     ██║   ██╔══██╗██║██║╚██╔╝██║██║╚██╔╝██║██╔══╝  ██╔══██╗\n"\
-               "   ██║   ███████╗   ██║   ██║  ██║██║██║ ╚═╝ ██║██║ ╚═╝ ██║███████╗██║  ██║\n"\
-               "   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝\n"\
-
-
-    initial_text = "TETrimmer proof annotation assistant tool\n\n" \
-                   "Introduction:\n\n" \
-                   "We highly recommend to do proof annotation for 'Recommend_check_annotation' and 'Need_check_annotation" \
-                   " ,which can dramatically increase your TE annotation quality.\n\n"\
-                   "1, Click the buttons in the menu bar, which corresponds to the different annotation status.\n\n" \
-                   "2, All files in the chose folder (button) will be displayed.\n\n" \
-                   "3, For each TE output, you can find four files including <seq_name.anno.fa>, <seq_name.fa>, <seq_name.bed>, and " \
-                   "<seq_name.pdf>.\n\n" \
-                   "   <seq_name.anno.fa> is the multiple sequence alignment (MSA) file before cleaning\n" \
-                   "   <seq_name.fa> is the multiple sequence alignment (MSA) file after cleaning\n" \
-                   "   <seq_name.pdf> contains four plots used to evaluate annotation quality\n" \
-                   "   <seq_name.bed> contains sequence position information at the genome of MSA. Used for further extension.\n\n" \
-                   "4, Double click <seq_name.pdf> and evaluate annotation quality.\n\n" \
-                   "5, If you are satisfied with the result, click 'Consensus' button behind <seq_name.fa>. This MSA " \
-                   "file will go to <Proof_annotation_consensus_folder>.\n\n" \
-                   "6, If you are not satisfied, double click <seq_name.fa> or <seq_name.anno.fa> to modify MSA and " \
-                   "save it to consensus folder.\n\n" \
-                   "7, If you want more extension for the MSA, click 'Extension' behind <seq_name.bed> and this " \
-                   "bed file will be salved to <Proof_annotation_need_more_extension> folder.\n\n" \
-                   "8, For low copy element, check the pdf file and decide if to include it into the final consensus " \
-                   "library. Note: low copy element do not have multiple sequence alignment file"
-
-    # Display ASCII logo with 'Courier' font
-    if os_type == "Linux":
-        logo_font = ('DejaVu Sans Mono', 10)
-    elif os_type == "Darwin":  # macOS
-        logo_font = ('Courier', 10)
-    else:
-        logo_font = ('Courier', 5)
-    logo_label = Label(canvas, text=log_text, bg='white', font=logo_font, justify='left', wraplength=1100)
-    logo_label.pack(pady=10)
-
-    # Display the explanatory text with 'Arial' font
-    text_label = Label(canvas, text=initial_text, bg='white', font=('Arial', 15), justify='left', wraplength=1100)
-    text_label.pack(pady=10)
-
     def destroy_initial_label():
         global logo_label
         if logo_label:
@@ -356,8 +410,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     menubar.add_command(label="Undo", command=undo_last_copy)
 
     canvas_frame = canvas.create_window((0, 0), window=frame, anchor='nw')
-
-    root.mainloop()
+"""
 
 
 if __name__ == '__main__':
