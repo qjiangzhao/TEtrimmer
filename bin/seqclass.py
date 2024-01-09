@@ -1,7 +1,7 @@
 class SeqObject:
 
     """
-    create object for each input sequence.
+    Create object for each input sequence.
     """
 
     def __init__(self, name, path_input_fasta_file, length, TE_type):
@@ -10,9 +10,9 @@ class SeqObject:
         self.old_length = int(length)
         self.old_TE_type = str(TE_type)
         self.low_copy = False
-        self.consi_obj_list = []  # an input seq can end up with multiple consensus seq
+        self.consi_obj_list = []  # an input sequence can result in multiple consensus sequences
         self.blast_hit_n = 0
-        self.status = "unprocessed"  # "unprocessed","processed", "skipped"
+        self.status = "unprocessed"  # "unprocessed", "processed", "skipped"
         self.old_terminal_repeat = "False"
         self.old_blast_full_n = "NaN"
 
@@ -45,7 +45,7 @@ class SeqObject:
         self.consi_obj_list.append(consi_obj)
         return consi_obj
 
-    # update_status function will write object information to progress file, use it when the analysis is finished
+    # update_status function will write object information to progress file to be used when the analysis is complete
     def update_status(self, new_status, progress_file):
 
         self.status = new_status
@@ -135,7 +135,7 @@ class ConsensusObject:
     def get_new_TE_type(self):
         return self.new_TE_type
 
-    # Store full length blast number
+    # Store number of full-length BLAST hits
     def set_blast_full_n(self, blast_full_length_n):
         self.new_TE_blast_full_length_n = int(blast_full_length_n)
 
@@ -155,7 +155,7 @@ class ConsensusObject:
     def get_TE_type_for_file(self):
 
         # For writing the final consensus file, the TE_type can be either the input TE type or the new
-        # classified one if it is newly classified
+        # type if it has been newly classified
         if "NaN" in self.new_TE_type or "unknown" == self.new_TE_type.lower():
             return self.parent_seq_object.old_TE_type
 
