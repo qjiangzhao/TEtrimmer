@@ -64,6 +64,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     # Define output folders, create them when they are not found
     consensus_folder = os.path.abspath(os.path.join(output_dir, "Proof_annotation_consensus_folder"))
     need_more_extension = os.path.abspath(os.path.join(output_dir, "Proof_annotation_need_more_extension"))
+    others_dir = os.path.abspath(os.path.join(output_dir, "Proof_annotation_others"))
     low_copy_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_low_copy_elements"))
     rescue_skip_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_rescued_skip_elements"))
 
@@ -395,6 +396,13 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
             more_extend_button.bind('<Button-1>', copy_file(filename, more_extend_button, need_more_extension,
                                                             source_dir, current_win))
 
+            # Define "Others" button
+            others_button = Button(button_frame, text="Others", bg='white', fg='black')
+            others_button.grid(row=0, column=2, padx=5)
+            # Bind "Extension" button with copy_file function with different destination folder
+            others_button.bind('<Button-1>', copy_file(filename, more_extend_button, others_dir,
+                                                       source_dir, current_win))
+
             button_frame.grid_columnconfigure(0, weight=1)
             button_frame.grid_rowconfigure(0, weight=1)
             frame.grid_columnconfigure(1, weight=1)
@@ -483,10 +491,10 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
         folder_window.mainloop()
 
     #####################################################################################################
-    # Code block: Add menu bar
+    # Code block: Add menu bar for mother window
     #####################################################################################################
 
-    # Creat mother menu
+    # Create mother menu
     menubar = Menu(root)
 
     # Show menu on the window

@@ -339,7 +339,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
     # If all this sequence is finished remove all files contain this name
     if not debug:
-        remove_files_with_start_pattern(MSA_dir, seq_name)
+        remove_files_with_start_pattern(MSA_dir, f"{seq_name}.fasta")
 
     # Read and count sequences from Finished_sequence_name.txt
     completed_sequence, skipped_count, low_copy_count, classified_pro = check_progress_file(progress_file)

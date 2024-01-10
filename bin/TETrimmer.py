@@ -1,5 +1,6 @@
 # Standard library imports
 import os
+import shutil
 import traceback
 from datetime import timedelta, datetime
 import multiprocessing as mp
@@ -8,12 +9,14 @@ import concurrent.futures
 import json
 import pandas as pd
 from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
 
 # Local imports
 import analyze
 from functions import separate_sequences, remove_files_with_start_pattern, \
     change_permissions_recursive, repeatmasker, check_database, cd_hit_est, repeatmasker_output_classify, \
-    rename_cons_file, rename_files_based_on_dict, prcyan, prgre, parse_cd_hit_est_result, copy_files_with_start_pattern
+    rename_cons_file, rename_files_based_on_dict, prcyan, prgre, parse_cd_hit_est_result, \
+    copy_files_with_start_pattern, fasta_file_to_dict, multi_seq_dotplot
 
 #####################################################################################################
 # Code block: Import JSON species_config file and define the default parameters
@@ -663,11 +666,21 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     #####################################################################################################
 
     try:
-        click.echo("\nTETrimmer is clustering proof annotation files.")
+        click.echo("\nTETrimmer is clustering proof annotation files.\n")
 
-        # Clean cluster_proof_anno_dir when --continue_analysis is on
+        # Create directory to store multiple sequence dotplot
+        multi_dotplot_dir = os.path.join(classification_dir, "Multiple_sequence_dotplot")
+        os.makedirs(multi_dotplot_dir, exist_ok=True)
+
+        # Load fast file to a dictionary, key is record.id, value is record project
+        # When separate_name is true, the key of the dictionary will be the sequence name separated by '#'
+        final_con_file_no_low_copy_dict = fasta_file_to_dict(final_con_file_no_low_copy, separate_name=True)
+
+        # Clean cluster_proof_anno_dir when --continue_analysis is on.
         if continue_analysis:
+            # When the start pattern isn't given, all files inside the folder will be removed
             remove_files_with_start_pattern(cluster_proof_anno_dir)
+            remove_files_with_start_pattern(multi_dotplot_dir)
 
         # Do CD-HIT-EST for final consensus file without low copy elements
         final_con_file_no_low_copy_cd_out = f"{final_con_file_no_low_copy}_cd.fa"
@@ -685,7 +698,10 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             cluster_folder = os.path.join(cluster_proof_anno_dir, cluster_name_proof_anno)
             os.makedirs(cluster_folder, exist_ok=True)
 
-            for i in range(len(seq_info_proof_anno)):
+            seq_info_proof_anno_len = len(seq_info_proof_anno)
+
+            cluster_record_list = []
+            for i in range(seq_info_proof_anno_len):
                 try:
                     seq_length_proof_anno = seq_info_proof_anno[i][0]
                 except Exception:
@@ -697,6 +713,10 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                     seq_per_proof_anno = seq_info_proof_anno[i][2]
                 except Exception:
                     seq_per_proof_anno = None
+                try:
+                    seq_direction_proof_anno = seq_info_proof_anno[i][3]
+                except Exception:
+                    seq_direction_proof_anno = None
 
                 # Copy sequence files into cluster folder
                 # if not, set evaluation_level to "Need_check". The "get" method will return the default value
@@ -704,19 +724,49 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                 evaluation_level = sequence_info.get(seq_name_proof_anno, {"evaluation": "Need_check"})["evaluation"]
 
                 # Add '#' to the end of seq_name_proof_anno, this can avoid to delete 140 when the id is 14
-                seq_name_proof_anno = f"{seq_name_proof_anno}#"
+                seq_name_proof_anno_m = f"{seq_name_proof_anno}#"
                 if evaluation_level == "Perfect":
-                    copy_files_with_start_pattern(perfect_proof, seq_name_proof_anno, cluster_folder,
+                    copy_files_with_start_pattern(perfect_proof, seq_name_proof_anno_m, cluster_folder,
                                                   seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
                 elif evaluation_level == "Good":
-                    copy_files_with_start_pattern(good_proof, seq_name_proof_anno, cluster_folder,
+                    copy_files_with_start_pattern(good_proof, seq_name_proof_anno_m, cluster_folder,
                                                   seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
                 elif evaluation_level == "Reco_check":
-                    copy_files_with_start_pattern(intermediate_proof, seq_name_proof_anno, cluster_folder,
+                    copy_files_with_start_pattern(intermediate_proof, seq_name_proof_anno_m, cluster_folder,
                                                   seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
                 elif evaluation_level == "Need_check":
-                    copy_files_with_start_pattern(need_check_proof, seq_name_proof_anno, cluster_folder,
+                    copy_files_with_start_pattern(need_check_proof, seq_name_proof_anno_m, cluster_folder,
                                                   seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
+
+                # Plot multiple sequence dotplot when more than one sequence are included inside one cluster
+                if seq_info_proof_anno_len > 1:
+
+                    # Extract record from dictionary
+                    cluster_record = final_con_file_no_low_copy_dict.get(seq_name_proof_anno)
+
+                    # When the sequence direction is negative, reverse complement it
+                    if cluster_record is not None and seq_direction_proof_anno == '-':
+                        rev_comp_cluster_record_seq = cluster_record.seq.reverse_complement()
+                        cluster_record = SeqRecord(rev_comp_cluster_record_seq,
+                                                   id=cluster_record.id, description="")
+                    if cluster_record is not None:
+                        cluster_record_list.append(cluster_record)
+
+            if len(cluster_record_list) > 1:
+                # Define and write cluster fasta file a
+                cluster_fasta = os.path.join(multi_dotplot_dir, f"{cluster_name_proof_anno}.fa")
+                SeqIO.write(cluster_record_list, cluster_fasta, "fasta")
+
+                # Do multiple sequence dotplot
+                multi_dotplot_pdf = multi_seq_dotplot(cluster_fasta, multi_dotplot_dir, cluster_name_proof_anno)
+
+                # Move muti_dotplot_pdf to proof annotation cluster folder
+                if os.path.isfile(multi_dotplot_pdf):
+                    shutil.copy(multi_dotplot_pdf, cluster_folder)
+
+        # clear remove_files_with_start_pattern
+        if not debug:
+            remove_files_with_start_pattern(multi_dotplot_dir)
 
     except Exception as e:
         with open(error_files, "a") as f:

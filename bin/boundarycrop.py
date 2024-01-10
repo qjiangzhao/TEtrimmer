@@ -946,7 +946,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
             # Clean classification folder when debug is True
             if not debug:
-                remove_files_with_start_pattern(classification_dir, uniq_seq_name)
+                remove_files_with_start_pattern(classification_dir, f"{uniq_seq_name}.fasta")
     except Exception as e:
         with open(error_files, "a") as f:
             # Get the traceback content as a string

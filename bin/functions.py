@@ -22,6 +22,16 @@ def prgre(text):
     click.echo(click.style(text, fg='green'))
 
 
+def fasta_file_to_dict(input_file, separate_name=False):
+    sequences = {}
+    for record in SeqIO.parse(input_file, "fasta"):
+        if separate_name:
+            sequences[record.id.split('#')[0]] = record
+        else:
+            sequences[record.id] = record
+    return sequences
+
+
 def calculate_genome_length(genome_file):
     """
     Calculate the length of each sequence in a genome file in FASTA format
@@ -1354,13 +1364,21 @@ def parse_cd_hit_est_result(input_file):
                 except Exception:
                     seq_length = None
                 if '... at' in line:
-                    seq_per = line.split('...')[1].split('/')[1].strip()
+                    seq_per_and_direction = line.split('... at')[1].strip()
+                    seq_per = seq_per_and_direction.split('/')[1].strip()
+                    seq_direction = seq_per_and_direction.split('/')[0].strip()
+
+                    if seq_direction != '+' and seq_direction != '-':
+                        seq_direction = None
+
                 elif '... *' in line:
                     seq_per = "standard"
+                    seq_direction = '+'
                 else:
                     seq_per = None
+                    seq_direction = None
                 current_cluster.append(seq_name)
-                current_detailed_cluster.append((seq_length, seq_name, seq_per))
+                current_detailed_cluster.append((seq_length, seq_name, seq_per, seq_direction))
         if current_cluster:
             clusters[cluster_name] = current_cluster
             detailed_clusters[cluster_name] = current_detailed_cluster
@@ -1544,29 +1562,21 @@ def rename_files_based_on_dict(directory, reclassified_dict, seq_name=False):
                         shutil.move(old_file_path, new_file_path)
 
 
-def remove_files_with_start_pattern(input_dir, start_pattern=None, if_seq_name=True):
+def remove_files_with_start_pattern(input_dir, start_pattern=None):
     # Remove files and folder start with give pattern
-    # Add .fasta to the end of start_pattern
-    if if_seq_name:
-        start_pattern = f"{start_pattern}.fasta"
+    # When start pattern is missing, remove everything in this folder
     for filename in os.listdir(input_dir):
-        # When the start_pattern is given, search the file or folder starts with start_pattern
-        # Otherwise, delete all the files and folders in the input_dir
-        if start_pattern is not None:
-            if filename.startswith(start_pattern):
-                file_path = os.path.join(input_dir, filename)
-            else:
-                continue
-        else:
-            file_path = os.path.join(input_dir, filename)
+        file_path = os.path.join(input_dir, filename)
 
-        if os.path.isfile(file_path):  # This check ensures you're only removing files, not directories
+        if start_pattern is not None and not filename.startswith(start_pattern):
+            continue
+
+        if os.path.isfile(file_path):
             os.remove(file_path)
         elif os.path.isdir(file_path):
             try:
                 shutil.rmtree(file_path)
-            except Exception:
-                # File deletion doesn't affect the final consensus sequence. Skip when error happens
+            except Exception as e:
                 pass
 
 
@@ -1613,8 +1623,8 @@ def handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir, classificat
                 # Merge TE Aid and ORF plots
                 merge_pdfs(low_copy_dir, f"{seq_name}#{te_type_modified}", te_aid_plot, orf_plot)
         if not debug:
-            remove_files_with_start_pattern(MSA_dir, seq_name)
-            remove_files_with_start_pattern(classification_dir, seq_name)
+            remove_files_with_start_pattern(MSA_dir, f"{seq_name}.fasta")
+            remove_files_with_start_pattern(classification_dir, f"{seq_name}.fasta")
     except Exception as e:
         click.echo(f"\nAn error occurred while handling low copy sequence {seq_name}:\n {e}\n")
 
@@ -1635,8 +1645,8 @@ def handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classificati
             skip_fasta_file = os.path.join(skip_proof_dir, f"{seq_name}#{te_type_modified}.fa")
             shutil.copy(input_fasta, skip_fasta_file)
         if not debug:
-            remove_files_with_start_pattern(MSA_dir, seq_name)
-            remove_files_with_start_pattern(classification_dir, seq_name)
+            remove_files_with_start_pattern(MSA_dir, f"{seq_name}.fasta")
+            remove_files_with_start_pattern(classification_dir, f"{seq_name}.fasta")
     except Exception as e:
         click.echo(f"\nAn error occurred while handling skipped sequence {seq_name}:\n {e}\n")
 
@@ -1962,6 +1972,61 @@ def dotplot(sequence1, sequence2, output_dir):
 
     except subprocess.CalledProcessError as e:
         prcyan(f"\nps2pdf failed for {n_after_tetrimmer} with error code {e.returncode}")
+        prgre("\nps2pdf won't affect the final consensus sequence. You can choose to ignore this error\n")
+        raise Exception
+
+    return pdf_out
+
+
+def multi_seq_dotplot(input_file, output_dir, title):
+
+    input_name = os.path.basename(input_file)
+
+    # Define the output filenames
+    ps_out = os.path.join(output_dir, f"{title}.ps")
+    pdf_out = os.path.join(output_dir, f"0TETrimmer_{title}_multiple_sequence_dotplot.pdf")
+
+    # Define command for dotmatcher
+    polydot_command = [
+        "polydot",
+        str(input_file),
+        "-wordsize", str(40),
+        "-gtitle", str(title),
+        "-gdirectory", str(output_dir),
+        "-goutfile", str(title),
+        "-graph", "ps"
+    ]
+
+    try:
+        subprocess.run(polydot_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    except FileNotFoundError:
+        prcyan("'\npolydot' command not found. Please ensure 'emboss' is correctly installed.")
+        prgre("\npolydot won't affect the final consensus sequence. You can choose to ignore this error\n")
+        raise Exception
+
+    except subprocess.CalledProcessError as e:
+        prcyan(f"\npolydot failed for {input_name} with error code {e.returncode}")
+        prgre("\npolydot won't affect the final consensus sequence. You can choose to ignore this error")
+        raise Exception
+
+    # Define command to convert ps to pdf
+    ps2pdf_command = [
+        "ps2pdf",
+        str(ps_out),
+        str(pdf_out)
+    ]
+
+    try:
+        subprocess.run(ps2pdf_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    except FileNotFoundError:
+        prcyan("'\nps2pdf' command not found. Please install it by 'sudo apt-get install ghostscript'")
+        prgre("ps2pdf won't affect the final consensus file. You can choose to ignore it.")
+        raise Exception
+
+    except subprocess.CalledProcessError as e:
+        prcyan(f"\nps2pdf failed for {input_name} with error code {e.returncode}")
         prgre("\nps2pdf won't affect the final consensus sequence. You can choose to ignore this error\n")
         raise Exception
 
