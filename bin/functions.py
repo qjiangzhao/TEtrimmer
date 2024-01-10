@@ -560,7 +560,7 @@ def calc_proportion(input_file):
             if nucleotide in counts:
                 counts[nucleotide] += 1
 
-        # Calculate the proportion of each nucleotide
+        # Calculate the proportion of each nucleotide at each site
         total = sum(counts.values())
 
         # Check if total is zero
@@ -573,7 +573,7 @@ def calc_proportion(input_file):
     return np.array(max_props)  # Convert the list to a NumPy array and return it
 
 
-# Function help to define the threshold of crop end by similarity
+# Function to help define the threshold for crop end by similarity
 def define_crop_end_simi_thr(input_file, window_size=40, max_steps=100):
     array = calc_proportion(input_file)
     array_length = len(array)
@@ -608,9 +608,9 @@ def calc_conservation(col):
     """
     Calculate the conservation of a column as the fraction of the most common nucleotide.
     :param col: one single column content for multiple sequence alignment
-    :return: most abundant nucleotide proportion for this column (gap isn't included)
+    :return: most abundant nucleotide proportion for this column (excluding gaps)
     """
-    # Mafft will convert all nucleotide to lowercase
+    # MAFFT will convert all nucleotide to lowercase
     nucleotide_counts = {'a': 0, 'c': 0, 'g': 0, 't': 0}
 
     for nucleotide in col:
@@ -625,10 +625,10 @@ def calc_conservation(col):
 
 def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
     """
-    Generate HMM profile using hmmbuild from a multiple sequence alignment file.
+    Generate HMM profiles using hmmbuild on a multiple sequence alignment file.
 
-    :param input_msa_file: Path to the multiple sequence alignment file (in FASTA or Stockholm format).
-    :param output_hmm_file: Path to the output HMM file.
+    :param input_msa_file: path to the multiple sequence alignment file (in FASTA or Stockholm format)
+    :param output_hmm_file: path to the output HMM file
     """
 
     # Construct the command as a list
@@ -639,8 +639,8 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
         subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     except FileNotFoundError:
-        prcyan("'hmmbuild' command not found. Please ensure 'hmmbuild' is correctly installed.")
-        prgre("This hmm error won't affect the final TE consensus library.")
+        prcyan("'hmmbuild' command not found. Please ensure 'hmmbuild' is installed correctly.")
+        prgre("This hmm error will not affect the final TE consensus library.")
         pass
 
     except subprocess.CalledProcessError as e:
@@ -648,14 +648,14 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
             f.write(f"\nhmm file generation failed for {os.path.basename(output_hmm_file)} with error code {e.returncode}")
             f.write('\n' + e.stderr)
         prcyan(f"\nhmm file generation failed for {os.path.basename(output_hmm_file)} with error code {e.returncode}")
-        prgre("\nThis hmm error won't affect the final TE consensus library, you can ignore it."
-              "\nFor traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
+        prgre("\nThis hmm error will not affect the final TE consensus library, you can ignore it."
+              "\nFor traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n")
         pass
 
 
 def reverse_complement_seq_file(input_file, output_file):
     """
-    Takes an MSA FASTA file and writes the reverse complemented sequences to a new file.
+    Takes an MSA FASTA file and writes the reverse complement of the sequences to a new file.
     """
     reverse_complemented_records = []
 
@@ -665,7 +665,7 @@ def reverse_complement_seq_file(input_file, output_file):
         rev_comp_record = SeqRecord(rev_comp_seq, id=record.id, description="")
         reverse_complemented_records.append(rev_comp_record)
 
-    # Write the reverse complemented sequences to the output file
+    # Write the reverse-complemented sequences to the output file
     SeqIO.write(reverse_complemented_records, output_file, "fasta")
     return output_file
 
@@ -679,12 +679,12 @@ def remove_short_seq(input_file, output_file, threshold=0.1):
     # Initialize an empty list to store the filtered sequences
     filtered_alignment = []
 
-    # Loop each sequence in the alignment
+    # Loop through each sequence in the alignment
     for record in alignment:
-        # Get the length of the sequence without gaps
+        # Get the length of the sequence, excluding gaps
         seq_length = len(record.seq.ungap("-"))
 
-        # Check if the sequence length is greater than or equal the length threshold
+        # Check if the sequence length is greater than or equal to the length threshold
         if seq_length >= len * threshold:
             filtered_alignment.append(record)
 
@@ -694,27 +694,26 @@ def remove_short_seq(input_file, output_file, threshold=0.1):
 
 def remove_gaps(input_file, output_dir, threshold=0.8, min_nucleotide=5):
     """
-    Remove gaps when gap percentage is bigger than threshold. Remove columns when nucleotide number is less than 5
+    Remove gaps if the gap percentage is above threshold. Remove columns if nucleotide number is less than 5.
     :param input_file: str, input file path
     :param output_dir: str, output file directory
-    :param threshold: num (0-1) default 0.8, column with gap percentage that is greater (not include equal)
-    than threshold will be removed
-    :param min_nucleotide: num (>0) default 5, columns with less than "min_nucleotide" nucleotides will be removed
-    :return: absolut path of gap removed multiple sequence alignment file
+    :param threshold: int (0-1), columns with gap percentage greater than <threshold> will be removed. Default: 0.8
+    :param min_nucleotide: int (>0), columns with less than <min_nucleotide> nucleotides will be removed. Default: 5
+    :return: absolut path for the gap-purged multiple sequence alignment file
     """
     keep_list = []
     fasta_out_flank_mafft_gap_filter_file = os.path.join(output_dir,
                                                          f"{os.path.basename(input_file)}_g.fa")
     MSA_mafft = AlignIO.read(input_file, "fasta")
 
-    column_mapping = {}  # Stores the mapping of column indices from filtered MSA to original MSA
+    column_mapping = {}  # Stores the mapping of column indices of filtered MSA to original MSA
 
     for col_idx in range(MSA_mafft.get_alignment_length()):
         col = MSA_mafft[:, col_idx]
         gap_count = col.count('-')
         gap_fraction = gap_count / len(col)
 
-        # Check if the count of nucleotides in the column is at least 5
+        # Check if the count of nucleotides in the column is 5 or greater
         nt_count = len(col) - gap_count
         if nt_count < min_nucleotide:
             continue
@@ -722,15 +721,15 @@ def remove_gaps(input_file, output_dir, threshold=0.8, min_nucleotide=5):
         # If the gap fraction is less than the threshold, add the column to the filtered MSA
         if gap_fraction <= threshold:
             keep_list.append(col_idx)
-            # Be careful when you want to use len for indexing. Because len start from 1
+            # Be careful when using len for indexing, because len starts with 1
             column_mapping[
                 len(keep_list) - 1] = col_idx  # Store the mapping of original MSA index to filtered MSA index
 
-    # The index in python won't include the second value. That it is to say the returned end_posit from
-    # DefineBoundary() will one more index than the final len(keep_list) -1] for this reason, you have to
-    # add one more value
+    # The index in Python does not include the second value. As a consequence, end_posit from the DefineBoundary()
+    # function contains one more index than the final [len(keep_list) -1]. 
+    # Adding one more value to correct index
     column_mapping[len(keep_list)] = column_mapping[len(keep_list) - 1] + 1
-    # Keep the columns when they meet requirements
+    # Keep the columns if they meet requirements
     MSA_mafft_filtered = MSA_mafft[:, keep_list[0]:keep_list[0] + 1]
     for i in keep_list[1:]:
         MSA_mafft_filtered += MSA_mafft[:, i:i + 1]
@@ -742,17 +741,18 @@ def remove_gaps(input_file, output_dir, threshold=0.8, min_nucleotide=5):
 
 
 def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_threshold=0.5, min_nucleotide=5):
+    # Legacy: function depreciated, use remove_gaps_with_similarity_check
     """
-    Remove gaps that are only from conserved regions. Remove columns when nucleotide number is less than 5
+    Remove gap blocks flanked by conserved regions of the MSA. Remove columns if nucleotide number is less than 5.
     :param input_file: str, input file path
     :param output_dir: str, output file directory
-    :param threshold: num (0-1) default 0.8, column with gap percentage that is greater (not include equal)
-    than threshold will be removed
-    :param conservation_threshold: num (0-1) default 0.5, connected single gaps will be classified as one block, two columns
-    before and after this block will be checked. If the most abundant nucleotides proportion from one beginning and
-    one end columns are greater than conservation_threshold this gap block will be removed
-    :param min_nucleotide: num (>0) default 5, columns with less than "min_nucleotide" nucleotides will be removed
-    :return: gap block removed file absolute path
+    :param threshold: int (0-1) columns with gap percentage greater than <threshold> will be removed. Default: 0.8
+    :param conservation_threshold: int (0-1), after connected gaps have been classified as a gap block, the nucleotide
+    conservation of two flanking non-gap columns at both ends of the gap block will be calculated. If the proportion of
+    the most abundant nucleotide is greater than <conservation_threshold>, this gap block will be removed from the MSA. 
+    Default: 0.5
+    :param min_nucleotide: int (>0), columns with less than <min_nucleotide> nucleotides will be removed. Default: 5
+    :return: absolute path to gap block-purged MSA FASTA file
     """
     # The keep_list is a list of tuples containing start and end position for each gap block
     gap_blocks = []
@@ -760,7 +760,7 @@ def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_thresh
                                                          f"{os.path.basename(input_file)}_gb.fa")
     MSA_mafft = AlignIO.read(input_file, "fasta")
 
-    # Initialize the start of the block to None
+    # Initialize the start of the block as 'None'
     block_start = None
 
     for col_idx in range(MSA_mafft.get_alignment_length()):
@@ -770,15 +770,15 @@ def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_thresh
         # Check the count of nucleotides in the column
         nt_count = len(col) - gap_count
 
-        # If the column meets the gap requirement, and we're not already in a block, start a new one
+        # If the column meets the gap requirement and is not within an already called block, start a new block
         if (gap_fraction > threshold or nt_count < min_nucleotide) and block_start is None:
             block_start = col_idx
-        # If the column doesn't meet the gap requirement, and we're in a block, end the block
+        # If the column does not meet the gap requirement and is within a gap block, close the block
         elif gap_fraction <= threshold and nt_count >= min_nucleotide and block_start is not None:
             gap_blocks.append((block_start, col_idx))
             block_start = None
 
-    # If we're still in a block at the end of the MSA, end it
+    # If the block extends to the end of the MSA, close the block
     if block_start is not None:
         gap_blocks.append((block_start, MSA_mafft.get_alignment_length()))
 
@@ -793,22 +793,22 @@ def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_thresh
                     col_after is not None and calc_conservation(col_after) > conservation_threshold:
                 delete_blocks.append(block)
 
-    # When no gap block is detected, return the original MSA
+    # If no gap block was detected, return the original MSA
     else:
-        # No blocks to delete, return the original MSA. Write file again to convert file name
+        # No blocks to delete, return the original MSA. Write into file with converted file name
         with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
             AlignIO.write(MSA_mafft, f, 'fasta')
         return fasta_out_flank_mafft_gap_filter_file
 
     if delete_blocks:
 
-        # Identify the ranges to keep, which are in between the blocks to delete
+        # Identify the sequence ranges to keep, which are in between the blocks to delete
         keep_ranges = [(0, delete_blocks[0][0])]
         for i in range(len(delete_blocks) - 1):
             keep_ranges.append((delete_blocks[i][1], delete_blocks[i + 1][0]))
         keep_ranges.append((delete_blocks[-1][1], MSA_mafft.get_alignment_length()))
 
-        # Concatenate the columns in each keep_range to create the final filtered MSA
+        # Concatenate the columns in each keep_range object to create the final filtered MSA
         MSA_mafft_filtered = MSA_mafft[:, keep_ranges[0][0]:keep_ranges[0][1]]
         for keep_range in keep_ranges[1:]:
             MSA_mafft_filtered += MSA_mafft[:, keep_range[0]:keep_range[1]]
@@ -819,7 +819,7 @@ def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_thresh
 
         return fasta_out_flank_mafft_gap_filter_file
     else:
-        # No blocks to delete, return the original MSA. Write file again to convert file name
+        # No blocks to delete, return the original MSA. Write into file with converted file name
         with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
             AlignIO.write(MSA_mafft, f, 'fasta')
         return fasta_out_flank_mafft_gap_filter_file
@@ -827,27 +827,27 @@ def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_thresh
 
 def remove_gaps_with_similarity_check(input_file, output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
                                       similarity_threshold=0.7, min_nucleotide=5, return_map=False):
+    # This function replaces remove_gaps_block
     """
-    Remove gaps when gap percentage is bigger than threshold. Remove columns when nucleotide number is less than 5.
-    When gap percentage is equal or bigger than "simi_check_gap_thre". It will calculate most abundant nucleotide
-    proportion for this column. If it is less than "similarity_threshold" this column will be removed
+    Remove gaps flanked by conserved sequences in MSA. 
+    Gaps are removed if: gap proportion is greater than 80%, less than 5 nucleotides are found in the column, 
+    or if the gap proportion is between 40-80% and the nucleotide proportion is below 70% excluding gaps. 
     :param input_file: str, input file path
     :param output_dir: str, output file directory
-    :param gap_threshold: num (0-1) default 0.8, column with gap percentage that is greater (not include equal)
-    than threshold will be removed
-    :param simi_check_gap_thre: num (0-1) default 0.4, if gap greater or equal this gap threshold, column similarity
-    will be checked
-    :param similarity_threshold: num (0-1) default 0.7, when column gap is between "simi_check_gap_thre" and
-    "gap_threshold" and most abundant nucleotide proportion is less than "similarity_threshold" remove this column
-    :param min_nucleotide: num (>0) default 5, columns with less than "min_nucleotide" nucleotides will be removed
-    :return: gap removed file absolute path
+    :param gap_threshold: int (0-1), columns with gap proportion greater than <gap_threshold> will be removed. Default: 0.8
+    :param simi_check_gap_thre: int (0-1), if gap proportion greater or equal to <simi_check_gap_thre>, nucleotide
+    proportions will be calculated for this column (excluding gaps). Default: 0.4
+    :param similarity_threshold: int (0-1), if the gap proportion is between <simi_check_gap_thre> and <gap_threshold>
+    and the proportion of the most abundant nucleotide is less than <similarity_threshold>, remove this column. Default: 0.7
+    :param min_nucleotide: int (>0), columns with less than <min_nucleotide> nucleotides will be removed. Default: 5
+    :return: absolute path to gap-purged MSA FASTA file
     """
     keep_list = []
     fasta_out_flank_mafft_gap_filter_file = os.path.join(output_dir,
                                                          f"{os.path.basename(input_file)}_gs.fa")
     MSA_mafft = AlignIO.read(input_file, "fasta")
 
-    column_mapping = {}  # Stores the mapping of column indices from filtered MSA to original MSA
+    column_mapping = {}  # Stores the mapping of column indices of filtered MSA to original MSA
 
     #if len(MSA_mafft) < 5:
         #raise ValueError("Number of sequences is less than 5. Cannot remove gaps.")
@@ -862,16 +862,16 @@ def remove_gaps_with_similarity_check(input_file, output_dir, gap_threshold=0.8,
         if nt_count < min_nucleotide:
             continue
 
-        # If the gap fraction is less than the gap_threshold, consider the column for further analysis
+        # If the gap fraction is less than the gap_threshold, mark the column for further analysis
         if gap_fraction <= gap_threshold:
-            # If the gap fraction is between 0.4 and 0.8, check for the similarity of the remaining nucleotides
+            # If the gap fraction is between 0.4 and 0.8, calculate proportions of remaining nucleotides
             if simi_check_gap_thre > gap_fraction:
                 keep_list.append(col_idx)
                 column_mapping[len(keep_list) - 1] = col_idx
             elif simi_check_gap_thre <= gap_fraction:
                 nt_fraction = calc_conservation(col)
 
-                # If the nucleotides are less than similarity_threshold, skip this column
+                # If the proportion of the most abundant nucleotide is less than similarity_threshold, skip this column
                 if nt_fraction < similarity_threshold:
                     continue
                 else:
@@ -879,10 +879,10 @@ def remove_gaps_with_similarity_check(input_file, output_dir, gap_threshold=0.8,
                     keep_list.append(col_idx)
                     # Store the mapping of original MSA index to filtered MSA index
                     column_mapping[len(keep_list) - 1] = col_idx
-
-    # The index in python won't include the second value. That it is to say the returned end_posit from
-    # DefineBoundary() will one more index than the final len(keep_list) -1] for this reason, you have to
-    # add one more value
+                    
+    # The index in Python does not include the second value. As a consequence, end_posit from the DefineBoundary()
+    # function contains one more index than the final [len(keep_list) -1]. 
+    # Adding one more value to correct index
     if len(keep_list) < 50:
         if return_map:
             return False, False
@@ -914,17 +914,17 @@ def remove_gaps_block_with_similarity_check(input_file, output_dir, gap_threshol
     proportion for this column. If it is less than "similarity_threshold" this column will be removed
     :param input_file: str, input file path
     :param output_dir: str, output file directory
-    :param gap_threshold: num (0-1) default 0.8, column with gap percentage that is greater (not include equal)
-    than threshold will be removed
-    :param simi_check_gap_thre: num (0-1) default 0.4, if gap greater or equal this gap threshold, column similarity
-    will be checked
-    :param similarity_threshold: num (0-1) default 0.7, when column gap is between "simi_check_gap_thre" and
-    "gap_threshold" and most abundant nucleotide proportion is less than "similarity_threshold" remove this column
-    :param conservation_threshold: num (0-1) default 0.6, connected single gaps will be classified as one block, two columns
-    before and after this block will be checked. If the most abundant nucleotides proportion from one beginning and
-    one end columns are greater than conservation_threshold this gap block will be removed
-    :param min_nucleotide: num (>0) default 5, columns with less than "min_nucleotide" nucleotides will be removed
-    :return: gap block removed file absolute path
+    :param gap_threshold: int (0-1), columns with gap proportion greater than <gap_threshold> will be removed. Default: 0.8
+    :param simi_check_gap_thre: int (0-1), if gap proportion greater or equal to <simi_check_gap_thre>, nucleotide
+    proportions will be calculated for this column (excluding gaps). Default: 0.4
+    :param similarity_threshold: int (0-1), if the gap proportion is between <simi_check_gap_thre> and <gap_threshold>
+    and the proportion of the most abundant nucleotide is less than <similarity_threshold>, remove this column. Default: 0.7
+    :param conservation_threshold: int (0-1), after connected gaps have been classified as a gap block, the nucleotide
+    conservation of two flanking non-gap columns at both ends of the gap block will be calculated. If the proportion of
+    the most abundant nucleotide is greater than <conservation_threshold>, this gap block will be removed from the MSA. 
+    Default: 0.6
+    :param min_nucleotide: int (>0), columns with less than <min_nucleotide> nucleotides will be removed. Default: 5
+    :return: absolute path to gap-purged MSA FASTA file
     """
     # Identify blocks of gaps
     gap_blocks = []
@@ -937,7 +937,7 @@ def remove_gaps_block_with_similarity_check(input_file, output_dir, gap_threshol
 
     # Raise an error if the number of sequences is less than 5
     if len(MSA_mafft) < 5:
-        raise ValueError("Number of sequences is less than 5. Cannot remove gaps.")
+        raise ValueError("Number of sequences in MSA is less than 5. Cannot remove gaps.")
 
     # Define the starting point of a block
     block_start = None
@@ -945,30 +945,30 @@ def remove_gaps_block_with_similarity_check(input_file, output_dir, gap_threshol
     # Go through each column in the alignment
     for col_idx in range(MSA_mafft.get_alignment_length()):
 
-        # Define some metrics for the column
+        # Define metrics for the column
         col = MSA_mafft[:, col_idx]
         gap_count = col.count('-')
         gap_fraction = gap_count / len(col)
         nt_fraction = calc_conservation(col)
         nt_count = len(col) - gap_count
 
-        # Check if the column meets the criteria to start a new block
+        # Check if the column meets the criteria to open a new block
         if ((simi_check_gap_thre <= gap_fraction <= gap_threshold and nt_fraction <= similarity_threshold) or
             gap_fraction > gap_threshold or nt_count < min_nucleotide) and block_start is None:
             block_start = col_idx
 
-        # Check if the column meets the criteria to end a block
+        # Check if the column meets the criteria to close a block
         elif simi_check_gap_thre <= gap_fraction <= gap_threshold and nt_fraction > \
                 similarity_threshold and nt_count >= min_nucleotide and block_start is not None:
             gap_blocks.append((block_start, col_idx))
             block_start = None
 
-        # Check if the block should end due to a column with too few gaps
+        # Check if the block should be closed due to gap proportion below simi_check_gap_thre in a column
         elif gap_fraction <= simi_check_gap_thre and nt_count >= min_nucleotide and block_start is not None:
             gap_blocks.append((block_start, col_idx))
             block_start = None
 
-    # If a block was started but not ended, end it at the last column
+    # If a block was opened but not closed, close it at the last column of the MSA
     if block_start is not None:
         gap_blocks.append((block_start, MSA_mafft.get_alignment_length()))
 
@@ -978,12 +978,12 @@ def remove_gaps_block_with_similarity_check(input_file, output_dir, gap_threshol
     # Check if gap_blocks is empty
     if gap_blocks:
         for block in gap_blocks:
-            # Check the columns divergence before and after the block
+            # Calculate the nucleotide divergence of flanking columns of the gap block
             col_before = MSA_mafft[:, block[0] - 1] if block[0] > 0 else None
             col_before_2 = MSA_mafft[:, block[0] - 2] if block[0] > 1 else None
             col_after = MSA_mafft[:, block[1]] if block[1] < MSA_mafft.get_alignment_length() else None
             col_after_2 = MSA_mafft[:, block[1] + 1] if block[1] < MSA_mafft.get_alignment_length() - 1 else None
-            # If the surrounding columns are conserved, mark the block for deletion
+            # If the flanking columns contain conserved nucleotides, mark the block for deletion
             if col_before is not None and (calc_conservation(col_before) > conservation_threshold or
                                            calc_conservation(
                                                col_before_2) > conservation_threshold) and col_after is not None and \
@@ -1018,7 +1018,7 @@ def remove_gaps_block_with_similarity_check(input_file, output_dir, gap_threshol
         return fasta_out_flank_mafft_gap_filter_file
 
     else:
-        # No blocks to delete, return the original MSA. Write file again to convert file name
+        # No blocks to delete, return the original MSA. Write into file with converted file name
         with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
             AlignIO.write(MSA_mafft, f, 'fasta')
         return fasta_out_flank_mafft_gap_filter_file
@@ -1028,7 +1028,7 @@ def select_gaps_block_with_similarity_check(input_file,
                                             simi_check_gap_thre=0.4, similarity_threshold=0.8,
                                             conservation_threshold=0.6, min_nucleotide=10):
     """
-    Return: A list containing column numbers used for cluster
+    :return: A list containing column numbers used for clustering
     """
     # Identify blocks of gaps
     gap_blocks = []
@@ -1036,9 +1036,9 @@ def select_gaps_block_with_similarity_check(input_file,
     # Load the MSA file
     MSA_mafft = AlignIO.read(input_file, "fasta")
 
-    # Raise an error if the number of sequences is less than 5
+    # Raise an error if the number of sequences in the MSA is less than 5
     if len(MSA_mafft) < 5:
-        raise ValueError("Number of sequences is less than 5. Cannot remove gaps.")
+        raise ValueError("Number of sequences in MSA is less than 5. Cannot remove gaps.")
 
     # Define the starting point of a block
     block_start = None
@@ -1049,14 +1049,14 @@ def select_gaps_block_with_similarity_check(input_file,
 
     # Go through each column in the alignment. Start from 0
     for col_idx in range(MSA_mafft.get_alignment_length()):
-        # Define some metrics for the column
+        # Define metrics for the column
         col = MSA_mafft[:, col_idx]
         gap_count = col.count('-')
         gap_fraction = gap_count / len(col)
         nt_fraction = calc_conservation(col)
         nt_count = len(col) - gap_count
 
-        # Check if the column meets the criteria to start a new block
+        # Check if the column meets the criteria to open a new block
         if simi_check_gap_thre <= gap_fraction and nt_fraction >= similarity_threshold and \
                 nt_count >= min_nucleotide and block_start is None:
             block_start = col_idx
@@ -1068,23 +1068,23 @@ def select_gaps_block_with_similarity_check(input_file,
             gap_blocks.append((block_start, col_idx, condition_met_count))
             block_start = None
 
-        # Stop the gap block when nucleotide similarity is smaller than the threshold
+        # Close the gap block if nucleotide similarity is smaller than the threshold
         elif (
                 simi_check_gap_thre <= gap_fraction and nt_fraction < similarity_threshold and block_start is not None) or \
                 (nt_count < min_nucleotide and block_start is not None):
-            # Check the gap count in the next column if it exists
+            # Check the gap count of the next column if it exists
             next_gap_count = None
             if col_idx + 1 < MSA_mafft.get_alignment_length():
                 next_col = MSA_mafft[:, col_idx + 1]
                 next_gap_count = next_col.count('-')
 
-            # If gap count is not similar to both previous and next columns, stop the block
+            # If gap count is not similar to both previous and next columns, close the block
             if prev_gap_count is not None and next_gap_count is not None:
                 if not (0.8 * prev_gap_count <= gap_count <= 1.2 * prev_gap_count and
                         0.8 * next_gap_count <= gap_count <= 1.2 * next_gap_count):
                     condition_met_count += 1
 
-        # Stop the gap block when the gap number is too less
+        # Stop the gap block if the gap number is below threshold simi_check_gap_thre
         elif gap_fraction < simi_check_gap_thre and block_start is not None:
             gap_blocks.append((block_start, col_idx, condition_met_count))
             block_start = None
@@ -1099,14 +1099,14 @@ def select_gaps_block_with_similarity_check(input_file,
         for block in gap_blocks:
             start, end, block_condition_count = block  # Now also unpacking the block_condition_count
 
-            # Calculate the maximum allowable condition_met_count based on the block length
+            # Calculate the maximum allowable condition_met_count based on the gap block length
             block_length = end - start
             if block_length < 10:
                 max_condition_count = 1
             else:
                 max_condition_count = min(0.1 * block_length, 50)
 
-            # Check if the condition_met_count exceeds the maximum allowable value for the block
+            # Check if the condition_met_count exceeds the maximum allowable value for the gap block
             if block_condition_count > max_condition_count:
                 continue
 
@@ -1139,7 +1139,7 @@ def select_gaps_block_with_similarity_check(input_file,
         return False
 
 
-# Select MSA columns according to the given star and end position
+# Select MSA columns according to the provided start and end position
 def select_star_to_end(input_file, output_dir, start, end):
     alignment = AlignIO.read(input_file, "fasta")
     MSA_len = alignment.get_alignment_length()
