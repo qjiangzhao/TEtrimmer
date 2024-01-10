@@ -65,6 +65,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     consensus_folder = os.path.abspath(os.path.join(output_dir, "Proof_annotation_consensus_folder"))
     need_more_extension = os.path.abspath(os.path.join(output_dir, "Proof_annotation_need_more_extension"))
     low_copy_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_low_copy_elements"))
+    rescue_skip_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_rescued_skip_elements"))
 
     for dir_path in [consensus_folder, need_more_extension, low_copy_elements]:
         print(dir_path)
@@ -98,9 +99,9 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     scrollbar.pack(side='right', fill='y')
 
     def scroll(event, canvas):
-        if event.num == 4 or event.delta == 120:
+        if event.num == 4 or event.delta > 0:
             canvas.yview_scroll(-1, "units")
-        elif event.num == 5 or event.delta == -120:
+        elif event.num == 5 or event.delta < 0:
             canvas.yview_scroll(1, "units")
 
     # <MouseWheel> is typically used on Windows and macOS to handel mouse wheel movements
@@ -144,7 +145,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                    "Introduction:\n\n" \
                    "We highly recommend to do proof annotation to increase your TE annotation quality.\n\n"\
                    "1, Click the buttons in the menu bar, which corresponds to the different annotation status.\n\n" \
-                   "2, All files in the chose folder (button) will be displayed.\n\n" \
+                   "2, All files in the chose folder (menu button) will be displayed.\n\n" \
                    "3, For each TE output, you can find four files including <seq_name.anno.fa>, <seq_name.fa>, <seq_name.bed>, and " \
                    "<seq_name.pdf>.\n\n" \
                    "   <seq_name.anno.fa> is the multiple sequence alignment (MSA) file before cleaning\n" \
@@ -263,7 +264,9 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                 file_count_label = Label(frame, text=f"({file_count} files)", bg='white')
                 file_count_label.grid(row=i - start, column=3)
 
-            if not source_dir.endswith("Low_copy_TE") and not source_dir.endswith("Clustered_proof_annotation"):
+            # Don't show "Consensus" and "Extension" button for low copy and clustered proof annotation
+            if not source_dir.endswith("Low_copy_TE") and not source_dir.endswith("Clustered_proof_annotation")\
+                    and not source_dir.endswith("Skipped_TE"):
                 # Create "Consensus" button inside button_frame
                 copy_button = Button(button_frame, text="Consensus", bg='white', fg='black')
                 copy_button.grid(row=0, column=0, padx=5)
@@ -277,9 +280,17 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                 # Bind "Extension" button with copy_file function with different destination folder
                 more_extend_button.bind('<Button-1>', copy_file(filename, more_extend_button, need_more_extension,
                                                                 source_dir, root))
+            # Add rescue button for skipped TE
+            if os.path.basename(source_dir) == "Skipped_TE":
+                rescue_skip_button = Button(button_frame, text="Rescue skip", bg='white', fg='black')
+                rescue_skip_button.grid(row=0, column=1, padx=5)
+                rescue_skip_button.bind('<Button-1>', copy_file(filename, rescue_skip_button, rescue_skip_elements,
+                                                                source_dir, root))
+
+            # Add "Save to low copy" button for low copy TE
             if os.path.basename(source_dir) == "Low_copy_TE":
                 # Define "Low_copy" button with specific source and destination folder
-                low_copy_button = Button(button_frame, text="Low_copy", bg='white', fg='black')
+                low_copy_button = Button(button_frame, text="Save to low copy", bg='white', fg='black')
                 low_copy_button.grid(row=0, column=1, padx=5)
                 low_copy_button.bind('<Button-1>', copy_file(filename, low_copy_button, low_copy_elements,
                                                              source_dir, root))
@@ -296,8 +307,12 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     def open_file(filename, button, source_dir):
         def _open_file(event):
             filepath = os.path.join(source_dir, filename)
-            button.config(bg='yellow')  # Change button color
-            button.update_idletasks()  # Update UI immediately
+            if os_type == "Darwin":
+                button.config(fg='red')  # Change button text color under macOS system
+                button.update_idletasks()  # Update UI immediately
+            else:
+                button.config(bg='yellow')  # Change button color
+                button.update_idletasks()  # Update UI immediately
             if os.path.isdir(filepath):
                 open_folder(filename, source_dir)
             else:
@@ -388,6 +403,12 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     def child_open_file(filename, button, source_dir):
         def _child_open_file(event):
             filepath = os.path.join(source_dir, filename)
+            if os_type == "Darwin":
+                button.config(fg='red')  # Change button text color under macOS system
+                button.update_idletasks()  # Update UI immediately
+            else:
+                button.config(bg='yellow')  # Change button color
+                button.update_idletasks()  # Update UI immediately
 
             if filename.lower().endswith(('.fa', '.fasta')):
                 if os_type == "Windows":
@@ -424,7 +445,6 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                     os.startfile(filepath)
                 else:
                     subprocess.run(['xdg-open', filepath])
-            button.config(bg='yellow')
 
         return _child_open_file
 

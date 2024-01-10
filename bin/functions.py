@@ -1624,10 +1624,16 @@ def handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classificati
     seq_name = seq_obj.get_seq_name()
     te_type = seq_obj.get_old_TE_type()
     te_type_modified = te_type.replace("/", "__")
+    input_fasta = seq_obj.get_input_fasta()
+
     try:
         seq_obj.update_status("skipped", progress_file)
         if plot_skip and (te_aid_plot is not None or orf_plot is not None) and skip_proof_dir is not None:
             merge_pdfs(skip_proof_dir, f"{seq_name}#{te_type_modified}", te_aid_plot, orf_plot)
+
+            # Copy skipped input sequence into skip_proof_dir
+            skip_fasta_file = os.path.join(skip_proof_dir, f"{seq_name}#{te_type_modified}.fa")
+            shutil.copy(input_fasta, skip_fasta_file)
         if not debug:
             remove_files_with_start_pattern(MSA_dir, seq_name)
             remove_files_with_start_pattern(classification_dir, seq_name)
