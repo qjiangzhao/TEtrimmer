@@ -3,7 +3,10 @@
 *.DS_Store
 
 # Ignore TE-Aid-master folder
-bin/TE-Aid-master
+# bin/TE-Aid-master
+
+# Ignore .idea
+.idea
 
 # Ignore all __pycache__ files
 bin/__pycache__
