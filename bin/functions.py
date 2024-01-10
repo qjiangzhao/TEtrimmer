@@ -1162,11 +1162,11 @@ def select_start_end_and_join(input_file, output_dir, start, end, window_size=50
     """
     Select start and end columns of MSA
     :param input_file: str, absolute input file path
-    :param output_dir: str, absolute output directory
-    :param start: int: start point, based on start point, right side columns will be selected
-    :param end: int: end point, based on end point, left side columns will be selected
-    :param window_size: int default 50, columns size will be selected for each side
-    :return: Selected MSA object (not file path)
+    :param output_dir: str, output directory
+    :param start: int, start point, columns to the right of the start point will be selected
+    :param end: int, end point, columns to the left of the end point will be selected
+    :param window_size: int, number of columns beginning from <start> and <end> to be selected. Default: 50
+    :return: Selected MSA object (no file path)
     """
     alignment = AlignIO.read(input_file, "fasta")
     sequence_length = end - start
@@ -1189,7 +1189,7 @@ def select_start_end_and_join(input_file, output_dir, start, end, window_size=50
 
 def select_window_columns(input_file, output_dir, start_point, direction, window_size=50):
     """
-    Select columns block for MSA
+    Select column block for MSA
     :param input_file: str, the absolute input file path
     :param output_dir: str, the absolute output directory
     :param start_point: int, start point to select column block
