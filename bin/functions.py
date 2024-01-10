@@ -235,16 +235,16 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
 
 def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast", task="blastn", seq_obj=None):
     """
-    Runs BLAST with specified task type and saves the results in a BED file.
+    Runs BLAST calling a specified task type and saves the results as a BED file.
 
-    :param seq_file: str, path to input fasta file
-    :param genome_file: str, path to genome file
+    :param seq_file: str, path to input FASTA file
+    :param genome_file: str, path to genome FASTA file
     :param output_dir: str, prefix for output files
-    :param min_length: num, default 150, minimum alignment length
-    :param task: str, default "blastn", BLAST task type ("blastn", "dc-megablast", etc.)
-    :param seq_obj: object, optional, sequence object to update with blast hits
+    :param min_length: int, minimum alignment length. Default: 150
+    :param task: str, BLAST task type ("blastn", "dc-megablast", etc.). Default: "blastn"
+    :param seq_obj: object (optional), sequence object to update with BLAST hits
 
-    :return: tuple, bed output file name and blast hits count
+    :return: tuple, output BED file name and BLAST hit count for each sequence
     """
     input_file = seq_file
     input_file_n = os.path.basename(input_file)
@@ -263,11 +263,11 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
             subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         except FileNotFoundError:
-            prcyan("'blastn' command not found. Please ensure 'blastn' is correctly installed.")
+            prcyan("'blastn' command not found. Please ensure 'blastn' is installed correctly.")
             raise Exception
 
         except subprocess.CalledProcessError as e:
-            prcyan(f"\nBLAST is failed for {input_file_n} with error code {e.returncode}")
+            prcyan(f"\nBLAST failed for {input_file_n} with error code {e.returncode}")
             prcyan(e.stderr)
             raise Exception
 
@@ -276,11 +276,12 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
         mmseqs_cmd = (f"mmseqs easy-search {seq_file} {genome_file}_db {blast_out_file} {blast_out_file}_tmp --search-type 3 "
                       f"--min-seq-id 0.6 --format-output \"query,target,pident,alnlen,mismatch,qstart,qend,tstart,tend,evalue,qcov\" "
                       f"--cov-mode 4 -c 0.5 --e-profile 1e-40 --threads 1 --min-aln-len {min_length}")
+        print(f"Running analysis with MMseqs2. \nWARNING: MMseqs2 is less accurate than 'blastn' and may return faulty results. We strongly recommend to use 'blastn' instead.")
         result = subprocess.run(mmseqs_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         error_output = result.stderr.decode("utf-8")
 
         if error_output:
-            print(f"Error during MMseqs2: {error_output}")
+            print(f"Error running MMseqs2: {error_output}")
 
     # Check the number of BLAST hits
     with open(blast_out_file) as blast_file:
@@ -304,11 +305,11 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
             subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         except subprocess.CalledProcessError as e:
-            prcyan(f"\nBLAST to bed file conversion failed for {input_file_n} with error code {e.returncode}")
+            prcyan(f"\nBLAST to BED file conversion failed for {input_file_n} with error code {e.returncode}")
             prcyan(e.stderr)
             raise Exception
 
-        # Update BLAST hit number to sequence object when seq_obj is supplied
+        # Append BLAST hit number to sequence object when seq_obj is provided
         if seq_obj is not None:
             seq_obj.update_blast_hit_n(blast_hits_count)
 
@@ -317,11 +318,11 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
 
 def check_bed_uniqueness(output_dir, bed_file):
     """
-    Check if bed file contain repeat lines, if so delete to one
+    Check if the BED file contains duplicated lines, and if so, delete any duplicates
 
     :param output_dir: str, output directory
-    :param bed_file: str, bed_file path
-    :return: modified bed file absolute path
+    :param bed_file: str, path for input BED file
+    :return: absolute path of modified BED file
     """
     with open(bed_file, "r") as f:
         lines = f.readlines()
@@ -344,11 +345,11 @@ def check_bed_uniqueness(output_dir, bed_file):
     return bed_out_file
 
 
-# Calculate average sequence length in the bed file
+# Calculate average sequence length in the BED file
 def bed_ave_sequence_len(bed_content, start_rank, end_rank):
-    """Compute average length for regions within a specified rank range in BED content."""
+    """Compute average length for regions within a specified rank range in BED file."""
 
-    # Extracting lengths from the BED content
+    # Extracting lengths from the BED file
     lengths = []
     for line in bed_content.strip().split("\n"):
         parts = line.split("\t")
@@ -361,7 +362,7 @@ def bed_ave_sequence_len(bed_content, start_rank, end_rank):
 
     # Checking if there are enough entries for the specified range
     if len(lengths) < end_rank:
-        return "Not enough entries"
+        return "Not enough entries in BED file."
 
     # Extracting lengths of regions within the specified rank range
     selected_lengths = lengths[start_rank - 1:end_rank]
@@ -374,14 +375,14 @@ def bed_ave_sequence_len(bed_content, start_rank, end_rank):
 
 def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameonly=False):
     """
-    Extracts fasta sequence from the reference genome using bedtools.
+    Extracts FASTA sequence from the reference genome using BEDtools.
 
-    :param genome_file: str, path to genome file
+    :param genome_file: str, path to genome FASTA file
     :param output_dir: str, prefix for output files
     :param left_ex: int, number of bases to extend the start position of each feature
     :param right_ex: int, number of bases to extend the end position of each feature
-    :param nameonly: boolean Default: False: only use bed file name filed for the fasta header
-    :return: fasta file absolute path derived from bed file
+    :param nameonly: boolean, only use BED file name for the FASTA header. Default: False
+    :return: absolute path of FASTA file derived from BED file
     """
     input_file_n = os.path.basename(input_file)
 
@@ -406,7 +407,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
         subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     except FileNotFoundError:
-        prcyan("'bedtools slop' command not found. Please ensure 'bedtools' is correctly installed.")
+        prcyan("'bedtools slop' command not found. Please ensure 'bedtools' is installed correctly.")
         raise Exception
 
     except subprocess.CalledProcessError as e:
@@ -425,7 +426,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
         subprocess.run(fasta_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     except FileNotFoundError:
-        prcyan("'bedtools getfasta' command not found. Please ensure 'bedtools' is correctly installed.")
+        prcyan("'bedtools getfasta' command not found. Please ensure 'bedtools' is installed correctly.")
         raise Exception
 
     except subprocess.CalledProcessError as e:
@@ -433,7 +434,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
         prcyan(e.stderr)
         raise Exception
 
-    # Use awk to remove letters that aren't A G C T a g c t
+    # Use awk to remove letters other than: A G C T a g c t
     fasta_nucleotide_clean = f"awk '/^>/ {{print}} !/^>/ {{gsub(/[^AGCTagct]/, \"\"); print}}' {fasta_out_flank_file}" \
                              f" > {fasta_out_flank_file_nucleotide_clean}"
     try:
@@ -448,16 +449,16 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
 
 def align_sequences(input_file, output_dir):
     """
-    Aligns fasta sequences using MAFFT
+    Aligns FASTA sequences using MAFFT
 
     :param input_file: str, input file path
     :param output_dir: str, output file directory
-    :return: multiple sequence alignment file absolute path
+    :return: absolute path for multiple sequence alignment file
     """
     input_file_n = os.path.basename(input_file)
     fasta_out_flank_mafft_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_aln.fa")
 
-    # Read the top 5 sequences and determine if any are longer than 7000
+    # Read the top 5 sequences and determine if any are longer than 10000 bp
     long_sequences = False
     with open(input_file, "r") as f:
         for i, record in enumerate(SeqIO.parse(f, "fasta")):
@@ -470,7 +471,7 @@ def align_sequences(input_file, output_dir):
     # Construct the command as a list of strings
     mafft_cmd = ["mafft", "--quiet", "--nuc", "--retree", "1", input_file]
 
-    # If any of the top 5 sequences are longer than 7000, add --memsave to salve memory
+    # If any of the top 5 sequences are longer than 10000, add --memsave to save memory
     if long_sequences:
         mafft_cmd.insert(1, "--memsave")  # Insert after 'mafft'
 
@@ -479,7 +480,7 @@ def align_sequences(input_file, output_dir):
         result = subprocess.run(mafft_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except FileNotFoundError:
-        prcyan("'mafft' command not found. Please ensure 'mafft' is correctly installed.")
+        prcyan("'mafft' command not found. Please ensure 'mafft' is installed correctly.")
         raise Exception
 
     except subprocess.CalledProcessError as e:
@@ -488,8 +489,8 @@ def align_sequences(input_file, output_dir):
         prcyan(e.stderr)
 
         if "Killed" in error_message and "disttbfast" in error_message and "memopt" in error_message:
-            prgre(f"It seems not enough 'RAM' was given for Mafft multiple sequence alignment. Please assign more "
-                  f"RAM or lower the thread number to solve this problem.\n")
+            prgre(f"It seems insufficient RAM was available for MAFFT multiple sequence alignment. Please assign more "
+                  f"RAM or reduce the thread number to solve this problem.\n")
         raise Exception
 
     # Write the output to the file
@@ -503,12 +504,12 @@ def muscle_align(input_file, output_dir, ite_times=4):
     output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_maln.fa")
     muscle_cmd = ["muscle", "-maxiters", str(ite_times), "-in", input_file, "-out", output_file]
 
-    # Execute muscle
+    # Execute MUSCLE
     result = subprocess.run(muscle_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     if result.returncode != 0:
         return False
-        # raise Exception(f"Muscle command failed with error: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
+        # raise Exception(f"muscle command failed with error: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
     # Convert the sequences in the output file to lowercase
     sequences = list(SeqIO.parse(output_file, "fasta"))
     for seq in sequences:
