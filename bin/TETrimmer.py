@@ -241,13 +241,6 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     if not change_permission:
         return
 
-    # Change Aliview permission
-    aliview_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "aliview")
-
-    # Change permissions of the directory and all its content to 755
-    # 755 in octal corresponds to rwxr-xr-x
-    change_permissions_recursive(aliview_path, 0o755)
-
     #####################################################################################################
     # Code block: Define the default options according to the given species
     #####################################################################################################
@@ -320,6 +313,22 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             = analyze.create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file, plot_skip)
     except Exception:
         return
+
+    #####################################################################################################
+    # Code block: Copy TETrimmer_proof_anno_GUI to proof_annotation_dir
+    #####################################################################################################
+    proof_anno_GUI_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TETrimmer_proof_anno_GUI")
+
+    # Create the full path for the new directory inside the destination
+    proof_anno_GUI_destination_dir = os.path.join(proof_annotation_dir, os.path.basename(proof_anno_GUI_dir))
+
+    # Check if the destination directory exists
+    if os.path.exists(proof_anno_GUI_destination_dir):
+        # If it exists, remove it first
+        shutil.rmtree(proof_anno_GUI_destination_dir)
+
+    # Copy the entire directory
+    shutil.copytree(proof_anno_GUI_dir, proof_anno_GUI_destination_dir)
 
     #####################################################################################################
     # Code block: Remove duplications in input file if required and generate single FASTA file
@@ -764,9 +773,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                 if os.path.isfile(multi_dotplot_pdf):
                     shutil.copy(multi_dotplot_pdf, cluster_folder)
 
-        # clear remove_files_with_start_pattern
-        if not debug:
-            remove_files_with_start_pattern(multi_dotplot_dir)
+        # clear remove_files_with_start_pattern folder
+        if not debug and os.path.exists(multi_dotplot_dir):
+            shutil.rmtree(multi_dotplot_dir)
 
     except Exception as e:
         with open(error_files, "a") as f:

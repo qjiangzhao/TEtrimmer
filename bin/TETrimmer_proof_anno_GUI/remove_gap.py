@@ -2,14 +2,14 @@ import subprocess
 import sys
 
 
-def install_and_import(required_packages_dic):
-    for package in required_packages:
+def install_and_import(required_packages_dict):
+    for package in required_packages_dict:
         try:
             __import__(package)
         except ImportError:
             try:
                 print(f"{package} was not found. Installing it automatically.")
-                subprocess.check_call([sys.executable, "-m", "pip", "install", required_packages_dic[package]])
+                subprocess.check_call([sys.executable, "-m", "pip", "install", required_packages_dict[package]])
                 print(f"{package} was successfully installed.")
             except subprocess.CalledProcessError as e:
                 print(

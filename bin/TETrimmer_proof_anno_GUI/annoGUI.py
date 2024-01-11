@@ -1,3 +1,27 @@
+import subprocess
+import sys
+
+
+def install_and_import(required_packages_dict):
+    for package in required_packages_dict:
+        try:
+            __import__(package)
+        except ImportError:
+            try:
+                print(f"{package} was not found. Installing it automatically.")
+                subprocess.check_call([sys.executable, "-m", "pip", "install", required_packages_dict[package]])
+                print(f"{package} was successfully installed.")
+            except subprocess.CalledProcessError as e:
+                print(
+                    f"\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}"
+                    "\nPlease install 'click' and 'biopython' using 'pip install'.\n")
+                return
+
+
+required_packages = {'click': 'click', 'Bio': 'biopython', 'numpy': 'numpy', 'pandas': 'pandas'}
+install_and_import(required_packages)
+
+
 import os
 import re
 import shutil
@@ -24,9 +48,14 @@ def change_permissions_recursive(input_dir, mode):
     return True
 
 
+# Detect system OS type
+os_type = platform.system()
+
 # Define Aliview software path and change permission
 bin_py_path = os.path.dirname(os.path.abspath(__file__))
 aliview_path = os.path.join(bin_py_path, "aliview/aliview")
+if os_type == "Windows":
+    aliview_path = os.path.join(bin_py_path, r"aliview\aliview.jar")
 change_permissions_recursive(aliview_path, 0o755)
 
 #####################################################################################################
@@ -34,7 +63,7 @@ change_permissions_recursive(aliview_path, 0o755)
 #####################################################################################################
 
 @click.command()
-@click.option('--te_trimmer_proof_annotation_dir', '-i', required=True, type=str,
+@click.option('--te_trimmer_proof_annotation_dir', '-i', default=None, type=str,
               help='Supply the TETrimmer output directory path')
 @click.option('--output_dir', '-o', default=None, type=str,
               help='Define the output directory for TE proof annotation. Default: input folder directory')
@@ -48,19 +77,13 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     # Define empty list to store copy history, which enable undo button
     copy_history = []
 
-    # Detect system OS type
-    os_type = platform.system()
+    # If the -i option is None define the default input directory
+    if te_trimmer_proof_annotation_dir is None:
+        te_trimmer_proof_annotation_dir = os.path.abspath(os.path.join(bin_py_path, os.pardir))
 
     # If the -o option is not given, use the parent directory of -i as output directory.
     if output_dir is None:
         output_dir = te_trimmer_proof_annotation_dir
-
-    # Define Aliview software path and change permission
-    bin_py_path = os.path.dirname(os.path.abspath(__file__))
-    aliview_path = os.path.join(bin_py_path, "aliview/aliview")
-    if os_type == "Windows":
-        aliview_path = os.path.join(bin_py_path, r"aliview\aliview.jar")
-
     # Define output folders, create them when they are not found
     consensus_folder = os.path.abspath(os.path.join(output_dir, "Proof_annotation_consensus_folder"))
     need_more_extension = os.path.abspath(os.path.join(output_dir, "Proof_annotation_need_more_extension"))
