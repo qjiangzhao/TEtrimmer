@@ -1190,11 +1190,11 @@ def select_start_end_and_join(input_file, output_dir, start, end, window_size=50
 def select_window_columns(input_file, output_dir, start_point, direction, window_size=50):
     """
     Select column block for MSA
-    :param input_file: str, the absolute input file path
-    :param output_dir: str, the absolute output directory
+    :param input_file: str, absolute input file path
+    :param output_dir: str, output directory
     :param start_point: int, start point to select column block
-    :param direction: int "right" or "left", direction to select column block
-    :param window_size: int default 50, column block size will be selected
+    :param direction: str "right" or "left", direction to select column block
+    :param window_size: int, number of columns beginning from <start_point> to be selected. Default: 50
     :return: Select MSA object (not file path)
     """
     # Read the MSA file using Biopython's AlignIO
@@ -1203,7 +1203,7 @@ def select_window_columns(input_file, output_dir, start_point, direction, window
     # Get the total number of columns in the alignment
     total_columns = alignment.get_alignment_length()
 
-    # Determine the start and end column indices based on the direction
+    # Determine the start and end column indices based on the direction and start point
     if direction.lower() == 'left':
         start_col = max(0, start_point - window_size)
         end_col = start_point
@@ -1211,7 +1211,7 @@ def select_window_columns(input_file, output_dir, start_point, direction, window
         start_col = start_point
         end_col = min(start_point + window_size, total_columns)  # get as many columns as possible
     else:
-        raise ValueError("Invalid direction. Please choose 'left' or 'right'.")
+        raise ValueError("Invalid direction. Please enter 'left' or 'right'.")
 
     # Select the window columns from the alignment
     selected_alignment = alignment[:, start_col:end_col]
@@ -1226,21 +1226,21 @@ def select_window_columns(input_file, output_dir, start_point, direction, window
 
 
 """
-The asterisk (*) before alignments in the function definition is used to allow the function to accept any number 
+The asterisk '*' before alignments in the definition of the function allows the function to accept any number 
 of positional arguments. These arguments will be gathered into a tuple called alignments. This is particularly 
-useful when you don't know beforehand how many arguments will be passed to the function.
+useful if you do not know beforehand how many arguments will be passed to the function.
 """
 
 
 def concatenate_alignments(*alignments, input_file_name, output_dir):
     """
-    Concatenate MSA files, which have same sequence number
-    :param alignments: str, alignments object (not file path) will be concatenated by order.
-    :param input_file_name: str, Used for generating output file name
+    Concatenate MSA files containing the same number of sequences
+    :param alignments: str, alignment objects, will be concatenated in given order
+    :param input_file_name: str, used for generating output file name
     :param output_dir: str, the absolute output directory
-    :return: the absolute output file path, the start point and end point of the concatenated MSA
+    :return: the absolute output file path, the start and end points of the concatenated MSA
     """
-    # Check if at least two alignments are provided
+    # Check if at least two alignments were provided
     if len(alignments) < 2:
         raise ValueError("At least two alignments must be provided.")
 
@@ -1254,7 +1254,7 @@ def concatenate_alignments(*alignments, input_file_name, output_dir):
     for alignment in alignments[1:]:
         concatenated_alignment += alignment
 
-    # alignments[0].get_alignment_length() will return 50, but python start from 0
+    # alignments[0].get_alignment_length() will return 50, but python starts with 0
     # The last position of alignments[0] is alignments[0].get_alignment_length() - 1
     concat_start = alignments[0].get_alignment_length()
     concat_end = concatenated_alignment.get_alignment_length() - alignments[-1].get_alignment_length() - 1
@@ -1274,23 +1274,23 @@ def change_permissions_recursive(input_dir, mode):
             for filename in filenames:
                 os.chmod(os.path.join(dirpath, filename), mode)
     except PermissionError:
-        click.echo("TE Trimmer don't have right to change permissions. Pleas use sudo to run TE Trimmer")
+        click.echo("TETrimmer does not have rights to change permissions. Please use sudo to run TETrimmer.")
         return False
     return True
 
 
 def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9, thread=10):
     """
-    -l	length of throw_away_sequences, default 10
-    -d	length of description in .clstr file, default 20 if set to 0, it takes the fasta defline and
-    stops at first space
-    -s	length difference cutoff, default 0.0 if set to 0.9, the shorter sequences need to be at least 90% length
-    of the representative of the cluster
-    -aL	alignment coverage for the longer sequence, default 0.0 if set to 0.9, the alignment must
-    covers 90% of the sequence
-    -aS	alignment coverage for the shorter sequence, default 0.0 if set to 0.9, the alignment must
-    covers 90% of the sequence
-    Note: -s only consider length, but -aL and -aS consider alignment
+    -l int, length of throw_away_sequences. Default: 10
+    -d int, length of description in .clstr file; if set to 0, it takes the FASTA defline and stops at the
+    first space. Default: 20
+    -s float, length difference cutoff; if set to 0.9, the shorter sequences need to be at least 90% in length of the
+    representative sequence of the cluster. Default: 0.0
+    -aL	float, alignment coverage for the longer sequence; if set to 0.9, the alignment must cover 90% of the sequence.
+    Default: 0.0
+    -aS	float, alignment coverage for the shorter sequence; if set to 0.9, the alignment must cover 90% of the sequence.
+    Default: 0.0
+    Note: -s only considers length, but -aL and -aS considers alignment
     """
     command = [
         "cd-hit-est",
@@ -1310,7 +1310,7 @@ def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9,
         subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except FileNotFoundError:
-        prcyan("'\ncd-hit-est' command not found. Please ensure 'cd-hit-est' is correctly installed.\n")
+        prcyan("'\ncd-hit-est' command not found. Please ensure 'cd-hit-est' is installed correctly.\n")
         raise Exception
 
     except subprocess.CalledProcessError as e:
@@ -1349,25 +1349,25 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
         return True
 
     except FileNotFoundError:
-        prcyan("'RepeatMasker' command not found. Please ensure 'RepeatMasker' is correctly installed.")
+        prcyan("'RepeatMasker' command not found. Please ensure 'RepeatMasker' is installed correctly.")
         raise Exception
 
     except subprocess.CalledProcessError as e:
         if classify:
             prcyan(f"\nRepeatMasker failed during final classification step with error code {e.returncode}")
             prcyan(e.stderr)
-            prgre("This will not affect the final result but only the classification of TE might not be affect")
+            prgre("This will not affect the final result. Only the classification of TE may not be correct.")
             raise Exception
         else:
-            prcyan(f"\nRepeatMasker failed during final whole genome TE annotation with error code {e.returncode}")
+            prcyan(f"\nRepeatMasker failed during final whole-genome TE annotation with error code {e.returncode}")
             prcyan(e.stderr)
-            prgre("This won't affect the final TE consensus library at all. You can do the final genome TE annotation"
-                  " by yourself with RepeatMasker")
+            prgre("This does not affect the final TE consensus library. You can perform the final genome-wide TE"
+                  " annotation by yourself with RepeatMasker.")
             raise Exception
 
 
 def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, min_len=80, min_cov=0.8):
-    # Read RepeatMasker out file into a DataFrame
+    # Read RepeatMasker output file (.out) into a DataFrame
     # The regex '\s+' matches one or more whitespace characters
     # error_bad_lines=False to skip errors
     try:
@@ -1378,7 +1378,7 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, m
         df = pd.read_csv(repeatmasker_out, delim_whitespace=True, header=None, skiprows=3,
                          error_bad_lines=False, usecols=range(15))
 
-    # Rename columns for easier reference
+    # Rename columns for easier referencing
     df.columns = [
         'score', 'perc_div', 'perc_del', 'perc_ins', 'query_name',
         'query_start', 'query_end', 'query_left', 'strand',
@@ -1386,16 +1386,16 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, m
         'repeat_end', 'repeat_left', 'ID'
     ]
 
-    # Filter rows based on query_iden
+    # Filter rows based on query identity
     df = df[df['perc_div'] <= (100 - min_iden)]
 
-    # Calculate coverage length and add to a column
+    # Calculate coverage length and add to a new column cov_len
     df['cov_len'] = abs(df['query_start'] - df['query_end'])
 
     # Select dataframe columns
     df_filter = df[["query_name", "repeat_name", "repeat_class", "cov_len"]]
 
-    # Group by the columns and sum 'cov_len'
+    # Group by columns and calculate sum of 'cov_len'
     grouped_df = df_filter.groupby(['query_name', 'repeat_name', 'repeat_class'])['cov_len'].sum().reset_index()
     grouped_df_filter = grouped_df[grouped_df['cov_len'] >= min_len]
 
