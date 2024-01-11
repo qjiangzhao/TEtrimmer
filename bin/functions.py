@@ -1450,7 +1450,7 @@ def rename_cons_file(consensus_file, reclassified_dict):
         for line in infile:
             if line.startswith('>'):
                 # Extract the sequence name (up to the '#' character)
-                seq_name = line.split('#')[0][1:].strip()  # Remove '>' and split at '#', then take the first part
+                seq_name = line.split('#')[0][1:].strip()  # Remove '>' and split at '#', then keep the first part
 
                 # Look up the sequence name in the reclassified_dict and modify the header if found
                 if seq_name in reclassified_dict:
@@ -1469,21 +1469,21 @@ def rename_files_based_on_dict(directory, reclassified_dict, seq_name=False):
 
     # For each file, check and rename if necessary
     for filename in files:
-        # Extract the part before #
+        # Extract the part before '#'
         consensus_name = filename.split('#')[0]
         for key, value in reclassified_dict.items():
             if consensus_name == key:
-                # Extract the part after # and before the first .
+                # Extract the part after '#' and before the first '.'
                 te_type = filename.split('#')[1].split('.')[0].replace('__', '/')
 
-                # If it doesn't match the value in the dictionary, rename the file
+                # If file name does not match the value in the dictionary, rename the file
                 if te_type != value:
                     new_te_type = value.replace('/', '__')
                     new_filename = filename.replace(te_type.replace('/', '__'), new_te_type)
                     old_file_path = os.path.join(directory, filename)
                     new_file_path = os.path.join(directory, new_filename)
 
-                    # If seq_name is True, rename the sequence header in the FASTA file
+                    # If seq_name is 'True', rename the sequence header in the FASTA file
                     if seq_name:
                         record = SeqIO.read(old_file_path, 'fasta')
                         record.id = f"{seq_name}#{value}"
@@ -1497,20 +1497,20 @@ def rename_files_based_on_dict(directory, reclassified_dict, seq_name=False):
 
 
 def remove_files_with_start_pattern(input_dir, start_pattern, if_seq_name=True):
-    # Remove files and folder start with give pattern
+    # Remove files and folders whose name starts with given pattern
     # Add .fasta to the end of start_pattern
     if if_seq_name:
         start_pattern = f"{start_pattern}.fasta"
     for filename in os.listdir(input_dir):
         if filename.startswith(start_pattern):
             file_path = os.path.join(input_dir, filename)
-            if os.path.isfile(file_path):  # This check ensures you're only removing files, not directories
+            if os.path.isfile(file_path):  # This check ensures only removing files, not directories
                 os.remove(file_path)
             elif os.path.isdir(file_path):
                 try:
                     shutil.rmtree(file_path)
                 except Exception:
-                    # File deletion doesn't affect the final consensus sequence. Skip when error happens
+                    # File deletion does not affect the final consensus sequence. Skip if an error occurs
                     pass
 
 
@@ -1534,7 +1534,7 @@ def handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir, classificat
             remove_files_with_start_pattern(MSA_dir, seq_name)
             remove_files_with_start_pattern(classification_dir, seq_name)
     except Exception as e:
-        click.echo(f"\nAn error occurred while handling low copy sequence {seq_name}:\n {e}\n")
+        click.echo(f"\nAn error occurred while handling low-copy sequence {seq_name}:\n {e}\n")
 
 
 def handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir, plot_skip=True,
@@ -1567,7 +1567,7 @@ def update_cons_file(updated_type, unknown_concensus_file, consensus_file):
                     f.write(">" + header + "#" + te_type + "\n" + sequence + "\n")
 
 
-# if the seq_obj is low copy, append to consensus_file and final_unknown_con_file used for classification
+# if the sequence object seq_obj contains a low-copy TE, append to consensus_file and final_unknown_con_file used for classification
 def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, final_classified_con_file, proof_dir,
                               te_aid_pdf):
     seq_name = seq_obj.get_seq_name()
@@ -1586,7 +1586,7 @@ def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, f
         with open(final_classified_con_file, "a") as f:
             f.write(">" + seq_name + "#" + te_type + "\n" + sequence + "\n")
 
-        # Write all consensus sequence to final_cons_file.
+        # Write all consensus sequences to final_cons_file.
     with open(consensus_file, "a") as f:
         f.write(">" + seq_name + "#" + te_type + "\n" + sequence + "\n")
 
@@ -1595,12 +1595,12 @@ def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, f
 
     shutil.copy(input_fasta, low_copy_single_fasta_file)
 
-    # Sometimes TE Aid can't be plotted properly because the input sequence quality. Only move plot when it is existed.
+    # Sometimes TE-Aid cannot be plotted properly due to low input sequence quality. Only move plot if it exists.
     #if os.path.exists(te_aid_pdf) and os.path.getsize(te_aid_pdf) > 0:
         #shutil.copy(te_aid_pdf, low_copy_te_aid_pdf_file)
 
 
-# Classify single fasta
+# Classify single FASTA file
 def classify_single(consensus_fasta):
     """
     Run RepeatClassifier with the provided parameters.
@@ -1612,7 +1612,7 @@ def classify_single(consensus_fasta):
     # Change the working directory to the directory of the consensus_fasta
     os.chdir(os.path.dirname(consensus_fasta))
 
-    # Define RepeatClassifier command, the output file will store at the same directory of the consensus_fasta
+    # Define RepeatClassifier command, the output file will be stored in the same directory as consensus_fasta
     command = ["RepeatClassifier", "-consensi", consensus_fasta]
 
     try:
@@ -1620,14 +1620,14 @@ def classify_single(consensus_fasta):
         subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     except FileNotFoundError:
-        prcyan("'RepeatClassifier' command not found. Please ensure 'RepeatModeler' is correctly installed.")
+        prcyan("'RepeatClassifier' command not found. Please ensure 'RepeatModeler' is installed correctly.")
         return False
 
     except subprocess.CalledProcessError as e:
-        prcyan(f"RepeatClassifier error for {os.path.basename(consensus_fasta)} with error code {e.returncode}")
+        prcyan(f"RepeatClassifier failed for {os.path.basename(consensus_fasta)} with error code {e.returncode}")
         prcyan(e.stderr)
-        prgre("This only affect classification but not consensus sequence. "
-              "You can run 'RepeatClassifier -consensi <your_consensus_file>' to test")
+        prgre("This only affects classification but not the consensus sequence. "
+              "You can run 'RepeatClassifier -consensi <your_consensus_file>' manually.")
         # Change the working directory back to the original directory
         os.chdir(original_dir)
         return False
@@ -1637,7 +1637,7 @@ def classify_single(consensus_fasta):
 
     classified_file = f'{consensus_fasta}.classified'
 
-    # Get the first record of classified file
+    # Get the first record of file with classified consensus sequences
     record = next(SeqIO.parse(classified_file, "fasta"))
 
     # seq_name = record.id.split("#")[0]
@@ -1648,7 +1648,7 @@ def classify_single(consensus_fasta):
 
 def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=2000, LTR_adj=3000):
     """
-    output_dir: used to store self blast database
+    output_dir: used to store self-BLAST database
     """
     # Read input file and get sequence length
     record = SeqIO.read(input_file, "fasta")
@@ -1657,33 +1657,33 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
     LTR_boundary = None
     TIR_boundary = None
 
-    # teaid output is not given or the given file doesn't exist or is empty, do self blast
+    # If TE-Aid output was not provided, the file does not exist or is empty, do self-BLAST
     if teaid_blast_out is None or not file_exists_and_not_empty(teaid_blast_out):
         os.makedirs(output_dir, exist_ok=True)
         database_file = os.path.join(output_dir, "Tem_blast_database")
         makeblastdb_cmd = f"makeblastdb -in {input_file} -dbtype nucl -out {database_file}"
 
-        # If error encountered, return directly
+        # If an error was encountered, abort and return
         try:
             subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except subprocess.CalledProcessError:
             return None, None, False
 
-        # Proof check if database is built, otherwise return directly
+        # Check if database was built, otherwise return
         if not file_exists_and_not_empty(f"{database_file}.nhr") or not \
                 file_exists_and_not_empty(f"{database_file}.nin") or not file_exists_and_not_empty(f"{database_file}.nsq"):
             return None, None, False
 
         blast_cmd = f"blastn -query {input_file} -db {database_file} " \
                     f"-outfmt \"6 qseqid qstart qend sstart send \" " \
-                    f"-evalue 0.05"  # Set higher e-value for self-blast
+                    f"-evalue 0.05"  # Set more stringent e-value for self-BLAST
 
         try:
             result = subprocess.run(blast_cmd, shell=True, check=True, text=True, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
             blast_out = result.stdout
 
-            # If self blast result is empty, return directly
+            # If self-BLAST result is empty, return
             if blast_out.strip() == "":
                 return None, None, False
         except subprocess.CalledProcessError as e:
@@ -1691,22 +1691,22 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
             prcyan('\n' + e.stderr + '\n')
             raise Exception
 
-        # Define blast out file
+        # Define BLAST output file
         blast_out_file = os.path.join(output_dir, "tem_blast_out.txt")
 
         with open(blast_out_file, 'w') as f:
-            # Give a header to blast result
+            # Add a header to BLAST result
             f.write("qseqid\tqstart\tqend\tsstart\tsend\n")
             f.write(blast_out)
         df = pd.read_csv(blast_out_file, sep="\t", header=None, skiprows=1)
     else:
         blast_out_file = teaid_blast_out
 
-        # TEaid self blast output default format is separated by white space
+        # TE-Aid self-BLAST output default format is separated by white space
         df = pd.read_csv(blast_out_file, sep='\s+', header=None, skiprows=1)
 
-    # Return None directly when the self blast result is empty, this could happen when too many ambiguous letters
-    # are there like N.
+    # Return 'None' if the self-BLAST result is empty. This can happen if sequence contains too many ambiguous letters
+    # like 'N' or 'X'.
     if df.empty:
         return None, None, False
 
@@ -1723,8 +1723,8 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
         # Find the row with the largest difference
         LTR_largest = df_LTR.iloc[df_LTR["5"].idxmax()]
 
-        # Check if the terminal repeat spans the most part of the query sequence. Because the query is after extension,
-        # assuming the maximum redundant extension for left and right side are both 2000.
+        # Check if the terminal repeat spans the majority of the query sequence. Because self-BLAST is done after extension,
+        # the maximum redundant extension for left and right side are both 2000.
         if abs(LTR_largest[4] - LTR_largest[1]) >= (record_len - LTR_adj):
             # Because blast use index start from 1, modify the start position
             LTR_boundary = [LTR_largest[1] - 1, LTR_largest[4]]
@@ -1732,7 +1732,7 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
         else:
             LTR_boundary = None
 
-        # Return directly when LTR is found
+        # Return directly if LTR was found
         return LTR_boundary, TIR_boundary, found_match
 
     df_TIR = df[(df.iloc[:, 2] - df.iloc[:, 1] >= 50) &
@@ -1745,7 +1745,7 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
         df_TIR["5"] = df.iloc[:, 3] - df.iloc[:, 1]
         df_TIR.reset_index(drop=True, inplace=True)
 
-        # Same like LTR check the terminal repeat spanning region
+        # Same like LTR, check the terminal repeat-spanning region
         TIR_largest = df_TIR.iloc[df_TIR["5"].idxmax()]
         if abs(TIR_largest[3] - TIR_largest[1]) >= (record_len - TIR_adj):
             TIR_boundary = [TIR_largest[1] - 1, TIR_largest[3]]
@@ -1799,7 +1799,8 @@ def file_exists_and_not_empty(file_path):
 
 def merge_pdfs(output_dir, output_file_n, *pdfs):
     """
-    Merge PDF files to one single file. the file path order in *pdfs is the file order in the final single file
+    Merge PDF files into one single PDF file. 
+    The order in which file paths are provided in <*pdfs> defines the order of plots in the final single PDF file.
     """
     merger = PdfMerger()
     valid_pdf_count = 0  # Counter to keep track of valid PDFs added
@@ -1825,7 +1826,7 @@ def merge_pdfs(output_dir, output_file_n, *pdfs):
 
 def dotplot(sequence1, sequence2, output_dir):
 
-    # Define after TETrimmer treatment file name
+    # Define based on TETrimmer analysis file name
     n_after_tetrimmer = os.path.basename(sequence1)
 
     # Define the output filenames
@@ -1849,13 +1850,13 @@ def dotplot(sequence1, sequence2, output_dir):
         subprocess.run(dotmatcher_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except FileNotFoundError:
-        prcyan("'\ndotmatcher' command not found. Please ensure 'emboss' is correctly installed.")
-        prgre("\ndotmatcher won't affect the final consensus sequence. You can choose to ignore this error\n")
+        prcyan("\n'dotmatcher' command not found. Please ensure 'emboss' is installed correctly.")
+        prgre("\ndotmatcher does not affect the final consensus sequence. You can choose to ignore this error.\n")
         raise Exception
 
     except subprocess.CalledProcessError as e:
-        prcyan(f"\ndotmatcher failed for {n_after_tetrimmer} with error code {e.returncode}")
-        prgre("\ndotmatcher won't affect the final consensus sequence. You can choose to ignore this error")
+        prcyan(f"\n'dotmatcher' failed for {n_after_tetrimmer} with error code {e.returncode}")
+        prgre("\ndotmatcher does not affect the final consensus sequence. You can choose to ignore this error.")
         raise Exception
 
     # Define command to convert ps to pdf
@@ -1869,13 +1870,13 @@ def dotplot(sequence1, sequence2, output_dir):
         subprocess.run(ps2pdf_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except FileNotFoundError:
-        prcyan("'\nps2pdf' command not found. Please install it by 'sudo apt-get install ghostscript'")
-        prgre("ps2pdf won't affect the final consensus file. You can choose to ignore it.")
+        prcyan("\n'ps2pdf' command not found. Please install it with 'sudo apt-get install ghostscript'")
+        prgre("ps2pdf does not affect the final consensus sequence. You can choose to ignore this error.")
         raise Exception
 
     except subprocess.CalledProcessError as e:
-        prcyan(f"\nps2pdf failed for {n_after_tetrimmer} with error code {e.returncode}")
-        prgre("\nps2pdf won't affect the final consensus sequence. You can choose to ignore this error\n")
+        prcyan(f"\n'ps2pdf' failed for {n_after_tetrimmer} with error code {e.returncode}")
+        prgre("\nps2pdf does not affect the final consensus sequence. You can choose to ignore this error.\n")
         raise Exception
 
     return pdf_out
