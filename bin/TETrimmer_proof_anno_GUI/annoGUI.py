@@ -53,10 +53,12 @@ os_type = platform.system()
 
 # Define Aliview software path and change permission
 bin_py_path = os.path.dirname(os.path.abspath(__file__))
+aliview_folder = os.path.join(bin_py_path, "aliview")
+change_permissions_recursive(aliview_folder, 0o755)
+
 aliview_path = os.path.join(bin_py_path, "aliview/aliview")
 if os_type == "Windows":
     aliview_path = os.path.join(bin_py_path, r"aliview\aliview.jar")
-change_permissions_recursive(aliview_path, 0o755)
 
 #####################################################################################################
 # Code block: set click command
@@ -234,7 +236,14 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
             try:
                 os.remove(last_copied_file)
                 copy_history.pop()
-                last_button.config(bg='white')
+
+                if os_type == "Darwin":
+                    last_button.config(fg='black')  # Change button text color under macOS system
+                    last_button.update_idletasks()  # Update UI immediately
+                else:
+                    last_button.config(bg='white')  # Change button color
+                    last_button.update_idletasks()  # Update UI immediately
+
                 messagebox.showinfo("Info", f"Successfully removed '{last_copied_file}'.")
             except Exception as e:
                 messagebox.showerror("Error", f"An error occurred while deleting the file: {str(e)}")
@@ -248,7 +257,12 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                 os.makedirs(target_directory, exist_ok=True)
                 try:
                     shutil.copy(file_path, target_directory)
-                    button.configure(bg='green')
+                    if os_type == "Darwin":
+                        button.config(fg='red')  # Change button text color under macOS system
+                        button.update_idletasks()  # Update UI immediately
+                    else:
+                        button.config(bg='light green')  # Change button color
+                        button.update_idletasks()  # Update UI immediately
                     button.update_idletasks()
                     if len(copy_history) >= 100:
                         copy_history.pop(0)
@@ -423,7 +437,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
             others_button = Button(button_frame, text="Others", bg='white', fg='black')
             others_button.grid(row=0, column=2, padx=5)
             # Bind "Extension" button with copy_file function with different destination folder
-            others_button.bind('<Button-1>', copy_file(filename, more_extend_button, others_dir,
+            others_button.bind('<Button-1>', copy_file(filename, others_button, others_dir,
                                                        source_dir, current_win))
 
             button_frame.grid_columnconfigure(0, weight=1)
