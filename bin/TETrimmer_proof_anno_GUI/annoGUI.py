@@ -85,7 +85,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
 
     # If the -o option is not given, use the parent directory of -i as output directory.
     if output_dir is None:
-        output_dir = te_trimmer_proof_annotation_dir
+        output_dir = os.path.join(te_trimmer_proof_annotation_dir, "TETrimmer_proof_anno_results")
     # Define output folders, create them when they are not found
     consensus_folder = os.path.abspath(os.path.join(output_dir, "Proof_annotation_consensus_folder"))
     need_more_extension = os.path.abspath(os.path.join(output_dir, "Proof_annotation_need_more_extension"))
@@ -94,9 +94,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     rescue_skip_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_rescued_skip_elements"))
 
     for dir_path in [consensus_folder, need_more_extension, low_copy_elements]:
-        print(dir_path)
-        if not os.path.isdir(dir_path):
-            os.mkdir(dir_path)
+        os.makedirs(dir_path, exist_ok=True)
 
     #####################################################################################################
     # Code block: build TKinter window
