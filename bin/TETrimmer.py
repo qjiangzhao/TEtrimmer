@@ -44,9 +44,9 @@ with open(species_config_path, "r") as config_file:
                   ██║   ███████╗   ██║   ██║  ██║██║██║ ╚═╝ ██║██║ ╚═╝ ██║███████╗██║  ██║
                   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝
                   
-                Version: v1.0.2 (19/Dec/2023) 
+                Version: v1.1.1 (11/Jan/2024) 
 
-                Github: https://github.com/qjiangzhao/TE-Trimmer
+                Github: https://github.com/qjiangzhao/TETrimmer
 
                 Developers:                                                                                                       
                 Jiangzhao Qian;      RWTH Aachen University;                Email: jqian@bio1.rwth-aachen.de                          
@@ -440,7 +440,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                    f"In the analysed sequences {skipped_count} are skipped. Note: not all skipped sequences can have "
                    f"TE Aid plot in the 'TETrimmer_for_proof_annotation' folder.\n"
                    f"In the analysed sequences {low_copy_count} are identified as low copy TE.\n")
-        prgre("You might find the reasons why those sequences were not analysed from the 'error_file.txt' in the "
+        prgre("You might find the reasons why some sequences were not analysed from the 'error_file.txt' in the "
               "'Multiple_sequence_alignment' directory.")
 
     #####################################################################################################
@@ -675,7 +675,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     #####################################################################################################
 
     try:
-        click.echo("\nTETrimmer is clustering proof annotation files.\n")
+        click.echo("TETrimmer is clustering proof annotation files.\n")
 
         # Create directory to store multiple sequence dotplot
         multi_dotplot_dir = os.path.join(classification_dir, "Multiple_sequence_dotplot")

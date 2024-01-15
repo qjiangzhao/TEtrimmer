@@ -93,7 +93,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     low_copy_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_low_copy_elements"))
     rescue_skip_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_rescued_skip_elements"))
 
-    for dir_path in [consensus_folder, need_more_extension, low_copy_elements]:
+    for dir_path in [consensus_folder, need_more_extension, others_dir, low_copy_elements, rescue_skip_elements]:
         os.makedirs(dir_path, exist_ok=True)
 
     #####################################################################################################
