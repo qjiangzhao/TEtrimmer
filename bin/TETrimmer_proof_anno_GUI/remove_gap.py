@@ -108,7 +108,7 @@ def remove_gaps_with_similarity_check(input_file, output_file, gap_threshold,
                         # Store the mapping of original MSA index to filtered MSA index
                         column_mapping[len(keep_list) - 1] = col_idx
 
-        # The index in Python will not include the second value. Thus, the returned end_posit from DefineBoundary() will
+        # The index in Python will not include the second value. Thus, the returned end_posit from DefineBoundary()
         # will contain one more index than the final len(keep_list) -1]. One additional value needs to be added.
         column_mapping[len(keep_list)] = column_mapping[len(keep_list) - 1] + 1
 

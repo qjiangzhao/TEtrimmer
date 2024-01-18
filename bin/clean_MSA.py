@@ -199,7 +199,7 @@ class CropEndByGap:
 
                     break
 
-    # New method to find sequences with cropped region > 50% of the alignment length
+    # New method to find sequences with cropped region > 90% of the alignment length
     def find_large_crops(self):
         large_crop_ids = []  # List to store the IDs of sequences with large cropped regions
         remaining_sequence_ids = []  # List to store the IDs of the remaining sequences
@@ -211,7 +211,7 @@ class CropEndByGap:
             start, end = positions
             cropped_length = start + (total_length - end)
 
-            # Check if the cropped region is greater than 50% of the total alignment length
+            # Check if the cropped region is greater than 90% of the total alignment length
             if cropped_length > total_length * 0.9:
                 large_crop_ids.append(seq_id)  # Add the sequence ID to the list
             else:

@@ -89,11 +89,13 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     # Define output folders, create them when they are not found
     consensus_folder = os.path.abspath(os.path.join(output_dir, "Proof_annotation_consensus_folder"))
     need_more_extension = os.path.abspath(os.path.join(output_dir, "Proof_annotation_need_more_extension"))
+    use_original_input_sequence = os.path.abspath(os.path.join(output_dir, "Proof_annotation_use_input_sequence"))
     others_dir = os.path.abspath(os.path.join(output_dir, "Proof_annotation_others"))
     low_copy_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_low_copy_elements"))
     rescue_skip_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_rescued_skip_elements"))
 
-    for dir_path in [consensus_folder, need_more_extension, others_dir, low_copy_elements, rescue_skip_elements]:
+    for dir_path in [consensus_folder, need_more_extension, use_original_input_sequence, others_dir,
+                     low_copy_elements, rescue_skip_elements]:
         os.makedirs(dir_path, exist_ok=True)
 
     #####################################################################################################
@@ -431,9 +433,17 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
             more_extend_button.bind('<Button-1>', copy_file(filename, more_extend_button, need_more_extension,
                                                             source_dir, current_win))
 
+            # Define "Use input" button, click it when user want to use the input sequence before
+            # TETrimmer analysis
+            use_input_button = Button(button_frame, text="Use input", bg='white', fg='black')
+            use_input_button.grid(row=0, column=2, padx=5)
+            # Bind "Use input" button with copy_file function with different destination folder
+            use_input_button.bind('<Button-1>', copy_file(filename, use_input_button, use_original_input_sequence,
+                                                            source_dir, current_win))
+
             # Define "Others" button
             others_button = Button(button_frame, text="Others", bg='white', fg='black')
-            others_button.grid(row=0, column=2, padx=5)
+            others_button.grid(row=0, column=3, padx=5)
             # Bind "Extension" button with copy_file function with different destination folder
             others_button.bind('<Button-1>', copy_file(filename, others_button, others_dir,
                                                        source_dir, current_win))
@@ -496,7 +506,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
         # Create a new top-level window
         folder_window = Toplevel()
         folder_window.title(folder_n)
-        folder_window.geometry('800x600')
+        folder_window.geometry('1000x600')
 
         # Create canvas on the new window
         folder_canvas = Canvas(folder_window, bg='white')
