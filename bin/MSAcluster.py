@@ -349,8 +349,12 @@ def alignment_to_dataframe(alignment):
     # list(rec) is equal to list(rec.seq) it will convert sequence to a list
     # "np.array" will convert list to array.
     alignment_df = pd.DataFrame(
+        # Convert sequence nucleotides into array (nested list, pandas regards each element in the nested list
+        # as a row
         np.array([list(rec) for rec in alignment], dtype=str),
+        # Define the column number, be aware the difference between the len() and range()
         columns=[i for i in range(len(alignment[0]))],
+        # Define the row names of the dataframe
         index=[rec.id for rec in alignment])
     return alignment_df
 
@@ -377,12 +381,15 @@ def create_base_mapping(alignment_df):
     of the total number of unique bases.
     "dict()" is converting these pairings into a dictionary.
     """
+    # Example of base_mapping: {'A':0, 'G':1, 'C':2, 'T':3, '-':4}
+    # This function will find all available unique characters and label them with number
     base_mapping = dict(zip(unique_bases, range(len(unique_bases))))
     return base_mapping
 
 
 def replace_bases(alignment_df, base_mapping):
-    """Replace bases with corresponding integers"""
+    # Replace bases with corresponding integers, this number corresponds with base_mapping
+    # Now the dataframe won't contain any characters but be replaced by numbers
     return alignment_df.replace(base_mapping)
 
 
@@ -396,13 +403,14 @@ def highlight_columns(alignment_df, alignment_color_df, base_mapping):
         # count.most_common(1)[0] is used to get the most common element (nucleotide)
         # in a column of the alignment and its count
         most_common_base, freq = count.most_common(1)[0]
-        # Check if the most common nucleotide proportion is greater than 80%
+        # Check if the most common nucleotide proportion is greater than 60%
         if freq / total_bases >= 0.6:
-            # If the most common nucleotide occupies more than 80%, don't color the whole column
+            # By default, all nucleotide are colored
+            # If the most common nucleotide occupies more than 60%, don't color the whole column
             alignment_color_df[col] = base_mapping['-']
 
-            # If the most common nucleotide occupies more than 80%, check every nucleotides, when the proportion
-            # of them is less than 20% color that kind of nucleotide again
+            # If the most common nucleotide occupies more than 60%, check every nucleotide, when the proportion
+            # of them is less than 20%, color that kind of nucleotide again
             for base, freq in count.items():
                 if freq / total_bases < 0.2:
                     alignment_color_df[col][alignment_df[col] == base] = base_mapping[base]
@@ -414,8 +422,9 @@ def plot_msa(alignment_df, alignment_color_df, unique_bases, start_point, end_po
     """
     color_map = {"A": "#00CC00", "a": "#00CC00", "G": "#949494", "g": "#949494", "C": "#6161ff", "c": "#6161ff",
                  "T": "#FF6666", "t": "#FF6666", "-": "#FFFFFF", np.nan: "#FFFFFF"}
-
+    # The nucleotide order in unique_bases match with the nucleotide converted number
     palette = [color_map[base] for base in unique_bases]
+    # cmap connect the number with color type
     cmap = ListedColormap(palette)
 
     # Compute figure size: a bit less than number of columns / 5 for width, and number of rows / 3 for height
@@ -486,6 +495,8 @@ def process_msa(input_file, output_dir, start_point, end_point, sequence_len):
     alignment_df = alignment_to_dataframe(alignment)
     base_mapping = create_base_mapping(alignment_df)
     alignment_color_df = replace_bases(alignment_df, base_mapping)
+    # DataFrames are mutable objects, which means highlight_columns() function doesn't need to return the modified
+    # dataframe and the modification will be kept
     highlight_columns(alignment_df, alignment_color_df, base_mapping)
     output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_plot.pdf")
     plot_msa(alignment_df, alignment_color_df, base_mapping.keys(), start_point, end_point, output_file, sequence_len)

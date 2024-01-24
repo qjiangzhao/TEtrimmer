@@ -1937,7 +1937,7 @@ def dotplot(sequence1, sequence2, output_dir):
         "-threshold", "50",
         "-gtitle", "Dotplot",
         "-gxtitle", "After TETrimmer treatment",
-        "-gytitle", "Without TETrimmer treatment",
+        "-gytitle", "Before TETrimmer treatment",
         "-graph", "ps",
         "-goutfile", sequence1
     ]
@@ -2045,5 +2045,40 @@ def scale_single_page_pdf(input_pdf_path, output_pdf_path, scale_ratio):
         pdf_writer.write(out_file)
 
     return output_pdf_path
+
+
+# Function used to find and return poly A end position
+def find_poly_a_end_position(input_file, min_length=10):
+
+    try:
+        # Read input file and get sequence length
+        record = SeqIO.read(input_file, "fasta")
+        seq_length = len(record)
+        seq_mid_position = seq_length // 2
+
+        reverse_sequence = record[::-1].upper()
+        poly_a_length = 0
+        interruption_allowed = True  # Allow for one non 'A' interruption
+
+        for i, nucleotide in enumerate(reverse_sequence):
+            # Only check the second half of the sequence
+            if i < seq_mid_position:
+                if nucleotide == 'A':
+                    poly_a_length += 1
+                elif interruption_allowed and 5 <= poly_a_length < min_length:
+                    # Allow for one interruption if we have encountered at least 5 'A's
+                    interruption_allowed = False  # Use up the allowance for interruption
+                    poly_a_length += 1  # Count the interruption as an 'A'
+                else:
+                    if poly_a_length >= min_length:
+                        # Correctly calculate the end position in the original orientation
+                        return seq_length - i - 1 + poly_a_length
+                    poly_a_length = 0  # Reset counter if sequence is interrupted
+                    interruption_allowed = True  # Reset the allowance for an interruption
+        return None  # No poly A sequence found or does not meet the minimum length requirement
+    except Exception as e:
+        prcyan(f"\nPoly A detection failed for {os.path.basename(input_file)} with error:\n{e}")
+        prcyan('\n' + 'This is will not affect the result too much, you can choose ignore this error' + '\n')
+        return None
 
 

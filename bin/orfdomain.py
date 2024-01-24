@@ -371,7 +371,7 @@ class PlotPfam:
         if self.after_tetrimmer:
             plt.title('After TETrimmer treatment ORF and PFAM domain plot', fontsize=20, fontweight="bold")
         else:
-            plt.title('Without TETrimmer treatment ORF and PFAM domain plot', fontsize=20, fontweight="bold")
+            plt.title('Before TETrimmer treatment ORF and PFAM domain plot', fontsize=20, fontweight="bold")
 
         output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_orf_pfam.pdf")
         plt.savefig(output_file, format="pdf")

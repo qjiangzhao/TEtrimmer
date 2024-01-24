@@ -14,7 +14,8 @@ from clean_MSA import CropEnd, CropEndByGap
 from functions import generate_hmm_from_msa, extract_fasta, remove_gaps_with_similarity_check, align_sequences, \
     con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, \
     con_generater, reverse_complement_seq_file, classify_single, check_terminal_repeat, select_star_to_end, \
-    define_crop_end_simi_thr, prcyan, prgre, merge_pdfs, dotplot, scale_single_page_pdf, remove_files_with_start_pattern
+    define_crop_end_simi_thr, prcyan, prgre, merge_pdfs, dotplot, scale_single_page_pdf, \
+    remove_files_with_start_pattern, find_poly_a_end_position
 from selectcolumns import CleanAndSelectColumn
 import checkpattern
 from TEaid import TEAid
@@ -129,7 +130,8 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
         # ext_threshold refer to option --ext_thr
         # max_X is float number, means the proportion of X
         bed_boundary = DefineBoundary(bed_fasta_mafft_cop_end_gap, threshold=ext_threshold,
-                                      check_window=define_boundary_win, max_X=0.3, if_con_generater=False)
+                                      check_window=define_boundary_win, max_X=0.3, if_con_generater=False,
+                                      extension_stop_num=300)
         # Read bed_out_flank_file
         bed_out_flank_file_df = pd.read_csv(bed_out_flank_file, sep='\t', header=None)
 
@@ -272,6 +274,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         # Set max_X to 1, this will make sure this part won't cut any beginning and end columns. Because
         # the boundary has been defined by terminal repeat. The reason to do DefineBoundary is cropped_boundary
         # and cropped_boundary_MSA are required for the further analysis
+        # max_X is the proportion of X, the maximum number is 1
         cropped_boundary = DefineBoundary(bed_fasta_mafft_gap_sim_selected_cp_g, threshold=0.8,
                                           check_window=4, max_X=1)
         cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
@@ -281,8 +284,14 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
 
     # When LTR or TIR are not found
     else:
+        # Check if poly A can be found from the sequence and return the last A position
+        # poly_a will be None if not found
+        poly_a = find_poly_a_end_position(bed_fasta_mafft_gap_sim_cp_con, min_length=10)
+
         bed_boundary = DefineBoundary(bed_fasta_mafft_gap_sim_cp, threshold=ext_threshold,
-                                      check_window=define_boundary_win, max_X=0.2, if_con_generater=False)
+                                      check_window=define_boundary_win, max_X=0.2,
+                                      if_con_generater=False, end_position=poly_a)
+        # when if_continue is false, it means the start position is greater than end position
         if bed_boundary.if_continue:
             bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=300)
 
@@ -372,8 +381,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # because LINE have higher divergence at 5' end
     seq_name = seq_obj.name
     seq_file = seq_obj.get_input_fasta()  # Return full file path
-    if"LINE" in seq_obj.old_TE_type:
-        ext_threshold = ext_threshold - 0.2
+    if "LINE" in seq_obj.old_TE_type:
+        ext_threshold = ext_threshold - 0.1
 
     msa_loop_n = 1
 
@@ -387,6 +396,15 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             bed_dict = {}
 
             # Iterate through the DataFrame to populate the dictionary
+            # Here is an example of bed file content to help understanding the code
+            """
+            Scaffold_116	341861	341862	1	94.573	+	6468	rnd_1_family_188
+            Scaffold_116	412105	412106	3	93.762	+	6492	rnd_1_family_188
+            Scaffold_119	245388	245389	4	94.512	-	6469	rnd_1_family_188
+            Scaffold_119	220368	220369	5	94.465	-	6468	rnd_1_family_188
+            Scaffold_1	238299	238300	8	94.373	-	6469	rnd_1_family_188
+            Scaffold_1	219863	219864	9	93.803	-	6471	rnd_1_family_188
+            """
             for index, row in df.iterrows():
                 key = row.iloc[3]
 

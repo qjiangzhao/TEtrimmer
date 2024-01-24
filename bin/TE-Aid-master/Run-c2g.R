@@ -44,7 +44,7 @@ sequence_length <- as.numeric(system(paste(wdir,"/getlength.sh ", query, sep = "
 if (tm) {
   pdf_title <- paste("After TETrimmer treatment ", as.character(sequence_length), "bp")
 } else {
-  pdf_title <- paste("Without TETrimmer treatment ", as.character(sequence_length), "bp")
+  pdf_title <- paste("Before TETrimmer treatment ", as.character(sequence_length), "bp")
 }
 
 pdf(

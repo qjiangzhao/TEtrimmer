@@ -6,7 +6,7 @@ import os
 class DefineBoundary:
 
     def __init__(self, input_file, threshold=0.8, check_window=200, max_X=0.25, if_con_generater=True,
-                 extension_stop_num=150):
+                 extension_stop_num=150, end_position=None):
         self.threshold = threshold
         self.input_file = input_file
         self.alignment = None
@@ -23,6 +23,7 @@ class DefineBoundary:
         self.if_continue = True
         self.cut_seqs = []
         self.extension_stop_num = extension_stop_num
+        self.end_position = end_position
         if if_con_generater:  # Default to use normal consensus sequence generation method
             self.con_generator()
             self.boundary_position()
@@ -81,16 +82,19 @@ class DefineBoundary:
         if self.start_post is None:
             self.start_post = len(self.consensus_seq)
 
-        # Check the end position
-        for i, letter in reversed(list(enumerate(self.consensus_seq))):
-            if letter in self.nucl:
-                i = i + 1
-                if i - self.check_window >= 0:
-                    Xnum = self.consensus_seq[i - self.check_window: i].count(self.ambiguous)
-                    # Check if the number of ambiguous smaller than 10% of check_window
-                    if Xnum <= (self.max_X*self.check_window):
-                        self.end_post = i
-                        break
+        if self.end_position is not None:
+            self.end_post = self.end_position
+        else:
+            # Check the end position
+            for i, letter in reversed(list(enumerate(self.consensus_seq))):
+                if letter in self.nucl:
+                    i = i + 1
+                    if i - self.check_window >= 0:
+                        Xnum = self.consensus_seq[i - self.check_window: i].count(self.ambiguous)
+                        # Check if the number of ambiguous smaller than 10% of check_window
+                        if Xnum <= (self.max_X*self.check_window):
+                            self.end_post = i
+                            break
 
         # Set end_post to 1 when it is not defined
         if self.end_post is None:
