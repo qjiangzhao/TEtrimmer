@@ -2082,3 +2082,26 @@ def find_poly_a_end_position(input_file, min_length=10):
         return None
 
 
+def calculate_con_coverage_num(consensus_file, blast_file):
+
+    # Use Biopython to read the consensus sequence from the FASTA file
+    record = SeqIO.read(consensus_file, "fasta")
+    consensus_seq = record.seq
+    cons_len = len(consensus_seq)
+
+    # Initialize a list with zeros for each position in the consensus sequence
+    coverage = [0] * cons_len
+
+    # Process BLAST hits from the file
+    with open(blast_file, 'r') as f:
+        for line in f:
+            parts = line.split()
+            # Assuming the format is: query_id subject_id %identity alignment_length mismatches gap_opens q.start q.end s.start s.end evalue bit_score
+            start, end = int(parts[6]), int(parts[7])
+            # Adjust for Python's 0-based indexing and ensure the positions are within the consensus length
+            start, end = max(1, start), min(end, cons_len)
+            for position in range(start - 1, end):  # Adjusting start index to 0-based for Python
+                coverage[position] += 1
+
+    return coverage
+
