@@ -1,17 +1,88 @@
 import shutil
 import subprocess
 import os
+import os.path
 import click
 import shutil
+import random
 from Bio import AlignIO, SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Align import MultipleSeqAlignment, AlignInfo
 import pandas as pd
 import pandas.errors
-from seqclass import SeqObject
 import numpy as np
 from PyPDF2 import PdfMerger, PdfFileReader, PdfFileWriter
+
+
+# Check if file name contains LTR
+def is_LTR(input_file):
+    input_file_name = os.path.basename(input_file)
+    return 'LTR' in input_file_name
+
+
+# Generate consensus sequence
+def generate_consensus_sequence(input_file, threshold, ambiguous):
+    alignment = AlignIO.read(input_file, "fasta")
+    summary = AlignInfo.SummaryInfo(alignment)
+    consensus_seq = list(summary.dumb_consensus(threshold=threshold, ambiguous=ambiguous).upper())
+    return consensus_seq
+
+
+# Check if the start and end are matchable with the given pattern
+def check_start_end(consensus_seq, start, end, start_patterns, end_patterns):
+    start_matched = end_matched = True
+
+    if start_patterns:
+        for start_pattern in start_patterns:
+            if consensus_seq[start: start + len(start_pattern)] == list(start_pattern):
+                break
+        else:
+            start_matched = False
+
+    if end_patterns:
+        for end_pattern in end_patterns:
+            if consensus_seq[end - len(end_pattern): end] == list(end_pattern):
+                break
+        else:
+            end_matched = False
+
+    return start_matched, end_matched
+
+
+def check_and_update(consensus_seq, start, end, start_patterns, end_patterns):
+    """
+    Check if the start and end of MSA equal to the given patterns
+    """
+    # Ensure all patterns are upper case
+    start_patterns = [pattern.upper() for pattern in start_patterns.split(',')] if start_patterns else None  
+    end_patterns = [pattern.upper() for pattern in end_patterns.split(',')] if end_patterns else None
+
+    start_matched, end_matched = check_start_end(consensus_seq, start, end, start_patterns, end_patterns)
+
+    if not start_matched or not end_matched:
+        # If exact position matching fails, try sliding window approach
+        if not start_matched and start_patterns:
+            for start_pattern in start_patterns:
+                start_window = consensus_seq[max(0, start - 15): start + 15]
+                for i in range(len(start_window) - len(start_pattern) + 1):
+                    if start_window[i: i + len(start_pattern)] == list(start_pattern):
+                        start = max(0, start - 15) + i
+                        break
+                break
+
+        if not end_matched and end_patterns:
+            for end_pattern in end_patterns:
+                end_window = consensus_seq[max(0, end - 15): end + 15]
+                for i in reversed(range(len(end_window) - len(end_pattern) + 1)):
+                    if end_window[i: i + len(end_pattern)] == list(end_pattern):
+                        end = max(0, end - 15) + i + len(end_pattern)
+                        break
+                break
+
+    # Check again after updating positions
+    start_matched, end_matched = check_start_end(consensus_seq, start, end, start_patterns, end_patterns)
+    return start_matched, end_matched, start, end
 
 
 def prcyan(text):
@@ -31,216 +102,6 @@ def fasta_file_to_dict(input_file, separate_name=False):
             sequences[record.id] = record
     return sequences
 
-
-def calculate_genome_length(genome_file):
-    """
-    Calculate the length of each sequence in a genome file in FASTA format
-    and write the lengths to an output file.
-
-    :param genome_file: str, path to genome file in FASTA format
-    :return: str, path to the output file containing sequence names and lengths
-    """
-    genome_lengths = {}
-    with open(genome_file, "r") as f:
-        current_seq = None
-        current_length = 0
-        for line in f:
-            line = line.strip()
-            if line.startswith(">"):
-                if current_seq is not None:
-                    genome_lengths[current_seq] = current_length
-                # If chromosome header contain space, only consider the content before the first space
-                current_seq = line[1:].split(" ")[0]
-                current_length = 0
-            else:
-                current_length += len(line)
-        # Add length of last sequence to dictionary
-        if current_seq is not None:
-            genome_lengths[current_seq] = current_length
-
-    # Write lengths to output file
-    output_file = genome_file + ".length"
-    with open(output_file, "w") as out:
-        for seq_name, length in genome_lengths.items():
-            out.write(f"{seq_name}\t{length}\n")
-
-    return output_file
-
-
-def check_database(genome_file, search_type="blast"):
-    """
-    Checks if the blast database and genome length file exist.
-    If they don't exist, create them.
-
-    :param genome_file: str, path to genome file (contain genome name)
-    """
-    if search_type == "blast":
-        blast_database_file = genome_file + ".nin"
-        if not os.path.isfile(blast_database_file):
-            print(f"\nBlast database doesn't exist. Running makeblastdb!")
-
-            try:
-                makeblastdb_cmd = f"makeblastdb -in {genome_file} -dbtype nucl -out {genome_file} "
-                subprocess.run(makeblastdb_cmd, shell=True, check=True, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, text=True)
-            except FileNotFoundError:
-                prcyan("'makeblastdb' command not found. Please ensure 'makeblastdb' is correctly installed.")
-                raise Exception
-
-            except subprocess.CalledProcessError as e:
-                prcyan(f"makeblastdb failed with exit code {e.returncode}")
-                prcyan(e.stderr)
-                return False
-    elif search_type == "mmseqs":
-        mmseqs_database_dir = genome_file + "_db"
-        if not os.path.isdir(mmseqs_database_dir):
-            print(f"\nMMseqs2 database doesn't exist. Running MMseqs2 database creation...\n")
-
-            try:
-                mmseqs_createdb_cmd = f"mmseqs createdb {genome_file} {mmseqs_database_dir}"
-                subprocess.run(mmseqs_createdb_cmd, shell=True, check=True,stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, text=True)
-
-            except subprocess.CalledProcessError as e:
-                prcyan(f"mmseqs failed with exit code {e.returncode}")
-                prcyan(e.stderr)
-
-            # Check if MMseqs2 database files have been created
-            if os.path.exists(f"{mmseqs_database_dir}.dbtype"):
-                print(f"MMseqs2 database created successfully: {mmseqs_database_dir}")
-
-                # Create index for the MMseqs2 database
-                print("Creating index for MMseqs2 database...")
-                mmseqs_createindex_cmd = f"mmseqs createindex {mmseqs_database_dir} {mmseqs_database_dir}_tmp " \
-                                         f"--search-type 3"
-                result = subprocess.run(mmseqs_createindex_cmd, shell=True, check=True, stderr=subprocess.PIPE)
-                error_output = result.stderr.decode("utf-8")
-                if error_output:
-                    print(f"Error creating MMseqs2 index: {error_output}\n")
-                else:
-                    print("MMseqs2 index created successfully.")
-            else:
-                print(f"Error: MMseqs2 database files not found for {genome_file}, you can build it by yourself to"
-                      f"aovid this error")
-
-    # Check if genome length files exists, otherwise create it at the same folder with genome file
-    length_file = genome_file + ".length"
-    if not os.path.isfile(length_file):
-        print(f"\nFile with genome lengths not found. Making it now!\n")
-        calculate_genome_length(genome_file)
-
-    # Check if .fai index file exists, otherwise create it using bedtools
-    fai_file = genome_file + ".fai"
-    if not os.path.isfile(fai_file):
-        print(f"\nIndex file {fai_file} not found. Creating it by samtools faidx!\n")
-        faidx_cmd = f"samtools faidx {genome_file}"
-
-        try:
-            subprocess.run(faidx_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-        except FileNotFoundError:
-            prcyan("'samtools' command not found. Please ensure 'samtools' is correctly installed.")
-            return False
-
-        except subprocess.CalledProcessError as e:
-            prcyan(f"\nsamtool faidx failed with error code {e.returncode}")
-            prcyan(e.stderr)
-            prgre("Please check if your samtools works well. Or you can build the genome index file by yourself\n"
-                  "samtools faidx <your_genome>")
-            return False
-    return True
-
-
-def separate_sequences(input_file, output_dir, continue_analysis=False):
-    """
-    separates input file into single fasta file and creates object for each input sequence
-    """
-    os.makedirs(output_dir, exist_ok=True)
-    seq_list = []
-
-    if not continue_analysis:
-        print(
-            "TETrimmer is modifying sequence names; All '/', '-', ':', '...', '|' and empty space before '#' will "
-            "be converted to '_'\n"
-            "You can find the original and modified name relationship from 'Sequence_name_mapping.txt' file under "
-            "the output directory.\n ")
-        # Initialize the name mapping file
-        name_mapping_file = os.path.join(os.path.dirname(output_dir), "Sequence_name_mapping.txt")
-
-        detected_pound = False
-        with open(input_file, 'r') as fasta_file, open(name_mapping_file, 'w') as mapping_file:
-            # Write header to the mapping file
-            mapping_file.write("original_input_seq_name\tTETrimmer_modified_seq_name\n")
-            id_list = []
-            # Have to add 'fasta' at the end, this pattern will be used for file deletion
-            for record in SeqIO.parse(fasta_file, 'fasta'):
-                # Check if # is in the seq.id. If # is present, the string before # is the seq_name, and the string
-                # after # is the seq_TE_type
-                if len(record.id.split("#")) > 1:
-                    detected_pound = True
-                    sanitized_id = record.id.split("#")[0].replace('/', '_').replace(' ', '_').\
-                        replace('-', '_').replace(':', '_').replace('...', '_').replace('|', '_')
-                    te_type = record.id.split("#")[1]
-
-                    # Normally SeqIO.parse only takes content before " " as record.id. Separate with " " to make
-                    # the code stronger
-                    te_type = te_type.split(" ")[0]
-
-                else:
-                    sanitized_id = record.id.replace('/', '_').replace(' ', '_').replace('-', '_')\
-                        .replace(':', '_').replace('...', '_')
-                    te_type = "Unknown"
-                    # modify header to add #Unknown 
-                    record.id = f"{record.id}#{te_type}"
-                    record.description = record.id
-
-                # double check if sanitized_id is unique. If not, modify sanitized_id
-                if sanitized_id not in id_list:
-                    id_list.append(sanitized_id)
-                else:
-                    # print(f"duplicated seq_name {sanitized_id} during separate_sequences.")
-                    id_list.append(sanitized_id)
-                    count = id_list.count(sanitized_id)
-                    sanitized_id = f"{sanitized_id}_n{count}"
-
-                # Write original and modified names to the mapping file
-                mapping_file.write(f"{record.id}\t{sanitized_id}\n")
-
-                # Define output file name
-                output_filename = os.path.join(output_dir, f"{sanitized_id}.fasta")
-                seq_obj = SeqObject(str(sanitized_id), str(output_filename), len(record.seq), te_type)
-
-                # Store all input file information (object manner) to seq_list
-                seq_list.append(seq_obj)
-
-                # Convert sequence name to sanitized_id
-                record.id = sanitized_id
-
-                # Write single fasta file with sanitized name
-                with open(output_filename, 'w') as output_file:
-                    SeqIO.write(record, output_file, 'fasta')
-
-            if detected_pound:
-                print("TETrimmer detects # in your input fasta sequence. The string before # is denoted as the "
-                      "seq_name, and the string after # is denoted as the TE type.\n")
-
-        print("Finish to generate single sequence files.\n")
-
-    elif continue_analysis:
-        # When continue_analysis is true, generate seq_list based on single fasta files
-        for filename in os.listdir(output_dir):
-            file = os.path.join(output_dir, filename)
-            with open(file, 'r') as fasta_file:
-                for record in SeqIO.parse(fasta_file, 'fasta'):
-                    # Get sanitized_id from single fasta file name
-                    sanitized_id = os.path.splitext(filename)[0]
-
-                    # Note: single fasta file name is different with record.id
-                    te_type = record.id.split("#")[-1]
-                    seq_obj = SeqObject(str(sanitized_id), str(file), len(record.seq), te_type)
-                    seq_list.append(seq_obj)
-        print("\nFinish to read in single sequence files generated from previous analysis.\n")
-    return seq_list
 
 
 def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast", task="blastn", seq_obj=None):
@@ -353,6 +214,68 @@ def check_bed_uniqueness(output_dir, bed_file):
             file.write(f"{line}\n")
     return bed_out_file
 
+def read_bed_file(input_file):
+    with open(input_file, 'r') as file:
+        return [line.strip().split('\t') for line in file]
+
+
+def remove_duplicates(lines):
+    unique_lines = []
+    line_set = set()
+    for line in lines:
+        line_key = tuple(line[:3])
+        if line_key not in line_set:
+            line_set.add(line_key)
+            unique_lines.append(line)
+
+    return unique_lines
+
+
+def select_top_longest_lines(lines, n):
+    return sorted(lines, key=lambda line: int(line[2]) - int(line[1]), reverse=True)[:n]
+
+
+def select_random_lines(n, remaining_lines):
+    random.shuffle(remaining_lines)
+    return remaining_lines[:n]
+
+
+def process_lines(input_file, output_dir, threshold=100, top_longest_lines_count=100):
+    """
+    Select desired line numbers from bed file.
+
+    :param output_dir: str, the absolute path of output folder directory.
+    :param threshold: num default=100, the maximum line number for bed file to keep.
+    :param top_longest_lines_count: num default=100 smaller or equal to threshold.
+    When the bed file line number is excess than the threshold, sort bed file by sequence length and choose
+    "top_longest_lines_count" lines. When this number is smaller than the threshold, randomly choose the rest
+    number of lines from the bed file.
+
+    :return: the absolute selected bed file path.
+    """
+    # check if top_longest_lines_count is equal or smaller than threshold.
+    if top_longest_lines_count > threshold:
+        raise ValueError("top_longest_lines must be equal to or smaller than threshold.")
+    lines = read_bed_file(input_file)
+    lines = remove_duplicates(lines)
+    bed_out_filter_file = os.path.join(output_dir, f"{os.path.basename(input_file)}f.bed")
+
+    if len(lines) > threshold:
+        top_longest_lines = select_top_longest_lines(lines, top_longest_lines_count)
+        # Eliminate selected lines
+        remaining_lines = [line for line in lines if line not in top_longest_lines]
+        # Randomly choose lines
+        random_lines = select_random_lines(threshold - top_longest_lines_count, remaining_lines)
+        selected_lines = top_longest_lines + random_lines
+        # Write the selected lines to the output file.
+        with open(bed_out_filter_file, 'w') as file:
+            for line in selected_lines:
+                file.write("\t".join(line) + "\n")
+    else:
+        # Copy the original file to the output directory with the new name to keep the file name consistency.
+        shutil.copy(input_file, bed_out_filter_file)
+
+    return bed_out_filter_file
 
 # Calculate average sequence length in the bed file
 def bed_ave_sequence_len(bed_content, start_rank, end_rank):
@@ -1272,18 +1195,6 @@ def concatenate_alignments(*alignments, input_file_name, output_dir):
 
     # Return the concatenated alignment
     return output_file, concat_start, concat_end
-
-
-def change_permissions_recursive(input_dir, mode):
-    try:
-        for dirpath, dirnames, filenames in os.walk(input_dir):
-            os.chmod(dirpath, mode)
-            for filename in filenames:
-                os.chmod(os.path.join(dirpath, filename), mode)
-    except PermissionError:
-        click.echo("TETrimmer don't have right to change permissions. Pleas use sudo to run TETrimmer")
-        return False
-    return True
 
 
 def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9, thread=10):

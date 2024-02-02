@@ -2,25 +2,23 @@
 import os
 import click
 import shutil
-from PyPDF2 import PdfMerger
 import traceback
-from Bio import AlignIO
 import pandas as pd
-from scipy import stats
+from Bio import AlignIO
+
+
 
 # Local imports
-from boundaryclass import DefineBoundary
-from clean_MSA import CropEnd, CropEndByGap
 from functions import generate_hmm_from_msa, extract_fasta, remove_gaps_with_similarity_check, align_sequences, \
     con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, \
     con_generater, reverse_complement_seq_file, classify_single, check_terminal_repeat, select_star_to_end, \
     define_crop_end_simi_thr, prcyan, prgre, merge_pdfs, dotplot, scale_single_page_pdf, \
-    remove_files_with_start_pattern, find_poly_a_end_position
-from selectcolumns import CleanAndSelectColumn
-import checkpattern
+    remove_files_with_start_pattern, find_poly_a_end_position, is_LTR, generate_consensus_sequence, \
+    check_and_update
+from boundaryclass import CropEnd, CropEndByGap, DefineBoundary
 from TEaid import TEAid
 from orfdomain import PlotPfam, determine_sequence_direction
-from MSAcluster import process_msa, clean_and_cluster_MSA
+from MSAcluster import CleanAndSelectColumn, process_msa, clean_and_cluster_MSA
 import cialign
 
 
@@ -539,13 +537,13 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         # When both start and end patterns are None, and terminal repeat found is false skip this block
         # Because terminal repeat can precisely define the start and end points
         if start_patterns is not None or end_patterns is not None and not found_match_crop:
-            if checkpattern.is_LTR(cropped_alignment_output_file_g):  # Check if file name contain "LTR"
+            if is_LTR(cropped_alignment_output_file_g):  # Check if file name contain "LTR"
                 # Generate consensus sequences
-                consensus_seq = checkpattern.generate_consensus_sequence(cropped_alignment_output_file_g,
+                consensus_seq = generate_consensus_sequence(cropped_alignment_output_file_g,
                                                                          threshold=0.7, ambiguous="X")
 
                 # Four variables will be returned
-                start_matched, end_matched, check_start, check_end = checkpattern.check_and_update(
+                start_matched, end_matched, check_start, check_end = check_and_update(
                     consensus_seq, start=cropped_boundary.start_post, end=cropped_boundary.end_post,
                     start_patterns=start_patterns, end_patterns=end_patterns)
 

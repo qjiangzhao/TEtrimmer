@@ -1,15 +1,23 @@
 # Standard library imports
 import os
+import shutil
+import subprocess
 import time
 import traceback
 import click
 import pandas as pd
+from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
+
 
 # Local imports
-from functions import blast, remove_files_with_start_pattern, check_bed_uniqueness, \
-    extract_fasta, handle_sequence_low_copy, handle_sequence_skipped, update_low_copy_cons_file, prcyan, prgre
-# from Class_bed_filter import BEDFile
-import bedfilter
+from functions import blast, remove_files_with_start_pattern, check_bed_uniqueness, extract_fasta, \
+    handle_sequence_low_copy, handle_sequence_skipped, update_low_copy_cons_file, prcyan, prgre, \
+    repeatmasker, repeatmasker_output_classify, rename_cons_file, rename_files_based_on_dict, \
+    cd_hit_est, parse_cd_hit_est_result, copy_files_with_start_pattern, multi_seq_dotplot, \
+    fasta_file_to_dict, process_lines
+
+from seqclass import SeqObject
 from boundarycrop import find_boundary_and_crop
 from TEaid import check_self_alignment
 from MSAcluster import clean_and_cluster_MSA
@@ -38,6 +46,134 @@ def check_progress_file(progress_file_path):
 
     return local_completed_sequences, skipped_count, low_copy_count, classified_pro
 
+def change_permissions_recursive(input_dir, mode):
+    try:
+        for dirpath, dirnames, filenames in os.walk(input_dir):
+            os.chmod(dirpath, mode)
+            for filename in filenames:
+                os.chmod(os.path.join(dirpath, filename), mode)
+    except PermissionError:
+        click.echo("TETrimmer don't have right to change permissions. Pleas use sudo to run TETrimmer")
+        return False
+    return True
+
+def calculate_genome_length(genome_file):
+    """
+    Calculate the length of each sequence in a genome file in FASTA format
+    and write the lengths to an output file.
+
+    :param genome_file: str, path to genome file in FASTA format
+    :return: str, path to the output file containing sequence names and lengths
+    """
+    genome_lengths = {}
+    with open(genome_file, "r") as f:
+        current_seq = None
+        current_length = 0
+        for line in f:
+            line = line.strip()
+            if line.startswith(">"):
+                if current_seq is not None:
+                    genome_lengths[current_seq] = current_length
+                # If chromosome header contain space, only consider the content before the first space
+                current_seq = line[1:].split(" ")[0]
+                current_length = 0
+            else:
+                current_length += len(line)
+        # Add length of last sequence to dictionary
+        if current_seq is not None:
+            genome_lengths[current_seq] = current_length
+
+    # Write lengths to output file
+    output_file = genome_file + ".length"
+    with open(output_file, "w") as out:
+        for seq_name, length in genome_lengths.items():
+            out.write(f"{seq_name}\t{length}\n")
+
+    return output_file
+
+
+def check_database(genome_file, search_type="blast"):
+    """
+    Checks if the blast database and genome length file exist.
+    If they don't exist, create them.
+
+    :param genome_file: str, path to genome file (contain genome name)
+    """
+    if search_type == "blast":
+        blast_database_file = genome_file + ".nin"
+        if not os.path.isfile(blast_database_file):
+            print(f"\nBlast database doesn't exist. Running makeblastdb!")
+
+            try:
+                makeblastdb_cmd = f"makeblastdb -in {genome_file} -dbtype nucl -out {genome_file} "
+                subprocess.run(makeblastdb_cmd, shell=True, check=True, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True)
+            except FileNotFoundError:
+                prcyan("'makeblastdb' command not found. Please ensure 'makeblastdb' is correctly installed.")
+                raise Exception
+
+            except subprocess.CalledProcessError as e:
+                prcyan(f"makeblastdb failed with exit code {e.returncode}")
+                prcyan(e.stderr)
+                return False
+    elif search_type == "mmseqs":
+        mmseqs_database_dir = genome_file + "_db"
+        if not os.path.isdir(mmseqs_database_dir):
+            print(f"\nMMseqs2 database doesn't exist. Running MMseqs2 database creation...\n")
+
+            try:
+                mmseqs_createdb_cmd = f"mmseqs createdb {genome_file} {mmseqs_database_dir}"
+                subprocess.run(mmseqs_createdb_cmd, shell=True, check=True,stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True)
+
+            except subprocess.CalledProcessError as e:
+                prcyan(f"mmseqs failed with exit code {e.returncode}")
+                prcyan(e.stderr)
+
+            # Check if MMseqs2 database files have been created
+            if os.path.exists(f"{mmseqs_database_dir}.dbtype"):
+                print(f"MMseqs2 database created successfully: {mmseqs_database_dir}")
+
+                # Create index for the MMseqs2 database
+                print("Creating index for MMseqs2 database...")
+                mmseqs_createindex_cmd = f"mmseqs createindex {mmseqs_database_dir} {mmseqs_database_dir}_tmp " \
+                                         f"--search-type 3"
+                result = subprocess.run(mmseqs_createindex_cmd, shell=True, check=True, stderr=subprocess.PIPE)
+                error_output = result.stderr.decode("utf-8")
+                if error_output:
+                    print(f"Error creating MMseqs2 index: {error_output}\n")
+                else:
+                    print("MMseqs2 index created successfully.")
+            else:
+                print(f"Error: MMseqs2 database files not found for {genome_file}, you can build it by yourself to"
+                      f"aovid this error")
+
+    # Check if genome length files exists, otherwise create it at the same folder with genome file
+    length_file = genome_file + ".length"
+    if not os.path.isfile(length_file):
+        print(f"\nFile with genome lengths not found. Making it now!\n")
+        calculate_genome_length(genome_file)
+
+    # Check if .fai index file exists, otherwise create it using bedtools
+    fai_file = genome_file + ".fai"
+    if not os.path.isfile(fai_file):
+        print(f"\nIndex file {fai_file} not found. Creating it by samtools faidx!\n")
+        faidx_cmd = f"samtools faidx {genome_file}"
+
+        try:
+            subprocess.run(faidx_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        except FileNotFoundError:
+            prcyan("'samtools' command not found. Please ensure 'samtools' is correctly installed.")
+            return False
+
+        except subprocess.CalledProcessError as e:
+            prcyan(f"\nsamtool faidx failed with error code {e.returncode}")
+            prcyan(e.stderr)
+            prgre("Please check if your samtools works well. Or you can build the genome index file by yourself\n"
+                  "samtools faidx <your_genome>")
+            return False
+    return True
 
 # Print iterations progress
 def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r", final = False):
@@ -67,6 +203,371 @@ def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=
         click.echo()
 
 
+
+def separate_sequences(input_file, output_dir, continue_analysis=False):
+    """
+    separates input file into single fasta file and creates object for each input sequence
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    seq_list = []
+
+    if not continue_analysis:
+        print(
+            "TETrimmer is modifying sequence names; All '/', '-', ':', '...', '|' and empty space before '#' will "
+            "be converted to '_'\n"
+            "You can find the original and modified name relationship from 'Sequence_name_mapping.txt' file under "
+            "the output directory.\n ")
+        # Initialize the name mapping file
+        name_mapping_file = os.path.join(os.path.dirname(output_dir), "Sequence_name_mapping.txt")
+
+        detected_pound = False
+        with open(input_file, 'r') as fasta_file, open(name_mapping_file, 'w') as mapping_file:
+            # Write header to the mapping file
+            mapping_file.write("original_input_seq_name\tTETrimmer_modified_seq_name\n")
+            id_list = []
+            # Have to add 'fasta' at the end, this pattern will be used for file deletion
+            for record in SeqIO.parse(fasta_file, 'fasta'):
+                # Check if # is in the seq.id. If # is present, the string before # is the seq_name, and the string
+                # after # is the seq_TE_type
+                if len(record.id.split("#")) > 1:
+                    detected_pound = True
+                    sanitized_id = record.id.split("#")[0].replace('/', '_').replace(' ', '_').\
+                        replace('-', '_').replace(':', '_').replace('...', '_').replace('|', '_')
+                    te_type = record.id.split("#")[1]
+
+                    # Normally SeqIO.parse only takes content before " " as record.id. Separate with " " to make
+                    # the code stronger
+                    te_type = te_type.split(" ")[0]
+
+                else:
+                    sanitized_id = record.id.replace('/', '_').replace(' ', '_').replace('-', '_')\
+                        .replace(':', '_').replace('...', '_')
+                    te_type = "Unknown"
+                    # modify header to add #Unknown 
+                    record.id = f"{record.id}#{te_type}"
+                    record.description = record.id
+
+                # double check if sanitized_id is unique. If not, modify sanitized_id
+                if sanitized_id not in id_list:
+                    id_list.append(sanitized_id)
+                else:
+                    # print(f"duplicated seq_name {sanitized_id} during separate_sequences.")
+                    id_list.append(sanitized_id)
+                    count = id_list.count(sanitized_id)
+                    sanitized_id = f"{sanitized_id}_n{count}"
+
+                # Write original and modified names to the mapping file
+                mapping_file.write(f"{record.id}\t{sanitized_id}\n")
+
+                # Define output file name
+                output_filename = os.path.join(output_dir, f"{sanitized_id}.fasta")
+                seq_obj = SeqObject(str(sanitized_id), str(output_filename), len(record.seq), te_type)
+
+                # Store all input file information (object manner) to seq_list
+                seq_list.append(seq_obj)
+
+                # Convert sequence name to sanitized_id
+                record.id = sanitized_id
+
+                # Write single fasta file with sanitized name
+                with open(output_filename, 'w') as output_file:
+                    SeqIO.write(record, output_file, 'fasta')
+
+            if detected_pound:
+                print("TETrimmer detects # in your input fasta sequence. The string before # is denoted as the "
+                      "seq_name, and the string after # is denoted as the TE type.\n")
+
+        print("Finish to generate single sequence files.\n")
+
+    elif continue_analysis:
+        # When continue_analysis is true, generate seq_list based on single fasta files
+        for filename in os.listdir(output_dir):
+            file = os.path.join(output_dir, filename)
+            with open(file, 'r') as fasta_file:
+                for record in SeqIO.parse(fasta_file, 'fasta'):
+                    # Get sanitized_id from single fasta file name
+                    sanitized_id = os.path.splitext(filename)[0]
+
+                    # Note: single fasta file name is different with record.id
+                    te_type = record.id.split("#")[-1]
+                    seq_obj = SeqObject(str(sanitized_id), str(file), len(record.seq), te_type)
+                    seq_list.append(seq_obj)
+        print("\nFinish to read in single sequence files generated from previous analysis.\n")
+    
+    single_fasta_n = len(seq_list)
+    
+    return seq_list, single_fasta_n
+
+def repeatmasker_classification(final_unknown_con_file, final_classified_con_file, classification_dir, num_threads, progress_file, \
+                                final_con_file, proof_annotation_dir, perfect_proof, good_proof, intermediate_proof, \
+                                need_check_proof, low_copy_dir, hmm, hmm_dir):
+    if os.path.exists(final_unknown_con_file) and os.path.exists(final_classified_con_file):
+        temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmasker_classification")
+        os.makedirs(temp_repeatmasker_dir, exist_ok=True)
+        classification_out = repeatmasker(final_unknown_con_file, final_classified_con_file,
+                                            temp_repeatmasker_dir,
+                                            thread=num_threads, classify=True)
+
+        if classification_out:
+            repeatmasker_out = os.path.join(temp_repeatmasker_dir,
+                                            "temp_TETrimmer_unknown_consensus.fasta.out")
+            reclassified_dict = repeatmasker_output_classify(repeatmasker_out, progress_file,
+                                                                min_iden=60, min_len=80, min_cov=0.5)
+            if reclassified_dict:
+                click.echo(
+                    f"\n{len(reclassified_dict)} TE elements were re-classified by the "
+                    f"final classification module.")
+
+                # Update final consensus file
+                rename_cons_file(final_con_file, reclassified_dict)
+                rename_files_based_on_dict(proof_annotation_dir, reclassified_dict)
+                rename_files_based_on_dict(perfect_proof, reclassified_dict)
+                rename_files_based_on_dict(good_proof, reclassified_dict)
+                rename_files_based_on_dict(intermediate_proof, reclassified_dict)
+                rename_files_based_on_dict(need_check_proof, reclassified_dict)
+                rename_files_based_on_dict(low_copy_dir, reclassified_dict, seq_name=True)
+                if hmm:
+                    rename_files_based_on_dict(hmm_dir, reclassified_dict)
+            else:
+                click.echo("0 TE elements were re-classified by the final classification module.")
+
+    else:
+        prcyan(f"\nThe final classification module failed.")
+        prgre("\nThis does not affect the final TE consensus sequences "
+                "You can choose to ignore this error.\n")
+        
+def merge_cons(classification_dir, final_con_file, progress_file, cd_hit_est_final_merged, num_threads):
+    # Do first round of CD-HIT-EST
+    cd_hit_merge_output_round1 = os.path.join(classification_dir, "TETrimmer_consensus_merged_round1.fasta")
+    cd_hit_merge_output_round1_clstr = f"{cd_hit_merge_output_round1}.clstr"
+
+    # Round 1 merge only requires that the alignment coverage for the shorter sequence is greater than 0.9
+    # and the similarity is greater than 0.9
+    cd_hit_est(final_con_file, cd_hit_merge_output_round1, identity_thr=0.9, aL=0, aS=0.9, s=0, thread=num_threads)
+
+    # Read progress file
+    progress_df = pd.read_csv(progress_file)
+
+    # Create a dictionary with sequence names as keys
+    sequence_info = {}
+    for index, row in progress_df.iterrows():
+        sequence_name = row["consensus_name"]
+        evaluation = row["evaluation"] if pd.notna(row["evaluation"]) else "Unknown"  # Default value for NaN
+        te_type = row["reclassified_type"] if pd.notna(row["reclassified_type"]) else "Unknown"
+        length = row["cons_length"] if pd.notna(row["cons_length"]) else 0  # Default value for NaN
+        sequence_info[sequence_name] = {"evaluation": evaluation, "type": te_type, "length": length}
+
+    # Parse cd-hit-est result, clusters is a dictionary, the key is cluster number, value is a list
+    # contain all sequence names in this cluster
+    clusters, detailed_clusters = parse_cd_hit_est_result(cd_hit_merge_output_round1_clstr)
+
+    # Check if sequences scored "Perfect" and "Good" are included in the cluster and choose the longest sequence
+    best_sequences = []  # Define list to store "Perfect" or "Good" sequence names
+
+    # Define list to store sequence in clusters that do not contain "Perfect" or "Good" sequences
+    sequence_for_round2 = []
+    for cluster_name, sequences in clusters.items():
+        perfect_sequences = []
+        good_sequences = []
+        best_seq = None
+
+        for seq in sequences:
+            if seq in sequence_info:
+                evaluation = sequence_info[seq]["evaluation"]
+                length = sequence_info[seq]["length"]
+                if evaluation == "Perfect":
+                    perfect_sequences.append((seq, length))
+                elif evaluation == "Good":
+                    good_sequences.append((seq, length))
+        # Choose the longest "Perfect" sequence, if have Perfect
+        if perfect_sequences:
+            best_seq = max(perfect_sequences, key=lambda x: x[1])[0]
+        # If no "Perfect", choose the longest "Good" sequence
+        elif good_sequences:
+            best_seq = max(good_sequences, key=lambda x: x[1])[0]
+
+        if best_seq:
+            best_sequences.append(best_seq)
+        else:
+            sequence_for_round2.extend(clusters[cluster_name])  # extend() will create a flat list
+
+    # Read the original consensus file
+    consensus_sequences = SeqIO.parse(final_con_file, "fasta")
+
+    # Define temporary file to store "Perfect" and "Good" sequences
+    temp_consensus_round1 = os.path.join(classification_dir, "temp_consensus_round1.fasta")
+
+    # Define temporary file to store remaining sequences for second round of CD-HIT-EST
+    temp_consensus_round2_input = os.path.join(classification_dir, "temp_consensus_round2_input.fasta")
+
+    # Write sequences to files
+    with open(temp_consensus_round1, "w") as high_quality_file, \
+            open(temp_consensus_round2_input, 'w') as round2_file:
+
+        for seq_record in consensus_sequences:
+            # Sequence names in best_sequences and sequence_for_round2 do not contain classification
+            seq_id = seq_record.id.split("#")[0]
+
+            if seq_id in best_sequences:
+                SeqIO.write(seq_record, high_quality_file, "fasta")
+            elif seq_id in sequence_for_round2:
+                SeqIO.write(seq_record, round2_file, 'fasta')
+
+    # Do second round of CD-HIT-EST based on temp_consensus_round2_input
+    cd_hit_merge_output_round2 = os.path.join(classification_dir, "TETrimmer_consensus_merged_round2.fasta")
+
+    # Round 2 merge requires that the alignment coverage for the long and short sequence are both greater than 0.8
+    # and the similarity is greater than 0.85
+    cd_hit_est(temp_consensus_round2_input, cd_hit_merge_output_round2, identity_thr=0.85, aL=0.8, aS=0.8, s=0.8,
+                thread=num_threads)
+
+    # Combine the two files into a merged file
+    with open(temp_consensus_round1, 'r') as file1, \
+            open(cd_hit_merge_output_round2, 'r') as file2, \
+            open(cd_hit_est_final_merged, 'w') as combined_file:
+        # Write contents of the first file
+        for line in file1:
+            combined_file.write(line)
+
+        # Write contents of the second file
+        for line in file2:
+            combined_file.write(line)
+
+    # Find sequence names that are not included inside in cd_hit_est_final_merged file
+    # Parse the sequences in the original and merged files
+    original_sequences = SeqIO.parse(final_con_file, "fasta")
+    merged_sequences = SeqIO.parse(cd_hit_est_final_merged, "fasta")
+
+    # Extract sequence IDs from both files and store to set
+    original_ids = {seq_record.id.split("#")[0] for seq_record in original_sequences}
+    merged_ids = {seq_record.id.split("#")[0] for seq_record in merged_sequences}
+
+    # Find the difference between the two sets to identify sequence names not included in the merged file
+    missing_ids = original_ids - merged_ids
+
+    """
+    # Based on missing_ids delete files in proof annotation folder and HMM folder
+    for missing_id in missing_ids:
+
+        # if not, set evaluation_level to "Need_check". The "get" method will return the default value
+        # when the key does not exist.
+        evaluation_level = sequence_info.get(missing_id, {"evaluation": "Need_check"})["evaluation"]
+
+        # Add '#' to the end of missing_id, this can avoid to delete 140 when the id is 14
+        missing_id = f"{missing_id}#"
+        if evaluation_level == "Perfect":
+            remove_files_with_start_pattern(perfect_proof, missing_id, if_seq_name=False)
+        elif evaluation_level == "Good":
+            remove_files_with_start_pattern(good_proof, missing_id, if_seq_name=False)
+        elif evaluation_level == "Reco_check":
+            remove_files_with_start_pattern(intermediate_proof, missing_id, if_seq_name=False)
+        elif evaluation_level == "Need_check":
+            remove_files_with_start_pattern(need_check_proof, missing_id, if_seq_name=False)
+        else:
+            remove_files_with_start_pattern(low_copy_dir, missing_id, if_seq_name=False)
+
+        if hmm:
+            remove_files_with_start_pattern(hmm_dir, missing_ids)
+    """
+    click.echo(f"\nFinished to remove sequence duplications.\n")
+    return sequence_info
+
+def cluster_proof_anno_file(multi_dotplot_dir, final_con_file_no_low_copy, continue_analysis, cluster_proof_anno_dir, num_threads, \
+                       sequence_info, perfect_proof, good_proof, intermediate_proof, need_check_proof ):
+
+    # Load fast file to a dictionary, key is record.id, value is record project
+    # When separate_name is true, the key of the dictionary will be the sequence name separated by '#'
+    final_con_file_no_low_copy_dict = fasta_file_to_dict(final_con_file_no_low_copy, separate_name=True)
+
+    # Clean cluster_proof_anno_dir when --continue_analysis is on.
+    if continue_analysis:
+        # When the start pattern isn't given, all files inside the folder will be removed
+        remove_files_with_start_pattern(cluster_proof_anno_dir)
+        remove_files_with_start_pattern(multi_dotplot_dir)
+
+    # Do CD-HIT-EST for final consensus file without low copy elements
+    final_con_file_no_low_copy_cd_out = f"{final_con_file_no_low_copy}_cd.fa"
+    final_con_file_no_low_copy_clstr = f"{final_con_file_no_low_copy_cd_out}.clstr"
+
+    # Round 1 merge only requires that the alignment coverage for the shorter sequence is greater than 0.9
+    # and the similarity is greater than 0.9
+    cd_hit_est(final_con_file_no_low_copy, final_con_file_no_low_copy_cd_out,
+                identity_thr=0.9, aL=0, aS=0.9, s=0, thread=num_threads)
+    clusters_proof_anno, detailed_clusters_proof_anno = parse_cd_hit_est_result(
+        final_con_file_no_low_copy_clstr)
+
+    for cluster_name_proof_anno, seq_info_proof_anno in detailed_clusters_proof_anno.items():
+        # Create cluster folder
+        cluster_folder = os.path.join(cluster_proof_anno_dir, cluster_name_proof_anno)
+        os.makedirs(cluster_folder, exist_ok=True)
+
+        seq_info_proof_anno_len = len(seq_info_proof_anno)
+
+        cluster_record_list = []
+        for i in range(seq_info_proof_anno_len):
+            try:
+                seq_length_proof_anno = seq_info_proof_anno[i][0]
+            except Exception:
+                seq_length_proof_anno = None
+
+            seq_name_proof_anno = seq_info_proof_anno[i][1]
+
+            try:
+                seq_per_proof_anno = seq_info_proof_anno[i][2]
+            except Exception:
+                seq_per_proof_anno = None
+            try:
+                seq_direction_proof_anno = seq_info_proof_anno[i][3]
+            except Exception:
+                seq_direction_proof_anno = None
+
+            # Copy sequence files into cluster folder
+            # if not, set evaluation_level to "Need_check". The "get" method will return the default value
+            # when the key does not exist.
+            evaluation_level = sequence_info.get(seq_name_proof_anno, {"evaluation": "Need_check"})["evaluation"]
+
+            # Add '#' to the end of seq_name_proof_anno, this can avoid to delete 140 when the id is 14
+            seq_name_proof_anno_m = f"{seq_name_proof_anno}#"
+            if evaluation_level == "Perfect":
+                copy_files_with_start_pattern(perfect_proof, seq_name_proof_anno_m, cluster_folder,
+                                                seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
+            elif evaluation_level == "Good":
+                copy_files_with_start_pattern(good_proof, seq_name_proof_anno_m, cluster_folder,
+                                                seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
+            elif evaluation_level == "Reco_check":
+                copy_files_with_start_pattern(intermediate_proof, seq_name_proof_anno_m, cluster_folder,
+                                                seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
+            elif evaluation_level == "Need_check":
+                copy_files_with_start_pattern(need_check_proof, seq_name_proof_anno_m, cluster_folder,
+                                                seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
+
+            # Plot multiple sequence dotplot when more than one sequence are included inside one cluster
+            if seq_info_proof_anno_len > 1:
+
+                # Extract record from dictionary
+                cluster_record = final_con_file_no_low_copy_dict.get(seq_name_proof_anno)
+
+                # When the sequence direction is negative, reverse complement it
+                if cluster_record is not None and seq_direction_proof_anno == '-':
+                    rev_comp_cluster_record_seq = cluster_record.seq.reverse_complement()
+                    cluster_record = SeqRecord(rev_comp_cluster_record_seq,
+                                                id=cluster_record.id, description="")
+                if cluster_record is not None:
+                    cluster_record_list.append(cluster_record)
+
+        if len(cluster_record_list) > 1:
+            # Define and write cluster fasta file a
+            cluster_fasta = os.path.join(multi_dotplot_dir, f"{cluster_name_proof_anno}.fa")
+            SeqIO.write(cluster_record_list, cluster_fasta, "fasta")
+
+            # Do multiple sequence dotplot
+            multi_dotplot_pdf = multi_seq_dotplot(cluster_fasta, multi_dotplot_dir, cluster_name_proof_anno)
+
+            # Move muti_dotplot_pdf to proof annotation cluster folder
+            if os.path.isfile(multi_dotplot_pdf):
+                shutil.copy(multi_dotplot_pdf, cluster_folder)
+
+    
 #####################################################################################################
 # Code block: Define analyze_sequence function
 #####################################################################################################
@@ -225,7 +726,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         # for example if threshold = 100, top_longest_lines_count = 50, then 50 sequences will be
         # randomly chose from the rest of sequences
         # top_mas_lines has to be equal or smaller than max_mas_lines
-        bed_out_filter_file = bedfilter.process_lines(bed_out_file, MSA_dir, threshold=max_msa_lines,
+        bed_out_filter_file = process_lines(bed_out_file, MSA_dir, threshold=max_msa_lines,
                                                       top_longest_lines_count=top_mas_lines)
 
         # extract fast from bed_out_filter_file

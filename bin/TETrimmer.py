@@ -13,20 +13,17 @@ from Bio.SeqRecord import SeqRecord
 
 # Local imports
 import analyze
-from functions import separate_sequences, remove_files_with_start_pattern, \
-    change_permissions_recursive, repeatmasker, check_database, cd_hit_est, repeatmasker_output_classify, \
-    rename_cons_file, rename_files_based_on_dict, prcyan, prgre, parse_cd_hit_est_result, \
-    copy_files_with_start_pattern, fasta_file_to_dict, multi_seq_dotplot
+from functions import repeatmasker, prcyan, prgre, cd_hit_est
 
 #####################################################################################################
 # Code block: Import JSON species_config file and define the default parameters
 #####################################################################################################
 
 # Load species-specific default values from the JSON config file
-species_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'species_config.json')
+config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
 # Load the JSON configuration file
-with open(species_config_path, "r") as config_file:
-    species_config = json.load(config_file)
+with open(config_path, "r") as config_file:
+    preset_config = json.load(config_file)
 
 #####################################################################################################
 # Code block: Main functions of TETrimmer
@@ -75,7 +72,7 @@ with open(species_config_path, "r") as config_file:
               help='Path to genome FASTA file.')
 @click.option('--output_dir', '-o', default=os.getcwd(), type=str,
               help='Output directory. Default: current working directory.')
-@click.option('--species', '-s', default='fungi', type=click.Choice(species_config.keys()),
+@click.option('--preset', '-s', default='default', type=click.Choice(preset_config.keys()),
               help='Select the type of organism for which to run TETrimmer.')
 #@click.option('--engine', '-e', default='blast', type=click.Choice(["blast", "mmseqs"]),
 #             help='Select the similar sequence search engine. "blast" or "mmseqs". Default: blast')
@@ -180,10 +177,11 @@ with open(species_config_path, "r") as config_file:
                    'than the query sequence.')
 @click.option('--classify_all', default=False, is_flag=True,
               help='Use RepeatClassifier to classify every consensus sequence. WARNING: This may take a long time.')
+
 def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_blast_len, num_threads, max_msa_lines,
          top_msa_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ext_step,
          max_ext, gap_thr, gap_nul_thr, crop_end_div_thr, crop_end_div_win, crop_end_gap_thr, crop_end_gap_win,
-         start_patterns, end_patterns, mini_orf, species, ext_check_win, dedup, genome_anno, hmm,
+         start_patterns, end_patterns, mini_orf, preset, ext_check_win, dedup, genome_anno, hmm,
          debug, fast_mode, classify_unknown, classify_all):
 
     # Add this to click options if mmseq2 has been fully tested
@@ -237,7 +235,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
     # Change permissions of the directory and all its content to 755
     # 755 in octal corresponds to rwxr-xr-x
-    change_permission = change_permissions_recursive(TE_aid_path, 0o755)
+    change_permission = analyze.change_permissions_recursive(TE_aid_path, 0o755)
     if not change_permission:
         return
 
@@ -245,7 +243,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Code block: Define the default options according to the given species
     #####################################################################################################
 
-    default_values = species_config.get(species, {})
+    default_values = preset_config.get(preset, {})
     if cons_thr is None:
         cons_thr = default_values.get("cons_thr")
 
@@ -303,7 +301,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         ext_check_win = default_values.get("ext_check_win")
 
     #####################################################################################################
-    # Code block: Define input file, output directory, genome, check BLAST database
+    # Code block: Define input file, output directory, genome
     #####################################################################################################
     try:
         bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, \
@@ -331,7 +329,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     shutil.copytree(proof_anno_GUI_dir, proof_anno_GUI_destination_dir)
 
     #####################################################################################################
-    # Code block: Remove duplications in input file if required and generate single FASTA file
+    # Code block: Remove duplications in input file if required, generate single FASTA file and check BLAST database
     #####################################################################################################
 
     # Generate single files when continue_analysis is false
@@ -358,16 +356,13 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
         # Separate FASTA into single files; if FASTA headers contain "/", " " or ":" convert to "_"
         # Call this function to separate to single FASTA files and create objects from input file
-        seq_list = separate_sequences(input_file, single_file_dir, continue_analysis=False)
-
-        # Calculate the total sequence number 
-        single_fasta_n = len(seq_list)
+        seq_list, single_fasta_n = analyze.separate_sequences(input_file, single_file_dir, continue_analysis=False)
+        
         click.echo(f"{single_fasta_n} sequences are detected from the input file")
 
-        # Create new object to check BLAST database availability
         # Check if BLAST database and genome length files are available, otherwise create these in the
         # same directory of genome file
-        database_result = check_database(genome_file, search_type=engine)
+        database_result = analyze.check_database(genome_file, search_type=engine)
 
         # If database returns errors, stop the whole analysis
         if not database_result:
@@ -386,8 +381,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             click.echo("\nTETrimmer will continue analysis based on previous results.\n")
 
             # Create seq_list, which contains sequence objects using the single FASTA files.
-            seq_list = separate_sequences(input_file, single_file_dir, continue_analysis=True)
-            single_fasta_n = len(seq_list)
+            seq_list, single_fasta_n = analyze.separate_sequences(input_file, single_file_dir, continue_analysis=True)
 
             # Check which sequences have already been processed
             complete_sequences, skipped_count, low_copy_count, classified_pro = analyze.check_progress_file(
@@ -452,41 +446,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         if 0.3 <= classified_pro < 0.99:
             click.echo("\nTETrimmer is doing the final classification. It uses the classified TE to classify "
                        "Unknown elements.")
-            temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmasker_classification")
-
-            if os.path.exists(final_unknown_con_file) and os.path.exists(final_classified_con_file):
-                os.makedirs(temp_repeatmasker_dir, exist_ok=True)
-                classification_out = repeatmasker(final_unknown_con_file, final_classified_con_file,
-                                                  temp_repeatmasker_dir,
-                                                  thread=num_threads, classify=True)
-
-                if classification_out:
-                    repeatmasker_out = os.path.join(temp_repeatmasker_dir,
-                                                    "temp_TETrimmer_unknown_consensus.fasta.out")
-                    reclassified_dict = repeatmasker_output_classify(repeatmasker_out, progress_file,
-                                                                     min_iden=60, min_len=80, min_cov=0.5)
-                    if reclassified_dict:
-                        click.echo(
-                            f"\n{len(reclassified_dict)} TE elements were re-classified by the "
-                            f"final classification module.")
-
-                        # Update final consensus file
-                        rename_cons_file(final_con_file, reclassified_dict)
-                        rename_files_based_on_dict(proof_annotation_dir, reclassified_dict)
-                        rename_files_based_on_dict(perfect_proof, reclassified_dict)
-                        rename_files_based_on_dict(good_proof, reclassified_dict)
-                        rename_files_based_on_dict(intermediate_proof, reclassified_dict)
-                        rename_files_based_on_dict(need_check_proof, reclassified_dict)
-                        rename_files_based_on_dict(low_copy_dir, reclassified_dict, seq_name=True)
-                        if hmm:
-                            rename_files_based_on_dict(hmm_dir, reclassified_dict)
-                    else:
-                        click.echo("0 TE elements were re-classified by the final classification module.")
-
-            else:
-                prcyan(f"\nThe final classification module failed.")
-                prgre("\nThis does not affect the final TE consensus sequences "
-                      "You can choose to ignore this error.\n")
+            analyze.repeatmasker_classification(final_unknown_con_file, final_classified_con_file, classification_dir, num_threads, progress_file, \
+                                final_con_file, proof_annotation_dir, perfect_proof, good_proof, intermediate_proof, \
+                                need_check_proof, low_copy_dir, hmm, hmm_dir)
     except Exception as e:
         with open(error_files, "a") as f:
             # Get the traceback content as a string
@@ -497,6 +459,10 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         prgre("\nThis does not affect the final TE consensus sequences "
               "You can choose to ignore this error. For traceback content, please refer to 'error_file.txt' "
               "in the 'Multiple_sequence_alignment' directory.\n")
+    
+    #####################################################################################################
+    # Code block: Delete the empty folder inside Classification_dir
+    #####################################################################################################
 
     try:
         # Delete the empty folder inside Classification_dir. For some reason, thr RepeatClassifier folder can't be
@@ -523,140 +489,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     try:
         click.echo("\nTETrimmer is removing sequence duplications.")
-
-        # Do first round of CD-HIT-EST
-        cd_hit_merge_output_round1 = os.path.join(classification_dir, "TETrimmer_consensus_merged_round1.fasta")
-        cd_hit_merge_output_round1_clstr = f"{cd_hit_merge_output_round1}.clstr"
-
-        # Round 1 merge only requires that the alignment coverage for the shorter sequence is greater than 0.9
-        # and the similarity is greater than 0.9
-        cd_hit_est(final_con_file, cd_hit_merge_output_round1, identity_thr=0.9, aL=0, aS=0.9, s=0, thread=num_threads)
-
-        # Read progress file
-        progress_df = pd.read_csv(progress_file)
-
-        # Create a dictionary with sequence names as keys
-        sequence_info = {}
-        for index, row in progress_df.iterrows():
-            sequence_name = row["consensus_name"]
-            evaluation = row["evaluation"] if pd.notna(row["evaluation"]) else "Unknown"  # Default value for NaN
-            te_type = row["reclassified_type"] if pd.notna(row["reclassified_type"]) else "Unknown"
-            length = row["cons_length"] if pd.notna(row["cons_length"]) else 0  # Default value for NaN
-            sequence_info[sequence_name] = {"evaluation": evaluation, "type": te_type, "length": length}
-
-        # Parse cd-hit-est result, clusters is a dictionary, the key is cluster number, value is a list
-        # contain all sequence names in this cluster
-        clusters, detailed_clusters = parse_cd_hit_est_result(cd_hit_merge_output_round1_clstr)
-
-        # Check if sequences scored "Perfect" and "Good" are included in the cluster and choose the longest sequence
-        best_sequences = []  # Define list to store "Perfect" or "Good" sequence names
-
-        # Define list to store sequence in clusters that do not contain "Perfect" or "Good" sequences
-        sequence_for_round2 = []
-        for cluster_name, sequences in clusters.items():
-            perfect_sequences = []
-            good_sequences = []
-            best_seq = None
-
-            for seq in sequences:
-                if seq in sequence_info:
-                    evaluation = sequence_info[seq]["evaluation"]
-                    length = sequence_info[seq]["length"]
-                    if evaluation == "Perfect":
-                        perfect_sequences.append((seq, length))
-                    elif evaluation == "Good":
-                        good_sequences.append((seq, length))
-            # Choose the longest "Perfect" sequence, if have Perfect
-            if perfect_sequences:
-                best_seq = max(perfect_sequences, key=lambda x: x[1])[0]
-            # If no "Perfect", choose the longest "Good" sequence
-            elif good_sequences:
-                best_seq = max(good_sequences, key=lambda x: x[1])[0]
-
-            if best_seq:
-                best_sequences.append(best_seq)
-            else:
-                sequence_for_round2.extend(clusters[cluster_name])  # extend() will create a flat list
-
-        # Read the original consensus file
-        consensus_sequences = SeqIO.parse(final_con_file, "fasta")
-
-        # Define temporary file to store "Perfect" and "Good" sequences
-        temp_consensus_round1 = os.path.join(classification_dir, "temp_consensus_round1.fasta")
-
-        # Define temporary file to store remaining sequences for second round of CD-HIT-EST
-        temp_consensus_round2_input = os.path.join(classification_dir, "temp_consensus_round2_input.fasta")
-
-        # Write sequences to files
-        with open(temp_consensus_round1, "w") as high_quality_file, \
-                open(temp_consensus_round2_input, 'w') as round2_file:
-
-            for seq_record in consensus_sequences:
-                # Sequence names in best_sequences and sequence_for_round2 do not contain classification
-                seq_id = seq_record.id.split("#")[0]
-
-                if seq_id in best_sequences:
-                    SeqIO.write(seq_record, high_quality_file, "fasta")
-                elif seq_id in sequence_for_round2:
-                    SeqIO.write(seq_record, round2_file, 'fasta')
-
-        # Do second round of CD-HIT-EST based on temp_consensus_round2_input
-        cd_hit_merge_output_round2 = os.path.join(classification_dir, "TETrimmer_consensus_merged_round2.fasta")
-
-        # Round 2 merge requires that the alignment coverage for the long and short sequence are both greater than 0.8
-        # and the similarity is greater than 0.85
-        cd_hit_est(temp_consensus_round2_input, cd_hit_merge_output_round2, identity_thr=0.85, aL=0.8, aS=0.8, s=0.8,
-                   thread=num_threads)
-
-        # Combine the two files into a merged file
-        with open(temp_consensus_round1, 'r') as file1, \
-                open(cd_hit_merge_output_round2, 'r') as file2, \
-                open(cd_hit_est_final_merged, 'w') as combined_file:
-            # Write contents of the first file
-            for line in file1:
-                combined_file.write(line)
-
-            # Write contents of the second file
-            for line in file2:
-                combined_file.write(line)
-
-        # Find sequence names that are not included inside in cd_hit_est_final_merged file
-        # Parse the sequences in the original and merged files
-        original_sequences = SeqIO.parse(final_con_file, "fasta")
-        merged_sequences = SeqIO.parse(cd_hit_est_final_merged, "fasta")
-
-        # Extract sequence IDs from both files and store to set
-        original_ids = {seq_record.id.split("#")[0] for seq_record in original_sequences}
-        merged_ids = {seq_record.id.split("#")[0] for seq_record in merged_sequences}
-
-        # Find the difference between the two sets to identify sequence names not included in the merged file
-        missing_ids = original_ids - merged_ids
-
-        """
-        # Based on missing_ids delete files in proof annotation folder and HMM folder
-        for missing_id in missing_ids:
-
-            # if not, set evaluation_level to "Need_check". The "get" method will return the default value
-            # when the key does not exist.
-            evaluation_level = sequence_info.get(missing_id, {"evaluation": "Need_check"})["evaluation"]
-
-            # Add '#' to the end of missing_id, this can avoid to delete 140 when the id is 14
-            missing_id = f"{missing_id}#"
-            if evaluation_level == "Perfect":
-                remove_files_with_start_pattern(perfect_proof, missing_id, if_seq_name=False)
-            elif evaluation_level == "Good":
-                remove_files_with_start_pattern(good_proof, missing_id, if_seq_name=False)
-            elif evaluation_level == "Reco_check":
-                remove_files_with_start_pattern(intermediate_proof, missing_id, if_seq_name=False)
-            elif evaluation_level == "Need_check":
-                remove_files_with_start_pattern(need_check_proof, missing_id, if_seq_name=False)
-            else:
-                remove_files_with_start_pattern(low_copy_dir, missing_id, if_seq_name=False)
-
-            if hmm:
-                remove_files_with_start_pattern(hmm_dir, missing_ids)
-        """
-        click.echo(f"\nFinished to remove sequence duplications.\n")
+        sequence_info = analyze.merge_cons(classification_dir, final_con_file, progress_file, cd_hit_est_final_merged, num_threads)# Do first round of CD-HIT-EST
+       
 
     except Exception as e:
         final_merge_success = False
@@ -676,103 +510,11 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     try:
         click.echo("TETrimmer is clustering proof annotation files.\n")
-
-        # Create directory to store multiple sequence dotplot
         multi_dotplot_dir = os.path.join(classification_dir, "Multiple_sequence_dotplot")
         os.makedirs(multi_dotplot_dir, exist_ok=True)
-
-        # Load fast file to a dictionary, key is record.id, value is record project
-        # When separate_name is true, the key of the dictionary will be the sequence name separated by '#'
-        final_con_file_no_low_copy_dict = fasta_file_to_dict(final_con_file_no_low_copy, separate_name=True)
-
-        # Clean cluster_proof_anno_dir when --continue_analysis is on.
-        if continue_analysis:
-            # When the start pattern isn't given, all files inside the folder will be removed
-            remove_files_with_start_pattern(cluster_proof_anno_dir)
-            remove_files_with_start_pattern(multi_dotplot_dir)
-
-        # Do CD-HIT-EST for final consensus file without low copy elements
-        final_con_file_no_low_copy_cd_out = f"{final_con_file_no_low_copy}_cd.fa"
-        final_con_file_no_low_copy_clstr = f"{final_con_file_no_low_copy_cd_out}.clstr"
-
-        # Round 1 merge only requires that the alignment coverage for the shorter sequence is greater than 0.9
-        # and the similarity is greater than 0.9
-        cd_hit_est(final_con_file_no_low_copy, final_con_file_no_low_copy_cd_out,
-                   identity_thr=0.9, aL=0, aS=0.9, s=0, thread=num_threads)
-        clusters_proof_anno, detailed_clusters_proof_anno = parse_cd_hit_est_result(
-            final_con_file_no_low_copy_clstr)
-
-        for cluster_name_proof_anno, seq_info_proof_anno in detailed_clusters_proof_anno.items():
-            # Create cluster folder
-            cluster_folder = os.path.join(cluster_proof_anno_dir, cluster_name_proof_anno)
-            os.makedirs(cluster_folder, exist_ok=True)
-
-            seq_info_proof_anno_len = len(seq_info_proof_anno)
-
-            cluster_record_list = []
-            for i in range(seq_info_proof_anno_len):
-                try:
-                    seq_length_proof_anno = seq_info_proof_anno[i][0]
-                except Exception:
-                    seq_length_proof_anno = None
-
-                seq_name_proof_anno = seq_info_proof_anno[i][1]
-
-                try:
-                    seq_per_proof_anno = seq_info_proof_anno[i][2]
-                except Exception:
-                    seq_per_proof_anno = None
-                try:
-                    seq_direction_proof_anno = seq_info_proof_anno[i][3]
-                except Exception:
-                    seq_direction_proof_anno = None
-
-                # Copy sequence files into cluster folder
-                # if not, set evaluation_level to "Need_check". The "get" method will return the default value
-                # when the key does not exist.
-                evaluation_level = sequence_info.get(seq_name_proof_anno, {"evaluation": "Need_check"})["evaluation"]
-
-                # Add '#' to the end of seq_name_proof_anno, this can avoid to delete 140 when the id is 14
-                seq_name_proof_anno_m = f"{seq_name_proof_anno}#"
-                if evaluation_level == "Perfect":
-                    copy_files_with_start_pattern(perfect_proof, seq_name_proof_anno_m, cluster_folder,
-                                                  seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
-                elif evaluation_level == "Good":
-                    copy_files_with_start_pattern(good_proof, seq_name_proof_anno_m, cluster_folder,
-                                                  seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
-                elif evaluation_level == "Reco_check":
-                    copy_files_with_start_pattern(intermediate_proof, seq_name_proof_anno_m, cluster_folder,
-                                                  seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
-                elif evaluation_level == "Need_check":
-                    copy_files_with_start_pattern(need_check_proof, seq_name_proof_anno_m, cluster_folder,
-                                                  seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
-
-                # Plot multiple sequence dotplot when more than one sequence are included inside one cluster
-                if seq_info_proof_anno_len > 1:
-
-                    # Extract record from dictionary
-                    cluster_record = final_con_file_no_low_copy_dict.get(seq_name_proof_anno)
-
-                    # When the sequence direction is negative, reverse complement it
-                    if cluster_record is not None and seq_direction_proof_anno == '-':
-                        rev_comp_cluster_record_seq = cluster_record.seq.reverse_complement()
-                        cluster_record = SeqRecord(rev_comp_cluster_record_seq,
-                                                   id=cluster_record.id, description="")
-                    if cluster_record is not None:
-                        cluster_record_list.append(cluster_record)
-
-            if len(cluster_record_list) > 1:
-                # Define and write cluster fasta file a
-                cluster_fasta = os.path.join(multi_dotplot_dir, f"{cluster_name_proof_anno}.fa")
-                SeqIO.write(cluster_record_list, cluster_fasta, "fasta")
-
-                # Do multiple sequence dotplot
-                multi_dotplot_pdf = multi_seq_dotplot(cluster_fasta, multi_dotplot_dir, cluster_name_proof_anno)
-
-                # Move muti_dotplot_pdf to proof annotation cluster folder
-                if os.path.isfile(multi_dotplot_pdf):
-                    shutil.copy(multi_dotplot_pdf, cluster_folder)
-
+        analyze.cluster_proof_anno_file(multi_dotplot_dir, final_con_file_no_low_copy, continue_analysis, cluster_proof_anno_dir, num_threads, \
+                       sequence_info, perfect_proof, good_proof, intermediate_proof, need_check_proof)
+        
         # clear remove_files_with_start_pattern folder
         if not debug and os.path.exists(multi_dotplot_dir):
             shutil.rmtree(multi_dotplot_dir)
@@ -823,6 +565,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
             f.write(f"\nGenome TE annotation error.\n")
             f.write(tb_content + '\n\n')
 
+    #####################################################################################################
+    # Code block: End
+    #####################################################################################################
     end_time = datetime.now()
     duration = end_time - start_time
 
