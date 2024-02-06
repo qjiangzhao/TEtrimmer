@@ -352,31 +352,31 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                            mini_orf=200, define_boundary_win=150, fast_mode=False, engine="blast",
                            input_orf_pfam=False, debug=False):
     """
-    :param bed_file: str, bed file directory
-    :param genome_file: str, genome directory
-    :param output_dir: str, output file directory
-    :param pfam_dir: str, pfam database directory
-    :param cons_threshold: num 0 to 1 default: 0.8, threshold used for final consensus sequence generation
-    :param ext_threshold: num 0 to 1 default: 0.7, threshold used for define the extension extent. The higher number
-    represent more stringent extension threshold (short extension in total), the smaller number means it become easier
-    to have a final longer extension for each sider of the sequence.
-    :param ex_step_size: num default: 1000, number of nucleotide will be added to left or right side each time
-    :param max_extension: num default: 7000, the maximum extension number for right and left side
-    :param crop_end_thr: num default: 16, when the ambiguous letter more than this number, delete this window
-    :param crop_end_win: num default: 20, window size used for crop end process
-    :param gap_threshold: num default: 0.4, columns with greater gap proportion than gap_threshold and the most common
-    nucleotide proportion in this column is less than gap_nul_thr will be removed
-    :param gap_nul_thr: num default: 0.7, set nucleotide proportion to decide if remove this column
-    :param crop_end_gap_thr: num default: 0.05, set gap threshold for crop end by gap
-    :param crop_end_gap_win: num default: 300, set window size used to crop end by gap
-    :param start_patterns: str default: None, patterns to check for start points
-    :param end_patterns: str default: None, patterns to check for end points
-    :param min_orf: num default: 200, set minimum orf length for orf prediction
+    :param bed_file: str, BED file directory
+    :param genome_file: str, directory containing the genome FASTA file
+    :param output_dir: str, output directory
+    :param pfam_dir: str, PFAM database directory
+    :param cons_threshold: float (0 to 1), threshold used for final consensus sequence generation. Default: 0.8
+    :param ext_threshold: float (0 to 1), threshold used to define the extent of sequence extension. A higher ratio
+    represents a more stringent extension threshold (shorter extensions), while a smaller ratio represents a loosened 
+    threshold, yielding longer extensions on both sides of the sequence. Default: 0.7
+    :param ex_step_size: int, number of nucleotides to bee added to both sides in each extension cycle. Default: 1000
+    :param max_extension: int, the maximum number of nucleotides to be added on both ends for extension. Default: 7000
+    :param crop_end_thr: int, if ambiguous sides exceed <crop_end_thr> in the extension window, delete the window. Default: 16
+    :param crop_end_win: int, window size used for the crop-end process. Default: 20
+    :param gap_threshold: float, columns with a greater gap proportion than <gap_threshold>, and if the highest
+    nucleotide proportion in this column is less than <gap_nul_thr>, will be removed. Default: 0.4
+    :param gap_nul_thr: float, set nucleotide proportion threshold to decide if the column should be removed. Default: 0.07
+    :param crop_end_gap_thr: float, set gap threshold to crop end by gap. Default: 0.05
+    :param crop_end_gap_win: int, set window size used to crop end by gap. Default: 300. 
+    :param start_patterns: str, patterns to check for start points. Default: None
+    :param end_patterns: str, patterns to check for end points. Default: None
+    :param min_orf: int, set minimum ORF length for ORF prediction. Default: 200
 
     """
 
     # Check if this is a LINE element, if so decrease the ext_threshold number,
-    # because LINE have higher divergence at 5' end
+    # because LINE have high divergence at the 5' end
     seq_name = seq_obj.name
     seq_file = seq_obj.get_input_fasta()  # Return full file path
     if "LINE" in seq_obj.old_TE_type:
@@ -387,10 +387,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     while msa_loop_n <= 2:
 
         try:
-            # Read bed file and build dictionary to store sequence position
+            # Read BED file and build dictionary to store sequence position
             df = pd.read_csv(bed_file, sep='\t', header=None)
 
-            # Initialize an empty dictionary to store your desired key-value pairs
+            # Initialize an empty dictionary to store the desired key-value pairs
             bed_dict = {}
 
             # Iterate through the DataFrame to populate the dictionary
@@ -417,12 +417,13 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 tb_content = traceback.format_exc()
                 f.write(f"\nFind boundary bed_file reading failed for {seq_name} with error:\n{e}")
                 f.write('\n' + tb_content + '\n\n')
-                prcyan(f"\nfind boundary bed_file reading failed for {seq_name} with error:\n{e}")
-                prcyan('\n' + tb_content + '\n')
-                raise Exception
+                prcyan(f"\nStart and end patterns like 'TGT' or 'ACA' definition failed for {seq_name} with error \n{e}")
+                prgre("\nThis error will not affect the final result significantly, you can choose to ignore it. "
+                      "For traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n")
+                pass
 
         #####################################################################################################
-        # Code block: Define left and right sides extension number and define the boundary
+        # Code block: Define length of extensions on left and right sides of the MSA and define the boundary
         #####################################################################################################
         try:
             left_bed_dic, left_ex_total = extend_end(
@@ -443,23 +444,23 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 raise Exception
 
         try:
-            # Update bed file for final MSA
+            # Update BED file for final MSA
             for key, value in final_bed_dic.items():
                 # Find rows where the fourth column matches the key and update position by dictionary value
                 df.loc[df[3] == key, [1, 2]] = value[:2]
 
-            # Define bed file name for final MSA
+            # Define BED file name for final MSA
             bed_final_MSA = bed_file + "_fm.bed"
             df.to_csv(bed_final_MSA, sep='\t', index=False, header=False)
 
-            # final_MSA return false when the start crop point is greater than the end crop point, which means the
-            # sequence is too short. Besides, when the divergence is too high, CropEnd will cause this problem
+            # final_MSA return 'False' if when the start crop point is greater than the end crop point, which means the
+            # sequence is too short. If the divergence is too high, CropEnd will return 'False'.
             final_msa_result = final_MSA(bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
                                          define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win)
 
-            # Check if the result is False, indicating an error or specific condition
+            # Check if final_msa_result returned 'False', indicating an error or specific condition
             if not final_msa_result:
-                # Handle the error or specific condition here
+                # Handle the error or specific condition
                 return False
             else:
                 # Unpack the returned values if the function executed normally
@@ -468,7 +469,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
         except Exception as e:
             with open(error_files, "a") as f:
-                # Get the traceback content as a string
+                # Return the traceback content as a string
                 tb_content = traceback.format_exc()
                 f.write(f"Boundary definition error {seq_name}\n")
                 f.write('\n' + tb_content + '\n\n')
@@ -479,6 +480,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         #####################################################################################################
         # Code block: Check the consistency of the final MSA
         #####################################################################################################
+        # Plotting is done after PFAM predictions in case consensus/MSA are in the wrong direction.
         try:
             if msa_loop_n <= 1:
                 final_msa_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file,
@@ -486,11 +488,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                                                               clean_column_threshold=0.01,
                                                               min_length_num=10, cluster_num=2, cluster_col_thr=500)
 
-                # len(final_msa_consistency) == 1 means don't need to do clustering
+                # len(final_msa_consistency) == 1 means clustering is not necessary
                 if not final_msa_consistency:
                     break
 
-                # When clustered msa contain only 1 element, check if the bed file have same line number with original
+                # If the clustered MSA contains only 1 element, check if the BED file has the same line number as the original file
                 elif len(final_msa_consistency) == 1:
                     df_new = pd.read_csv(final_msa_consistency[0], sep='\t', header=None)
 
@@ -517,7 +519,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         ex_step_size = 700
 
     #####################################################################################################
-    # Code block: Check if the final MSA contains too many ambiguous letter "N"
+    # Code block: Check if the final MSA contains too many instances of the ambiguous letter "N"
     #####################################################################################################
     try:
         initial_cons = con_generater_no_file(cropped_boundary_MSA, threshold=0.55, ambiguous="N")
@@ -531,13 +533,13 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             return False
 
     #####################################################################################################
-    # Code block: For LTR element, check if the cropped MSA starts with give patterns like TGA ACA
+    # Code block: For LTR elements, check if the cropped MSA starts with given patterns like TGA ACA
     #####################################################################################################
 
-        # When both start and end patterns are None, and terminal repeat found is false skip this block
-        # Because terminal repeat can precisely define the start and end points
+        # If both start and end patterns are 'None', and found_match_crop is 'False' (no terminal repeat found), 
+        # skip this block, because terminal repeats can precisely define the start and end points of TEs.
         if start_patterns is not None or end_patterns is not None and not found_match_crop:
-            if is_LTR(cropped_alignment_output_file_g):  # Check if file name contain "LTR"
+            if is_LTR(cropped_alignment_output_file_g):  # Check if file name contains "LTR"
                 # Generate consensus sequences
                 consensus_seq = generate_consensus_sequence(cropped_alignment_output_file_g,
                                                                          threshold=0.7, ambiguous="X")
@@ -547,8 +549,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                     consensus_seq, start=cropped_boundary.start_post, end=cropped_boundary.end_post,
                     start_patterns=start_patterns, end_patterns=end_patterns)
 
-                # When the new start or end positions are different with previous, convey the new start or end position
-                # to cropped_boundary object and generate the new MSA file
+                # If the new start or end positions are different from previous MSA, replace with the new 
+                # start or end position in the cropped_boundary object and generate the new MSA file
                 if cropped_boundary.start_post != check_start or cropped_boundary.end_post != check_end:
                     cropped_boundary.start_post = check_start
                     cropped_boundary.end_post = check_end
@@ -560,28 +562,28 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             tb_content = traceback.format_exc()
             f.write(f"\nStart and end pattern definition failed for {seq_name} with error \n{e}\n")
             f.write('\n' + tb_content + '\n\n')
-            prcyan(f"\nStart and end pattern like 'TGT' 'ACA' definition failed for {seq_name} with error \n{e}")
-            prgre("\nThis won't largely affect the final result, you can choose to ignore it. "
-                  "For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder.\n")
+            prcyan(f"\nStart and end patterns like 'TGT' or 'ACA' definition failed for {seq_name} with error \n{e}")
+            prgre("\nThis error will not affect the final result significantly, you can choose to ignore it. "
+                  "For traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n")
 
     #####################################################################################################
     # Code block: Generate MSA for CIAlign plot
     #####################################################################################################
     try:
-        # Get 300 columns left the start point
+        # Add 300 columns to the left of start point
         cropped_boundary_manual_MSA_left = select_window_columns(
             bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.start_post],
             "left", window_size=300)
 
-        # Get 300 columns right the end point
+        # Add 300 columns to the right of the end point
         cropped_boundary_manual_MSA_right = select_window_columns(
             bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.end_post],
             "right", window_size=300)
 
         # Concatenate MSA for manual curation
         # The concat_start and concat_end points correspond with cropped_boundary.start_post and cropped_boundary.end_post
-        # Because the input file of "concatenate_alignment()" is alignment object not file path, read "cropped_boundary_MSA"
-        # to an alignment object.
+        # Because the input file of "concatenate_alignment()" is an alignment object and not a file path, read "cropped_boundary_MSA"
+        # as an alignment object.
         input_file_name = str(os.path.basename(bed_fasta_mafft_boundary_crop_for_select)) + "_proof_anno"
         cropped_boundary_MSA_alignment = AlignIO.read(cropped_boundary_MSA, "fasta")
         cropped_boundary_manual_MSA_concatenate, concat_start_man, concat_end_man = concatenate_alignments(
@@ -593,22 +595,22 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Code block: Concatenate beginning and end part of MSA and plotting
     #####################################################################################################
 
-        # "sequence_len" represent the length of final cropped MSA
-        # Extract the beginning and end columns of cropped MSA then join them by "----------".
+        # "sequence_len" represent the length of the final cropped MSA
+        # Extract the beginning and end columns of the cropped MSA, then join them by "----------" (pseudo-gaps).
         # Return MSA length, which will be used for plotting
         cropped_boundary_plot_select_start_end_and_joint, sequence_len = select_start_end_and_join(
             cropped_alignment_output_file_g, output_dir, cropped_boundary.start_post, cropped_boundary.end_post
         )
 
-        # "column_mapping" is a dictionary, the key represent cropped nucleotide position. The value represent the
+        # "column_mapping" is a dictionary, the key represents the cropped nucleotide position and the value represents the
         # original MSA nucleotide position.
-        # Get 50 columns left the start point
+        # Add 50 columns to the left of the start point
         cropped_boundary_plot_left = select_window_columns(
             bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.start_post], "left",
             window_size=50
         )
 
-        # Get 50 columns right the end point
+        # Add 50 columns to the right of the end point
         cropped_boundary_plot_right = select_window_columns(
             bed_fasta_mafft_boundary_crop_for_select, output_dir, column_mapping[cropped_boundary.end_post], "right",
             window_size=50
@@ -624,46 +626,45 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"\nConcatenate MSA for proof reading plot failed for {seq_name} with error:\n{e}")
+            f.write(f"\nConcatenate MSA for manual inspection plot failed for {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
-            prcyan(f"\nConcatenate MSA for proof reading plot failed for {seq_name} with error:\n{e}")
+            prcyan(f"\nConcatenate MSA for manual inspection plot failed for {seq_name} with error:\n{e}")
             prcyan('\n' + tb_content + '\n')
             raise Exception
 
     #####################################################################################################
-    # Code block: Predict ORF and Pfam domain, determine sequence direction
+    # Code block: Predict ORFs and PFAM domains, determine sequence direction
     #####################################################################################################
     try:
         # Generate consensus sequence for ORF prediction
-        # Use lower threshold to enable give more pfam results
+        # Use lower threshold to enable  more PFAM results
         orf_cons = con_generater(cropped_boundary_MSA, output_dir, threshold=0.5)
 
-        # Predict orf, scan with Pfam
+        # Predict ORF, scan for PFAM domains
         orf_domain_plot_object = PlotPfam(orf_cons, output_dir, pfam_database_dir=pfam_dir, mini_orf=mini_orf,
                                           after_tetrimmer=True)
 
-        # "run_getorf()" function will return True when any ORF are detected. Otherwise, it will be False
+        # run_getorf() function will return 'True' if any ORF is detected. Otherwise, it will return 'False'.
         orf_domain_plot = None
         if_pfam_domain = False
         reverse_complement = False
         if orf_domain_plot_object.run_getorf():
 
-            # "run_pfam_scan()" will return True when pfam domains are found, otherwise it will return False
+            # run_pfam_scan() will return 'True' if any PFAM domain is found. Otherwise, it will return 'False'.
             if_pfam_domain, pfam_result_file = orf_domain_plot_object.run_pfam_scan()
             if if_pfam_domain:
-                # "determine_sequence_direction()" will return True when the direction is right, otherwise,
-                # it will be False
+                # determine_sequence_direction() will return 'True' if the direction of MSA and match are identical. 
+                # Otherwise, it will return 'False'.
                 if determine_sequence_direction(pfam_result_file):
-                    # When the direction is right, plot the orf and pfam directly
+                    # If the direction matches, plot the ORF and PFAM matches
                     orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
                 else:
-                    # When the direction is wrong, reverse complement the corresponded sequence and MSA
-                    # Reverse complement consensus sequence
-                    # The reverse complemented file will overwrite the old file
+                    # If the direction is wrong, reverse-complement the consensus sequence and the corresponding MSA.
+                    # The reverse-complemented file will overwrite the old file.
                     orf_cons = reverse_complement_seq_file(
                         input_file=orf_cons, output_file=orf_cons)
 
-                    # Reverse complement MSA files
+                    # Reverse-complement MSA files
                     cropped_boundary_MSA = reverse_complement_seq_file(
                         input_file=cropped_boundary_MSA, output_file=cropped_boundary_MSA
                     )
@@ -683,11 +684,11 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                     reverse_complement = True
 
                     # Define the new start and end points for cropped_boundary_manual_MSA_concatenate
-                    # cropped_boundary_manual_MSA_concatenate will be used for CIAlign plot
+                    # cropped_boundary_manual_MSA_concatenate will be used for the CIAlign plot
                     # Get MSA sequence length
                     cropped_boundary_manual_MSA_concatenate_align = AlignIO.read(cropped_boundary_manual_MSA_concatenate, "fasta")
 
-                    # get_alignment_length() is a build in function
+                    # get_alignment_length() is a build-in function
                     cropped_boundary_manual_MSA_concatenate_length = cropped_boundary_manual_MSA_concatenate_align.get_alignment_length()
 
                     # Use intermediate number to get the new start and end number
@@ -697,93 +698,94 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                     concat_end_man = concat_end_man_intermediate
 
                     # Define the new start and end points for cropped_boundary_plot_concatenate
-                    # cropped_boundary_plot_concatenate will be used for te_trimmer plot
+                    # cropped_boundary_plot_concatenate will be used for the te_trimmer plot
                     # Get MSA sequence length
                     cropped_boundary_plot_concatenate_align = AlignIO.read(cropped_boundary_plot_concatenate, "fasta")
                     cropped_boundary_plot_concatenate_length = cropped_boundary_plot_concatenate_align.get_alignment_length()
 
-                    # Use intermediate number to get the new start and end number
+                    # Use intermediate number to get the new start and end points
                     concat_start_intermediate = cropped_boundary_plot_concatenate_length - concat_end - 1
                     concat_end_intermediate = cropped_boundary_plot_concatenate_length - concat_start - 1
                     concat_start = concat_start_intermediate
                     concat_end = concat_end_intermediate
 
-                    # Based on the new consensus sequence, predict orf and pfam domain again. At the end plot
+                    # Based on the new consensus sequence, predict ORFs and PFAM domains again, then plot
                     orf_domain_plot_object = PlotPfam(orf_cons, output_dir, pfam_database_dir=pfam_dir, mini_orf=mini_orf)
                     if orf_domain_plot_object.run_getorf():
-                        # "run_pfam_scan()" will return when pfam domains are found, otherwise it will return False
+                        # "run_pfam_scan() will return 'True' if any PFAM domains were found. Otherwise, it will return 'False'
                         if_pfam_domain, pfam_result_file = orf_domain_plot_object.run_pfam_scan()
                         if if_pfam_domain:
                             orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
 
             else:
-                # When only ORF is found but Pfam domain isn't found, plot ORF
+                # If only ORFs but no PFAM domain were found, plot ORFs
                 orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
     except Exception as e:
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"\nConcatenate MSA for proof reading plot failed for {seq_name} with error:\n{e}")
+            f.write(f"\nConcatenate MSA for the maunual inspection plot failed for {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
-            prcyan(f"\nORF or Pfam prediction failed for {seq_name} with error:\n{e}")
+            prcyan(f"\nORF or PFAM prediction failed for {seq_name} with error:\n{e}")
             prcyan('\n' + tb_content + '\n')
             raise Exception
 
     #####################################################################################################
-    # Code block: Plot multiple sequence alignment. Plot must be behind Pfam prediction in case wrong direction
+    # Code block: Plot multiple sequence alignment. 
     #####################################################################################################
+    # Plotting is done after PFAM predictions in case consensus/MSA are in the wrong direction.
     try:
-        # Plot MSA, which can easily verify if the start and end crop points are right
+        # Plot MSA, which can easily verify if the start and end crop points are correct
         MSA_plot = process_msa(cropped_boundary_plot_concatenate, output_dir, concat_start, concat_end, sequence_len)
 
     #####################################################################################################
-    # Code block: Plot whole MSA by CIAlign style with start and end points
+    # Code block: Plot entire MSA by CIAlign with start and end points
     #####################################################################################################
 
-        # Define while MSA plot output file
+        # Define MSA plot output file
         cropped_boundary_manual_MSA_concatenate_plot = f"{cropped_boundary_manual_MSA_concatenate}_plot.pdf"
 
         # Convert MSA to array
         cropped_boundary_manual_MSA_concatenate_array, nams = cialign.FastaToArray(cropped_boundary_manual_MSA_concatenate)
 
-        # Draw the whole MSA
+        # Draw the entire MSA
         cialign.drawMiniAlignment(cropped_boundary_manual_MSA_concatenate_array, nams,
                                   cropped_boundary_manual_MSA_concatenate_plot, concat_start_man, concat_end_man)
     except Exception as e:
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"\nMSA plot failed {seq_name} with error:\n{e}")
+            f.write(f"\nMSA plot failed for {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
             prcyan(f"\nMSA plot failed {seq_name} with error:\n{e}")
-            prgre("\nMSA plots are only used to evaluate TETrimmer and won't affect the final TE consensus library."
-                  " For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
+            prgre("\nMSA plots are only used to evaluate TETrimmer and will not affect the final TE consensus library."
+                  " For traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder\n")
 
     #####################################################################################################
     # Code block: Generate TE-Aid plot
     #####################################################################################################
     try:
-        # so.path.abspath(__file__) will return the current executable python file
-        # TE-Aid package is stored at the same directory as this function file.
+        # so.path.abspath(__file__) will return the current executable Python file
+        # TE-Aid package is stored in the same directory as this function file.
         TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
 
-        # Because terminal is checked before if it is found before use the previous result
-        # Run TE_aid, if low_copy self-blast will be performed
+        # Because terminal repeats were found before, use the previous result
+        # Run TE_aid. If low_copy is 'True', a self-BLAST will be performed
         if not found_match_crop:
             TE_aid_object = TEAid(orf_cons, output_dir, genome_file, error_file=error_files, TE_aid_dir=TE_aid_path)
             TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
         else:
-            # low_copy=False will not do self blast and check terminal repeat
+            # low_copy=False will prevent self-BLAST and instead check for terminal repeats
             TE_aid_object = TEAid(orf_cons, output_dir, genome_file, error_file=error_files, TE_aid_dir=TE_aid_path)
 
-            # found_match here will be False
+            # found_match returns 'False' in this case
             TE_aid_plot, found_match = TE_aid_object.run(low_copy=False)
 
             # Assign found_match_crop ("LTR" or "TIR") to found_match for further analysis
             found_match = found_match_crop
 
-        # Run TE_aid to plot the query sequence if it is required, because one query file can have multiple
-        # clusters, TEAid will test if this has been created before.
+        # Run TE_aid to plot the query sequence, if required. Because one query file can return multiple
+        # clusters, TE-Aid will check if a TE-Aid plot has been generated before.
         if plot_query:
             query_file = seq_obj.get_input_fasta()
             TE_aid_object_query = TEAid(query_file, output_dir, genome_file, error_file=error_files,
@@ -795,9 +797,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"\nTE Aid plot failed for {seq_name} with error:\n{e}")
+            f.write(f"\nTE-Aid plot failed for {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
-            prcyan(f"\nTE Aid plot failed for {seq_name} with error:\n{e}")
+            prcyan(f"\nTE-Aid plot failed for {seq_name} with error:\n{e}")
             prcyan('\n' + tb_content + '\n')
             raise Exception
 
@@ -817,7 +819,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             tb_content = traceback.format_exc()
             f.write(f"\nDotplot failed for {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
-        # dotpolt isn't mandatory to show, skip this part when any error happened
+        # dotplot is not mandatory; skip if any error occurred
+        pass
 
     try:
         # Because dotmatcher can't change output size, scale it up to make it more clear in the merged pdf
@@ -829,8 +832,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             tb_content = traceback.format_exc()
             f.write(f"\nps file to pdf conversion failed for {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
-        # This is not mandatory, skip this step when error happens
-
+        # This is not mandatory, skip if any error occurred
+        pass
+            
     #####################################################################################################
     # Code block: Merge plot files
     #####################################################################################################
@@ -843,9 +847,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"\nPlot merge to pdf failed for {seq_name} with error:\n{e}")
+            f.write(f"\nPlot merging to PDF failed for {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
-            prcyan(f"\nPlot merge to pdf failed for {seq_name} with error:\n{e}")
+            prcyan(f"\nPlot merging to PDF failed for {seq_name} with error:\n{e}")
             prcyan('\n' + tb_content + '\n')
             raise Exception
 
@@ -853,16 +857,16 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Code block: Update sequence object (seq_obj)
     #####################################################################################################
     try:
-        # Create a folder at the same directory with output_dir to store proof annotation files
+        # Create a folder in the same directory as output_dir to store annotation files
         parent_output_dir = os.path.dirname(output_dir)
 
-        # Define different levels of proof annotation folder
+        # Define different levels of proof_annotation folder
         perfect_proof = os.path.join(proof_annotation_dir, "Perfect_annotation")
         good_proof = os.path.join(proof_annotation_dir, "Good_annotation")
         intermediate_proof = os.path.join(proof_annotation_dir, "Recommend_check_annotation")
         need_check_proof = os.path.join(proof_annotation_dir, "Need_check_annotation")
 
-        # Create the directory if it doesn't exist
+        # Create the directory if it does not exist
         os.makedirs(proof_annotation_dir, exist_ok=True)
         os.makedirs(perfect_proof, exist_ok=True)
         os.makedirs(good_proof, exist_ok=True)
@@ -875,8 +879,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         final_classified_con_file = os.path.join(classification_dir, "temp_TETrimmer_classified_consensus.fasta")
 
         # Define unique sequence names
-        # Becase seq_obj.create_consi_obj() is after the unique name definition, the len(seq_obj.consi_obj_list) is the
-        # appended number for the uniq name.
+        # Because seq_obj.create_consi_obj() is generated after the unique name definition, len(seq_obj.consi_obj_list)
+        # is the appended number for the unique name.
         consi_n = len(seq_obj.consi_obj_list)
 
         if consi_n > 0:
@@ -888,12 +892,12 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         consi_obj = seq_obj.create_consi_obj(uniq_seq_name)
 
         # Generate final consensus sequence
-        # Comparing initial consensus, the final consensus sequence might have different orientation.
+        # Compared with initial consensus, the final consensus sequence can have a different orientation.
         # For this reason, generate consensus again
         final_con = con_generater_no_file(cropped_boundary_MSA, threshold=cons_threshold)
         sequence = str(final_con).upper()
 
-        # Store consensus sequence length into consi_obj
+        # Storing consensus sequence length into consi_obj
         consi_obj.set_new_length(len(sequence))
 
         # Store consensus sequence into consi_obj not necessary
@@ -908,12 +912,12 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         if found_match == "LTR" or found_match == "TIR":
             consi_obj.set_new_terminal_repeat(found_match)
 
-        # Store blast full length sequence number into consi_obj
+        # Store full length sequence number from BLAST search into consi_obj
         # check_blast_full_n is a function in TE_Aid class. TETrimmer will use the blast result of TE Aid
         blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj, engine=engine)
         consi_obj.set_blast_full_n(blast_full_length_n)
 
-        # Store pfam prediction to consi_obj
+        # Store PFAM predictions to consi_obj
         if if_pfam_domain:
             consi_obj.set_cons_pfam(if_pfam_domain)
 
@@ -928,21 +932,21 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             raise Exception
 
     #####################################################################################################
-    # Code block: Run RepeatClassifier in RepeatModeler to classify TE_trimmer consensus sequences
+    # Code block: Run RepeatClassifier in RepeatModeler to classify TETrimmer consensus sequences
     #####################################################################################################
 
-    # This classification is different with the final RepeatMasker classification
-    # check_unknown returns true if unknown is detected
-    # Classify all elements by RepeatClassify when classify_all is true
-    # Rename consensus when classify_unknown is true and (the final consensus length is much longer or
-    # shorter than the query sequence or TE type is unknown)
+    # This classification is different from the final RepeatMasker classification
+    # check_unknown returns 'True' if unknowns were detected
+    # Classify all elements by RepeatClassify if classify_all is 'True'
+    # Rename consensus if classify_unknown is 'True' and if the final consensus length is much longer or
+    # shorter than the query sequence or if the TE type is unknown.
     # fast_mode will supress RepeatClassifier step
-    # Classification isn't mandatory, skip this step when error is encountered
+    # Classification is not mandatory, skip this step if errors are encountered
     try:
         if classify_all or (
                 classify_unknown and (seq_obj.check_unknown() or (left_ex_total + right_ex_total >= 4000))):
-            # Define different folder for each sequence
-            # .fasta is important, this can makesure this folder can be deleted later
+            # Define different folders for each sequence
+            # the suffix .fasta is important, this ensures that this folder can be deleted later
             classification_seq_folder = os.path.join(classification_dir, f"{uniq_seq_name}.fasta")
             os.makedirs(classification_seq_folder, exist_ok=True)
 
@@ -950,17 +954,17 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             classification_seq_file = os.path.join(classification_seq_folder, uniq_seq_name)
 
             with open(classification_seq_file, "w") as f:
-                # RepeatClassifier input cannot be single sequence, add >Add to enable to run RepeatClassifier
+                # RepeatClassifier input cannot be a single sequence, add >Dummy to enable RepeatClassifier run
                 f.write(">" + uniq_seq_name + "\n" + sequence + "\n" + ">Dummy" + "\n" + "T" + "\n")
 
             TE_type = classify_single(classification_seq_file)
 
-            # Only update new_TE_type when classify_single is successfully
+            # Only update new_TE_type if classify_single was successful
             if TE_type:
                 # Set TE_type after RepeatClassifier
                 consi_obj.set_new_TE_type(TE_type)
 
-            # Clean classification folder when debug is True
+            # Clean classification folder if debug is 'True'
             if not debug:
                 remove_files_with_start_pattern(classification_dir, f"{uniq_seq_name}.fasta")
     except Exception as e:
@@ -983,8 +987,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     ###############################################################################################################
 
     #               Terminal_repeat    Classified    MSA_sequence_number    Blast_full_length_number    if_PFAM
-    # Perfect:      True               True          >=30                   >=5                         True
-    # Good:         True               Not_required  >=10                   >=2                         Not_required
+    # Perfect       True               True          >=30                   >=5                         True
+    # Good          True               Not_required  >=10                   >=2                         Not_required
     # Reco_check    Not_required       Not_required  >=20                   >=2                         Not_required
     # Need_check    Not_required       Not_required  Not_required           Not_required                Not_required
     try:
@@ -1008,17 +1012,17 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             consi_obj.set_cons_evaluation("Need_check")
 
     #####################################################################################################
-    # Code block: Move file for proof annotation and HMM
+    # Code block: Code block: Move file for manual inspection and HMM search
     #####################################################################################################
 
         consi_obj.set_proof_annotation_file()
 
-        # Define proof annotation file name
+        # Define file name for inspection file
         file_copy_pattern = [
             (merged_pdf_path, str(consi_obj.proof_pdf)),
             (cropped_boundary_MSA, str(consi_obj.proof_fasta)),
             (bed_fasta_mafft_boundary_crop_for_select, str(consi_obj.proof_anno)),
-            (bed_out_flank_file, str(consi_obj.proof_bed))  # bed file used for further extension
+            (bed_out_flank_file, str(consi_obj.proof_bed))  # BED file used for further extension
         ]
 
         files_moved_successfully = True
@@ -1034,7 +1038,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 else:
                     destination_dir = need_check_proof
 
-                # Copy the file to the new location with the unique new name
+                # Copy the file to the new location with the new unique name
                 if pattern:
                     shutil.copy(pattern, os.path.join(destination_dir, new_name))
 
@@ -1052,7 +1056,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             hmm_output_file = os.path.join(hmm_dir, consi_obj.hmm_file)
             generate_hmm_from_msa(cropped_boundary_MSA, hmm_output_file, error_files)
 
-        # The unknown TE consensus will be classified again later by using successfully classified sequence
+        # Classification of unknown consensus TEs will be attempted again later by using successfully classified sequences
         if "Unknown" in updated_TE_type:
             with open(final_unknown_con_file, "a") as f:  # 'a' mode for appending
                 f.write(">" + uniq_seq_name + "\n" + sequence + "\n")
@@ -1064,7 +1068,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         with open(final_con_file, "a") as f:
             f.write(">" + uniq_seq_name + "#" + updated_TE_type + "\n" + sequence + "\n")
 
-        # Write all consensus sequence to final_cons_file_no_low_copy.
+        # Write all consensus sequences to final_cons_file_no_low_copy.
         with open(final_con_file_no_low_copy, "a") as f:
             f.write(">" + uniq_seq_name + "#" + updated_TE_type + "\n" + sequence + "\n")
 
@@ -1074,9 +1078,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"\nMove files failed for {seq_name} with error:\n{e}")
+            f.write(f"\nMoving of files failed for {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
-            prcyan(f"\nMove files failed for {seq_name} with error:\n{e}")
+            prcyan(f"\nMoving of files failed for {seq_name} with error:\n{e}")
             prcyan('\n' + tb_content + '\n')
             raise Exception
 
