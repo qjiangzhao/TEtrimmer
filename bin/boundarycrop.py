@@ -30,17 +30,17 @@ def long_bed(input_file, output_dir):
     # Define a threshold for outlier removal
     threshold = 0.5
 
-    # Identify the top 10 lengths
+    # Identify the top 10 sequence lengths
     top_10_lengths = df.nlargest(10, 6)[6]
 
     # Calculate the mean and standard deviation of the top 10 lengths
     mean_top_10_lengths = top_10_lengths.mean()
     std_top_10_lengths = top_10_lengths.std()
 
-    # Identify values outside the threshold and is on the small side
+    # Identify values outside the threshold
     df['difference_from_mean'] = df[6] - mean_top_10_lengths
 
-    # ~ is used to negate the condition, meaning you keep rows where the condition is not satisfied.
+    # ~ is used to negate the condition, thus keeping rows where the condition is not satisfied.
     filtered_df = df[~((abs(df['difference_from_mean']) > threshold * std_top_10_lengths)
                        & (df['difference_from_mean'] < 0))]
     """
@@ -57,7 +57,7 @@ def long_bed(input_file, output_dir):
     reset_left_filtered_df.loc[reset_left_filtered_df[5] == '+', 2] = reset_left_filtered_df.loc[reset_left_filtered_df[5] == '+', 1] + 1
     reset_left_filtered_df.loc[reset_left_filtered_df[5] == '-', 1] = reset_left_filtered_df.loc[reset_left_filtered_df[5] == '-', 2] - 1
 
-    # write new bed file
+    # write new BED file
     reset_right_long_bed = os.path.join(output_dir, f"{os.path.basename(input_file)}_reset_right_long.bed")
     reset_left_long_bed = os.path.join(output_dir, f"{os.path.basename(input_file)}_reset_left_long.bed")
     reset_right_filtered_df.to_csv(reset_right_long_bed, sep='\t', index=False, header=None)
@@ -72,18 +72,18 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
     if_ex = True
     ex_total = 0
 
-    # the following calculate the majority of the alignment length and find the long alignment for extension
-    # while ignoring the short ones
+    # The following code calculates the majority of the alignment length and finds the longest alignment for extension
+    # while ignoring the shorter ones.
     reset_left_long_bed, reset_right_long_bed = long_bed(input_file, output_dir)
 
-    # 100bp is added to avoid the case where boundary is at the edge. Therefore, the alignment is actually
-    # ex_step_size + 100bp
+    # 100 bp are added to avoid a case where the boundary is at the edge. Therefore, the alignment length is actually
+    # ex_step_size + 100 bp
     adjust = 100
     ite = 1
     reset_left_long_bed_copy = reset_left_long_bed
     reset_right_long_bed_copy = reset_right_long_bed
     while if_ex and (ex_total < max_extension):
-        # bedtools will makesure the extension won't excess the maximum length of the chromosome
+        # BEDtools will make sure that the extension will not excess the maximum length of the chromosome
         # track extend total
         ex_total += ex_step_size
         
@@ -98,11 +98,11 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
             bed_fasta, bed_out_flank_file = extract_fasta(reset_right_long_bed, genome_file, output_dir,
                                                           left_ex, right_ex, nameonly=True)
         
-        # align_sequences() will return extended MSA absolute file
+        # align_sequences() will return extended MSA in absolute file
         bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
 
         if not os.path.isfile(bed_fasta_mafft_with_gap):
-            click.echo(f"{input_file} has problem during mafft extension step")
+            click.echo(f"{input_file} encountered a problem during the MAFFT extension step.")
             return False
 
         # Remove nucleotide whose proportion is smaller than threshold
@@ -116,7 +116,7 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
                                                             min_nucleotide=5
                                                            )
 
-        # bed_fasta_mafft will be false when MSA column number is smaller than 50 after remove gap
+        # bed_fasta_mafft will be false if the MSA column number is smaller than 50 after removing the gaps
         if not bed_fasta_mafft:
             break
         bed_fasta_mafft_object = CropEndByGap(bed_fasta_mafft, gap_threshold=crop_end_gap_thr,
@@ -149,11 +149,11 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
                     elif bed_dic[i][2] == "-":
                         bed_dic[i][0] = matching_rows.iloc[0, 1]
 
-        # When the remaining sequences that need further extension are less than 5, stop the extension
+        # If the remaining sequences that need further extension are fewer than 5, stop the extension
         if not bed_boundary.if_continue or remain_n < 5:
             break
         elif bed_boundary.if_continue:
-            # Subset bed file to only keep sequences that need further extension
+            # Subset BED file to only keep sequences that need further extension
             if end == "left":
                 if_ex = bed_boundary.left_ext
                 df = pd.read_csv(reset_left_long_bed, sep='\t', header=None)
@@ -173,7 +173,7 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
                 df_filtered = df[~df[3].isin(large_crop_ids)]
                 reset_right_long_bed = reset_right_long_bed_copy + f"_{ite}"
 
-                # Write the filtered DataFrame back to reset_left_long_bed
+                # Write the filtered DataFrame into reset_left_long_bed
                 df_filtered.to_csv(reset_right_long_bed, sep='\t', index=False, header=None)
             ite += 1
 
@@ -186,18 +186,18 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
 
     bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, 0, 0, nameonly=True)
 
-    # align_sequences() will return extended MSA absolute file
+    # align_sequences() will return extended MSA in absolute file
     bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
 
     if not os.path.isfile(bed_fasta_mafft_with_gap):
-        click.echo(f"{bed_file} has problem during final mafft extension step")
+        click.echo(f"{bed_file} encountered a problem during the final MAFFT extension step.")
         return False
 
-    # Remove nucleotide whose proportion is smaller than threshold
+    # Remove nucleotides whose proportion is smaller than threshold
     bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(bed_fasta_mafft_with_gap, threshold=0.01)
     bed_fasta_mafft_with_gap_column_clean = bed_fasta_mafft_with_gap_column_clean_object.clean_column(output_dir)
 
-    # Remove gap with similarity check
+    # Remove gaps by similarity check
     bed_fasta_mafft_gap_sim = remove_gaps_with_similarity_check(bed_fasta_mafft_with_gap_column_clean, output_dir)
 
     # Crop end before terminal check, use loose threshold to avoid overhead cropping
@@ -205,18 +205,18 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
     bed_fasta_mafft_gap_sim_cp_object.crop_alignment()
     bed_fasta_mafft_gap_sim_cp = bed_fasta_mafft_gap_sim_cp_object.write_to_file(output_dir)
 
-    # Generate consensus sequence, use low threshold to reduce N numbers in the consensus sequence
+    # Generate consensus sequence, use low threshold to reduce number of N's in the consensus sequence
     bed_fasta_mafft_gap_sim_cp_con = con_generater(bed_fasta_mafft_gap_sim_cp, output_dir, threshold=0.45, ambiguous="N")
 
     # Check terminal repeats
-    # Define the output folder to store the temporary blast database
+    # Define the output folder to store the temporary BLAST database
     check_terminal_repeat_output = f"{bed_fasta_mafft_gap_sim_cp_con}_tem"
     LTR_boundary, TIR_boundary, found_match_crop = check_terminal_repeat(bed_fasta_mafft_gap_sim_cp_con,
                                                                          check_terminal_repeat_output)
 
     # Check terminal repeats
     if found_match_crop:
-        # Check LTR first
+        # Check LTRs first
         if LTR_boundary is not None:
             left = LTR_boundary[0]
             right = LTR_boundary[1]
@@ -227,35 +227,35 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         # Extract MSA based on terminal repeat boundary
         bed_fasta_mafft_gap_sim_selected = select_star_to_end(bed_fasta_mafft_gap_sim_cp, output_dir, left, right)
 
-        # Define the threshold use for cropping end by similarity to make sure the ends of MSA won't be totally removed
-        # Because the boundary of the MSA has been defined.
+        # Define the threshold use for cropping end by similarity to make sure the ends of the MSA are not totally removed
+        # because the boundary of the MSA has been defined.
         start_pro_mean, end_pro_mean = define_crop_end_simi_thr(bed_fasta_mafft_gap_sim_selected)
 
         if start_pro_mean < crop_end_win * 0.8:
-            # Set crop_end_sim_thr to be smaller than pro_mean to avoid over cropping.
+            # Set crop_end_sim_thr to be smaller than pro_mean to avoid overcropping.
             start_pro_mean = int(start_pro_mean) - 3
         else:
             start_pro_mean = crop_end_win * 0.7
 
-        # Because the divergence for start and end part of MSA can be different, do crop separately.
+        # Because the divergence for the start and end parts of the MSA can be different, crop separately.
         if end_pro_mean < crop_end_win * 0.8:
             end_pro_mean = int(end_pro_mean) - 3
         else:
             end_pro_mean = crop_end_win * 0.7
 
-        # Do crop end by similarity to clean MSA for left side
+        # Crop end by similarity to clean MSA for left side
         bed_fasta_mafft_gap_sim_selected_cp_object_left = CropEnd(
             bed_fasta_mafft_gap_sim_selected, threshold=start_pro_mean, window_size=40, crop_l=True, crop_r=False)
         bed_fasta_mafft_gap_sim_selected_cp_object_left.crop_alignment()
         bed_fasta_mafft_gap_sim_selected_cp_left = bed_fasta_mafft_gap_sim_selected_cp_object_left.write_to_file(output_dir)
 
-        # Do crop end by similarity to clean MSA for right side
+        # Crop end by similarity to clean MSA for right side
         bed_fasta_mafft_gap_sim_selected_cp_object_right = CropEnd(
             bed_fasta_mafft_gap_sim_selected_cp_left, threshold=end_pro_mean, window_size=40, crop_l=False, crop_r=True)
         bed_fasta_mafft_gap_sim_selected_cp_object_right.crop_alignment()
         bed_fasta_mafft_gap_sim_selected_cp = bed_fasta_mafft_gap_sim_selected_cp_object_right.write_to_file(output_dir)
 
-        # Remove gap by similarity again
+        # Remove gaps by similarity again
         bed_fasta_mafft_gap_sim_selected_cp_g, column_mapping = remove_gaps_with_similarity_check(
             bed_fasta_mafft_gap_sim_selected_cp, output_dir, return_map=True)
 
@@ -280,7 +280,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         cropped_alignment_output_file_g = bed_fasta_mafft_gap_sim_selected_cp_g
         bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_gap_sim
 
-    # When LTR or TIR are not found
+    # If LTR or TIR are not found
     else:
         # Check if poly A can be found from the sequence and return the last A position
         # poly_a will be None if not found
@@ -293,26 +293,26 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         if bed_boundary.if_continue:
             bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=300)
 
-            # Because for LINE element bed_fasta_mafft_boundary_crop will be changed. Copy it to the other variable
+            # For LINE elements bed_fasta_mafft_boundary_crop will be changed. Copy alignment to another variable
             bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_boundary_crop
 
             if "LINE" in bed_file:
-                # For the high divergence region, more gaps can be found. According to this feature, remove
-                # high divergence region this function is very useful for dealing with LINE elements
+                # For highly divergent regions, more gaps can be found. According to this feature, remove
+                # high-divergence regions. This function is very useful for dealing with LINE elements.
                 cropped_MSA_by_gap = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
                                                   window_size=crop_end_gap_win)
                 bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
 
-            # Gaps are removed again after crop end process
+            # Gaps are removed again after processing with CropEnd
             cropped_alignment_output_file_g, column_mapping = crop_end_and_remove_gap(
                 bed_fasta_mafft_boundary_crop, output_dir, crop_end_threshold=crop_end_thr,
                 window_size=crop_end_win, gap_threshold=0.8)
 
-            # This means the sequence len after gap remove is shorter than 50
+            # This means the sequence length after gap removal is shorter than 50
             if not cropped_alignment_output_file_g:
                 return False
 
-            # Crop end can't define the final boundary, use DefineBoundary again to define start position
+            # CropEnd cannot define the final boundary. Use DefineBoundary again to define start position.
             cropped_boundary = DefineBoundary(cropped_alignment_output_file_g, threshold=0.8,
                                               check_window=4, max_X=0)
             cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
@@ -325,8 +325,8 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
 
 def crop_end_and_remove_gap(input_file, output_dir, crop_end_threshold=0.8, window_size=20, gap_threshold=0.8):
 
-    # Window_size means the checked nucleotide number each time
-    # Threshold means the sum of nucleotide proportion in window_size must greater than that
+    # window_size means the checked nucleotide number each time
+    # threshold means the nucleotide proportion in window_size must greater than INT
     CropEnd_thres = crop_end_threshold * window_size
     cropped_MSA = CropEnd(input_file, threshold=CropEnd_thres, window_size=window_size)
     cropped_MSA.crop_alignment()
@@ -334,8 +334,8 @@ def crop_end_and_remove_gap(input_file, output_dir, crop_end_threshold=0.8, wind
     # write_to_file() function will return absolute cropped alignment file
     cropped_MSA_output_file = cropped_MSA.write_to_file(output_dir)
 
-    # Remove gaps again after crop end step
-    # "column_mapping" is a dictionary the key is gap removed MSA index, the value is the corresponded original
+    # Remove gaps again after the CropEnd step
+    # "column_mapping" is a dictionary; the key is gap removed MSA index, the value is the corresponding original
     # MSA index
     cropped_alignment_output_file_g, column_mapping = remove_gaps_with_similarity_check(
         cropped_MSA_output_file, output_dir, return_map=True)
