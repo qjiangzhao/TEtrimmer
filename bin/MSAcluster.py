@@ -18,12 +18,12 @@ from functions import prcyan, prgre, muscle_align, align_sequences, remove_gaps_
 
 class CleanAndSelectColumn:
     """
-    Class to eliminate noise nucleotide and select the diverse columns, which can be used for MSA clustering
+    Class to eliminate noise nucleotides and select diverse columns, which can be used for MSA clustering
     """
     def __init__(self, input_file, threshold=0.05):
         """
         :param input_file: str, absolute path of input file
-        :param threshold: nucleotide percentage (gap not count) lower than threshold will be converted to "-"
+        :param threshold: nucleotide percentage (excluding gaps) lower than threshold will be converted to "-"
         """
         self.input_file = input_file
         self.alignment = AlignIO.read(input_file, "fasta")
@@ -39,7 +39,7 @@ class CleanAndSelectColumn:
 
     def calculation_proportion(self):
         """
-        Method: calculate nucleotide proportion at each column
+        Method: calculate nucleotide proportion in each column
         """
         sequences = [record.seq for record in self.alignment]
 
@@ -58,7 +58,7 @@ class CleanAndSelectColumn:
 
     def clean_column(self, output_dir):
         """
-        Replace nucleotides that are less than threshold with a gap character
+        Replace nucleotides with proportions below threshold with a gap character
         :return: the absolute path of column clean MSA
         """
         for i in range(self.alignment_length):
@@ -74,12 +74,13 @@ class CleanAndSelectColumn:
 
     def select_divergent_column(self, cluster_col_thr=500, dis_col_threshold=0.8):
         """
-        Select distinct columns from multiple sequence alignment file, which will be used for clustering
-        :param dis_col_threshold: num (0-1) default 0.8, Check if any nucleotide proportion is greater than threshold,
-        then delete that column
-        :param cluster_col_thr: int default 500, if sequence length longer than cluster_col_thr * 20, the minimum
-        column number that required for clustering will be sequence_length * 0.05
-        :return: if_need_cluster: boolean, decide if need clustering
+        Select distinct columns from the multiple sequence alignment file, which will be used for clustering
+        :param dis_col_threshold: float, check if any nucleotide proportion is greater than threshold, if true,
+        delete that column. Default: 0.8
+        :param cluster_col_thr: int, if sequence length is longer than cluster_col_thr * 20, the minimum
+        column number required for clustering will be sequence_length * 0.05. Default: 500
+        :return: if_need_cluster: boolean, decide if clustering is required
+
         """
         if self.alignment_seq_num >= 90:
             dis_col_threshold = 0.85
@@ -95,7 +96,7 @@ class CleanAndSelectColumn:
             if i not in columns_to_delete:
                 columns_to_keep.append(i)
 
-        # It is only meaningful to calculate the gap block when there are enough distinct columns.
+        # It is only meaningful to calculate the gap block if there are enough distinct columns.
         #min_length_to_include_gap_block = max(25, int(0.1 * self.alignment_length)) \
             #if self.alignment_length <= 1000 else 100
 
@@ -112,25 +113,25 @@ class CleanAndSelectColumn:
         columns_to_keep = sorted(columns_to_keep)
 
         """
-        When alignment length is greater than 1000, the distinct column number have to be more than 100
-        otherwise, it will be ten percent of the MSA length but not less than 50
+        If alignment length is greater than 1000, the number of distinct columns has to be greater than 100.
+        Otherwise, the number will be ten percent of the MSA length but no less than 50 columns.
         """
         min_length = max(50, int(0.05 * self.alignment_length)) if self.alignment_length <= cluster_col_thr / 0.05 \
             else cluster_col_thr
 
-        if divergence_len > min_length:  # Set the threshold number to decide if perform cluster
+        if divergence_len > min_length:  # Set the threshold number to decide if performing clustering
             self.alignment_filtered = self.alignment[:, columns_to_keep[0]:columns_to_keep[0] + 1]
             for i in columns_to_keep[1:]:
                 self.alignment_filtered += self.alignment[:, i:i + 1]
         else:
-            self.if_need_cluster = False  # use this values to decide if execute "Class_group_MSA"
+            self.if_need_cluster = False  # Use this value to decide if executing "Class_group_MSA"
 
         return self.if_need_cluster
 
     def write_alignment_filtered(self, output_dir):
         output_file = os.path.join(output_dir, f"{os.path.basename(self.input_file)}_pat_MSA.fa")
 
-        # Remove sequences that contain many gaps. This can cause problem for iqtree clustering.
+        # Remove sequences that contain many gaps. Gaps can cause problems for IQ-TREE clustering.
         gap_alignment_filter = filter_out_big_gap_seq(self.alignment_filtered, gap_threshold=0.9)
         with open(output_file, 'w') as f:
             AlignIO.write(gap_alignment_filter, f, 'fasta')

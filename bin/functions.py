@@ -15,7 +15,7 @@ import numpy as np
 from PyPDF2 import PdfMerger, PdfFileReader, PdfFileWriter
 
 
-# Check if file name contains LTR
+# Check if file name contains the string LTR
 def is_LTR(input_file):
     input_file_name = os.path.basename(input_file)
     return 'LTR' in input_file_name
@@ -29,7 +29,7 @@ def generate_consensus_sequence(input_file, threshold, ambiguous):
     return consensus_seq
 
 
-# Check if the start and end are matchable with the given pattern
+# Check if start and end are matchable with the given pattern
 def check_start_end(consensus_seq, start, end, start_patterns, end_patterns):
     start_matched = end_matched = True
 
@@ -52,9 +52,9 @@ def check_start_end(consensus_seq, start, end, start_patterns, end_patterns):
 
 def check_and_update(consensus_seq, start, end, start_patterns, end_patterns):
     """
-    Check if the start and end of MSA equal to the given patterns
+    Check if start and end of the MSA are equal to the given patterns
     """
-    # Ensure all patterns are upper case
+    # Ensure all patterns are uppercase
     start_patterns = [pattern.upper() for pattern in start_patterns.split(',')] if start_patterns else None  
     end_patterns = [pattern.upper() for pattern in end_patterns.split(',')] if end_patterns else None
 
@@ -106,16 +106,15 @@ def fasta_file_to_dict(input_file, separate_name=False):
 
 def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast", task="blastn", seq_obj=None):
     """
-    Runs BLAST with specified task type and saves the results in a bed file.
+    Runs BLAST calling a specified task type and saves the results as a BED file.
 
-    :param seq_file: str, path to input fasta file
-    :param genome_file: str, path to genome file
+    :param seq_file: str, path to input FASTA file
+    :param genome_file: str, path to genome FASTA file
     :param output_dir: str, prefix for output files
-    :param min_length: num, default 150, minimum alignment length
-    :param task: str, default "blastn", BLAST task type ("blastn", "dc-megablast", etc.)
-    :param seq_obj: object, optional, sequence object to update with blast hits
-
-    :return: tuple, bed output file name and blast hits count
+    :param min_length: int, minimum alignment length. Default: 150
+    :param task: str, BLAST task type ("blastn", "dc-megablast", etc.). Default: "blastn"
+    :param seq_obj: object (optional), sequence object to update with BLAST hits
+    :return: tuple, output BED file name and BLAST hit count for each sequence
     """
     input_file = seq_file
     input_file_n = os.path.basename(input_file)
@@ -134,11 +133,11 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
             subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         except FileNotFoundError:
-            prcyan("'blastn' command not found. Please ensure 'blastn' is correctly installed.")
+            prcyan("'blastn' command not found. Please ensure 'blastn' is installed correctly.")
             raise Exception
 
         except subprocess.CalledProcessError as e:
-            prcyan(f"\nBLAST is failed for {input_file_n} with error code {e.returncode}")
+            prcyan(f"\nBLAST failed for {input_file_n} with error code {e.returncode}")
             prcyan(e.stderr)
             raise Exception
 
@@ -147,11 +146,12 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
         mmseqs_cmd = (f"mmseqs easy-search {seq_file} {genome_file}_db {blast_out_file} {blast_out_file}_tmp --search-type 3 "
                       f"--min-seq-id 0.6 --format-output \"query,target,pident,alnlen,mismatch,qstart,qend,tstart,tend,evalue,qcov\" "
                       f"--cov-mode 4 -c 0.5 --e-profile 1e-40 --threads 1 --min-aln-len {min_length}")
+        print(f"Running analysis with MMseqs2. \nWARNING: MMseqs2 is less accurate than 'blastn' and may return faulty results. We strongly recommend to use 'blastn' instead.")
         result = subprocess.run(mmseqs_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         error_output = result.stderr.decode("utf-8")
 
         if error_output:
-            print(f"Error during MMseqs2: {error_output}")
+            print(f"Error running MMseqs2: {error_output}")
 
     # Check the number of BLAST hits
     with open(blast_out_file) as blast_file:
@@ -159,7 +159,7 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
             blast_hits_count += 1
 
     if blast_hits_count > 0:
-        # Define bed outfile
+        # Define BED outfile
         # add $4 alignment length
         bed_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b.bed")
 
@@ -175,11 +175,11 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
             subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         except subprocess.CalledProcessError as e:
-            prcyan(f"\nBLAST to bed file conversion failed for {input_file_n} with error code {e.returncode}")
+            prcyan(f"\nBLAST to BED file conversion failed for {input_file_n} with error code {e.returncode}")
             prcyan(e.stderr)
             raise Exception
 
-        # Update BLAST hit number to sequence object when seq_obj is supplied
+        # Append BLAST hit number to sequence object when seq_obj is provided
         if seq_obj is not None:
             seq_obj.update_blast_hit_n(blast_hits_count)
 
@@ -188,11 +188,11 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
 
 def check_bed_uniqueness(output_dir, bed_file):
     """
-    Check if bed file contain repeat lines, if so delete to one
+    Check if the BED file contains duplicated lines, and if so, delete any duplicates
 
     :param output_dir: str, output directory
-    :param bed_file: str, bed_file path
-    :return: modified bed file absolute path
+    :param bed_file: str, path for input BED file
+    :return: absolute path of modified BED file
     """
     with open(bed_file, "r") as f:
         lines = f.readlines()
@@ -279,9 +279,9 @@ def process_lines(input_file, output_dir, threshold=100, top_longest_lines_count
 
 # Calculate average sequence length in the bed file
 def bed_ave_sequence_len(bed_content, start_rank, end_rank):
-    """Compute average length for regions within a specified rank range in BED content."""
+    """Compute average length for regions within a specified rank range in BED file."""
 
-    # Extracting lengths from the BED content
+    # Extracting lengths from the BED file
     lengths = []
     for line in bed_content.strip().split("\n"):
         parts = line.split("\t")
@@ -294,7 +294,7 @@ def bed_ave_sequence_len(bed_content, start_rank, end_rank):
 
     # Checking if there are enough entries for the specified range
     if len(lengths) < end_rank:
-        return "Not enough entries"
+        return "Not enough entries in BED file."
 
     # Extracting lengths of regions within the specified rank range
     selected_lengths = lengths[start_rank - 1:end_rank]
@@ -307,14 +307,14 @@ def bed_ave_sequence_len(bed_content, start_rank, end_rank):
 
 def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameonly=False):
     """
-    Extracts fasta sequence from the reference genome using bedtools.
+    Extracts FASTA sequence from the reference genome using BEDtools.
 
-    :param genome_file: str, path to genome file
+    :param genome_file: str, path to genome FASTA file
     :param output_dir: str, prefix for output files
     :param left_ex: int, number of bases to extend the start position of each feature
     :param right_ex: int, number of bases to extend the end position of each feature
-    :param nameonly: boolean Default: False: only use bed file name filed for the fasta header
-    :return: fasta file absolute path derived from bed file
+    :param nameonly: boolean, only use BED file name for the FASTA header. Default: False
+    :return: absolute path of FASTA file derived from BED file
     """
     input_file_n = os.path.basename(input_file)
 
@@ -339,7 +339,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
         subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     except FileNotFoundError:
-        prcyan("'bedtools slop' command not found. Please ensure 'bedtools' is correctly installed.")
+        prcyan("'bedtools slop' command not found. Please ensure 'bedtools' is installed correctly.")
         raise Exception
 
     except subprocess.CalledProcessError as e:
@@ -358,7 +358,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
         subprocess.run(fasta_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     except FileNotFoundError:
-        prcyan("'bedtools getfasta' command not found. Please ensure 'bedtools' is correctly installed.")
+        prcyan("'bedtools getfasta' command not found. Please ensure 'bedtools' is installed correctly.")
         raise Exception
 
     except subprocess.CalledProcessError as e:
@@ -366,7 +366,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
         prcyan(e.stderr)
         raise Exception
 
-    # Use awk to remove letters that aren't A G C T a g c t
+    # Use awk to remove letters other than: A G C T a g c t
     fasta_nucleotide_clean = f"awk '/^>/ {{print}} !/^>/ {{gsub(/[^AGCTagct]/, \"\"); print}}' {fasta_out_flank_file}" \
                              f" > {fasta_out_flank_file_nucleotide_clean}"
     try:
@@ -381,16 +381,16 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
 
 def align_sequences(input_file, output_dir):
     """
-    Aligns fasta sequences using MAFFT
+    Aligns FASTA sequences using MAFFT
 
     :param input_file: str, input file path
     :param output_dir: str, output file directory
-    :return: multiple sequence alignment file absolute path
+    :return: absolute path for multiple sequence alignment file
     """
     input_file_n = os.path.basename(input_file)
     fasta_out_flank_mafft_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_aln.fa")
 
-    # Read the top 5 sequences and determine if any are longer than 7000
+    # Read the top 5 sequences and determine if any are longer than 10000 bp
     long_sequences = False
     with open(input_file, "r") as f:
         for i, record in enumerate(SeqIO.parse(f, "fasta")):
@@ -403,7 +403,7 @@ def align_sequences(input_file, output_dir):
     # Construct the command as a list of strings
     mafft_cmd = ["mafft", "--quiet", "--nuc", "--retree", "1", input_file]
 
-    # If any of the top 5 sequences are longer than 7000, add --memsave to salve memory
+    # If any of the top 5 sequences are longer than 10000, add --memsave to save memory
     if long_sequences:
         mafft_cmd.insert(1, "--memsave")  # Insert after 'mafft'
 
@@ -412,7 +412,7 @@ def align_sequences(input_file, output_dir):
         result = subprocess.run(mafft_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except FileNotFoundError:
-        prcyan("'mafft' command not found. Please ensure 'mafft' is correctly installed.")
+        prcyan("'mafft' command not found. Please ensure 'mafft' is installed correctly.")
         raise Exception
 
     except subprocess.CalledProcessError as e:
@@ -421,8 +421,8 @@ def align_sequences(input_file, output_dir):
         prcyan(e.stderr)
 
         if "Killed" in error_message and "disttbfast" in error_message and "memopt" in error_message:
-            prgre(f"It seems not enough 'RAM' was given for Mafft multiple sequence alignment. Please assign more "
-                  f"RAM to TETrimmer or reduce the thread number to solve this problem.\n")
+            prgre(f"It seems insufficient RAM was available for MAFFT multiple sequence alignment. Please assign more "
+                  f"RAM or reduce the thread number to solve this problem.\n")
         raise Exception
 
     # Write the output to the file
@@ -436,12 +436,12 @@ def muscle_align(input_file, output_dir, ite_times=4):
     output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_maln.fa")
     muscle_cmd = ["muscle", "-maxiters", str(ite_times), "-in", input_file, "-out", output_file]
 
-    # Execute muscle
+    # Execute MUSCLE
     result = subprocess.run(muscle_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     if result.returncode != 0:
         return False
-        # raise Exception(f"Muscle command failed with error: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
+        # raise Exception(f"MUSCLE command failed with error: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
     # Convert the sequences in the output file to lowercase
     sequences = list(SeqIO.parse(output_file, "fasta"))
     for seq in sequences:
@@ -492,7 +492,7 @@ def calc_proportion(input_file):
             if nucleotide in counts:
                 counts[nucleotide] += 1
 
-        # Calculate the proportion of each nucleotide
+        # Calculate the proportion of each nucleotide at each site
         total = sum(counts.values())
 
         # Check if total is zero
@@ -505,7 +505,7 @@ def calc_proportion(input_file):
     return np.array(max_props)  # Convert the list to a NumPy array and return it
 
 
-# Function help to define the threshold of crop end by similarity
+# Function to help define the threshold for crop end by similarity
 def define_crop_end_simi_thr(input_file, window_size=40, max_steps=100):
     array = calc_proportion(input_file)
     array_length = len(array)
@@ -540,9 +540,9 @@ def calc_conservation(col):
     """
     Calculate the conservation of a column as the fraction of the most common nucleotide.
     :param col: one single column content for multiple sequence alignment
-    :return: most abundant nucleotide proportion for this column (gap isn't included)
+    :return: most abundant nucleotide proportion for this column (excluding gaps)
     """
-    # Mafft will convert all nucleotide to lowercase
+    # MAFFT will convert all nucleotide to lowercase
     nucleotide_counts = {'a': 0, 'c': 0, 'g': 0, 't': 0}
 
     for nucleotide in col:
@@ -557,10 +557,10 @@ def calc_conservation(col):
 
 def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
     """
-    Generate HMM profile using hmmbuild from a multiple sequence alignment file.
+    Generate HMM profiles using hmmbuild on a multiple sequence alignment file.
 
-    :param input_msa_file: Path to the multiple sequence alignment file (in FASTA or Stockholm format).
-    :param output_hmm_file: Path to the output HMM file.
+    :param input_msa_file: path to the multiple sequence alignment file (in FASTA or Stockholm format)
+    :param output_hmm_file: path to the output HMM file
     """
 
     # Construct the command as a list
@@ -571,21 +571,21 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
         subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     except FileNotFoundError:
-        prcyan("'hmmbuild' command not found. Please ensure 'hmmbuild' is correctly installed.")
-        prgre("This hmm error won't affect the final TE consensus library.")
+        prcyan("'hmmbuild' command not found. Please ensure 'hmmbuild' is installed correctly.")
+        prgre("This hmm error will not affect the final TE consensus library.")
 
     except subprocess.CalledProcessError as e:
         with open(error_file, 'a') as f:
             f.write(f"\nhmm file generation failed for {os.path.basename(output_hmm_file)} with error code {e.returncode}")
             f.write('\n' + e.stderr)
         prcyan(f"\nhmm file generation failed for {os.path.basename(output_hmm_file)} with error code {e.returncode}")
-        prgre("\nThis hmm error won't affect the final TE consensus library, you can ignore it."
-              "\nFor traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n")
+        prgre("\nThis hmm error will not affect the final TE consensus library, you can ignore it."
+              "\nFor traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n")
 
 
 def reverse_complement_seq_file(input_file, output_file):
     """
-    Takes an MSA FASTA file and writes the reverse complemented sequences to a new file.
+    Takes an MSA FASTA file and writes the reverse complement of the sequences to a new file.
     """
     reverse_complemented_records = []
 
@@ -595,7 +595,7 @@ def reverse_complement_seq_file(input_file, output_file):
         rev_comp_record = SeqRecord(rev_comp_seq, id=record.id, description="")
         reverse_complemented_records.append(rev_comp_record)
 
-    # Write the reverse complemented sequences to the output file
+    # Write the reverse-complemented sequences to the output file
     SeqIO.write(reverse_complemented_records, output_file, "fasta")
     return output_file
 
@@ -609,12 +609,12 @@ def remove_short_seq(input_file, output_file, threshold=0.1):
     # Initialize an empty list to store the filtered sequences
     filtered_alignment = []
 
-    # Loop each sequence in the alignment
+    # Loop through each sequence in the alignment
     for record in alignment:
-        # Get the length of the sequence without gaps
+        # Get the length of the sequence, excluding gaps
         seq_length = len(record.seq.ungap("-"))
 
-        # Check if the sequence length is greater than or equal the length threshold
+        # Check if the sequence length is greater than or equal to the length threshold
         if seq_length >= len * threshold:
             filtered_alignment.append(record)
 
@@ -624,27 +624,26 @@ def remove_short_seq(input_file, output_file, threshold=0.1):
 
 def remove_gaps(input_file, output_dir, threshold=0.8, min_nucleotide=5):
     """
-    Remove gaps when gap percentage is bigger than threshold. Remove columns when nucleotide number is less than 5
+    Remove gaps if the gap percentage is above threshold. Remove columns if nucleotide number is less than 5.
     :param input_file: str, input file path
     :param output_dir: str, output file directory
-    :param threshold: num (0-1) default 0.8, column with gap percentage that is greater (not include equal)
-    than threshold will be removed
-    :param min_nucleotide: num (>0) default 5, columns with less than "min_nucleotide" nucleotides will be removed
-    :return: absolut path of gap removed multiple sequence alignment file
+    :param threshold: int (0-1), columns with gap percentage greater than <threshold> will be removed. Default: 0.8
+    :param min_nucleotide: int (>0), columns with less than <min_nucleotide> nucleotides will be removed. Default: 5
+    :return: absolut path for the gap-purged multiple sequence alignment file
     """
     keep_list = []
     fasta_out_flank_mafft_gap_filter_file = os.path.join(output_dir,
                                                          f"{os.path.basename(input_file)}_g.fa")
     MSA_mafft = AlignIO.read(input_file, "fasta")
 
-    column_mapping = {}  # Stores the mapping of column indices from filtered MSA to original MSA
+    column_mapping = {}  # Stores the mapping of column indices of filtered MSA to original MSA
 
     for col_idx in range(MSA_mafft.get_alignment_length()):
         col = MSA_mafft[:, col_idx]
         gap_count = col.count('-')
         gap_fraction = gap_count / len(col)
 
-        # Check if the count of nucleotides in the column is at least 5
+        # Check if the count of nucleotides in the column is 5 or greater
         nt_count = len(col) - gap_count
         if nt_count < min_nucleotide:
             continue
@@ -652,15 +651,15 @@ def remove_gaps(input_file, output_dir, threshold=0.8, min_nucleotide=5):
         # If the gap fraction is less than the threshold, add the column to the filtered MSA
         if gap_fraction <= threshold:
             keep_list.append(col_idx)
-            # Be careful when you want to use len for indexing. Because len start from 1
+            # Be careful when using len for indexing, because len starts with 1
             column_mapping[
                 len(keep_list) - 1] = col_idx  # Store the mapping of original MSA index to filtered MSA index
 
-    # The index in python won't include the second value. That it is to say the returned end_posit from
-    # DefineBoundary() will one more index than the final len(keep_list) -1] for this reason, you have to
-    # add one more value
+    # The index in Python does not include the second value. As a consequence, end_posit from the DefineBoundary()
+    # function contains one more index than the final [len(keep_list) -1]. 
+    # Adding one more value to correct index
     column_mapping[len(keep_list)] = column_mapping[len(keep_list) - 1] + 1
-    # Keep the columns when they meet requirements
+    # Keep the columns if they meet requirements
     MSA_mafft_filtered = MSA_mafft[:, keep_list[0]:keep_list[0] + 1]
     for i in keep_list[1:]:
         MSA_mafft_filtered += MSA_mafft[:, i:i + 1]
@@ -673,16 +672,16 @@ def remove_gaps(input_file, output_dir, threshold=0.8, min_nucleotide=5):
 
 def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_threshold=0.5, min_nucleotide=5):
     """
-    Remove gaps that are only from conserved regions. Remove columns when nucleotide number is less than 5
+    Remove gap blocks flanked by conserved regions of the MSA. Remove columns if nucleotide number is less than 5.
     :param input_file: str, input file path
     :param output_dir: str, output file directory
-    :param threshold: num (0-1) default 0.8, column with gap percentage that is greater (not include equal)
-    than threshold will be removed
-    :param conservation_threshold: num (0-1) default 0.5, connected single gaps will be classified as one block, two columns
-    before and after this block will be checked. If the most abundant nucleotides proportion from one beginning and
-    one end columns are greater than conservation_threshold this gap block will be removed
-    :param min_nucleotide: num (>0) default 5, columns with less than "min_nucleotide" nucleotides will be removed
-    :return: gap block removed file absolute path
+    :param threshold: int (0-1) columns with gap percentage greater than <threshold> will be removed. Default: 0.8
+    :param conservation_threshold: int (0-1), after connected gaps have been classified as a gap block, the nucleotide
+    conservation of two flanking non-gap columns at both ends of the gap block will be calculated. If the proportion of
+    the most abundant nucleotide is greater than <conservation_threshold>, this gap block will be removed from the MSA. 
+    Default: 0.5
+    :param min_nucleotide: int (>0), columns with less than <min_nucleotide> nucleotides will be removed. Default: 5
+    :return: absolute path to gap block-purged MSA FASTA file
     """
     # The keep_list is a list of tuples containing start and end position for each gap block
     gap_blocks = []
@@ -690,7 +689,7 @@ def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_thresh
                                                          f"{os.path.basename(input_file)}_gb.fa")
     MSA_mafft = AlignIO.read(input_file, "fasta")
 
-    # Initialize the start of the block to None
+    # Initialize the start of the block as 'None'
     block_start = None
 
     for col_idx in range(MSA_mafft.get_alignment_length()):
@@ -700,15 +699,15 @@ def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_thresh
         # Check the count of nucleotides in the column
         nt_count = len(col) - gap_count
 
-        # If the column meets the gap requirement, and we're not already in a block, start a new one
+        # If the column meets the gap requirement and is not within an already called block, start a new block
         if (gap_fraction > threshold or nt_count < min_nucleotide) and block_start is None:
             block_start = col_idx
-        # If the column doesn't meet the gap requirement, and we're in a block, end the block
+        # If the column does not meet the gap requirement and is within a gap block, close the block
         elif gap_fraction <= threshold and nt_count >= min_nucleotide and block_start is not None:
             gap_blocks.append((block_start, col_idx))
             block_start = None
 
-    # If we're still in a block at the end of the MSA, end it
+    # If the block extends to the end of the MSA, close the block
     if block_start is not None:
         gap_blocks.append((block_start, MSA_mafft.get_alignment_length()))
 
@@ -723,22 +722,22 @@ def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_thresh
                     col_after is not None and calc_conservation(col_after) > conservation_threshold:
                 delete_blocks.append(block)
 
-    # When no gap block is detected, return the original MSA
+    # If no gap block was detected, return the original MSA
     else:
-        # No blocks to delete, return the original MSA. Write file again to convert file name
+        # No blocks to delete, return the original MSA. Write into file with converted file name
         with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
             AlignIO.write(MSA_mafft, f, 'fasta')
         return fasta_out_flank_mafft_gap_filter_file
 
     if delete_blocks:
 
-        # Identify the ranges to keep, which are in between the blocks to delete
+        # Identify the sequence ranges to keep, which are in between the blocks to delete
         keep_ranges = [(0, delete_blocks[0][0])]
         for i in range(len(delete_blocks) - 1):
             keep_ranges.append((delete_blocks[i][1], delete_blocks[i + 1][0]))
         keep_ranges.append((delete_blocks[-1][1], MSA_mafft.get_alignment_length()))
 
-        # Concatenate the columns in each keep_range to create the final filtered MSA
+        # Concatenate the columns in each keep_range object to create the final filtered MSA
         MSA_mafft_filtered = MSA_mafft[:, keep_ranges[0][0]:keep_ranges[0][1]]
         for keep_range in keep_ranges[1:]:
             MSA_mafft_filtered += MSA_mafft[:, keep_range[0]:keep_range[1]]
@@ -749,7 +748,7 @@ def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_thresh
 
         return fasta_out_flank_mafft_gap_filter_file
     else:
-        # No blocks to delete, return the original MSA. Write file again to convert file name
+        # No blocks to delete, return the original MSA. Write into file with converted file name
         with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
             AlignIO.write(MSA_mafft, f, 'fasta')
         return fasta_out_flank_mafft_gap_filter_file
@@ -757,27 +756,28 @@ def remove_gaps_block(input_file, output_dir, threshold=0.8, conservation_thresh
 
 def remove_gaps_with_similarity_check(input_file, output_dir, gap_threshold=0.8, simi_check_gap_thre=0.4,
                                       similarity_threshold=0.7, min_nucleotide=5, return_map=False):
+    
+    # This function replaces remove_gaps_block
     """
-    Remove gaps when gap percentage is bigger than threshold. Remove columns when nucleotide number is less than 5.
-    When gap percentage is equal or bigger than "simi_check_gap_thre". It will calculate most abundant nucleotide
-    proportion for this column. If it is less than "similarity_threshold" this column will be removed
+    Remove gaps flanked by conserved sequences in MSA. 
+    Gaps are removed if: gap proportion is greater than 80%, less than 5 nucleotides are found in the column, 
+    or if the gap proportion is between 40-80% and the nucleotide proportion is below 70% excluding gaps. 
     :param input_file: str, input file path
     :param output_dir: str, output file directory
-    :param gap_threshold: num (0-1) default 0.8, column with gap percentage that is greater (not include equal)
-    than threshold will be removed
-    :param simi_check_gap_thre: num (0-1) default 0.4, if gap greater or equal this gap threshold, column similarity
-    will be checked
-    :param similarity_threshold: num (0-1) default 0.7, when column gap is between "simi_check_gap_thre" and
-    "gap_threshold" and most abundant nucleotide proportion is less than "similarity_threshold" remove this column
-    :param min_nucleotide: num (>0) default 5, columns with less than "min_nucleotide" nucleotides will be removed
-    :return: gap removed file absolute path
+    :param gap_threshold: int (0-1), columns with gap proportion greater than <gap_threshold> will be removed. Default: 0.8
+    :param simi_check_gap_thre: int (0-1), if gap proportion greater or equal to <simi_check_gap_thre>, nucleotide
+    proportions will be calculated for this column (excluding gaps). Default: 0.4
+    :param similarity_threshold: int (0-1), if the gap proportion is between <simi_check_gap_thre> and <gap_threshold>
+    and the proportion of the most abundant nucleotide is less than <similarity_threshold>, remove this column. Default: 0.7
+    :param min_nucleotide: int (>0), columns with less than <min_nucleotide> nucleotides will be removed. Default: 5
+    :return: absolute path to gap-purged MSA FASTA file
     """
     keep_list = []
     fasta_out_flank_mafft_gap_filter_file = os.path.join(output_dir,
                                                          f"{os.path.basename(input_file)}_gs.fa")
     MSA_mafft = AlignIO.read(input_file, "fasta")
 
-    column_mapping = {}  # Stores the mapping of column indices from filtered MSA to original MSA
+    column_mapping = {}  # Stores the mapping of column indices of filtered MSA to original MSA
 
     #if len(MSA_mafft) < 5:
         #raise ValueError("Number of sequences is less than 5. Cannot remove gaps.")
@@ -792,16 +792,16 @@ def remove_gaps_with_similarity_check(input_file, output_dir, gap_threshold=0.8,
         if nt_count < min_nucleotide:
             continue
 
-        # If the gap fraction is less than the gap_threshold, consider the column for further analysis
+        # If the gap fraction is less than the gap_threshold, mark the column for further analysis
         if gap_fraction <= gap_threshold:
-            # If the gap fraction is between 0.4 and 0.8, check for the similarity of the remaining nucleotides
+            # If the gap fraction is between 0.4 and 0.8, calculate proportions of remaining nucleotides
             if simi_check_gap_thre > gap_fraction:
                 keep_list.append(col_idx)
                 column_mapping[len(keep_list) - 1] = col_idx
             elif simi_check_gap_thre <= gap_fraction:
                 nt_fraction = calc_conservation(col)
 
-                # If the nucleotides are less than similarity_threshold, skip this column
+                # If the proportion of the most abundant nucleotide is less than similarity_threshold, skip this column
                 if nt_fraction < similarity_threshold:
                     continue
                 else:
@@ -810,9 +810,9 @@ def remove_gaps_with_similarity_check(input_file, output_dir, gap_threshold=0.8,
                     # Store the mapping of original MSA index to filtered MSA index
                     column_mapping[len(keep_list) - 1] = col_idx
 
-    # The index in python won't include the second value. That it is to say the returned end_posit from
-    # DefineBoundary() will one more index than the final len(keep_list) -1] for this reason, you have to
-    # add one more value
+    # The index in Python does not include the second value. As a consequence, end_posit from the DefineBoundary()
+    # function contains one more index than the final [len(keep_list) -1]. 
+    # Adding one more value to correct index
     if len(keep_list) < 50:
         if return_map:
             return False, False
@@ -844,17 +844,17 @@ def remove_gaps_block_with_similarity_check(input_file, output_dir, gap_threshol
     proportion for this column. If it is less than "similarity_threshold" this column will be removed
     :param input_file: str, input file path
     :param output_dir: str, output file directory
-    :param gap_threshold: num (0-1) default 0.8, column with gap percentage that is greater (not include equal)
-    than threshold will be removed
-    :param simi_check_gap_thre: num (0-1) default 0.4, if gap greater or equal this gap threshold, column similarity
-    will be checked
-    :param similarity_threshold: num (0-1) default 0.7, when column gap is between "simi_check_gap_thre" and
-    "gap_threshold" and most abundant nucleotide proportion is less than "similarity_threshold" remove this column
-    :param conservation_threshold: num (0-1) default 0.6, connected single gaps will be classified as one block, two columns
-    before and after this block will be checked. If the most abundant nucleotides proportion from one beginning and
-    one end columns are greater than conservation_threshold this gap block will be removed
-    :param min_nucleotide: num (>0) default 5, columns with less than "min_nucleotide" nucleotides will be removed
-    :return: gap block removed file absolute path
+    :param gap_threshold: int (0-1), columns with gap proportion greater than <gap_threshold> will be removed. Default: 0.8
+    :param simi_check_gap_thre: int (0-1), if gap proportion greater or equal to <simi_check_gap_thre>, nucleotide
+    proportions will be calculated for this column (excluding gaps). Default: 0.4
+    :param similarity_threshold: int (0-1), if the gap proportion is between <simi_check_gap_thre> and <gap_threshold>
+    and the proportion of the most abundant nucleotide is less than <similarity_threshold>, remove this column. Default: 0.7
+    :param conservation_threshold: int (0-1), after connected gaps have been classified as a gap block, the nucleotide
+    conservation of two flanking non-gap columns at both ends of the gap block will be calculated. If the proportion of
+    the most abundant nucleotide is greater than <conservation_threshold>, this gap block will be removed from the MSA. 
+    Default: 0.6
+    :param min_nucleotide: int (>0), columns with less than <min_nucleotide> nucleotides will be removed. Default: 5
+    :return: absolute path to gap-purged MSA FASTA file
     """
     # Identify blocks of gaps
     gap_blocks = []
@@ -867,7 +867,7 @@ def remove_gaps_block_with_similarity_check(input_file, output_dir, gap_threshol
 
     # Raise an error if the number of sequences is less than 5
     if len(MSA_mafft) < 5:
-        raise ValueError("Number of sequences is less than 5. Cannot remove gaps.")
+        raise ValueError("Number of sequences in MSA is less than 5. Cannot remove gaps.")
 
     # Define the starting point of a block
     block_start = None
@@ -875,30 +875,30 @@ def remove_gaps_block_with_similarity_check(input_file, output_dir, gap_threshol
     # Go through each column in the alignment
     for col_idx in range(MSA_mafft.get_alignment_length()):
 
-        # Define some metrics for the column
+        # Define metrics for the column
         col = MSA_mafft[:, col_idx]
         gap_count = col.count('-')
         gap_fraction = gap_count / len(col)
         nt_fraction = calc_conservation(col)
         nt_count = len(col) - gap_count
 
-        # Check if the column meets the criteria to start a new block
+        # Check if the column meets the criteria to open a new block
         if ((simi_check_gap_thre <= gap_fraction <= gap_threshold and nt_fraction <= similarity_threshold) or
             gap_fraction > gap_threshold or nt_count < min_nucleotide) and block_start is None:
             block_start = col_idx
 
-        # Check if the column meets the criteria to end a block
+        # Check if the column meets the criteria to close a block
         elif simi_check_gap_thre <= gap_fraction <= gap_threshold and nt_fraction > \
                 similarity_threshold and nt_count >= min_nucleotide and block_start is not None:
             gap_blocks.append((block_start, col_idx))
             block_start = None
 
-        # Check if the block should end due to a column with too few gaps
+        # Check if the block should be closed due to gap proportion below simi_check_gap_thre in a column
         elif gap_fraction <= simi_check_gap_thre and nt_count >= min_nucleotide and block_start is not None:
             gap_blocks.append((block_start, col_idx))
             block_start = None
 
-    # If a block was started but not ended, end it at the last column
+    # If a block was opened but not closed, close it at the last column of the MSA
     if block_start is not None:
         gap_blocks.append((block_start, MSA_mafft.get_alignment_length()))
 
@@ -908,12 +908,12 @@ def remove_gaps_block_with_similarity_check(input_file, output_dir, gap_threshol
     # Check if gap_blocks is empty
     if gap_blocks:
         for block in gap_blocks:
-            # Check the columns divergence before and after the block
+            # Calculate the nucleotide divergence of flanking columns of the gap block
             col_before = MSA_mafft[:, block[0] - 1] if block[0] > 0 else None
             col_before_2 = MSA_mafft[:, block[0] - 2] if block[0] > 1 else None
             col_after = MSA_mafft[:, block[1]] if block[1] < MSA_mafft.get_alignment_length() else None
             col_after_2 = MSA_mafft[:, block[1] + 1] if block[1] < MSA_mafft.get_alignment_length() - 1 else None
-            # If the surrounding columns are conserved, mark the block for deletion
+            # If the flanking columns contain conserved nucleotides, mark the block for deletion
             if col_before is not None and (calc_conservation(col_before) > conservation_threshold or
                                            calc_conservation(
                                                col_before_2) > conservation_threshold) and col_after is not None and \
@@ -921,7 +921,7 @@ def remove_gaps_block_with_similarity_check(input_file, output_dir, gap_threshol
                      calc_conservation(col_after_2) > conservation_threshold):
                 delete_blocks.append(block)
     else:
-        # No blocks to delete, return the original MSA. Write file again to convert file name
+        # No blocks to delete, return the original MSA. Write into file with converted file name
         with open(fasta_out_flank_mafft_gap_filter_file, 'w') as f:
             AlignIO.write(MSA_mafft, f, 'fasta')
         return fasta_out_flank_mafft_gap_filter_file
@@ -958,7 +958,7 @@ def select_gaps_block_with_similarity_check(input_file,
                                             simi_check_gap_thre=0.4, similarity_threshold=0.8,
                                             conservation_threshold=0.6, min_nucleotide=10):
     """
-    Return: A list containing column numbers used for cluster
+    :return: A list containing column numbers used for clustering
     """
     # Identify blocks of gaps
     gap_blocks = []
@@ -966,9 +966,9 @@ def select_gaps_block_with_similarity_check(input_file,
     # Load the MSA file
     MSA_mafft = AlignIO.read(input_file, "fasta")
 
-    # Raise an error if the number of sequences is less than 5
+    # Raise an error if the number of sequences in the MSA is less than 5
     if len(MSA_mafft) < 5:
-        raise ValueError("Number of sequences is less than 5. Cannot remove gaps.")
+        raise ValueError("Number of sequences in MSA is less than 5. Cannot remove gaps.")
 
     # Define the starting point of a block
     block_start = None
@@ -979,14 +979,14 @@ def select_gaps_block_with_similarity_check(input_file,
 
     # Go through each column in the alignment. Start from 0
     for col_idx in range(MSA_mafft.get_alignment_length()):
-        # Define some metrics for the column
+        # Define metrics for the column
         col = MSA_mafft[:, col_idx]
         gap_count = col.count('-')
         gap_fraction = gap_count / len(col)
         nt_fraction = calc_conservation(col)
         nt_count = len(col) - gap_count
 
-        # Check if the column meets the criteria to start a new block
+        # Check if the column meets the criteria to open a new block
         if simi_check_gap_thre <= gap_fraction and nt_fraction >= similarity_threshold and \
                 nt_count >= min_nucleotide and block_start is None:
             block_start = col_idx
@@ -998,23 +998,23 @@ def select_gaps_block_with_similarity_check(input_file,
             gap_blocks.append((block_start, col_idx, condition_met_count))
             block_start = None
 
-        # Stop the gap block when nucleotide similarity is smaller than the threshold
+        # Close the gap block if nucleotide similarity is smaller than the threshold
         elif (
                 simi_check_gap_thre <= gap_fraction and nt_fraction < similarity_threshold and block_start is not None) or \
                 (nt_count < min_nucleotide and block_start is not None):
-            # Check the gap count in the next column if it exists
+            # Check the gap count of the next column if it exists
             next_gap_count = None
             if col_idx + 1 < MSA_mafft.get_alignment_length():
                 next_col = MSA_mafft[:, col_idx + 1]
                 next_gap_count = next_col.count('-')
 
-            # If gap count is not similar to both previous and next columns, stop the block
+            # If gap count is not similar to both previous and next columns, close the block
             if prev_gap_count is not None and next_gap_count is not None:
                 if not (0.8 * prev_gap_count <= gap_count <= 1.2 * prev_gap_count and
                         0.8 * next_gap_count <= gap_count <= 1.2 * next_gap_count):
                     condition_met_count += 1
 
-        # Stop the gap block when the gap number is too less
+        # Stop the gap block if the gap number is below threshold simi_check_gap_thre
         elif gap_fraction < simi_check_gap_thre and block_start is not None:
             gap_blocks.append((block_start, col_idx, condition_met_count))
             block_start = None
@@ -1029,14 +1029,14 @@ def select_gaps_block_with_similarity_check(input_file,
         for block in gap_blocks:
             start, end, block_condition_count = block  # Now also unpacking the block_condition_count
 
-            # Calculate the maximum allowable condition_met_count based on the block length
+            # Calculate the maximum allowable condition_met_count based on the gap block length
             block_length = end - start
             if block_length < 10:
                 max_condition_count = 1
             else:
                 max_condition_count = min(0.1 * block_length, 50)
 
-            # Check if the condition_met_count exceeds the maximum allowable value for the block
+            # Check if the condition_met_count exceeds the maximum allowable value for the gap block
             if block_condition_count > max_condition_count:
                 continue
 
@@ -1069,7 +1069,7 @@ def select_gaps_block_with_similarity_check(input_file,
         return False
 
 
-# Select MSA columns according to the given star and end position
+# Select MSA columns according to the provided start and end position
 def select_star_to_end(input_file, output_dir, start, end):
     alignment = AlignIO.read(input_file, "fasta")
     MSA_len = alignment.get_alignment_length()
@@ -1092,11 +1092,11 @@ def select_start_end_and_join(input_file, output_dir, start, end, window_size=50
     """
     Select start and end columns of MSA
     :param input_file: str, absolute input file path
-    :param output_dir: str, absolute output directory
-    :param start: int: start point, based on start point, right side columns will be selected
-    :param end: int: end point, based on end point, left side columns will be selected
-    :param window_size: int default 50, columns size will be selected for each side
-    :return: Selected MSA object (not file path)
+    :param output_dir: str, output directory
+    :param start: int, start point, columns to the right of the start point will be selected
+    :param end: int, end point, columns to the left of the end point will be selected
+    :param window_size: int, number of columns beginning from <start> and <end> to be selected. Default: 50
+    :return: Selected MSA object (no file path)
     """
     alignment = AlignIO.read(input_file, "fasta")
     sequence_length = end - start
@@ -1119,12 +1119,12 @@ def select_start_end_and_join(input_file, output_dir, start, end, window_size=50
 
 def select_window_columns(input_file, output_dir, start_point, direction, window_size=50):
     """
-    Select columns block for MSA
-    :param input_file: str, the absolute input file path
-    :param output_dir: str, the absolute output directory
+    Select column block for MSA
+    :param input_file: str, absolute input file path
+    :param output_dir: str, output directory
     :param start_point: int, start point to select column block
-    :param direction: int "right" or "left", direction to select column block
-    :param window_size: int default 50, column block size will be selected
+    :param direction: str "right" or "left", direction to select column block
+    :param window_size: int, number of columns beginning from <start_point> to be selected. Default: 50
     :return: Select MSA object (not file path)
     """
     # Read the MSA file using Biopython's AlignIO
@@ -1133,7 +1133,7 @@ def select_window_columns(input_file, output_dir, start_point, direction, window
     # Get the total number of columns in the alignment
     total_columns = alignment.get_alignment_length()
 
-    # Determine the start and end column indices based on the direction
+    # Determine the start and end column indices based on the direction and start point
     if direction.lower() == 'left':
         start_col = max(0, start_point - window_size)
         end_col = start_point
@@ -1141,7 +1141,7 @@ def select_window_columns(input_file, output_dir, start_point, direction, window
         start_col = start_point
         end_col = min(start_point + window_size, total_columns)  # get as many columns as possible
     else:
-        raise ValueError("Invalid direction. Please choose 'left' or 'right'.")
+        raise ValueError("Invalid direction. Please enter 'left' or 'right'.")
 
     # Select the window columns from the alignment
     selected_alignment = alignment[:, start_col:end_col]
@@ -1156,21 +1156,21 @@ def select_window_columns(input_file, output_dir, start_point, direction, window
 
 
 """
-The asterisk (*) before alignments in the function definition is used to allow the function to accept any number 
+The asterisk '*' before alignments in the definition of the function allows the function to accept any number 
 of positional arguments. These arguments will be gathered into a tuple called alignments. This is particularly 
-useful when you don't know beforehand how many arguments will be passed to the function.
+useful if you do not know beforehand how many arguments will be passed to the function.
 """
 
 
 def concatenate_alignments(*alignments, input_file_name, output_dir):
     """
-    Concatenate MSA files, which have same sequence number
-    :param alignments: str, alignments object (not file path) will be concatenated by order.
-    :param input_file_name: str, Used for generating output file name
+    Concatenate MSA files containing the same number of sequences
+    :param alignments: str, alignment objects, will be concatenated in given order
+    :param input_file_name: str, used for generating output file name
     :param output_dir: str, the absolute output directory
-    :return: the absolute output file path, the start point and end point of the concatenated MSA
+    :return: the absolute output file path, the start and end points of the concatenated MSA
     """
-    # Check if at least two alignments are provided
+    # Check if at least two alignments were provided
     if len(alignments) < 2:
         raise ValueError("At least two alignments must be provided.")
 
@@ -1184,7 +1184,7 @@ def concatenate_alignments(*alignments, input_file_name, output_dir):
     for alignment in alignments[1:]:
         concatenated_alignment += alignment
 
-    # alignments[0].get_alignment_length() will return 50, but python start from 0
+    # alignments[0].get_alignment_length() will return 50, but python starts with 0
     # The last position of alignments[0] is alignments[0].get_alignment_length() - 1
     concat_start = alignments[0].get_alignment_length()
     concat_end = concatenated_alignment.get_alignment_length() - alignments[-1].get_alignment_length() - 1
@@ -1199,16 +1199,16 @@ def concatenate_alignments(*alignments, input_file_name, output_dir):
 
 def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9, thread=10):
     """
-    -l	length of throw_away_sequences, default 10
-    -d	length of description in .clstr file, default 20 if set to 0, it takes the fasta header and
-    stops at first space
-    -s	length difference cutoff, default 0.0 if set to 0.9, the shorter sequences need to be at least 90% length
-    of the representative of the cluster
-    -aL	alignment coverage for the longer sequence, default 0.0 if set to 0.9, the alignment must
-    covers 90% of the sequence
-    -aS	alignment coverage for the shorter sequence, default 0.0 if set to 0.9, the alignment must
-    covers 90% of the sequence
-    Note: -s only consider length, but -aL and -aS consider alignment
+    -l int, length of throw_away_sequences. Default: 10
+    -d int, length of description in .clstr file; if set to 0, it takes the FASTA defline and stops at the
+    first space. Default: 20
+    -s float, length difference cutoff; if set to 0.9, the shorter sequences need to be at least 90% in length of the
+    representative sequence of the cluster. Default: 0.0
+    -aL	float, alignment coverage for the longer sequence; if set to 0.9, the alignment must cover 90% of the sequence.
+    Default: 0.0
+    -aS	float, alignment coverage for the shorter sequence; if set to 0.9, the alignment must cover 90% of the sequence.
+    Default: 0.0
+    Note: -s only considers length, but -aL and -aS considers alignment
     """
     command = [
         "cd-hit-est",
@@ -1228,7 +1228,7 @@ def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9,
         subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except FileNotFoundError:
-        prcyan("'\ncd-hit-est' command not found. Please ensure 'cd-hit-est' is correctly installed.\n")
+        prcyan("'\ncd-hit-est' command not found. Please ensure 'cd-hit-est' is installed correctly.\n")
         raise Exception
 
     except subprocess.CalledProcessError as e:
@@ -1326,25 +1326,25 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
         return True
 
     except FileNotFoundError:
-        prcyan("'RepeatMasker' command not found. Please ensure 'RepeatMasker' is correctly installed.")
+        prcyan("'RepeatMasker' command not found. Please ensure 'RepeatMasker' is installed correctly.")
         raise Exception
 
     except subprocess.CalledProcessError as e:
         if classify:
             prcyan(f"\nRepeatMasker failed during final classification step with error code {e.returncode}")
             prcyan(e.stderr)
-            prgre("This will not affect the final result but only the classification of TE might not be affect")
+            prgre("This will not affect the final result. Only the classification of TE may not be correct.")
             raise Exception
         else:
-            prcyan(f"\nRepeatMasker failed during final whole genome TE annotation with error code {e.returncode}")
+            prcyan(f"\nRepeatMasker failed during final whole-genome TE annotation with error code {e.returncode}")
             prcyan(e.stderr)
-            prgre("This won't affect the final TE consensus library at all. You can do the final genome TE annotation"
-                  " by yourself with RepeatMasker")
+            prgre("This does not affect the final TE consensus library. You can perform the final genome-wide TE"
+                  " annotation by yourself with RepeatMasker.")
             raise Exception
 
 
 def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, min_len=80, min_cov=0.8):
-    # Read RepeatMasker out file into a DataFrame
+    # Read RepeatMasker output file (.out) into a DataFrame
     # The regex '\s+' matches one or more whitespace characters
     # error_bad_lines=False to skip errors
     try:
@@ -1355,7 +1355,7 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, m
         df = pd.read_csv(repeatmasker_out, delim_whitespace=True, header=None, skiprows=3,
                          error_bad_lines=False, usecols=range(15))
 
-    # Rename columns for easier reference
+    # Rename columns for easier referencing
     df.columns = [
         'score', 'perc_div', 'perc_del', 'perc_ins', 'query_name',
         'query_start', 'query_end', 'query_left', 'strand',
@@ -1363,16 +1363,16 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, m
         'repeat_end', 'repeat_left', 'ID'
     ]
 
-    # Filter rows based on query_iden
+    # Filter rows based on query identity
     df = df[df['perc_div'] <= (100 - min_iden)]
 
-    # Calculate coverage length and add to a column
+    # Calculate coverage length and add to a new column cov_len
     df['cov_len'] = abs(df['query_start'] - df['query_end'])
 
     # Select dataframe columns
     df_filter = df[["query_name", "repeat_name", "repeat_class", "cov_len"]]
 
-    # Group by the columns and sum 'cov_len'
+    # Group by columns and calculate sum of 'cov_len'
     grouped_df = df_filter.groupby(['query_name', 'repeat_name', 'repeat_class'])['cov_len'].sum().reset_index()
     grouped_df_filter = grouped_df[grouped_df['cov_len'] >= min_len]
 
@@ -1427,7 +1427,7 @@ def rename_cons_file(consensus_file, reclassified_dict):
         for line in infile:
             if line.startswith('>'):
                 # Extract the sequence name (up to the '#' character)
-                seq_name = line.split('#')[0][1:].strip()  # Remove '>' and split at '#', then take the first part
+                seq_name = line.split('#')[0][1:].strip()  # Remove '>' and split at '#', then keep the first part
 
                 # Look up the sequence name in the reclassified_dict and modify the header if found
                 if seq_name in reclassified_dict:
@@ -1446,21 +1446,21 @@ def rename_files_based_on_dict(directory, reclassified_dict, seq_name=False):
 
     # For each file, check and rename if necessary
     for filename in files:
-        # Extract the part before #
+        # Extract the part before '#'
         consensus_name = filename.split('#')[0]
         for key, value in reclassified_dict.items():
             if consensus_name == key:
                 # Extract the part after # and before the first .
                 te_type = filename.split('#')[1].split('.')[0].replace('__', '/')
 
-                # If it doesn't match the value in the dictionary, rename the file
+                # If file name does not match the value in the dictionary, rename the file
                 if te_type != value:
                     new_te_type = value.replace('/', '__')
                     new_filename = filename.replace(te_type.replace('/', '__'), new_te_type)
                     old_file_path = os.path.join(directory, filename)
                     new_file_path = os.path.join(directory, new_filename)
 
-                    # If seq_name is True, rename the sequence header in the FASTA file
+                    # If seq_name is 'True', rename the sequence header in the FASTA file
                     if seq_name:
                         record = SeqIO.read(old_file_path, 'fasta')
                         record.id = f"{seq_name}#{value}"
@@ -1474,7 +1474,7 @@ def rename_files_based_on_dict(directory, reclassified_dict, seq_name=False):
 
 
 def remove_files_with_start_pattern(input_dir, start_pattern=None):
-    # Remove files and folder start with give pattern
+    # Remove files and folders whose name starts with given pattern
     # When start pattern is missing, remove everything in this folder
     for filename in os.listdir(input_dir):
         file_path = os.path.join(input_dir, filename)
@@ -1488,6 +1488,7 @@ def remove_files_with_start_pattern(input_dir, start_pattern=None):
             try:
                 shutil.rmtree(file_path)
             except Exception as e:
+                # File deletion does not affect the final consensus sequence. Skip if an error occurs
                 pass
 
 
@@ -1537,7 +1538,7 @@ def handle_sequence_low_copy(seq_obj, progress_file, debug, MSA_dir, classificat
             remove_files_with_start_pattern(MSA_dir, f"{seq_name}.fasta")
             remove_files_with_start_pattern(classification_dir, f"{seq_name}.fasta")
     except Exception as e:
-        click.echo(f"\nAn error occurred while handling low copy sequence {seq_name}:\n {e}\n")
+        click.echo(f"\nAn error occurred while handling low-copy sequence {seq_name}:\n {e}\n")
 
 
 def handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir, plot_skip=True,
@@ -1576,7 +1577,7 @@ def update_cons_file(updated_type, unknown_concensus_file, consensus_file):
                     f.write(">" + header + "#" + te_type + "\n" + sequence + "\n")
 
 
-# if the seq_obj is low copy, append to consensus_file and final_unknown_con_file used for classification
+# if the sequence object seq_obj contains a low-copy TE, append to consensus_file and final_unknown_con_file used for classification
 def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, final_classified_con_file, proof_dir,
                               te_aid_pdf):
     seq_name = seq_obj.get_seq_name()
@@ -1594,7 +1595,7 @@ def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, f
         with open(final_classified_con_file, "a") as f:
             f.write(">" + seq_name + "#" + te_type + "\n" + sequence + "\n")
 
-        # Write all consensus sequence to final_cons_file.
+        # Write all consensus sequences to final_cons_file.
     with open(consensus_file, "a") as f:
         f.write(">" + seq_name + "#" + te_type + "\n" + sequence + "\n")
 
@@ -1603,12 +1604,12 @@ def update_low_copy_cons_file(seq_obj, consensus_file, final_unknown_con_file, f
 
     shutil.copy(input_fasta, low_copy_single_fasta_file)
 
-    # Sometimes TE Aid can't be plotted properly because the input sequence quality. Only move plot when it is existed.
+    # Sometimes TE-Aid cannot be plotted properly due to low input sequence quality. Only move plot if it exists.
     #if os.path.exists(te_aid_pdf) and os.path.getsize(te_aid_pdf) > 0:
         #shutil.copy(te_aid_pdf, low_copy_te_aid_pdf_file)
 
 
-# Classify single fasta
+# Classify single FASTA file
 def classify_single(consensus_fasta):
     """
     Run RepeatClassifier with the provided parameters.
@@ -1620,7 +1621,7 @@ def classify_single(consensus_fasta):
     # Change the working directory to the directory of the consensus_fasta
     os.chdir(os.path.dirname(consensus_fasta))
 
-    # Define RepeatClassifier command, the output file will store at the same directory of the consensus_fasta
+    # Define RepeatClassifier command, the output file will be stored in the same directory as consensus_fasta
     command = ["RepeatClassifier", "-consensi", consensus_fasta]
 
     try:
@@ -1628,14 +1629,14 @@ def classify_single(consensus_fasta):
         subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     except FileNotFoundError:
-        prcyan("'RepeatClassifier' command not found. Please ensure 'RepeatModeler' is correctly installed.")
+        prcyan("'RepeatClassifier' command not found. Please ensure 'RepeatModeler' is installed correctly.")
         return False
 
     except subprocess.CalledProcessError as e:
-        prcyan(f"RepeatClassifier error for {os.path.basename(consensus_fasta)} with error code {e.returncode}")
+        prcyan(f"RepeatClassifier failed for {os.path.basename(consensus_fasta)} with error code {e.returncode}")
         prcyan(e.stderr)
-        prgre("This only affect classification but not consensus sequence. "
-              "You can run 'RepeatClassifier -consensi <your_consensus_file>' to test")
+        prgre("This only affects classification but not the consensus sequence. "
+              "You can run 'RepeatClassifier -consensi <your_consensus_file>' manually.")
         # Change the working directory back to the original directory
         os.chdir(original_dir)
         return False
@@ -1645,7 +1646,7 @@ def classify_single(consensus_fasta):
 
     classified_file = f'{consensus_fasta}.classified'
 
-    # Get the first record of classified file
+    # Get the first record of file with classified consensus sequences
     record = next(SeqIO.parse(classified_file, "fasta"))
 
     # seq_name = record.id.split("#")[0]
@@ -1656,7 +1657,7 @@ def classify_single(consensus_fasta):
 
 def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=2000, LTR_adj=3000):
     """
-    output_dir: used to store self blast database
+    output_dir: used to store self-BLAST database
     """
     # Read input file and get sequence length
     record = SeqIO.read(input_file, "fasta")
@@ -1665,33 +1666,33 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
     LTR_boundary = None
     TIR_boundary = None
 
-    # teaid output is not given or the given file doesn't exist or is empty, do self blast
+    # If TE-Aid output was not provided, the file does not exist or is empty, do self-BLAST
     if teaid_blast_out is None or not file_exists_and_not_empty(teaid_blast_out):
         os.makedirs(output_dir, exist_ok=True)
         database_file = os.path.join(output_dir, "Tem_blast_database")
         makeblastdb_cmd = f"makeblastdb -in {input_file} -dbtype nucl -out {database_file}"
 
-        # If error encountered, return directly
+        # If an error was encountered, abort and return
         try:
             subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except subprocess.CalledProcessError:
             return None, None, False
 
-        # Proof check if database is built, otherwise return directly
+        # Check if database was built, otherwise return
         if not file_exists_and_not_empty(f"{database_file}.nhr") or not \
                 file_exists_and_not_empty(f"{database_file}.nin") or not file_exists_and_not_empty(f"{database_file}.nsq"):
             return None, None, False
 
         blast_cmd = f"blastn -query {input_file} -db {database_file} " \
                     f"-outfmt \"6 qseqid qstart qend sstart send \" " \
-                    f"-evalue 0.05"  # Set higher e-value for self-blast
+                    f"-evalue 0.05"  # Set more stringent e-value for self-BLAST
 
         try:
             result = subprocess.run(blast_cmd, shell=True, check=True, text=True, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
             blast_out = result.stdout
 
-            # If self blast result is empty, return directly
+            # If self-BLAST result is empty, return
             if blast_out.strip() == "":
                 return None, None, False
         except subprocess.CalledProcessError as e:
@@ -1699,22 +1700,22 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
             prcyan('\n' + e.stderr + '\n')
             raise Exception
 
-        # Define blast out file
+        # Define BLAST output file
         blast_out_file = os.path.join(output_dir, "tem_blast_out.txt")
 
         with open(blast_out_file, 'w') as f:
-            # Give a header to blast result
+            # Add a header to BLAST result
             f.write("qseqid\tqstart\tqend\tsstart\tsend\n")
             f.write(blast_out)
         df = pd.read_csv(blast_out_file, sep="\t", header=None, skiprows=1)
     else:
         blast_out_file = teaid_blast_out
 
-        # TEaid self blast output default format is separated by white space
+        # TE-Aid self-BLAST output default format is separated by white space
         df = pd.read_csv(blast_out_file, sep='\s+', header=None, skiprows=1)
 
-    # Return None directly when the self blast result is empty, this could happen when too many ambiguous letters
-    # are there like N.
+    # Return 'None' if the self-BLAST result is empty. This can happen if sequence contains too many ambiguous letters
+    # like 'N' or 'X'.
     if df.empty:
         return None, None, False
 
@@ -1731,8 +1732,8 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
         # Find the row with the largest difference
         LTR_largest = df_LTR.iloc[df_LTR["5"].idxmax()]
 
-        # Check if the terminal repeat spans the most part of the query sequence. Because the query is after extension,
-        # assuming the maximum redundant extension for left and right side are both 2000.
+        # Check if the terminal repeat spans the majority of the query sequence. Because self-BLAST is done after extension,
+        # the maximum redundant extension for left and right side are both 2000.
         if abs(LTR_largest[4] - LTR_largest[1]) >= (record_len - LTR_adj):
             # Because blast use index start from 1, modify the start position
             LTR_boundary = [LTR_largest[1] - 1, LTR_largest[4]]
@@ -1740,7 +1741,7 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
         else:
             LTR_boundary = None
 
-        # Return directly when LTR is found
+        # Return directly if LTR was found
         return LTR_boundary, TIR_boundary, found_match
 
     df_TIR = df[(df.iloc[:, 2] - df.iloc[:, 1] >= 50) &
@@ -1753,7 +1754,7 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
         df_TIR["5"] = df.iloc[:, 3] - df.iloc[:, 1]
         df_TIR.reset_index(drop=True, inplace=True)
 
-        # Same like LTR check the terminal repeat spanning region
+        # Same like LTR, check the terminal repeat-spanning region
         TIR_largest = df_TIR.iloc[df_TIR["5"].idxmax()]
         if abs(TIR_largest[3] - TIR_largest[1]) >= (record_len - TIR_adj):
             TIR_boundary = [TIR_largest[1] - 1, TIR_largest[3]]
@@ -1807,7 +1808,9 @@ def file_exists_and_not_empty(file_path):
 
 def merge_pdfs(output_dir, output_file_n, *pdfs):
     """
-    Merge PDF files to one single file. the file path order in *pdfs is the file order in the final single file
+    Merge PDF files into one single PDF file. 
+    The order in which file paths are provided in <*pdfs> defines the order of plots in the final single PDF file.
+
     """
     merger = PdfMerger()
     valid_pdf_count = 0  # Counter to keep track of valid PDFs added
@@ -1833,7 +1836,7 @@ def merge_pdfs(output_dir, output_file_n, *pdfs):
 
 def dotplot(sequence1, sequence2, output_dir):
 
-    # Define after TETrimmer treatment file name
+    # Define based on TETrimmer analysis file name
     n_after_tetrimmer = os.path.basename(sequence1)
 
     # Define the output filenames
@@ -1857,13 +1860,13 @@ def dotplot(sequence1, sequence2, output_dir):
         subprocess.run(dotmatcher_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except FileNotFoundError:
-        prcyan("'\ndotmatcher' command not found. Please ensure 'emboss' is correctly installed.")
-        prgre("\ndotmatcher won't affect the final consensus sequence. You can choose to ignore this error\n")
+        prcyan("\n'dotmatcher' command not found. Please ensure 'emboss' is installed correctly.")
+        prgre("\ndotmatcher does not affect the final consensus sequence. You can choose to ignore this error.\n")
         raise Exception
 
     except subprocess.CalledProcessError as e:
-        prcyan(f"\ndotmatcher failed for {n_after_tetrimmer} with error code {e.returncode}")
-        prgre("\ndotmatcher won't affect the final consensus sequence. You can choose to ignore this error")
+        prcyan(f"\n'dotmatcher' failed for {n_after_tetrimmer} with error code {e.returncode}")
+        prgre("\ndotmatcher does not affect the final consensus sequence. You can choose to ignore this error.")
         raise Exception
 
     # Define command to convert ps to pdf
@@ -1877,13 +1880,13 @@ def dotplot(sequence1, sequence2, output_dir):
         subprocess.run(ps2pdf_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except FileNotFoundError:
-        prcyan("'\nps2pdf' command not found. Please install it by 'sudo apt-get install ghostscript'")
-        prgre("ps2pdf won't affect the final consensus file. You can choose to ignore it.")
+        prcyan("\n'ps2pdf' command not found. Please install it with 'sudo apt-get install ghostscript'")
+        prgre("ps2pdf does not affect the final consensus sequence. You can choose to ignore this error.")
         raise Exception
 
     except subprocess.CalledProcessError as e:
-        prcyan(f"\nps2pdf failed for {n_after_tetrimmer} with error code {e.returncode}")
-        prgre("\nps2pdf won't affect the final consensus sequence. You can choose to ignore this error\n")
+        prcyan(f"\n'ps2pdf' failed for {n_after_tetrimmer} with error code {e.returncode}")
+        prgre("\nps2pdf does not affect the final consensus sequence. You can choose to ignore this error.\n")
         raise Exception
 
     return pdf_out

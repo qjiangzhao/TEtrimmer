@@ -9,7 +9,7 @@ import tempfile
 matplotlib.use('Agg')
 
 #########################################################################
-# This code is derived from CIAlign https://github.com/KatyBrown/CIAlign
+# This code is derived from CIAlign: https://github.com/KatyBrown/CIAlign
 #########################################################################
 
 
@@ -18,7 +18,7 @@ def png_to_pdf(png_path, pdf_path):
     Convert a PNG file to a PDF.
 
     Parameters:
-    - png_path (str): Path to the input PNG file.
+    - png_path (str): Path for the input PNG file.
     - pdf_path (str): Path for the output PDF file.
     """
     # Open the PNG image
@@ -43,20 +43,20 @@ def png_to_pdf(png_path, pdf_path):
 
 def getPalette(palette='CBS'):
     '''
-    Generates a dictionary which assigns a name to each colour using a colour
-    blindness safe palette, generated using
+    Generates a dictionary that assigns a name to each color using a colorblind-
+    friendly palette, generated using
     https://medialab.github.io/iwanthue/
     Parameters
     ----------
     palette: str
-        The ID of the palette to be used, currently only colour blind safe
-        (CBS) is implemented.
+        The ID of the palette to be used, currently only colorblind-friendly
+        (CBS) has been implemented.
 
     Returns
     -------
     dict
-        Dictionary where keys are names of colours and
-        values are hexadecimal codes for colours
+        Dictionary where keys are names of colors and
+        values are hexadecimal codes for colors
     '''
     if palette.lower() == 'cbs':
         p = CBSafe()
@@ -69,19 +69,19 @@ def getPalette(palette='CBS'):
 
 def getNtColours(palette='CBS'):
     '''
-    Generates a dictionary which assigns a colour to each nucleotide (plus grey
+    Generates a dictionary that assigns a color to each nucleotide (including grey
     for "N" and white for "-")
     Parameters
     ----------
     pal: str
-        A string designating which palette to use, currently only colour blind
-        safe (CBS) is implemented.
+        A string designating which palette to use, currently only colorblind-friendly
+        (CBS) has been implemented.
 
     Returns
     -------
     dict
         Dictionary where keys are single letter nucleotide codes and
-        values are hexadecimal codes for colours
+        values are hexadecimal codes for colors
     '''
     pal = getPalette(palette=palette)
     return {'A': pal['green_nt'],
@@ -106,7 +106,7 @@ def getNtColours(palette='CBS'):
 
 def FastaToArray(infile, log=None):
     '''
-    Convert an alignment into a numpy array.
+    Convert an alignment into a NumPy array.
 
     Parameters
     ----------
@@ -118,7 +118,7 @@ def FastaToArray(infile, log=None):
     Returns
     -------
     arr: np.array
-        2D numpy array in the same order as fasta_dict where each row
+        2D NumPy array in the same order as fasta_dict where each row
         represents a single column in the alignment and each column a
         single sequence.
     nams: list
@@ -142,8 +142,8 @@ def FastaToArray(infile, log=None):
                 if sl != psl and nseq > 1:
                     print(nseq, sl, psl)
                     raise ValueError("""
-ERROR: The sequences you provided may not be aligned - all the sequences \
-are not the same length""")
+ERROR: The sequences you provided may not be aligned - not all sequences \
+are the same length""")
 
                 psl = sl
                 nseq += 1
@@ -162,8 +162,8 @@ are not the same length""")
     if sl != psl and nseq > 1:
         print(nseq, sl, psl)
         raise ValueError("""
-ERROR: The sequences you provided may not be aligned - all the sequences \
-are not the same length""")
+ERROR: The sequences you provided may not be aligned - not all sequences \
+are the same length""")
     seqs.append(np.array([s.upper() for s in seq]))
     nams.append(nam)
     arr = np.array(seqs[1:])
@@ -172,7 +172,7 @@ are not the same length""")
 
 def arrNumeric(arr, palette='CBS'):
     '''
-    Converts the sequence array into a numerical matrix and a colour map
+    Converts the sequence array into a numerical matrix and a color map,
     which matplotlib can interpret as an image (similar to
                                                 https://bit.ly/2CIKOEr)
     The rows in the array are inverted so that the output image has the rows
@@ -181,20 +181,20 @@ def arrNumeric(arr, palette='CBS'):
     Parameters
     ----------
     arr: np.array
-        The alignment stored as a numpy array
+        The alignment stored as a NumPy array
 
     typ: str
         Either 'aa' - amino acid - or 'nt' - nucleotide
 
     palette: str
-        Colour palette, CBS or Bright
+        Color palette, CBS or Bright
 
     Returns
     -------
     arr2: np.array
         The flipped alignment as an array of integers
     cmap: matplotlib.colors.ListedColormap
-        A colour map with the colours corresponding to each base
+        A color map with the colors corresponding to each base
         or amino acid
     '''
 
@@ -202,7 +202,7 @@ def arrNumeric(arr, palette='CBS'):
     arr = np.flip(arr, axis=0)
     D = getNtColours(palette)
 
-    # retrieve the colours for the colour map
+    # retrieve the colors for the color map
     keys = list(D.keys())
     ali_height, ali_width = np.shape(arr)
 
@@ -231,14 +231,14 @@ def drawMiniAlignment(arr, nams, outfile, start_point, end_point,
                       dpi=500, title=None, width=5, height=3, orig_nams=[],
                       keep_numbers=False, force_numbers=False, palette="te_trimmer"):
     '''
-    Draws a "mini alignment" image showing a small representation of the
+    Draws a "mini-alignment" image showing a small representation of the
     whole alignment so that gaps and poorly aligned regions are visible.
 
     Parameters:
     - arr: np.array
-        The alignment stored as a numpy array
+        The alignment stored as a NumPy array
     - outfile: str
-        Path to the output PDF file (No need to give .pdf extension)
+        Path to the output PDF file (No need to provide .pdf extension)
     - ... [rest of your parameters] ...
 
     Returns:
@@ -343,7 +343,7 @@ def base():
 
 def CBSafe():
     '''
-    Returns the hexadecimal values for a colour blind safe colour palette
+    Returns the hexadecimal values for a colorblind-friendly color palette
 
     Parameters
     ----------
@@ -352,8 +352,8 @@ def CBSafe():
     Returns
     -------
     dict
-        A dictionary containing the hexadecimal values for the colours used
-        in the CIAlign mini alignments
+        A dictionary containing the hexadecimal values for the colors used
+        in the CIAlign mini-alignments
     '''
 
     b = base()
@@ -387,7 +387,7 @@ def CBSafe():
 
 def Bright():
     '''
-    Returns the hexadecimal values for a colour blind safe colour palette
+    Returns the hexadecimal values for a colorblind-friendly color palette
 
     Parameters
     ----------
@@ -396,8 +396,8 @@ def Bright():
     Returns
     -------
     dict
-        A dictionary containing the hexadecimal values for the colours used
-        in the CIAlign mini alignments
+        A dictionary containing the hexadecimal values for the colors used
+        in the CIAlign mini-alignments
     '''
     b = base()
     b.update({'yellow_nt': "#ffd500",

@@ -15,30 +15,30 @@ from functions import prcyan, prgre
 
 def check_and_download(directory, filename, url):
     """
-    Function to check if file exist, otherwise download and unzip it
-    :param directory: str, directory your checked file should be
+    Function to check if file exists, otherwise download and unzip it
+    :param directory: str, directory the file to be checked should be in
     :param filename: str, file name
-    :param url: str, url address will be used to download file when file isn't found in the given folder
-    :return: boolean, True represent file don't found but successfully downloaded. False file is found
+    :param url: str, url address used to download file if the file cannot be found in the given folder
+    :return: boolean, 'True' means file was not found but was successfully downloaded. 'False' if file was found
     """
 
     file_path = os.path.join(directory, filename)
 
-    # If Pfam database can't be found download it
+    # If PFAM database was not found, download it
     if not os.path.isfile(file_path):
 
-        click.echo(f"\n{filename} not found. Downloading... This might take some time. Please be patient\n")
-
+        click.echo(f"\n{filename} not found. Downloading... This might take some time. Please be patient.\n")
+        
         # Check if the URL is valid
         try:
             response = requests.get(url, stream=True)
             response.raise_for_status()  # Raise an exception if the GET request was unsuccessful
         except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
-            prcyan(f"\nFailed to reach the server at {url} for Pfam database downloading\n")
+            prcyan(f"\nFailed to reach the server at {url} for downloading PFAM database.\n")
             return False
 
         try:
-            gz_file_path = file_path + ".gz"  # Give a defined name for the file will be downloaded
+            gz_file_path = file_path + ".gz"  # Provide a defined name for the file that will be downloaded
             urllib.request.urlretrieve(url, gz_file_path)
 
             # Unzipping
@@ -51,28 +51,28 @@ def check_and_download(directory, filename, url):
             click.echo(f"\n{filename} is downloaded and unzipped. Pfam database was stored in \n"
                        f"{directory}\n")
         except Exception:
-            prcyan("TETrimmer can't properly unzip the downloaded Pfam file")
+            prcyan("TETrimmer failed to properly unpack the downloaded PFAM file.")
             return False
 
-    # Check if download is successful
+    # Check if download was successful
     if os.path.isfile(file_path):
         return True
     else:
-        prcyan(f"{filename} not found. Pfam can't be downloaded by TETrimmer. Please check your internet connection "
-               f"or download Pfam by yourself and use '--pfam_dir' to indicate your Pfam database path.")
+        prcyan(f"{filename} not found. The PFAM database cannot be downloaded by TETrimmer. Please check your internet connection "
+               f"or download PFAM database manually. Or use '--pfam_dir' to indicate your Pfam database path.")
         return False
 
 
 def check_pfam_index_files(directory):
     """
-    Check if the Pfam index files exist in the provided directory.
-    :param directory: str, The directory to check for the Pfam index files.
-    :return: boolean, True if all Pfam index files exist, False otherwise.
+    Check if the PFAM index files exist in the provided directory.
+    :param directory: str, the directory to search for the PFAM index files.
+    :return: boolean, 'True' if all PFAM index files exist, 'False' otherwise.
     """
-    # Define the list of Pfam index files
+    # Define the list of PFAM index files
     pfam_files = ["Pfam-A.hmm.h3f", "Pfam-A.hmm.h3m", "Pfam-A.hmm.h3i", "Pfam-A.hmm.h3p"]
 
-    # Check if all Pfam index files exist
+    # Check if all PFAM index files exist
     if all(os.path.isfile(os.path.join(directory, file)) for file in pfam_files):
         return True
     else:
@@ -90,23 +90,23 @@ def prepare_pfam_database(pfam_database_dir):
     pfam_dat_url = r"https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.dat.gz"
 
     try:
-        # Check and download the Pfam database files
+        # Check and download the PFAM database files
         if check_and_download(pfam_database_dir, r"Pfam-A.hmm", pfam_hmm_url):
             if not check_pfam_index_files(pfam_database_dir):
 
-                # Creates binary files that allow for faster access by other HMMER
+                # Create binary files that allow for faster access by other HMMER programs
                 hmmpress_pfam_command = ["hmmpress", os.path.join(pfam_database_dir, "Pfam-A.hmm")]
                 try:
                     subprocess.run(hmmpress_pfam_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                 except FileNotFoundError:
-                    prcyan("'hmmpress' command not found. Please ensure 'hmmpress' is correctly installed.")
+                    prcyan("'hmmpress' command not found. Please ensure 'hmmpress' is installed correctly.")
                     return False
 
                 except subprocess.CalledProcessError as e:
-                    prcyan(f"\nhmmpress index files generation failed with error code {e.returncode}")
-                    prgre("Please check if your 'hmmpress' has been correctly installed.\n"
-                          "Try 'hmmpress <your_downloaded_pfam_file> Pfam-A.hmm")
+                    prcyan(f"\nhmmpress index file generation failed with error code {e.returncode}")
+                    prgre("Please check if 'hmmpress' has been installed correctly in your system.\n"
+                          "Try running hmmpress <your_downloaded_pfam_file> Pfam-A.hmm")
                     return False
         else:
             return False
@@ -150,17 +150,17 @@ def determine_sequence_direction(filename):
     # Compute the difference
     difference = sum_positive - sum_negative
 
-    # Return True if difference is greater or equal than 0, else return False
+    # Return 'True' if difference is greater or equal than 0, else return 'False'
     return difference >= 0
 
 
 class PlotPfam:
     def __init__(self, input_file, output_dir, pfam_database_dir, mini_orf=200, after_tetrimmer=True):
         """
-        :param input_file: str, input fasta file path.
-        :param output_dir: str, output file directory.
-        :param pfam_database_dir: str, path where store pfam database. Will automatically download when don't find.
-        :param mini_orf: num default 200, minimum orf length.
+        :param input_file: str, input FASTA file path
+        :param output_dir: str, output file directory
+        :param pfam_database_dir: str, path where PFAM database is stored. Will download database automatically if not found.
+        :param mini_orf: int, minimum ORF length. Default: 200
         """
         self.input_file = input_file
         self.input_file_n = os.path.basename(self.input_file)
@@ -174,7 +174,7 @@ class PlotPfam:
 
     def run_getorf(self):
         """
-        Run getorf to extract orfs from given sequence.
+        Run getorf to extract ORFs from given sequence.
         """
         output_orf_file = os.path.join(self.output_dir, f"{self.input_file_n}_orf.txt")
         self.output_orf_file_name_modified = os.path.join(self.output_dir,
@@ -226,16 +226,16 @@ class PlotPfam:
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             return True
         except subprocess.CalledProcessError as e:
-            prcyan(f"\nConvert ORF result to table failed for {self.input_file_n} with "
+            prcyan(f"\nConverting ORF result to table failed for {self.input_file_n} with "
                    f"error code {e.returncode}")
             prcyan('\n' + e.stderr + '\n')
             raise Exception
 
     def run_pfam_scan(self):
         """
-        Run pfam_scan.pl to check orfs against Pfam database
+        Run pfam_scan.pl to check ORFs against PFAM database
         """
-        # Define output file name and the modified pfam output file name.
+        # Define output file name and the modified PFAM output file name.
         output_pfam_file = os.path.join(self.output_dir, f"{self.input_file_n}_orfm_pf.txt")
         self.output_pfam_file_modified = os.path.join(self.output_dir, f"{self.input_file_n}_orfm_pfm.txt")
 
@@ -262,7 +262,7 @@ class PlotPfam:
             prcyan('\n' + e.stderr + '\n')
             raise Exception
 
-        # Modify pfam output file for plot
+        # Modify PFAM output file for plot
         modify_pfam_result = (
             f"cat {output_pfam_file} | grep -v '^#' | grep -v '^$' | "
             f"sed -e 's/\\[/ /g' -e 's/-/ /g' -e 's/\\]//g' | "
@@ -278,10 +278,10 @@ class PlotPfam:
             prcyan('\n' + e.stderr + '\n')
             raise Exception
 
-        # Check if the output file only have one line, one line means the Pfam prediction is None.
+        # Check if the output file has only one line, which would mean no PFAM predictions.
         with open(self.output_pfam_file_modified, 'r') as file:
             line_count = sum(1 for _ in file)
-            # Return True when line number is greater than 1, otherwise False
+            # Return 'True' if line number is greater than 1, otherwise 'False'
             return line_count > 1, self.output_pfam_file_modified
 
     def calculate_fasta_length(self,input_file):
@@ -291,7 +291,7 @@ class PlotPfam:
 
     def load_orfs(self, orf_filepath):
         """
-        Loads the ORF data from the file at orf_filepath.
+        load_orfs loads the ORF data from the file at orf_filepath
         """
         orfs = {}
         with open(orf_filepath, 'r') as file:
@@ -304,7 +304,7 @@ class PlotPfam:
 
     def load_domains(self,domain_filepath):
         """
-        Loads the Domain data from the file at domain_filepath.
+        load_domains loads the domain data from the file at domain_filepath
         """
         domains = {}
         with open(domain_filepath, 'r') as file:
@@ -320,7 +320,7 @@ class PlotPfam:
 
         for feature in sorted(features, key=lambda x: x['start']):
             for i, level in enumerate(levels):
-                # When two features are close than 200bp, plot them at different levels.
+                # If two features are closer to each other than 200 bp, plot them at different levels to avoid overlap
                 if feature['start'] - level['end'] > 200:
                     levels[i] = feature
                     break
@@ -328,7 +328,7 @@ class PlotPfam:
                 levels.append(feature)
                 i = len(levels) - 1
 
-            # when i is positive, feature will be plotted above the sequence, otherwise it will be beneath the sequence.
+            # if i is positive, the feature will be plotted above the sequence, otherwise it will be beneath the sequence
             if base_level < 0:
                 i = -i
 
@@ -354,7 +354,7 @@ class PlotPfam:
         fig, ax = plt.subplots(figsize=(20, 8))
         # Plot input sequence
         plt.plot([0, fasta_length], [0, 0], color='black', linewidth=5)
-        # Plot orf features above the sequence
+        # Plot ORF features above the sequence
         self.plot_features(list(orfs.values()), 0.2, 'blue', fasta_length)
         # Plot domain features beneath the sequence
         self.plot_features(list(domains.values()), -0.2, 'red', fasta_length)

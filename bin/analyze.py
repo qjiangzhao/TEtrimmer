@@ -74,7 +74,7 @@ def calculate_genome_length(genome_file):
             if line.startswith(">"):
                 if current_seq is not None:
                     genome_lengths[current_seq] = current_length
-                # If chromosome header contain space, only consider the content before the first space
+                # If chromosome header contains empty spaces, only consider the content before the first space
                 current_seq = line[1:].split(" ")[0]
                 current_length = 0
             else:
@@ -94,10 +94,10 @@ def calculate_genome_length(genome_file):
 
 def check_database(genome_file, search_type="blast"):
     """
-    Checks if the blast database and genome length file exist.
-    If they don't exist, create them.
+    Checks if the BLAST database and genome length file exist.
+    If they do not exist, create them.
 
-    :param genome_file: str, path to genome file (contain genome name)
+    :param genome_file: str, path to genome file (containing genome name)
     """
     if search_type == "blast":
         blast_database_file = genome_file + ".nin"
@@ -109,7 +109,7 @@ def check_database(genome_file, search_type="blast"):
                 subprocess.run(makeblastdb_cmd, shell=True, check=True, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, text=True)
             except FileNotFoundError:
-                prcyan("'makeblastdb' command not found. Please ensure 'makeblastdb' is correctly installed.")
+                prcyan("'makeblastdb' command not found. Please ensure 'makeblastdb' is installed correctly.")
                 raise Exception
 
             except subprocess.CalledProcessError as e:
@@ -119,7 +119,7 @@ def check_database(genome_file, search_type="blast"):
     elif search_type == "mmseqs":
         mmseqs_database_dir = genome_file + "_db"
         if not os.path.isdir(mmseqs_database_dir):
-            print(f"\nMMseqs2 database doesn't exist. Running MMseqs2 database creation...\n")
+            print(f"\nMMseqs2 database does not exist. Creating MMseqs2 database...\n")
 
             try:
                 mmseqs_createdb_cmd = f"mmseqs createdb {genome_file} {mmseqs_database_dir}"
@@ -145,19 +145,19 @@ def check_database(genome_file, search_type="blast"):
                 else:
                     print("MMseqs2 index created successfully.")
             else:
-                print(f"Error: MMseqs2 database files not found for {genome_file}, you can build it by yourself to"
-                      f"aovid this error")
+                print(f"Error: MMseqs2 database files not found for {genome_file}, you can build it manually to"
+                      f"avoid this error")
 
-    # Check if genome length files exists, otherwise create it at the same folder with genome file
+    # Check if genome length files exist, otherwise create them in the same folder with genome file
     length_file = genome_file + ".length"
     if not os.path.isfile(length_file):
         print(f"\nFile with genome lengths not found. Making it now!\n")
         calculate_genome_length(genome_file)
 
-    # Check if .fai index file exists, otherwise create it using bedtools
+    # Check if .fai index file exists, otherwise create it using SAMtools
     fai_file = genome_file + ".fai"
     if not os.path.isfile(fai_file):
-        print(f"\nIndex file {fai_file} not found. Creating it by samtools faidx!\n")
+        print(f"\nIndex file {fai_file} not found. Creating it using samtools faidx ...\n")
         faidx_cmd = f"samtools faidx {genome_file}"
 
         try:
@@ -170,8 +170,8 @@ def check_database(genome_file, search_type="blast"):
         except subprocess.CalledProcessError as e:
             prcyan(f"\nsamtool faidx failed with error code {e.returncode}")
             prcyan(e.stderr)
-            prgre("Please check if your samtools works well. Or you can build the genome index file by yourself\n"
-                  "samtools faidx <your_genome>")
+            prgre("Please check if samtools was installed correctly \n"
+                  "or try running samtools faidx <your_genome> to build the genome index file manually.")
             return False
     return True
 
@@ -206,17 +206,16 @@ def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=
 
 def separate_sequences(input_file, output_dir, continue_analysis=False):
     """
-    separates input file into single fasta file and creates object for each input sequence
+    Separates input file into single separate FASTA files and creates objects for each input sequence
     """
     os.makedirs(output_dir, exist_ok=True)
     seq_list = []
 
     if not continue_analysis:
         print(
-            "TETrimmer is modifying sequence names; All '/', '-', ':', '...', '|' and empty space before '#' will "
-            "be converted to '_'\n"
-            "You can find the original and modified name relationship from 'Sequence_name_mapping.txt' file under "
-            "the output directory.\n ")
+            "TE Trimmer is modifying sequence names; any occurrence of '/', '-', ':', '...', '|' and empty spaces before '#' "
+            "will be converted to '_'.\n"
+            "You can find the original and modified names in the 'Name_mapping.txt' file in the output directory.\n")
         # Initialize the name mapping file
         name_mapping_file = os.path.join(os.path.dirname(output_dir), "Sequence_name_mapping.txt")
 
@@ -225,10 +224,10 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
             # Write header to the mapping file
             mapping_file.write("original_input_seq_name\tTETrimmer_modified_seq_name\n")
             id_list = []
-            # Have to add 'fasta' at the end, this pattern will be used for file deletion
+            # Required to add suffix 'fasta', as this pattern will be used for file deletion later
             for record in SeqIO.parse(fasta_file, 'fasta'):
-                # Check if # is in the seq.id. If # is present, the string before # is the seq_name, and the string
-                # after # is the seq_TE_type
+                # Check if '#' is in seq.id. If '#' is found, the string before '#' becomes the seq_name and the string
+                # after '#' is the seq_TE_type
                 if len(record.id.split("#")) > 1:
                     detected_pound = True
                     sanitized_id = record.id.split("#")[0].replace('/', '_').replace(' ', '_').\
@@ -236,7 +235,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                     te_type = record.id.split("#")[1]
 
                     # Normally SeqIO.parse only takes content before " " as record.id. Separate with " " to make
-                    # the code stronger
+                    # the code more reliable
                     te_type = te_type.split(" ")[0]
 
                 else:
@@ -251,7 +250,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                 if sanitized_id not in id_list:
                     id_list.append(sanitized_id)
                 else:
-                    # print(f"duplicated seq_name {sanitized_id} during separate_sequences.")
+                    # print(f"Duplicated seq_name {sanitized_id} during separate_sequences.")
                     id_list.append(sanitized_id)
                     count = id_list.count(sanitized_id)
                     sanitized_id = f"{sanitized_id}_n{count}"
@@ -263,36 +262,35 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                 output_filename = os.path.join(output_dir, f"{sanitized_id}.fasta")
                 seq_obj = SeqObject(str(sanitized_id), str(output_filename), len(record.seq), te_type)
 
-                # Store all input file information (object manner) to seq_list
+                # Store all input file information (object) to seq_list
                 seq_list.append(seq_obj)
 
                 # Convert sequence name to sanitized_id
                 record.id = sanitized_id
 
-                # Write single fasta file with sanitized name
+                # Write single FASTA file using sanitized name
                 with open(output_filename, 'w') as output_file:
                     SeqIO.write(record, output_file, 'fasta')
 
             if detected_pound:
-                print("TETrimmer detects # in your input fasta sequence. The string before # is denoted as the "
-                      "seq_name, and the string after # is denoted as the TE type.\n")
-
+                print("TETrimmer detected instances of '#' in your input FASTA sequence headers. The string before '#' is denoted as the "
+                      "seq_name, and the string after '#' is denoted as the TE type.\n")
         print("Finish to generate single sequence files.\n")
 
     elif continue_analysis:
-        # When continue_analysis is true, generate seq_list based on single fasta files
+        # If continue_analysis is 'True', generate seq_list based on single FASTA files
         for filename in os.listdir(output_dir):
             file = os.path.join(output_dir, filename)
             with open(file, 'r') as fasta_file:
                 for record in SeqIO.parse(fasta_file, 'fasta'):
-                    # Get sanitized_id from single fasta file name
+                    # Get sanitized_id from single FASTA file name
                     sanitized_id = os.path.splitext(filename)[0]
 
-                    # Note: single fasta file name is different with record.id
+                    # Note: single FASTA file name is different with record.id
                     te_type = record.id.split("#")[-1]
                     seq_obj = SeqObject(str(sanitized_id), str(file), len(record.seq), te_type)
                     seq_list.append(seq_obj)
-        print("\nFinish to read in single sequence files generated from previous analysis.\n")
+        print("\nFinished to read single sequence files generated by previous analysis.\n")
     
     single_fasta_n = len(seq_list)
     

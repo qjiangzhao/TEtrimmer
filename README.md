@@ -3,7 +3,7 @@
 - [Installation](#Installation)
 - [Usage](#Usage)
   - [Test](#Test)
-  - [Hardware requirement](#Hardware-requirement)
+  - [Hardware requirements](#Hardware-requirements)
   - [Inputs](#Inputs) 
   - [Outputs](#Outputs)
   - [Proof annotation](#Proof-annotation)
@@ -11,38 +11,38 @@
 - [All available options](#All-available-options)
 
 ## Introduction
-Many tools have been developed for *de novo* transposable element (TE) identification. But manual 
-curation is still required for high quality TE annotation by experts. TETrimmer is designed to replace and assistant
-TE manual curation. You can find more details from TETrimmer [flowchart](#Flowchart).
+Many tools have been developed for *de novo* transposable element (TE) identification. However, manual 
+curation is still required for high-quality TE annotation by experts. TETrimmer is designed to replace and assist
+manual TE curation. You can find more details about TETrimmer below [flowchart](#Flowchart).
 
 ## Installation
-You can find required packages from [here](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TE_Trimmer_dependencies). 
+You can find the required packages [here](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TE_Trimmer_dependencies)
 and install them by yourself.
 
 
-**or** for linux system, create conda environment based on [TETrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_linux.yml).
+**or** create `conda` environment in ***Linux*** based on [TETrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_linux.yml).
 ```commandline
 conda env create -f TETrimmer_env_for_linux.yml
 ```
-**or** install by mamba based on [TETrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_linux.yml). 
-We highly recommend install by "mamba" that is much faster. 
+**or** install using mamba based on [TETrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_linux.yml). 
+We highly recommend installation with `mamba`, as it is much faster. 
 
 ```commandline
-# Install mamaba first
+# Install mamba first
 conda install -c conda-forge mamba
 
-# Create TETrimmer environment by mamba
+# Create TETrimmer environment with mamba
 
 mamba env create -f TETrimmer_env_for_linux.yml
 ```
-For Window WSL, you can follow the same instruction used for linux. 
+For ***Windows WSL***, you can follow the same instructions used for Linux. 
 
 
-For macOS, you can use the same instruction but by [TETrimmer_env_for_macOS.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_macOS.yml).
+For ***macOS***, use the following instructions: [TETrimmer_env_for_macOS.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_macOS.yml).
 
-**Currently, macOS yml file isn't usable. Please install according to [dependency file](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_dependencies)**
+**Currently, the macOS yml file is unusable. Please install according to [dependency file](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_dependencies)**
 
-We will develop Conda and Docker packages for TETrimmer.
+We will develop `conda` and `Docker` packages for `TETrimmer`.
 
 ## Usage:
 Use --help to access all [options](#All-available-options)
@@ -50,38 +50,34 @@ Use --help to access all [options](#All-available-options)
 ```commandline
 python {path to TETrimmer}/TETrimmer.py --help
 ```
-## Hardware requirement
+## Hardware requirements
 System: Linux, macOS
 
 RAM:
-- For HPC Linux user, enough RAM has to be assigned. We highly recommend to run it on HPC with at least 40 threads.
+- For HPC Linux users, enough RAM needs to be assigned. We highly recommend to run it on HPC using at least 40 threads and 150 GB RAM.
 
 | Threads | RAM    |
 |---------|--------|
 | 40      | 150 GB |
 | 100     | 400 GB |
 
-- For PC macOS user, because Virtual Memory can be used. You can simply use 20 threads to push the CPU to its limits. We did
-test on Macbook Pro (2020 M1 chip 16 GB) and compared with HPC, you can find the running time here:
+- PC macOS users can use Virtual Memory. Simply assign 20 threads to push the CPU to its limits. We did
+tests on a Macbook Pro (2020 M1 chip, 16 GB RAM) and compared with HPC, you can find the running time here:
 
-| Query sequence number | Platform       | Threads | RAM                    | Running time |
+| Query sequence number | Platform       | Threads | RAM                    | Run time |
 |-----------------------|----------------|---------|------------------------|--------------| 
 | 1700                  | Macbook Pro M1 | 20      | 16 GB + Virtual Memory | 60 hours     |
 | 1700                  | HPC            | 40      | 150 GB                 | 7 hours      | 
 
-- We haven't tested it on WLS of Windows, it should be feasible to run TETrimmer on it too. 
+- We have not tested it on the WLS of Windows, but it should be feasible to run TETrimmer on it as well given sufficient resources. 
 
 ## Test
-```commandline
-# Unittest is performed. 
-python {path to TETrimmer}/test.py
-```
-or
-```commandline
-# The {output directory} must be empty. Unittest is not performed. 
 
-python {path to TETrimmer}/TETrimmer.py --input_file {path to TETrimmer}/tests/test_input.fa \
-                                        --genome_file {path to TETrimmer}/tests/test_genome.fasta \
+- Download the test files [test_input.fa](https://github.com/qjiangzhao/TETrimmer/blob/main/tests/test_input.fa) and [test_genome.fasta](https://github.com/qjiangzhao/TETrimmer/blob/main/tests/test_genome.fasta).
+
+```commandline
+python {path to TETrimmer}/TETrimmer.py --input_file {path to test_input.fa} \
+                                        --genome_file {path to test_genome.fasta} \
                                         --output_dir {output directory} \
                                         --num_threads 10
                                         --species fungi
@@ -90,9 +86,9 @@ python {path to TETrimmer}/TETrimmer.py --input_file {path to TETrimmer}/tests/t
 ```
 ## Inputs
  
-- **TE consensus library**: TETrimmer use the TE consensus library from *de novo* TE annotation tools like RepeatModeler or EDTA as input. 
-For this reason, you have to run RepeatModeler or other TE annotation software first. 
-- **Genome file**
+- **TE consensus library**: TETrimmer uses the TE consensus library from *de novo* TE annotation tools, like `RepeatModeler` or `EDTA`, as input. 
+For this reason, you have to run `RepeatModeler` or other TE annotation software first. 
+- **Genome file**: The genome sequence in FASTA format (.fa or .fasta).
 
 Example:
 
@@ -104,11 +100,11 @@ python {path to TETrimmer}/TETrimmer.py --input_file {TE consensus library} \
                                         --num_threads 10
                                           
 ```
-If you want to **continue the analysis based on previous unfinished result**:
+If you want to **continue the analysis based on results from a previous unfinished run**:
 ```commandline
 python {path to TETrimmer}/TETrimmer.py --input_file {TE consensus library} \
                                         --genome_file {genome file} \
-                                        --output_dir {directory contains previous unfinished result} \
+                                        --output_dir {directory contains previous unfinished results} \
                                         --num_threads 10 \
                                         --continue_analysis
 ```
@@ -124,25 +120,25 @@ More options are available:
 ```commandline
   --genome_anno                   Perform genome TE annotation using the TETrimmer curated database. Requires RepeatMasker.
   --hmm                           Generate HMM files for each consensus sequences.
-  --pfam_dir TEXT                 Pfam database directory. Omit this if you do not have a local PFAM database. TETrimmer will download the database automatically.
+  --pfam_dir TEXT                 PFAM database directory. Omit if you do not have a local PFAM database. TETrimmer will download the database automatically.
   --cons_thr FLOAT                Threshold used for the final consensus sequence generation. Default: 0.8
   --mini_orf INTEGER              Define the minimum ORF length that will be predicted by TETrimmer. Default: 200
   --classify_unknown              Use RepeatClassifier to classify the consensus sequence if the input sequence is not
                                   classified or is unknown.
-  --classify_all                  Use RepeatClassifier to classify every consensus sequence.  WARNING: it will take
-                                  longer time.
+  --classify_all                  Use RepeatClassifier to classify every consensus sequence.  WARNING: this may  take
+                                  a long time.
 ```
 ## Outputs
-- 📁**Classification** - *This folder is used for TEs classification.*  
-- 📁**Multiple_sequence_alignment** - *All raw files will be kept in this folder when < --debug > is enables.*
-  - 📄**error_file.txt** - *Error file to store all error messages, only visible when error were found.*
-- 📁**Single_fasta_files** - *All sequences in the input file will be separated to single fasta files and be stored here.*
-- 📁**TETrimmer_for_proof_annotation** - *This folder contains files used for proof annotation.* 
-  - 📁**Perfect_annotation** - *For each sequence, three files are associate with it (anno.fa; fa; pdf).*
+- 📁**Classification** - *This folder is used for TE classifications.*  
+- 📁**Multiple_sequence_alignment** - *All raw files will be stored in this folder if < --debug > is enabled.*
+  - 📄**error_file.txt** - *Error file to store all error messages, only visible if errors were found.*
+- 📁**Single_fasta_files** - *All sequences in the input file will be separated into single FASTA files and be stored here.*
+- 📁**TETrimmer_for_proof_annotation** - *This folder contains files used for manual inspection of TETrimmer annotations.* 
+  - 📁**Perfect_annotation** - *Three files are associate with each sequence (anno.fa; fa; pdf).*
     - 📄**TE_name.anno.fa** - *Multiple sequence alignment file before cleaning.*
     - 📄**TE_name.fa** - *Multiple sequence alignment file after cleaning.*
     - 📄**TE_name.pdf** - *Plot file used to evaluate output.*
-    - 📄**TE_name.bed** - *Bed file used for further elongation.*
+    - 📄**TE_name.bed** - *BED file used for further sequence elongation.*
   - 📁**Good_annotation** 
   - 📁**Recommend_check_annotation**
   - 📁**Need_check_annotation**
@@ -152,25 +148,24 @@ More options are available:
 - 📄**summary.txt** - *Report file.* 
 - 📄**TETrimmer_consensus.fasta** - *TE consensus library file before de-duplication.*
 - 📄**TETrimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
-- 📄**Sequence_name_mapping.txt** - *This file connects the input sequence names with the TETrimmer modified names.*
+- 📄**Sequence_name_mapping.txt** - *This file connects the input sequence names with the modified names from TETrimmer.*
 
 
-## Proof annotation
-You can use this graphical user interface tool to assistant your proof annotation. We highly recommend to do proof 
-annotation for the TEs in "Recommend_check_annotation" and "Need_check_annotation" folder to achieve high quality TE
-consensus library. 
+## Proof annotation: Manual inspection of TETrimmer annotations
+You can use this graphical user interface tool to assist the manual inspection of TETrimmer-generated annotations. We highly recommend to perform
+manual inspection of TE annotations in the "Recommend_check_annotation" and "Need_check_annotation" folders to generate a high-quality TE
 ```commandline
-# To start the proof annotation GUI tool
+# To start the manual inspection GUI tool
 python {path to TETrimmer}/annoGUI.py -i {path to TETrimmer_for_proof_annotation folder} \
                                       -o {output directory}
 ```
-You can follow the instruction to perform the proof annotation. 
+You can follow these instructions to perform the inspection. 
 ![TETrimmer_interface1](https://www.dropbox.com/scl/fi/mynrf8mokblq9egslpsti/Screenshot-2023-10-29-at-12.19.27.png?rlkey=pozzit1llyteux2rhwxnxnn99&raw=1)
-Those are all files in "Perfect annotation" folder (Click "Perfect annotation" button in the menu bar to show this.)
+The following are files deposited in the "Perfect annotation" folder (Click the "Perfect annotation" button in the menu bar to show this.)
 ![TETrimmer_interfact2](https://www.dropbox.com/scl/fi/4nh0u7xvirieb68c5knnw/Screenshot-2023-10-29-at-12.20.14.png?rlkey=m2nfsevhriennsp5vf9s766zr&raw=1)
 
 ## Benchmarking
-TETrimmer is 6 time more accurate to annotate the intact TE than RepeatModeler for *B.hordei*. 
+TETrimmer is 6-times more accurate to annotate the intact TE than RepeatModeler in case of *Blumeria hordei*. 
 ![Benchmarking1](https://www.dropbox.com/scl/fi/v1ex6txe0mb9200gmtir3/Benchamrking_joined2.png?rlkey=i742b8ykyht0zw885r3mj9u64&raw=1)
 
 ## Acknowledgements
