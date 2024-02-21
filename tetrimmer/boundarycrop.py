@@ -861,10 +861,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         parent_output_dir = os.path.dirname(output_dir)
 
         # Define different levels of proof_annotation folder
-        perfect_proof = os.path.join(proof_annotation_dir, "Perfect_annotation")
-        good_proof = os.path.join(proof_annotation_dir, "Good_annotation")
-        intermediate_proof = os.path.join(proof_annotation_dir, "Recommend_check_annotation")
-        need_check_proof = os.path.join(proof_annotation_dir, "Need_check_annotation")
+        perfect_proof = os.path.join(proof_annotation_dir, "Annotations_perfect")
+        good_proof = os.path.join(proof_annotation_dir, "Annotations_good")
+        intermediate_proof = os.path.join(proof_annotation_dir, "Annotations_check_recommended")
+        need_check_proof = os.path.join(proof_annotation_dir, "Annotations_check_required")
 
         # Create the directory if it does not exist
         os.makedirs(proof_annotation_dir, exist_ok=True)

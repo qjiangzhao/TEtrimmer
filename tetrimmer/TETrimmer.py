@@ -105,7 +105,7 @@ with open(config_path, "r") as config_file:
               help='When the sequence number of multiple sequence alignment (MSA) is greater than <--max_msa_lines>, '
                    'TETrimmer will sort sequences by length and choose <--top_msa_lines> number '
                    'of sequences. Then, TETrimmer will randomly select sequences from all remaining BLAST hits until '
-                   '<--max_msa_lines> sequences are found for the multiple sequence alignment. Default: 70')
+                   '<--max_msa_lines> sequences are found for the multiple sequence alignment. Default: 100')
 @click.option('--min_seq_num', type=int,
               help='The minimum sequence number for each multiple sequence alignment. Note: cannot be smaller than 10. '
                    'Default: 10')

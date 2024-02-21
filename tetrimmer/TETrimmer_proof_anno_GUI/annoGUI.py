@@ -303,8 +303,8 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                 file_count_label.grid(row=i - start, column=3)
 
             # Don't show "Consensus" and "Extension" button for low copy and clustered proof annotation
-            if not source_dir.endswith("Low_copy_TE") and not source_dir.endswith("Clustered_proof_annotation")\
-                    and not source_dir.endswith("Skipped_TE"):
+            if not source_dir.endswith("TE_low_copy") and not source_dir.endswith("Clustered_proof_annotation")\
+                    and not source_dir.endswith("TE_skipped"):
                 # Create "Consensus" button inside button_frame
                 copy_button = Button(button_frame, text="Consensus", bg='white', fg='black')
                 copy_button.grid(row=0, column=0, padx=5)
@@ -319,14 +319,14 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                 more_extend_button.bind('<Button-1>', copy_file(filename, more_extend_button, need_more_extension,
                                                                 source_dir, root))
             # Add rescue button for skipped TE
-            if os.path.basename(source_dir) == "Skipped_TE":
+            if os.path.basename(source_dir) == "TE_skipped":
                 rescue_skip_button = Button(button_frame, text="Rescue skip", bg='white', fg='black')
                 rescue_skip_button.grid(row=0, column=1, padx=5)
                 rescue_skip_button.bind('<Button-1>', copy_file(filename, rescue_skip_button, rescue_skip_elements,
                                                                 source_dir, root))
 
             # Add "Save to low copy" button for low copy TE
-            if os.path.basename(source_dir) == "Low_copy_TE":
+            if os.path.basename(source_dir) == "TE_low_copy":
                 # Define "Low_copy" button with specific source and destination folder
                 low_copy_button = Button(button_frame, text="Save to low copy", bg='white', fg='black')
                 low_copy_button.grid(row=0, column=1, padx=5)
@@ -545,7 +545,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     # Show menu on the window
     root.configure(menu=menubar)
 
-    annotation_folders = ["Clustered_proof_annotation", "Low_copy_TE", "Skipped_TE"]
+    annotation_folders = ["Clustered_proof_annotation", "TE_low_copy", "TE_skipped"]
 
     # Create sub-menu
     for annotation in annotation_folders:
@@ -560,7 +560,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                                                        "Error", "Please use the correct input directory."
                                                                 " three folder should be contained in your input path, "
                                                                 "including 'Clustered_proof_annotation', "
-                                                                "'Skipped_TE', and 'Low_copy_TE'"))
+                                                                "'TE_skipped', and 'TE_low_copy'"))
             continue
 
         # Sort files inside each folder
