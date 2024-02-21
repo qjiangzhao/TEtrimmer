@@ -6,10 +6,10 @@ setup(
     version='1.1.6',
     description="a tool to replace transposable element manual curation. TE Trimmer won't do TE de novo annotation but use the output from other annotation tools like RepeatModeler, REPET, and EDTA",
     license="MIT",
-    author="Jiangzhao Qian",
-    author_email='jqian@bio1.rwth-aachen.de',
+    author="Jiangzhao Qian; Hang Xue",
+    author_email='jqian@bio1.rwth-aachen.de; hang_xue@berkeley.edu',
     url='https://github.com/qjiangzhao/TETrimmer',
-    include_package_data=True, # this is set to True because there are non .py files (eg. R)
+    include_package_data=True,  # this is set to True because there are non .py files (eg. R)
     packages=find_packages(include=('tetrimmer', 'tetrimmer.*')), 
     package_data={'tetrimmer': ['TETrimmer_proof_anno_GUI/*', 'TE-Aid-master/*']},
     entry_points={
