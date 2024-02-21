@@ -1,9 +1,9 @@
 package:
   name: tetrimmer
-  version: "1.1.6"
+  version: "1.1.7"
 
 source:
-  path: /Users/hangxue/Documents/Wildermuth_Lab/TETrimmer 
+  path: ..
 
 build:
   number: 0
@@ -14,7 +14,7 @@ build:
     # - mkdir -p $PREFIX/bin/TETrimmer/tetrimmer
     # - cp -r $SRC_DIR/tetrimmer/* $PREFIX/bin/TETrimmer/tetrimmer  # Copy all contents from your bin directory
   entry_points:
-    - tetrimmer=tetrimmer.TETrimmer:cli
+    - tetrimmer=tetrimmer.TETrimmer:main
 
 
 requirements:
