@@ -318,7 +318,6 @@ def drawMiniAlignment(arr, nams, outfile, start_point, end_point,
         return False
 
 
-
 #########################################################################
 # This code is derived from CIAlign https://github.com/KatyBrown/CIAlign
 #########################################################################

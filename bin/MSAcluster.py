@@ -236,6 +236,24 @@ def process_labels(input_file, filtered_cluster_records):
     return bed_dfs
 
 
+def subset_alignment_dis(filtered_cluster_records, output_dir, input_align_dis_path):
+    """
+    This function will subset the input file means the pattern MSA.
+    """
+    output_file_list = []
+    alignment_dis = AlignIO.read(input_align_dis_path, 'fasta')
+    for i, cluster in enumerate(filtered_cluster_records):
+        output_file = os.path.join(output_dir, f"{os.path.basename(input_align_dis_path)}_g_{i + 1}.fa")
+        with open(output_file, 'w') as file:
+            for seq_id in cluster:
+                record = [seq for seq in alignment_dis if seq.id.split("(")[0] == seq_id.split("_")[0]]
+                if record:
+                    record = record[0]
+                    file.write(f'>{record.id}\n')
+                    file.write(f'{record.seq}\n')
+        output_file_list.append(output_file)
+
+
 def subset_bed_file(input_file, bed_dfs, output_dir):
     """
     Subset the given BED files by clusters.
@@ -269,7 +287,7 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
     :return: A list of subset pattern alignments and BED files
     """
 
-    # When the input file is after multiple sequence alignment, don't do this again here
+    # When the input file is after multiple sequence alignment, don't do multiple sequence alignment again here
     if input_msa is None:
         # Align_sequences will return the absolute file path of alignment file
         if fast_mode:
@@ -312,6 +330,8 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
         filtered_cluster_records, if_cluster = cluster_msa_iqtree_DBSCAN(pattern_alignment,
                                                                          min_cluster_size=min_length_num,
                                                                          max_cluster=cluster_num)
+        # Turn on the next line of code when need the separated MSA
+        # subset_alignment_dis(filtered_cluster_records, output_dir, pattern_alignment)
     # if false, meaning no enough divergent column for cluster
     # Do full length alignment cluster and only keep the biggest cluster
     else:

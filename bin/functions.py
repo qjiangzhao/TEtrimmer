@@ -12,6 +12,7 @@ import pandas.errors
 from seqclass import SeqObject
 import numpy as np
 from PyPDF2 import PdfMerger, PdfFileReader, PdfFileWriter
+import ruptures as rpt
 
 
 def prcyan(text):
@@ -2096,7 +2097,6 @@ def calculate_con_coverage_num(consensus_file, blast_file):
     with open(blast_file, 'r') as f:
         for line in f:
             parts = line.split()
-            # Assuming the format is: query_id subject_id %identity alignment_length mismatches gap_opens q.start q.end s.start s.end evalue bit_score
             start, end = int(parts[6]), int(parts[7])
             # Adjust for Python's 0-based indexing and ensure the positions are within the consensus length
             start, end = max(1, start), min(end, cons_len)
@@ -2105,3 +2105,22 @@ def calculate_con_coverage_num(consensus_file, blast_file):
 
     return coverage
 
+
+def detect_change_points(coverage, penalty_value):
+    # only use the first left and first right selection
+    # the section length must greater than 20 bp
+    # the coverage average must smaller than 5
+    # 
+
+    # Ensure coverage is a numpy array
+    coverage_array = np.array(coverage)
+
+    # Define the PELT model and fit it to the data
+    model = "l1"  # L1 norm
+    algo = rpt.Pelt(model=model, min_size=1, penalty=penalty_value)
+
+    # Fit the model and predict change points
+    algo.fit(coverage_array)
+    change_points = algo.predict()
+
+    return change_points
