@@ -2,7 +2,7 @@
   "default": {
     "cons_thr": 0.7,
     "max_msa_lines": 100,
-    "top_msa_lines": 70,
+    "top_msa_lines": 100,
     "min_seq_num": 10,
     "min_blast_len": 150,
     "ext_thr": 0.7,
@@ -22,7 +22,7 @@
   "divergent": {
     "cons_thr": 0.6,
     "max_msa_lines": 100,
-    "top_msa_lines": 70,
+    "top_msa_lines": 100,
     "min_seq_num": 10,
     "min_blast_len": 150,
     "ext_thr": 0.6,
