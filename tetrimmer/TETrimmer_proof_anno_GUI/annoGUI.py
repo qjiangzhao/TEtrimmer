@@ -105,7 +105,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     # Initialize Tk window
     root = Tk()
     root.title("TETrimmer proof annotation tool")
-    root.geometry('1200x800')
+    root.geometry('1200x900')
 
     # Create canvas on root
     canvas = Canvas(root, bg='white')
@@ -167,26 +167,30 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                "   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝\n"\
 
 
-    initial_text = "TETrimmer proof annotation assistant tool\n\n" \
+    initial_text = "TETrimmer manual proof annotation assistant tool\n\n" \
                    "Introduction:\n\n" \
-                   "We highly recommend to do proof annotation to increase your TE annotation quality.\n\n"\
-                   "1, Click the buttons in the menu bar, which corresponds to the different annotation status.\n\n" \
-                   "2, All files in the chose folder (menu button) will be displayed.\n\n" \
-                   "3, For each TE output, you can find four files including <seq_name.anno.fa>, <seq_name.fa>, <seq_name.bed>, and " \
-                   "<seq_name.pdf>.\n\n" \
-                   "   <seq_name.anno.fa> is the multiple sequence alignment (MSA) file before cleaning\n" \
-                   "   <seq_name.fa> is the multiple sequence alignment (MSA) file after cleaning\n" \
-                   "   <seq_name.pdf> contains four plots used to evaluate annotation quality\n" \
-                   "   <seq_name.bed> contains sequence position information at the genome of MSA. Used for further extension.\n\n" \
-                   "4, Double click <seq_name.pdf> and evaluate annotation quality.\n\n" \
-                   "5, If you are satisfied with the result, click 'Consensus' button behind <seq_name.fa>. This MSA " \
-                   "file will go to <Proof_annotation_consensus_folder>.\n\n" \
-                   "6, If you are not satisfied, double click <seq_name.fa> or <seq_name.anno.fa> to modify MSA and " \
+                   "We highly recommend to do manual proof annotation to increase your TE annotation quality.\n\n"\
+                   "1, Click the <Clustered_proof_annotation> buttons in the menu bar.\n\n" \
+                   "   All clusters will be displayed. TEs with more than 90% identity are placed into one cluster.\n\n" \
+                   "2, Click each <Cluster> button.\n\n" \
+                   "   For each TE, you can find four files: \n" \
+                   "     <seq_name.anno.fa>: the multiple sequence alignment (MSA) file before cleaning\n" \
+                   "     <seq_name.fa>: the multiple sequence alignment (MSA) file after cleaning\n" \
+                   "     <seq_name.pdf>: the report file contains 7 plots used to evaluate annotation quality\n" \
+                   "     <seq_name.bed>: the MSA bed file. Used for further MSA extension.\n\n" \
+                   "   More than one type of TE can be found, theoretically, you only need to choose one from each cluster.\n\n"\
+                   "3, Double click <seq_name.pdf> and evaluate annotation quality.\n\n" \
+                   "4, If you are satisfied with the result, click <Consensus> button behind <seq_name.fa>.\n" \
+                   "   This MSA file goes to <Proof_annotation_consensus_folder>.\n\n" \
+                   "   If you are not satisfied, click <seq_name.fa> or <seq_name.anno.fa> to modify MSA and " \
                    "save it to consensus folder.\n\n" \
-                   "7, If you want more extension for the MSA, click 'Extension' behind <seq_name.bed> and this " \
-                   "bed file will be salved to <Proof_annotation_need_more_extension> folder.\n\n" \
-                   "8, For low copy element, check the pdf file and decide if to include it into the final consensus " \
-                   "library. Note: low copy element do not have multiple sequence alignment file"
+                   "   If you want more extension for the MSA, click <Extension> behind <seq_name.bed>\n" \
+                   "   This bed file is salved to <Proof_annotation_need_more_extension> folder.\n\n" \
+                   "   If you want to use the original input TE, click <Use input> behind <seq_name.pdf>\n" \
+                   "   The pdf report file goes to <Proof_annotation_use_input_sequence>.\n\n"\
+                   "5, For skipped and low copy elements, check the pdf file and decide if to include it into " \
+                   "the final consensus library.\n"\
+                   "   Note: Skipped and low copy elements do not have multiple sequence alignment files"
 
     # Display ASCII logo with 'Courier' font
     if os_type == "Linux":
