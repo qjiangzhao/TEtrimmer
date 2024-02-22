@@ -215,7 +215,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
         print(
             "TE Trimmer is modifying sequence names; any occurrence of '/', '-', ':', '...', '|' and empty spaces before '#' "
             "will be converted to '_'.\n"
-            "You can find the original and modified names in the 'Name_mapping.txt' file in the output directory.\n")
+            "You can find the original and modified names in the 'Sequence_name_mapping.txt' file in the output directory.\n")
         # Initialize the name mapping file
         name_mapping_file = os.path.join(os.path.dirname(output_dir), "Sequence_name_mapping.txt")
 

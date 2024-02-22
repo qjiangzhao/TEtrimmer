@@ -1,6 +1,6 @@
 package:
   name: tetrimmer
-  version: "1.1.7"
+  version: "1.1.8"
 
 source:
   path: ..
@@ -8,11 +8,6 @@ source:
 build:
   number: 0
   script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
-    # - python setup.py install --single-version-externally-managed --record=record.txt
-    # - chmod +x $SRC_DIR/tetrimmer/TETrimmer.py  # Set execute permission for the main script
-    # - mkdir -p $PREFIX/bin/TETrimmer  # Create a directory in the conda environment
-    # - mkdir -p $PREFIX/bin/TETrimmer/tetrimmer
-    # - cp -r $SRC_DIR/tetrimmer/* $PREFIX/bin/TETrimmer/tetrimmer  # Copy all contents from your bin directory
   entry_points:
     - tetrimmer=tetrimmer.TETrimmer:main
 
@@ -41,7 +36,7 @@ requirements:
     - pfam_scan >=1.6
     - pypdf2 >=2.11.1
     - regex >=2023.10.3
-    - repeatmodeler=2.0.1  # Modified
+    - repeatmodeler=2.0.1  
     - repeatmasker
     - requests >=2.31.0
     - samtools >=1.18

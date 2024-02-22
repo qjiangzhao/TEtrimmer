@@ -41,7 +41,7 @@ with open(config_path, "r") as config_file:
                   ██║   ███████╗   ██║   ██║  ██║██║██║ ╚═╝ ██║██║ ╚═╝ ██║███████╗██║  ██║
                   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝
                   
-                Version: v1.1.1 (11/Jan/2024) 
+                Version: v1.1.6 (21/Feb/2024) 
 
                 Github: https://github.com/qjiangzhao/TETrimmer
 
@@ -69,23 +69,31 @@ with open(config_path, "r") as config_file:
 @click.option('--input_file', '-i', required=True, type=str,
               help='Path to TE consensus file (FASTA format). Use the output from RepeatModeler, EDTA, REPET, et al.')
 @click.option('--genome_file', '-g', required=True, type=str,
-              help='Path to genome FASTA file.')
+              help='Path to genome FASTA file (FASTA format).')
 @click.option('--output_dir', '-o', default=os.getcwd(), type=str,
-              help='Output directory. Default: current working directory.')
-@click.option('--preset', '-s', default='default', type=click.Choice(preset_config.keys()),
-              help='Select the type of organism for which to run TETrimmer.')
+              help='Path to output directory. Default: current working directory.')
+@click.option('--preset', '-s', default='conserved', type=click.Choice(preset_config.keys()),
+              help='Choose one preset config (conserved or divergent).')
 #@click.option('--engine', '-e', default='blast', type=click.Choice(["blast", "mmseqs"]),
 #             help='Select the similar sequence search engine. "blast" or "mmseqs". Default: blast')
+@click.option('--num_threads', '-t', default=10, type=int,
+              help='Thread number used for TETrimmer. Default: 10')
+@click.option('--classify_unknown', default=False, is_flag=True,
+              help='Use RepeatClassifier to classify the consensus sequence if the input sequence is not classified or '
+                   'is unknown or the processed sequence length by TETrimmer is 2000 bp longer or shorter '
+                   'than the query sequence.')
+@click.option('--classify_all', default=False, is_flag=True,
+              help='Use RepeatClassifier to classify every consensus sequence. WARNING: This may take a long time.')
 @click.option('--continue_analysis', '-ca', default=False, is_flag=True,
-              help='Continue analysis after interruption.')
+              help='Continue from previous unfinished TETrimmer run and would use the same output directory.')
 @click.option('--dedup', default=False, is_flag=True,
               help='Remove duplicate sequences in input file.')
 @click.option('--genome_anno', '-ga', default=False, is_flag=True,
-              help='Perform genome TE annotation using the TETrimmer curated database. Requires RepeatMasker.')
+              help='Perform genome TE annotation using RepeatMasker with the TETrimmer curated TE libraries.')
 @click.option('--hmm', default=False, is_flag=True,
-              help='Generate HMM files for each consensus sequence.')
+              help='Generate HMM files for each processed consensus sequence.')
 @click.option('--debug', default=False, is_flag=True,
-              help='Open debug mode. This will keep all raw files. WARNING: Many files will be generated.')
+              help='debug mode. This will keep all raw files. WARNING: Many files will be generated.')
 @click.option('--fast_mode', default=False, is_flag=True,
               help='Reduce running time at the cost of lower accuracy and specificity.')
 #@click.option('--plot_query', default=False, is_flag=True,
@@ -93,51 +101,54 @@ with open(config_path, "r") as config_file:
 #@click.option('--plot_skip', default=False, is_flag=True,
 #              help='Generate TE_Aid plot for skipped elements.')
 @click.option('--pfam_dir', '-pd', default=None, type=str,
-              help='PFAM database directory. Omit this option if you do not have a local PFAM database '
-                   'TETrimmer will download the database automatically in this case.')
+              help='Pfam database directory. TE Trimmer will download the database automatically. ' 
+                    'Only turn on this option if you want to use a local PFAM database or the automatic download fails.')
 @click.option('--cons_thr', type=float,
-              help='Threshold used for the final consensus sequence generation. Default: 0.8')
+              help='The minimum level of agreement required at a given position in the alignment ' 
+                    'for a consensus character to be called. Default: 0.8')
 @click.option('--mini_orf', type=int,
               help='Define the minimum ORF length to be predicted by TETrimmer. Default: 200')
 @click.option('--max_msa_lines', type=int,
-              help='Set the maximum sequence number for multiple sequence alignment. Default: 100')
+              help='Set the maximum number of sequences to be included in a multiple sequence alignment. Default: 100')
 @click.option('--top_msa_lines', type=int,
-              help='When the sequence number of multiple sequence alignment (MSA) is greater than <--max_msa_lines>, '
-                   'TETrimmer will sort sequences by length and choose <--top_msa_lines> number '
-                   'of sequences. Then, TETrimmer will randomly select sequences from all remaining BLAST hits until '
-                   '<--max_msa_lines> sequences are found for the multiple sequence alignment. Default: 100')
+              help='If the sequence number of multiple sequence alignment (MSA) is greater than <max_msa_lines>, ' 
+                    'TETrimmer will first sort sequences by length and choose <top_msa_lines> number of sequences. ' 
+                    'Then, TETrimmer will randomly select sequences from all remaining BLAST hits until <max_msa_lines>' 
+                    'sequences are found for the multiple sequence alignment. Default: 100')
 @click.option('--min_seq_num', type=int,
-              help='The minimum sequence number for each multiple sequence alignment. Note: cannot be smaller than 10. '
+              help='The minimum blast hit number required for the input sequence. We do not recommend decreasing this number. '
                    'Default: 10')
 @click.option('--min_blast_len', type=int,
-              help='The minimum sequence length for BLAST hits. Default: 150')
+              help='The minimum sequence length for blast hits to be included for further analysis. Default: 150')
 @click.option('--max_cluster_num', default=2, type=int,
-              help='The maximum cluster number for each multiple sequence alignment. Each multiple sequence alignment '
-                   'can be divided into different clusters. TETrimmer will sort clusters by sequence number and choose '
-                   'the top <--max_cluster_num> of clusters for further analysis. WARNING: A large number of clusters '
-                   'will dramatically increase running time. Default: 2')
+              help='The maximum number of clusters assigned in each multiple sequence alignment. '
+                   'Each multiple sequence alignment can be grouped into different clusters based on alignment patterns '
+                   'WARNING: using a larger number will potentially result in more accurate consensus results but will '
+                   'significantly increase the running time. We do not recommend increasing this value to over 5. Default: 2')
 @click.option('--ext_thr', type=float,
-              help="Sequence similarity threshold used for defining start and end of the consensus sequence, based on "
-                   "the multiple sequence alignment. Nucleotides in each position with a similarity proportion smaller "
-                   "than <--ext_thr> will be assigned the value N. If no N values are found, the algorithm will extend "
-                   "the multiple sequence alignment to determine the limits of the consensus sequence. The lower the value "
-                   "of <--ext_thr>, the longer the extensions on both ends. "
-                   "Reduce <--ext_thr> if TETrimmer fails to determine the correct ends of repeat elements. Default: 0.7")
+              help='The threshold to call “N” at a position. For example, if the most conserved nucleotide in a MSA column' 
+                    'has proportion smaller than <ext_thr>, a “N” will be called at this position. Used with <ext_check_win>. ' 
+                    'The lower the value of <ext_thr>, the more likely to get longer the extensions on both ends. '
+                    'You can try reducing <ext_thr> if TETrimmer fails to find full-length TEs. Default: 0.7')
 @click.option('--ext_check_win', type=str,
-              help='Define check window size for extension. Default: 150')
+              help='the check windows size during defining start and end of the consensus sequence based on the multiple '
+                    'sequence alignment. Used with <ext_thr>. If <ext_check_win> bp at the end of multiple sequence alignment ' 
+                    'has “N” present (ie. positions have similarity proportion smaller than <ext_thr>), the extension will stop, '
+                    'which defines the edge of the consensus sequence. Default: 150')
 @click.option('--ext_step', type=int,
-              help='Number of nucleotides to be added to the left and right ends of the multiple sequence alignment. '
-                   'TETrimmer will iteratively add <--ext_step> number of nucleotides until finding the boundary. '
-                   'Default: 1000')
+              help='the number of nucleotides to be added to the left and right ends of the multiple sequence alignment in each '
+                    'extension step. TE_Trimmer will iteratively add <ext_step> nucleotides until finding the TE boundary or '
+                    'reaching <max_ext>. Default: 1000')
 @click.option('--max_ext', type=int,
               help='The maximum extension in nucleotides at both ends of the multiple sequence alignment. Default: 7000')
 @click.option('--gap_thr', type=float,
-              help='If multiple sequence alignment positions (columns) have a gap proportion larger than <--gap_thr> '
-                   'and the proportion of the most common nucleotide in this column is less than <--gap_nul_thr>, '
-                   'this column will be removed from the consensus. Default: 0.4')
+              help='If a single column in the multiple sequence alignment has a gap proportion larger than <gap_thr> '
+                    'and the proportion of the most common nucleotide in this column is less than <gap_nul_thr>, '
+                    'this column will be removed from the consensus. Default: 0.4')
 @click.option('--gap_nul_thr', type=float,
-              help='Set nucleotide proportion threshold for keeping the column of the multiple sequence alignment. '
-                   'Used with the <--gap_thr> option. Default: 0.7')
+              help='The nucleotide proportion threshold for keeping the column of the multiple sequence alignment. '
+                    'Used with the <gap_thr> option. i.e. if this column has <40% gap and the portion of T (or any other) nucleotide ' 
+                    'is >70% in this particular column, this column will be kept. Default: 0.7')
 @click.option('--crop_end_div_thr', type=float,
               help='The crop end by divergence function will convert each nucleotide in the multiple sequence '
                    'alignment into a proportion value. This function will iteratively choose a sliding window from '
@@ -152,7 +163,7 @@ with open(config_path, "r") as config_file:
                    'of gap proportions is smaller than <--crop_end_gap_thr>. Cropped nucleotides will be converted to -. '
                    'Default: 0.1')
 @click.option('--crop_end_gap_win', type=int,
-              help='Define window size used to crop end by gap, used with the <--crop_end_gap_thr> option. Default: 250')
+              help='Define window size used to crop end by gap. Used with the <--crop_end_gap_thr> option. Default: 250')
 @click.option('--start_patterns', type=str,
               help='LTR elements always start with a conserved sequence pattern. TETrimmer searches the '
                    'beginning of the consensus sequence for these patterns. If the pattern is not found, '
@@ -169,14 +180,6 @@ with open(config_path, "r") as config_file:
                    'if the pattern is found. Note: The user can provide multiple LTR end patterns in a '
                    'comma-separated list, like: CA,TA,GA (no spaces; the order of patterns determines '
                    'the priority for the search). Default: CA')
-@click.option('--num_threads', '-t', default=10, type=int,
-              help='Thread number used for TETrimmer. Default: 10')
-@click.option('--classify_unknown', default=False, is_flag=True,
-              help='Use RepeatClassifier to classify the consensus sequence if the input sequence is not classified or '
-                   'is unknown or the processed sequence length by TETrimmer is 2000 bp longer or shorter '
-                   'than the query sequence.')
-@click.option('--classify_all', default=False, is_flag=True,
-              help='Use RepeatClassifier to classify every consensus sequence. WARNING: This may take a long time.')
 
 def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_blast_len, num_threads, max_msa_lines,
          top_msa_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ext_step,
