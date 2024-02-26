@@ -823,6 +823,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         pass
 
     try:
+        if dotplot_pdf is None:
+            pass
         # Because dotmatcher can't change output size, scale it up to make it more clear in the merged pdf
         scale_dotplot_pdf = scale_single_page_pdf(dotplot_pdf, f"{dotplot_pdf}_su.pdf", scale_ratio=2)
         dotplot_pdf = scale_dotplot_pdf

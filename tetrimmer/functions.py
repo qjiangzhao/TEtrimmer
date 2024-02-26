@@ -1863,12 +1863,12 @@ def dotplot(sequence1, sequence2, output_dir):
     except FileNotFoundError:
         prcyan("\n'dotmatcher' command not found. Please ensure 'emboss' is installed correctly.")
         prgre("\ndotmatcher does not affect the final consensus sequence. You can choose to ignore this error.\n")
-        raise Exception
+        return None
 
     except subprocess.CalledProcessError as e:
         prcyan(f"\n'dotmatcher' failed for {n_after_tetrimmer} with error code {e.returncode}")
         prgre("\ndotmatcher does not affect the final consensus sequence. You can choose to ignore this error.")
-        raise Exception
+        return None
 
     # Define command to convert ps to pdf
     ps2pdf_command = [
@@ -1883,12 +1883,12 @@ def dotplot(sequence1, sequence2, output_dir):
     except FileNotFoundError:
         prcyan("\n'ps2pdf' command not found. Please install it with 'sudo apt-get install ghostscript'")
         prgre("ps2pdf does not affect the final consensus sequence. You can choose to ignore this error.")
-        raise Exception
+        return None
 
     except subprocess.CalledProcessError as e:
         prcyan(f"\n'ps2pdf' failed for {n_after_tetrimmer} with error code {e.returncode}")
         prgre("\nps2pdf does not affect the final consensus sequence. You can choose to ignore this error.\n")
-        raise Exception
+        return None
 
     return pdf_out
 

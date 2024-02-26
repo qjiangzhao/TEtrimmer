@@ -275,8 +275,8 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                     SeqIO.write(record, output_file, 'fasta')
 
             if detected_pound:
-                print("TETrimmer detected instances of '#' in your input FASTA sequence headers. The string before '#' is denoted as the "
-                      "seq_name, and the string after '#' is denoted as the TE type.\n")
+                print("TETrimmer detected instances of '#' in your input FASTA sequence headers. The string before "
+                      "'#' is denoted as the seq_name, and the string after '#' is denoted as the TE type.\n")
         print("Finish to generate single sequence files.\n")
 
     elif continue_analysis:
@@ -299,21 +299,22 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
     
     return seq_list, single_fasta_n
 
+
 def repeatmasker_classification(final_unknown_con_file, final_classified_con_file, classification_dir, num_threads, progress_file, \
                                 final_con_file, proof_annotation_dir, perfect_proof, good_proof, intermediate_proof, \
                                 need_check_proof, low_copy_dir, hmm, hmm_dir):
     if os.path.exists(final_unknown_con_file) and os.path.exists(final_classified_con_file):
         temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmasker_classification")
+        reclassified_recording_path = os.path.join(temp_repeatmasker_dir, "Reclassified_recoring.txt")
         os.makedirs(temp_repeatmasker_dir, exist_ok=True)
         classification_out = repeatmasker(final_unknown_con_file, final_classified_con_file,
-                                            temp_repeatmasker_dir,
-                                            thread=num_threads, classify=True)
+                                          temp_repeatmasker_dir, thread=num_threads, classify=True)
 
         if classification_out:
             repeatmasker_out = os.path.join(temp_repeatmasker_dir,
                                             "temp_TETrimmer_unknown_consensus.fasta.out")
             reclassified_dict = repeatmasker_output_classify(repeatmasker_out, progress_file,
-                                                                min_iden=60, min_len=80, min_cov=0.5)
+                                                             min_iden=70, min_len=80, min_cov=0.5)
             if reclassified_dict:
                 click.echo(
                     f"\n{len(reclassified_dict)} TE elements were re-classified by the "
@@ -329,14 +330,22 @@ def repeatmasker_classification(final_unknown_con_file, final_classified_con_fil
                 rename_files_based_on_dict(low_copy_dir, reclassified_dict, seq_name=True)
                 if hmm:
                     rename_files_based_on_dict(hmm_dir, reclassified_dict)
+
+                # Write reclassified ID into a file
+                # Open the file for writing
+                with open(reclassified_recording_path, 'w') as file:
+                    # Iterate through the dictionary and write each key-value pair to the file
+                    for key, value in reclassified_dict.items():
+                        file.write(f'{key}\t{value}\n')
+
             else:
                 click.echo("0 TE elements were re-classified by the final classification module.")
 
     else:
         prcyan(f"\nThe final classification module failed.")
-        prgre("\nThis does not affect the final TE consensus sequences "
-                "You can choose to ignore this error.\n")
-        
+        prgre("\nThis does not affect the final TE consensus sequences You can choose to ignore this error.\n")
+
+
 def merge_cons(classification_dir, final_con_file, progress_file, cd_hit_est_final_merged, num_threads):
     # Do first round of CD-HIT-EST
     cd_hit_merge_output_round1 = os.path.join(classification_dir, "TETrimmer_consensus_merged_round1.fasta")
