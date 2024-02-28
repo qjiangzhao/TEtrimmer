@@ -16,7 +16,7 @@ curation is still required for high-quality TE annotation by experts. TETrimmer 
 manual TE curation. You can find more details about TETrimmer below [flowchart](#Flowchart).
 
 ## Manual
-[TETrimmerManual.pdf](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmerManual.pdf). 
+[TETrimmerManual.pdf](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmerv1.1.9Manual.pdf) 
 
 ## Installation
 Install Conda package for TETrimmer. Note: TETrimmer installation requires python=3.10. 
@@ -30,14 +30,12 @@ conda activate tetrimmerenv
 # Install mamba 
 conda install -c conda-forge mamba
 # Install TETrimmer 
-mamba install -c bioconda tetrimmer
+mamba install qianjiangzhao::tetrimmer
 # Display options of TETrimmer 
 tetrimmer --help
 ```
-**or** use docker image for TETrimmer.
-```commandline
-docker pull Ralphlab/TETrimmer
-```
+We are working on uploading the package to the Bioconda channel and containerizing it. 
+
 **or** install the required dependencies as listed here (https://github.com/qjiangzhao/TETrimmer/blob/main/TETrimmer_dependencies) and clone the github repository for TETrimmer.
 
 **or** install using mamba based on [TETrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_linux.yml). 
@@ -115,7 +113,7 @@ tetrimmer --input_file {TE consensus library} \
           --num_threads 10 \
           --continue_analysis
 ```
-If you want to **combine files from different sources for the input file, we recommend removing duplicate sequences during processing. This step can potentially save overall run time.s** in the input file:
+If you want to **combine files from different sources for the input file, we recommend removing duplicate sequences during processing. This step can potentially save overall run time in the input file**:
 ```commandline
 tetrimmer --input_file {TE consensus library} \
           --genome_file {genome file} \

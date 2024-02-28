@@ -3,10 +3,10 @@ from setuptools import setup, find_packages
 
 setup(
     name='tetrimmer',
-    version='1.1.8',
+    version='1.1.9',
     description="a tool to replace transposable element manual curation. TE Trimmer won't do TE de novo annotation but use the output from other annotation tools like RepeatModeler, REPET, and EDTA",
-    license="MIT",
-    author="Jiangzhao Qian",
+    license="GPLv3",
+    author="Jiangzhao Qian; Hang Xue",
     author_email='jqian@bio1.rwth-aachen.de;  hang_xue@berkeley.edu',
     url='https://github.com/qjiangzhao/TETrimmer',
     include_package_data=True, # this is set to True because there are non .py files (eg. R)

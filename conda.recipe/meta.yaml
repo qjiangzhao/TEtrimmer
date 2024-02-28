@@ -1,6 +1,6 @@
 package:
   name: tetrimmer
-  version: "1.1.8"
+  version: "1.1.9"
 
 source:
   path: ..
@@ -15,10 +15,10 @@ build:
 requirements:
   host:
     - python >=3.8,<3.11
-    - perl >=5.26.2,<5.26.3.0a0
-    - r-base >=4.3.2
   run:
     - python >=3.8,<3.11
+    - perl >=5.26.2,<5.26.3.0a0
+    - r-base >=4.3.2
     - blast=2.5.0
     - rmblast=2.10.0
     - biopython >=1.81
@@ -56,7 +56,7 @@ test:
     
 about:
   home: https://github.com/qjiangzhao/TETrimmer.git
-  license: MIT
+  license: GPLv3
   summary: "TETrimmer is designed to replace and assistant TE manual curation."
 
 extra:
