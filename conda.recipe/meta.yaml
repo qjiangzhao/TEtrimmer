@@ -1,6 +1,8 @@
+{% set data = load_setup_py_data() %}
+
 package:
   name: tetrimmer
-  version: "1.1.9"
+  version: {{ data['version'] }}
 
 source:
   path: ..
@@ -18,7 +20,7 @@ requirements:
   run:
     - python >=3.8,<3.11
     - perl >=5.26.2,<5.26.3.0a0
-    - r-base >=4.3.2
+    - r-base
     - blast=2.5.0
     - rmblast=2.10.0
     - biopython >=1.81
@@ -49,6 +51,7 @@ requirements:
     - nseg >=1.0.1
     - recon >=1.08
     - trf >=4.09.1
+    - ghostscript
 
 test:
   imports:

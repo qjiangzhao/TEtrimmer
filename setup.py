@@ -1,9 +1,12 @@
 from setuptools import setup, find_packages
 
+version = {}
+with open('tetrimmer/_version.py', mode='r') as version_file:
+    exec(version_file.read(), version)
 
 setup(
     name='tetrimmer',
-    version='1.1.9',
+    version= version['__version__'],
     description="a tool to replace transposable element manual curation. TE Trimmer won't do TE de novo annotation but use the output from other annotation tools like RepeatModeler, REPET, and EDTA",
     license="GPLv3",
     author="Jiangzhao Qian; Hang Xue",
@@ -21,7 +24,7 @@ setup(
         'numpy>=1.26.0',
         'python',
         'perl>=5.26.2',
-        'r-base>=4.3.2',
+        'r-base>=4.2.1',
         'biopython>=1.81',
         'matplotlib>=3.8.1',
         'multiprocess>=0.70.15',
@@ -46,7 +49,8 @@ setup(
         'dataclasses',
         'repeatmodeler==2.0.1',
         'muscle==3.8',
-        'iqtree>=2.2.5'
+        'iqtree>=2.2.5',
+        'ghostscript'
     ],
     keywords='tetrimmer',
     classifiers=[

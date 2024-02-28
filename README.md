@@ -16,7 +16,8 @@ curation is still required for high-quality TE annotation by experts. TETrimmer 
 manual TE curation. You can find more details about TETrimmer below [flowchart](#Flowchart).
 
 ## Manual
-[TETrimmerManual.pdf](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmerv1.1.9Manual.pdf) 
+For detailed instructions, including installation steps, usage options, example outputs, and more, 
+please refer to[TETrimmerv1.1.9Manual.pdf](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmerv1.1.9Manual.pdf) 
 
 ## Installation
 Install Conda package for TETrimmer. Note: TETrimmer installation requires python=3.10. 
@@ -168,8 +169,7 @@ You can use this graphical user interface tool to assist the manual inspection o
 manual inspection of TE annotations in the "Recommend_check_annotation" and "Need_check_annotation" folders to generate a high-quality TE
 ```commandline
 # To start the manual inspection GUI tool
-python {path to TETrimmer}/annoGUI.py -i {path to TETrimmer_for_proof_annotation folder} \
-                                      -o {output directory}
+python <path to your output_directory>/TETrimmer_for_proof_annotation/TETrimmer_proof_anno_GUI/annoGUI.py
 ```
 You can follow these instructions to perform the inspection. 
 ![TETrimmer_interface1](https://www.dropbox.com/scl/fi/mynrf8mokblq9egslpsti/Screenshot-2023-10-29-at-12.19.27.png?rlkey=pozzit1llyteux2rhwxnxnn99&raw=1)
