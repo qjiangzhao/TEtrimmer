@@ -17,7 +17,7 @@ manual TE curation. You can find more details about TETrimmer below [flowchart](
 
 ## Manual
 For detailed instructions, including installation steps, usage options, example outputs, and more, 
-please refer to[TETrimmerv1.1.9Manual.pdf](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmerv1.1.9Manual.pdf) 
+please refer to [TETrimmerv1.1.9Manual.pdf](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmerv1.1.9Manual.pdf) 
 
 ## Installation
 Install Conda package for TETrimmer. Note: TETrimmer installation requires python=3.10. 
@@ -35,7 +35,7 @@ mamba install qianjiangzhao::tetrimmer
 # Display options of TETrimmer 
 tetrimmer --help
 ```
-We are working on uploading the package to the Bioconda channel and containerizing it. 
+We are working on uploading the package to the Bioconda channel and dockerize it. 
 
 **or** install the required dependencies as listed here (https://github.com/qjiangzhao/TETrimmer/blob/main/TETrimmer_dependencies) and clone the github repository for TETrimmer.
 
