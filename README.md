@@ -33,7 +33,7 @@ conda install -c conda-forge mamba
 # Install TETrimmer 
 mamba install qianjiangzhao::tetrimmer
 # Display options of TETrimmer 
-tetrimmer --help
+TETrimmer --help
 ```
 We are working on uploading the package to the Bioconda channel and dockerize it. 
 
@@ -53,7 +53,7 @@ For ***macOS***, use the following instructions: [TETrimmer_env_for_macOS.yml](h
 Use --help to access all [options](#All-available-options)
 
 ```commandline
-tetrimmer --help
+TETrimmer --help
 ```
 **or** for developers
 ```commandline
@@ -86,7 +86,7 @@ RAM:
 - Download the test files [test_input.fa](https://github.com/qjiangzhao/TETrimmer/blob/main/tests/test_input.fa) and [test_genome.fasta](https://github.com/qjiangzhao/TETrimmer/blob/main/tests/test_genome.fasta).
 
 ```commandline
-tetrimmer --input_file {path to test_input.fa} \
+TETrimmer --input_file {path to test_input.fa} \
           --genome_file {path to test_genome.fasta} \
           --output_dir {output directory} \
           --num_threads 10
@@ -100,7 +100,7 @@ For this reason, you have to run `RepeatModeler` or other TE annotation software
 Example:
 
 ```commandline
-tetrimmer --input_file {TE consensus library} \
+TETrimmer --input_file {TE consensus library} \
           --genome_file {genome file} \
           --output_dir {output directory} \
           --num_threads 10
@@ -108,7 +108,7 @@ tetrimmer --input_file {TE consensus library} \
 ```
 If you want to **continue the analysis based on previous unfinished results in the same directory:**:
 ```commandline
-tetrimmer --input_file {TE consensus library} \
+TETrimmer --input_file {TE consensus library} \
           --genome_file {genome file} \
           --output_dir {directory contains previous unfinished results} \
           --num_threads 10 \
@@ -116,7 +116,7 @@ tetrimmer --input_file {TE consensus library} \
 ```
 If you want to **combine files from different sources for the input file, we recommend removing duplicate sequences during processing. This step can potentially save overall run time in the input file**:
 ```commandline
-tetrimmer --input_file {TE consensus library} \
+TETrimmer --input_file {TE consensus library} \
           --genome_file {genome file} \
           --output_dir {output directory} \
           --num_threads 10 \
