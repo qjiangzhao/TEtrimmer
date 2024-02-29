@@ -178,7 +178,7 @@ You can follow these instructions to perform the inspection.
 ![TETrimmer_interface1](https://www.dropbox.com/scl/fi/2lyk5b9csnm99a1mjdnyx/TETrimmer_GUI1.png?rlkey=w3ny4788szkplpjsughugkcuj&dl=1)
 The following are clusters and files (Click the "Clustered_proof_annotation" button in the menu bar to show this.)
 ![TETrimmer_interfact2](https://www.dropbox.com/scl/fi/w1b9rhieyfohod06iomdd/TETrimmer_GUI2.png?rlkey=18ugkdy6tgzl3ktyvx11z9uge&dl=1)
-
+                        
 ## Benchmarking
 TETrimmer is 6-times more accurate to annotate the intact TE than RepeatModeler in case of *Blumeria hordei*. 
 ![Benchmarking1](https://www.dropbox.com/scl/fi/v1ex6txe0mb9200gmtir3/Benchamrking_joined2.png?rlkey=i742b8ykyht0zw885r3mj9u64&raw=1)
