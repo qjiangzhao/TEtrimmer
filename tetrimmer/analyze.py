@@ -57,6 +57,7 @@ def change_permissions_recursive(input_dir, mode):
         return False
     return True
 
+
 def calculate_genome_length(genome_file):
     """
     Calculate the length of each sequence in a genome file in FASTA format
@@ -175,6 +176,7 @@ def check_database(genome_file, search_type="blast"):
             return False
     return True
 
+
 # Print iterations progress
 def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r", final = False):
     """
@@ -203,7 +205,6 @@ def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=
         click.echo()
 
 
-
 def separate_sequences(input_file, output_dir, continue_analysis=False):
     """
     Separates input file into single separate FASTA files and creates objects for each input sequence
@@ -215,7 +216,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
         print(
             "TE Trimmer is modifying sequence names; any occurrence of '/', '-', ':', '...', '|' and empty spaces before '#' "
             "will be converted to '_'.\n"
-            "You can find the original and modified names in the 'Name_mapping.txt' file in the output directory.\n")
+            "You can find the original and modified names in the 'Sequence_name_mapping.txt' file in the output directory.\n")
         # Initialize the name mapping file
         name_mapping_file = os.path.join(os.path.dirname(output_dir), "Sequence_name_mapping.txt")
 
@@ -481,6 +482,7 @@ def merge_cons(classification_dir, final_con_file, progress_file, cd_hit_est_fin
     """
     click.echo(f"\nFinished to remove sequence duplications.\n")
     return sequence_info
+
 
 def cluster_proof_anno_file(multi_dotplot_dir, final_con_file_no_low_copy, continue_analysis, cluster_proof_anno_dir, num_threads, \
                        sequence_info, perfect_proof, good_proof, intermediate_proof, need_check_proof ):

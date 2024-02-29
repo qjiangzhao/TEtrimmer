@@ -1,27 +1,31 @@
 from setuptools import setup, find_packages
 
+version = {}
+with open('tetrimmer/_version.py', mode='r') as version_file:
+    exec(version_file.read(), version)
 
 setup(
     name='tetrimmer',
-    version='1.1.6',
+    version= version['__version__'],
     description="a tool to replace transposable element manual curation. TE Trimmer won't do TE de novo annotation but use the output from other annotation tools like RepeatModeler, REPET, and EDTA",
-    license="MIT",
+
+    license="GPLv3",
     author="Jiangzhao Qian; Hang Xue",
-    author_email='jqian@bio1.rwth-aachen.de; hang_xue@berkeley.edu',
+    author_email='jqian@bio1.rwth-aachen.de;  hang_xue@berkeley.edu',
     url='https://github.com/qjiangzhao/TETrimmer',
     include_package_data=True,  # this is set to True because there are non .py files (eg. R)
     packages=find_packages(include=('tetrimmer', 'tetrimmer.*')), 
-    package_data={'tetrimmer': ['TETrimmer_proof_anno_GUI/*', 'TE-Aid-master/*']},
+    package_data={'tetrimmer': ['config.json','TETrimmer_proof_anno_GUI/*', 'TE-Aid-master/*']},
     entry_points={
         'console_scripts': [
-            'tetrimmer=tetrimmer.TETrimmer:cli'
+            'tetrimmer=tetrimmer.TETrimmer:main'
         ]
     },
     install_requires=[     # All Requirements
         'numpy>=1.26.0',
         'python',
         'perl>=5.26.2',
-        'r-base>=4.3.2',
+        'r-base>=4.2.1',
         'biopython>=1.81',
         'matplotlib>=3.8.1',
         'multiprocess>=0.70.15',
@@ -46,10 +50,11 @@ setup(
         'dataclasses',
         'repeatmodeler==2.0.1',
         'muscle==3.8',
-        'iqtree>=2.2.5'
+        'iqtree>=2.2.5',
+        'ghostscript'
     ],
     keywords='tetrimmer',
     classifiers=[
-        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.10',
     ]
 )

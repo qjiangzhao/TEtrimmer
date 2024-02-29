@@ -1,5 +1,5 @@
 {
-  "default": {
+  "conserved": {
     "cons_thr": 0.7,
     "max_msa_lines": 100,
     "top_msa_lines": 100,
