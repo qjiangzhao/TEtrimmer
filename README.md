@@ -35,19 +35,19 @@ mamba install qianjiangzhao::tetrimmer
 # Display options of TETrimmer 
 TETrimmer --help
 ```
-Note: Currently "mamba install qianjiangzhao::tetrimmer" is only possible for macOS. We are developing conda package for Linux and Windows wsl. 
+Note: Currently "mamba install qianjiangzhao::tetrimmer" is only possible for macOS. We are developing conda package for Linux and Windows WSL. 
 
 We are working on uploading the package to the Bioconda channel and dockerize it. 
 
 **or** install the required dependencies as listed here (https://github.com/qjiangzhao/TETrimmer/blob/main/TETrimmer_dependencies) and clone the github repository for TETrimmer.
 
-**or** install using mamba based on [TETrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_linux.yml). Fow linux and Windows wsl.
+**or** install using mamba based on [TETrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_linux.yml). Fow linux and Windows WSL.
 
 ```commandline
 conda install -c conda-forge mamba
 mamba env create -f TETrimmer_env_for_linux.yml
 ```
-For ***Windows WSL2***, you can follow the same instructions used for Linux. 
+For ***Windows WSL***, you can follow the same instructions used for Linux. 
 
 ## Usage:
 Use --help to access all [options](#All-available-options)
@@ -61,7 +61,7 @@ python {path to TETrimmer}/TETrimmer.py --help
 ```
 
 ## Hardware requirements
-System: Linux, macOS, Windows wsl
+System: Linux, macOS, Windows WSL
 
 RAM:
 - For HPC Linux user, enough RAM needs to be assigned. We highly recommend running TETrimmer on HPC with at least 40 threads and assigning at least 5 GB ram to each thread.
@@ -171,7 +171,7 @@ You can use this graphical user interface tool to assist the manual inspection o
 manual inspection of TE annotations in the "Recommend_check_annotation" and "Need_check_annotation" folders to generate a high-quality TE
 ```commandline
 # To start the manual inspection GUI tool
-# Open your Linux, macOS, or Windoes terminal and type
+# Open your Linux, macOS, or Windows terminal and type
 python <path to your output_directory>/TETrimmer_for_proof_annotation/TETrimmer_proof_anno_GUI/annoGUI.py
 ```
 You can follow these instructions to perform the inspection. 
