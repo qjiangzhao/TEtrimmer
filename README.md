@@ -175,9 +175,9 @@ manual inspection of TE annotations in the "Recommend_check_annotation" and "Nee
 python <path to your output_directory>/TETrimmer_for_proof_annotation/TETrimmer_proof_anno_GUI/annoGUI.py
 ```
 You can follow these instructions to perform the inspection. 
-![TETrimmer_interface1](https://www.dropbox.com/scl/fi/2lyk5b9csnm99a1mjdnyx/TETrimmer_GUI1.png?rlkey=w3ny4788szkplpjsughugkcuj&dl=0)
+![TETrimmer_interface1](https://www.dropbox.com/scl/fi/2lyk5b9csnm99a1mjdnyx/TETrimmer_GUI1.png?rlkey=w3ny4788szkplpjsughugkcuj&dl=1)
 The following are clusters and files (Click the "Clustered_proof_annotation" button in the menu bar to show this.)
-![TETrimmer_interfact2](https://www.dropbox.com/scl/fi/w1b9rhieyfohod06iomdd/TETrimmer_GUI2.png?rlkey=18ugkdy6tgzl3ktyvx11z9uge&dl=0)
+![TETrimmer_interfact2](https://www.dropbox.com/scl/fi/w1b9rhieyfohod06iomdd/TETrimmer_GUI2.png?rlkey=18ugkdy6tgzl3ktyvx11z9uge&dl=1)
 
 ## Benchmarking
 TETrimmer is 6-times more accurate to annotate the intact TE than RepeatModeler in case of *Blumeria hordei*. 
