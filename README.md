@@ -41,7 +41,7 @@ We are working on uploading the package to the Bioconda channel and dockerize it
 
 **or** install the required dependencies as listed here (https://github.com/qjiangzhao/TETrimmer/blob/main/TETrimmer_dependencies) and clone the github repository for TETrimmer.
 
-**or** install using mamba based on [TETrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_linux.yml). Fow linux and Windows WSL.
+**or** install using mamba based on [TETrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_linux.yml). ***Use this for linux and Windows WSL***.
 
 ```commandline
 conda install -c conda-forge mamba
@@ -137,7 +137,6 @@ More options are available:
   --dedup                         Remove duplicate sequences in input file.
   -ga, --genome_anno              Perform genome TE annotation using RepeatMasker with the TETrimmer
                                   curated TE libraries.
-  --hmm                           Generate HMM files for each processed consensus sequence.
 
 ```
 ## Outputs
