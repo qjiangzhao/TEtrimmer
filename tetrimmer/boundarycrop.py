@@ -678,7 +678,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                         output_file=cropped_boundary_plot_concatenate
                     )
                     # Reverse complement input sequence, this will be used for dotplot
-                    seq_file_reverse_c_path = os.path.join(output_dir, f"{os.path.basename(seq_name)}_rc.fa")
+                    seq_file_reverse_c_path = os.path.join(output_dir, f"{os.path.basename(seq_name)}.fasta_rc")
                     seq_file_reverse_c = reverse_complement_seq_file(input_file=seq_file,
                                                                      output_file=seq_file_reverse_c_path)
                     reverse_complement = True

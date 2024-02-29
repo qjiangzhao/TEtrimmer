@@ -35,19 +35,19 @@ mamba install qianjiangzhao::tetrimmer
 # Display options of TETrimmer 
 TETrimmer --help
 ```
+Note: Currently "mamba install qianjiangzhao::tetrimmer" is only possible for macOS. We are developing conda package for Linux and Windows wsl. 
+
 We are working on uploading the package to the Bioconda channel and dockerize it. 
 
 **or** install the required dependencies as listed here (https://github.com/qjiangzhao/TETrimmer/blob/main/TETrimmer_dependencies) and clone the github repository for TETrimmer.
 
-**or** install using mamba based on [TETrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_linux.yml). 
+**or** install using mamba based on [TETrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_linux.yml). Fow linux and Windows wsl.
 
 ```commandline
 conda install -c conda-forge mamba
 mamba env create -f TETrimmer_env_for_linux.yml
 ```
-For ***Windows WSL***, you can follow the same instructions used for Linux. 
-
-For ***macOS***, use the following instructions: [TETrimmer_env_for_macOS.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_macOS.yml).
+For ***Windows WSL2***, you can follow the same instructions used for Linux. 
 
 ## Usage:
 Use --help to access all [options](#All-available-options)
@@ -61,7 +61,7 @@ python {path to TETrimmer}/TETrimmer.py --help
 ```
 
 ## Hardware requirements
-System: Linux, macOS
+System: Linux, macOS, Windows wsl
 
 RAM:
 - For HPC Linux user, enough RAM needs to be assigned. We highly recommend running TETrimmer on HPC with at least 40 threads and assigning at least 5 GB ram to each thread.
@@ -157,6 +157,8 @@ More options are available:
   - 📁**Clustered_proof_annotation** - *The folder group prcessed TEs to different clusters based on TE consensus sequence similarity.*
   - 📁**TE_low_copy** - *This folder contains low copy TEs.*
   - 📁**TE_skipped** - *Contains TE_Aid plots for all skipped TEs.*
+  - 📁**TETrimmer_proof_anno_GUI** - *The folder contains graphical user interface tools for manual proof annotation.*
+    - 📄**annoGUI.py** - *Use python ./annoGUI.py to start manual proof annotation GUI.*
 - 📁**HMM** - *This folder is used to store Hidden Markov Model file. Only visible when < --hmm > is enabled.*
 - 📄**Sequence_name_mapping.txt** - *This file connects the input sequence names with the modified names from TETrimmer.*
 - 📄**summary.txt** - *Summary file.* 
@@ -169,12 +171,13 @@ You can use this graphical user interface tool to assist the manual inspection o
 manual inspection of TE annotations in the "Recommend_check_annotation" and "Need_check_annotation" folders to generate a high-quality TE
 ```commandline
 # To start the manual inspection GUI tool
+# Open your Linux, macOS, or Windoes terminal and type
 python <path to your output_directory>/TETrimmer_for_proof_annotation/TETrimmer_proof_anno_GUI/annoGUI.py
 ```
 You can follow these instructions to perform the inspection. 
-![TETrimmer_interface1](https://www.dropbox.com/scl/fi/mynrf8mokblq9egslpsti/Screenshot-2023-10-29-at-12.19.27.png?rlkey=pozzit1llyteux2rhwxnxnn99&raw=1)
-The following are files deposited in the "Perfect annotation" folder (Click the "Perfect annotation" button in the menu bar to show this.)
-![TETrimmer_interfact2](https://www.dropbox.com/scl/fi/4nh0u7xvirieb68c5knnw/Screenshot-2023-10-29-at-12.20.14.png?rlkey=m2nfsevhriennsp5vf9s766zr&raw=1)
+![TETrimmer_interface1](https://www.dropbox.com/scl/fi/2lyk5b9csnm99a1mjdnyx/TETrimmer_GUI1.png?rlkey=w3ny4788szkplpjsughugkcuj&dl=0)
+The following are clusters and files (Click the "Clustered_proof_annotation" button in the menu bar to show this.)
+![TETrimmer_interfact2](https://www.dropbox.com/scl/fi/w1b9rhieyfohod06iomdd/TETrimmer_GUI2.png?rlkey=18ugkdy6tgzl3ktyvx11z9uge&dl=0)
 
 ## Benchmarking
 TETrimmer is 6-times more accurate to annotate the intact TE than RepeatModeler in case of *Blumeria hordei*. 

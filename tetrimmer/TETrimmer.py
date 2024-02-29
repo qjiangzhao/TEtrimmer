@@ -229,6 +229,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # su.pdf scale up pdf file
     # rc.fa reverse complement fasta file
     # cd.fa cd-hit-est output file
+    # fasta_rc reverse complementary fasta file
 
     #####################################################################################################
     # Code block: Change permissions of Aliview and TE_Aid
