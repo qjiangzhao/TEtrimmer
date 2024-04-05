@@ -9,11 +9,18 @@ from Bio import AlignIO, SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Align import MultipleSeqAlignment, AlignInfo
+from Bio.motifs import Motif
 import pandas as pd
 import pandas.errors
 import numpy as np
 from PyPDF2 import PdfMerger, PdfFileReader, PdfFileWriter
 import ruptures as rpt
+import warnings
+
+# Suppress all deprecation warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+
 
 
 # Check if file name contains the string LTR
@@ -23,11 +30,40 @@ def is_LTR(input_file):
 
 
 # Generate consensus sequence
-def generate_consensus_sequence(input_file, threshold, ambiguous):
+def con_generater_no_file(input_file, threshold=0.8, ambiguous="N"):
+    # Read input file
     alignment = AlignIO.read(input_file, "fasta")
-    summary = AlignInfo.SummaryInfo(alignment)
-    consensus_seq = list(summary.dumb_consensus(threshold=threshold, ambiguous=ambiguous).upper())
+
+    # Generate a summary of the alignment
+    summary_align = AlignInfo.SummaryInfo(alignment)
+
+    # Calculate consensus sequence with the specified threshold
+    consensus = summary_align.dumb_consensus(threshold=threshold, ambiguous=ambiguous)
+
+    # Convert consensus sequence to uppercase and return as list
+    consensus_seq = list(str(consensus).upper())
     return consensus_seq
+
+
+def con_generater(input_file, output_dir, threshold=0.8, ambiguous="N"):
+    # Read input file
+    alignment = AlignIO.read(input_file, "fasta")
+
+    # Generate a summary of the alignment
+    summary_align = AlignInfo.SummaryInfo(alignment)
+
+    # Calculate consensus sequence with the specified threshold
+    consensus = summary_align.dumb_consensus(threshold=threshold, ambiguous=ambiguous)
+
+    # Create SeqRecord for consensus sequence
+    consensus_record = SeqRecord(consensus, id=os.path.basename(input_file), description="")
+
+    # Write consensus sequence to a FASTA file
+    output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_co.fa")
+    with open(output_file, "w") as file:
+        SeqIO.write(consensus_record, file, "fasta")
+
+    return output_file
 
 
 # Check if start and end are matchable with the given pattern
@@ -102,7 +138,6 @@ def fasta_file_to_dict(input_file, separate_name=False):
         else:
             sequences[record.id] = record
     return sequences
-
 
 
 def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast", task="blastn", seq_obj=None):
@@ -450,34 +485,6 @@ def muscle_align(input_file, output_dir, ite_times=4):
     SeqIO.write(sequences, output_file, "fasta")
 
     return output_file
-
-
-def con_generater(input_file, output_dir, threshold=0.8, ambiguous="N"):
-    # Read input file
-    alignment = AlignIO.read(input_file, "fasta")
-    summary = AlignInfo.SummaryInfo(alignment)
-    # Get consensus sequence
-    consensus_seq = summary.dumb_consensus(threshold=threshold, ambiguous=ambiguous).upper()
-
-    consensus_record = SeqRecord(consensus_seq, id=f"{os.path.basename(input_file)}", description="")
-
-    # Write to a FASTA file
-    output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_co.fa")
-    with open(output_file, "w") as file:
-        SeqIO.write(consensus_record, file, "fasta")
-
-    return output_file
-
-
-def con_generater_no_file(input_file, threshold=0.8, ambiguous="N"):
-    # Read input file
-    alignment = AlignIO.read(input_file, "fasta")
-    summary = AlignInfo.SummaryInfo(alignment)
-    # Get consensus sequence
-    consensus_seq_str = summary.dumb_consensus(threshold=threshold, ambiguous=ambiguous)
-
-    # Return the consensus sequence string
-    return consensus_seq_str
 
 
 def calc_proportion(input_file):
@@ -1210,6 +1217,7 @@ def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9,
     -aS	float, alignment coverage for the shorter sequence; if set to 0.9, the alignment must cover 90% of the sequence.
     Default: 0.0
     Note: -s only considers length, but -aL and -aS considers alignment
+    Note: -sc sort cluster according sequence numbers in the cluster
     """
     command = [
         "cd-hit-est",
@@ -1222,7 +1230,8 @@ def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9,
         "-T", str(thread),
         "-l", "30",
         "-d", "0",
-        "-s", str(s)
+        "-s", str(s),
+        "-sc", "1"
     ]
 
     try:
@@ -1349,12 +1358,11 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, m
     # The regex '\s+' matches one or more whitespace characters
     # error_bad_lines=False to skip errors
     try:
-        df = pd.read_csv(repeatmasker_out, delim_whitespace=True, header=None, skiprows=3, usecols=range(15))
+        df = pd.read_csv(repeatmasker_out, sep='\s+', header=None, skiprows=3, usecols=range(15))
     except pandas.errors.EmptyDataError:
         return False
     except pd.errors.ParserError:
-        df = pd.read_csv(repeatmasker_out, delim_whitespace=True, header=None, skiprows=3,
-                         error_bad_lines=False, usecols=range(15))
+        df = pd.read_csv(repeatmasker_out, sep='\s+', header=None, skiprows=3, error_bad_lines=False, usecols=range(15))
 
     # Rename columns for easier referencing
     df.columns = [

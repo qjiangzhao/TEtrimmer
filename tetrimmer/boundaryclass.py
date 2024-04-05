@@ -5,6 +5,11 @@ import pandas as pd
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 import os
+import warnings
+
+# Suppress all deprecation warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 
 class CropEnd:
     """
@@ -244,6 +249,7 @@ class CropEndByGap:
         with open(output_file, "w") as f:
             AlignIO.write(cropped_alignment, f, "fasta")
         return output_file
+
 
 class DefineBoundary:
 

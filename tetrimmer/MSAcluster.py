@@ -16,6 +16,7 @@ import re
 from functions import prcyan, prgre, muscle_align, align_sequences, remove_gaps_with_similarity_check, \
     filter_out_big_gap_seq, select_gaps_block_with_similarity_check
 
+
 class CleanAndSelectColumn:
     """
     Class to eliminate noise nucleotides and select diverse columns, which can be used for MSA clustering

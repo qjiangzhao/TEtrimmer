@@ -7,13 +7,15 @@ import multiprocessing as mp
 import click
 import concurrent.futures
 import json
-import pandas as pd
-from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
 
 # Local imports
 import analyze
 from functions import repeatmasker, prcyan, prgre, cd_hit_est
+
+import warnings
+
+# Suppress all deprecation warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 #####################################################################################################
 # Code block: Import JSON species_config file and define the default parameters
@@ -450,9 +452,15 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         if 0.3 <= classified_pro < 0.99:
             click.echo("\nTETrimmer is doing the final classification. It uses the classified TE to classify "
                        "Unknown elements.")
-            analyze.repeatmasker_classification(final_unknown_con_file, final_classified_con_file, classification_dir, num_threads, progress_file, \
-                                final_con_file, proof_annotation_dir, perfect_proof, good_proof, intermediate_proof, \
-                                need_check_proof, low_copy_dir, hmm, hmm_dir)
+            analyze.repeatmasker_classification(
+                final_unknown_con_file, final_classified_con_file, classification_dir, num_threads, progress_file,
+                final_con_file, proof_annotation_dir, perfect_proof, good_proof, intermediate_proof,
+                need_check_proof, low_copy_dir, hmm, hmm_dir)
+        elif classified_pro >= 0.99:
+            click.echo("\nMore than 99% TE are classified, TETrimmer won't classify 'Unknown' TE by classified TE.")
+        elif classified_pro < 0.3:
+            click.echo("\nLess than 30% TE are classified, TETrimmer won't classify 'Unknown' TE by classified TE.")
+
     except Exception as e:
         with open(error_files, "a") as f:
             # Get the traceback content as a string
