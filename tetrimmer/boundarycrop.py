@@ -542,6 +542,9 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 # Generate consensus sequences
                 consensus_seq = con_generater_no_file(cropped_alignment_output_file_g, threshold=0.7, ambiguous="X")
 
+                # Convert consensus_seq to list
+                consensus_seq = list(consensus_seq)
+
                 # Four variables will be returned
                 start_matched, end_matched, check_start, check_end = check_and_update(
                     consensus_seq, start=cropped_boundary.start_post, end=cropped_boundary.end_post,

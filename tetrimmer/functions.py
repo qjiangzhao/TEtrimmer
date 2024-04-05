@@ -21,8 +21,6 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-
-
 # Check if file name contains the string LTR
 def is_LTR(input_file):
     input_file_name = os.path.basename(input_file)
@@ -38,11 +36,9 @@ def con_generater_no_file(input_file, threshold=0.8, ambiguous="N"):
     summary_align = AlignInfo.SummaryInfo(alignment)
 
     # Calculate consensus sequence with the specified threshold
-    consensus = summary_align.dumb_consensus(threshold=threshold, ambiguous=ambiguous)
+    consensus = summary_align.dumb_consensus(threshold=threshold, ambiguous=ambiguous).upper()
 
-    # Convert consensus sequence to uppercase and return as list
-    consensus_seq = list(str(consensus).upper())
-    return consensus_seq
+    return consensus
 
 
 def con_generater(input_file, output_dir, threshold=0.8, ambiguous="N"):
