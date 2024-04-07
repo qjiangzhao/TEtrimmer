@@ -178,7 +178,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                    "     <seq_name.fa>: the multiple sequence alignment (MSA) file after cleaning\n" \
                    "     <seq_name.pdf>: the report file contains 7 plots used to evaluate annotation quality\n" \
                    "     <seq_name.bed>: the MSA bed file. Used for further MSA extension.\n\n" \
-                   "   More than one type of TE can be found, theoretically, you only need to choose one from each cluster.\n\n"\
+                   "   More than one TE can be found, theoretically, you only need to choose one from each cluster.\n\n"\
                    "3, Double click <seq_name.pdf> and evaluate annotation quality.\n\n" \
                    "4, If you are satisfied with the result, click <Consensus> button behind <seq_name.fa>.\n" \
                    "   This MSA file goes to <Proof_annotation_consensus_folder>.\n\n" \
