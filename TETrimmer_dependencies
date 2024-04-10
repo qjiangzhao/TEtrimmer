@@ -7,7 +7,7 @@ python libraries:
 	biopython                 1.79                     pypi_0    pypi
 	matplotlib                3.3.2                         0    conda-forge
 	multiprocess              0.70.11.1        py36h8f6f2f9_1    conda-forge
-	pandas                    1.1.5            py36h284efc9_0    conda-forge
+	pandas                    2.2.1           py310hcc13569_0    conda-forge
 	pypdf2                    3.0.1                    pypi_0    pypi
 	numpy                     1.19.5           py36h2aa4a07_1    conda-forge
 	scikit-learn              0.24.0           py36he4fde30_0    conda-forge

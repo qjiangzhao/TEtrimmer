@@ -13,9 +13,10 @@ import analyze
 from functions import repeatmasker, prcyan, prgre, cd_hit_est
 
 import warnings
+from Bio import BiopythonDeprecationWarning
 
 # Suppress all deprecation warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
 
 #####################################################################################################
 # Code block: Import JSON species_config file and define the default parameters

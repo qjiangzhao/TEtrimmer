@@ -1,7 +1,5 @@
 import subprocess
 import os
-from Bio import SeqIO
-import click
 import pandas as pd
 from functions import blast, check_terminal_repeat, file_exists_and_not_empty
 

@@ -16,9 +16,10 @@ import numpy as np
 from PyPDF2 import PdfMerger, PdfFileReader, PdfFileWriter
 import ruptures as rpt
 import warnings
+from Bio import BiopythonDeprecationWarning
 
 # Suppress all deprecation warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
 
 
 # Check if file name contains the string LTR

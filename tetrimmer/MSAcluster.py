@@ -16,6 +16,8 @@ import re
 from functions import prcyan, prgre, muscle_align, align_sequences, remove_gaps_with_similarity_check, \
     filter_out_big_gap_seq, select_gaps_block_with_similarity_check
 
+pd.set_option('future.no_silent_downcasting', True)
+
 
 class CleanAndSelectColumn:
     """
@@ -529,9 +531,11 @@ def create_base_mapping(alignment_df):
 
 
 def replace_bases(alignment_df, base_mapping):
-    # Replace bases with corresponding integers, this number corresponds with base_mapping
-    # Now the dataframe won't contain any characters but be replaced by numbers
-    return alignment_df.replace(base_mapping)
+    # Replace bases with corresponding integers from base_mapping
+    result_obj = alignment_df.replace(base_mapping)
+    # Infer the best possible data types for object columns
+    result_obj = result_obj.infer_objects(copy=False)
+    return result_obj
 
 
 def highlight_columns(alignment_df, alignment_color_df, base_mapping):
@@ -554,7 +558,7 @@ def highlight_columns(alignment_df, alignment_color_df, base_mapping):
             # of them is less than 20%, color that kind of nucleotide again
             for base, freq in count.items():
                 if freq / total_bases < 0.2:
-                    alignment_color_df[col][alignment_df[col] == base] = base_mapping[base]
+                    alignment_color_df.loc[alignment_df[col] == base, col] = base_mapping[base]
 
 
 def plot_msa(alignment_df, alignment_color_df, unique_bases, start_point, end_point, output_file, sequence_len):
