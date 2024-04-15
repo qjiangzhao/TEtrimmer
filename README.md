@@ -143,9 +143,9 @@ More options are available:
 - 📁**Classification** - *This folder is used for TE classifications.*  
 - 📁**Multiple_sequence_alignment** - *All raw files will be stored in this folder if < --debug > is enabled.*
   - 📄**error_file.txt** - *Error file to store all error messages, only visible if errors were found.*
-- 📁**Single_fasta_files** - *All sequences in the input file will be separated into single FASTA files and be stored here.*
+- 📁**Single_fasta_files** - *All sequences in the input file will be separated into single FASTA files and stored here.*
 - 📁**TETrimmer_for_proof_annotation** - *This folder contains files used for manual inspection of TETrimmer annotations.* 
-  - 📁**Annotation_perfect** - *Three files are associate with each sequence (anno.fa; fa; pdf).*
+  - 📁**Annotation_perfect** - *Four files are associated with each sequence (anno.fa; fa; pdf).*
     - 📄**TE_name.anno.fa** - *Multiple sequence alignment file before cleaning.*
     - 📄**TE_name.fa** - *Multiple sequence alignment file after cleaning.*
     - 📄**TE_name.pdf** - *Plot file used to evaluate output.*
@@ -153,7 +153,7 @@ More options are available:
   - 📁**Annotation_good** 
   - 📁**Annotation_check_recommended**
   - 📁**Annotation_check_required**
-  - 📁**Clustered_proof_annotation** - *The folder group prcessed TEs to different clusters based on TE consensus sequence similarity.*
+  - 📁**Clustered_proof_annotation** - *The folder group processed TEs to different clusters based on TE consensus sequence similarity.*
   - 📁**TE_low_copy** - *This folder contains low copy TEs.*
   - 📁**TE_skipped** - *Contains TE_Aid plots for all skipped TEs.*
   - 📁**TETrimmer_proof_anno_GUI** - *The folder contains graphical user interface tools for manual proof annotation.*
