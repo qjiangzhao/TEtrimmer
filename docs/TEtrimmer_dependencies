@@ -1,0 +1,43 @@
+python                    3.6 < and <= 3.10 hffdb5ce_0_cpython    conda-forge
+perl                      5.26.2            h36c2ea0_1008    conda-forge (for pfam_scan.pl)
+r-base                    4.0.3                hd23ff56_6    conda-forge
+
+
+python libraries:
+	biopython                 1.79                     pypi_0    pypi
+	matplotlib                3.3.2                         0    conda-forge
+	multiprocess              0.70.11.1        py36h8f6f2f9_1    conda-forge
+	pandas                    2.2.1           py310hcc13569_0    conda-forge
+	pypdf2                    3.0.1                    pypi_0    pypi
+	numpy                     1.19.5           py36h2aa4a07_1    conda-forge
+	scikit-learn              0.24.0           py36he4fde30_0    conda-forge
+	urllib3                   1.26.16                  pypi_0    pypi
+	regex                     2016.06.24               py36_1    bioconda
+	tk                        8.6.13          noxft_h4845f30_101    conda-forge
+	click                     8.0.4                    pypi_0    pypi
+	requests                  2.27.1                   pypi_0    pypi
+
+
+
+bedtools                  2.31.1               hf5e1c6e_0    bioconda
+blast                     2.10.1          pl526he19e7b1_3    bioconda
+cd-hit                    4.8.1                h2e03b76_5    bioconda
+emboss                    6.6.0                h6debe1e_0    bioconda
+hmmer                     3.3.1                he1b5a44_0    bioconda
+mafft                     7.520                h031d066_3    bioconda
+pfam_scan                 1.6                     pl526_2    bioconda/label/cf201901
+repeatmasker              4.1.1                   pl526_1    bioconda
+samtools                  1.11                 h6270b1f_0    bioconda	(only for genome.fai file generation)
+repeatmodeler             2.0.1                   pl526_0    bioconda
+iqtree                    2.2.5                h21ec9f0_0    bioconda
+
+
+
+
+
+
+
+
+
+
+	

@@ -7,18 +7,18 @@ with open('tetrimmer/_version.py', mode='r') as version_file:
 setup(
     name='tetrimmer',
     version= version['__version__'],
-    description="a tool to replace transposable element manual curation. TE Trimmer won't do TE de novo annotation but use the output from other annotation tools like RepeatModeler, REPET, and EDTA",
+    description="a tool to replace transposable element manual curation. TEtrimmer won't do TE de novo annotation but use the output from other annotation tools like RepeatModeler, REPET, and EDTA",
 
     license="GPLv3",
     author="Jiangzhao Qian; Hang Xue",
     author_email='jqian@bio1.rwth-aachen.de;  hang_xue@berkeley.edu',
-    url='https://github.com/qjiangzhao/TETrimmer',
+    url='https://github.com/qjiangzhao/TEtrimmer',
     include_package_data=True,  # this is set to True because there are non .py files (eg. R)
     packages=find_packages(include=('tetrimmer', 'tetrimmer.*')), 
-    package_data={'tetrimmer': ['config.json','TETrimmer_proof_anno_GUI/*', 'TE-Aid-master/*']},
+    package_data={'tetrimmer': ['config.json','TEtrimmer_proof_anno_GUI/*', 'TE-Aid-master/*']},
     entry_points={
         'console_scripts': [
-            'tetrimmer=tetrimmer.TETrimmer:main'
+            'tetrimmer=tetrimmer.TEtrimmer:main'
         ]
     },
     install_requires=[     # All Requirements

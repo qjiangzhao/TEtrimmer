@@ -51,14 +51,14 @@ def check_and_download(directory, filename, url):
             click.echo(f"\n{filename} is downloaded and unzipped. Pfam database was stored in \n"
                        f"{directory}\n")
         except Exception:
-            prcyan("TETrimmer failed to properly unpack the downloaded PFAM file.")
+            prcyan("TEtrimmer failed to properly unpack the downloaded PFAM file.")
             return False
 
     # Check if download was successful
     if os.path.isfile(file_path):
         return True
     else:
-        prcyan(f"{filename} not found. The PFAM database cannot be downloaded by TETrimmer. Please check your internet connection "
+        prcyan(f"{filename} not found. The PFAM database cannot be downloaded by TEtrimmer. Please check your internet connection "
                f"or download PFAM database manually. Or use '--pfam_dir' to indicate your Pfam database path.")
         return False
 
@@ -369,9 +369,9 @@ class PlotPfam:
         plt.ylim(-1, 2)
         plt.gca().axes.get_yaxis().set_visible(False)  # hides the y-axis
         if self.after_tetrimmer:
-            plt.title('After TETrimmer treatment ORF and PFAM domain plot', fontsize=20, fontweight="bold")
+            plt.title('After TEtrimmer treatment ORF and PFAM domain plot', fontsize=20, fontweight="bold")
         else:
-            plt.title('Before TETrimmer treatment ORF and PFAM domain plot', fontsize=20, fontweight="bold")
+            plt.title('Before TEtrimmer treatment ORF and PFAM domain plot', fontsize=20, fontweight="bold")
 
         output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_orf_pfam.pdf")
         plt.savefig(output_file, format="pdf")

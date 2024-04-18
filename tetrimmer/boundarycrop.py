@@ -759,7 +759,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             f.write(f"\nMSA plot failed for {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
             prcyan(f"\nMSA plot failed {seq_name} with error:\n{e}")
-            prgre("\nMSA plots are only used to evaluate TETrimmer and will not affect the final TE consensus library."
+            prgre("\nMSA plots are only used to evaluate TEtrimmer and will not affect the final TE consensus library."
                   " For traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder\n")
 
     #####################################################################################################
@@ -878,8 +878,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
         # Define temporary classified and unknown final consensus file, which will be used for
         # reclassification by RepeatMasker
-        final_unknown_con_file = os.path.join(classification_dir, "temp_TETrimmer_unknown_consensus.fasta")
-        final_classified_con_file = os.path.join(classification_dir, "temp_TETrimmer_classified_consensus.fasta")
+        final_unknown_con_file = os.path.join(classification_dir, "temp_TEtrimmer_unknown_consensus.fasta")
+        final_classified_con_file = os.path.join(classification_dir, "temp_TEtrimmer_classified_consensus.fasta")
 
         # Define unique sequence names
         # Because seq_obj.create_consi_obj() is generated after the unique name definition, len(seq_obj.consi_obj_list)
@@ -916,7 +916,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             consi_obj.set_new_terminal_repeat(found_match)
 
         # Store full length sequence number from BLAST search into consi_obj
-        # check_blast_full_n is a function in TE_Aid class. TETrimmer will use the blast result of TE Aid
+        # check_blast_full_n is a function in TE_Aid class. TEtrimmer will use the blast result of TE Aid
         blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj, engine=engine)
         consi_obj.set_blast_full_n(blast_full_length_n)
 
@@ -935,7 +935,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             raise Exception
 
     #####################################################################################################
-    # Code block: Run RepeatClassifier in RepeatModeler to classify TETrimmer consensus sequences
+    # Code block: Run RepeatClassifier in RepeatModeler to classify TEtrimmer consensus sequences
     #####################################################################################################
 
     # This classification is different from the final RepeatMasker classification

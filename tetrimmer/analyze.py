@@ -53,7 +53,7 @@ def change_permissions_recursive(input_dir, mode):
             for filename in filenames:
                 os.chmod(os.path.join(dirpath, filename), mode)
     except PermissionError:
-        click.echo("TETrimmer don't have right to change permissions. Pleas use sudo to run TETrimmer")
+        click.echo("TEtrimmer don't have right to change permissions. Pleas use sudo to run TEtrimmer")
         return False
     return True
 
@@ -223,7 +223,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
         detected_pound = False
         with open(input_file, 'r') as fasta_file, open(name_mapping_file, 'w') as mapping_file:
             # Write header to the mapping file
-            mapping_file.write("original_input_seq_name\tTETrimmer_modified_seq_name\n")
+            mapping_file.write("original_input_seq_name\tTEtrimmer_modified_seq_name\n")
             id_list = []
             # Required to add suffix 'fasta', as this pattern will be used for file deletion later
             for record in SeqIO.parse(fasta_file, 'fasta'):
@@ -276,7 +276,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                     SeqIO.write(record, output_file, 'fasta')
 
             if detected_pound:
-                print("TETrimmer detected instances of '#' in your input FASTA sequence headers. The string before "
+                print("TEtrimmer detected instances of '#' in your input FASTA sequence headers. The string before "
                       "'#' is denoted as the seq_name, and the string after '#' is denoted as the TE type.\n")
         print("Finish to generate single sequence files.\n")
 
@@ -313,7 +313,7 @@ def repeatmasker_classification(final_unknown_con_file, final_classified_con_fil
 
         if classification_out:
             repeatmasker_out = os.path.join(temp_repeatmasker_dir,
-                                            "temp_TETrimmer_unknown_consensus.fasta.out")
+                                            "temp_TEtrimmer_unknown_consensus.fasta.out")
             reclassified_dict = repeatmasker_output_classify(repeatmasker_out, progress_file,
                                                              min_iden=70, min_len=80, min_cov=0.5)
             if reclassified_dict:
@@ -349,7 +349,7 @@ def repeatmasker_classification(final_unknown_con_file, final_classified_con_fil
 
 def merge_cons(classification_dir, final_con_file, progress_file, cd_hit_est_final_merged, num_threads):
     # Do first round of CD-HIT-EST
-    cd_hit_merge_output_round1 = os.path.join(classification_dir, "TETrimmer_consensus_merged_round1.fasta")
+    cd_hit_merge_output_round1 = os.path.join(classification_dir, "TEtrimmer_consensus_merged_round1.fasta")
     cd_hit_merge_output_round1_clstr = f"{cd_hit_merge_output_round1}.clstr"
 
     # Round 1 merge only requires that the alignment coverage for the shorter sequence is greater than 0.9
@@ -425,7 +425,7 @@ def merge_cons(classification_dir, final_con_file, progress_file, cd_hit_est_fin
                 SeqIO.write(seq_record, round2_file, 'fasta')
 
     # Do second round of CD-HIT-EST based on temp_consensus_round2_input
-    cd_hit_merge_output_round2 = os.path.join(classification_dir, "TETrimmer_consensus_merged_round2.fasta")
+    cd_hit_merge_output_round2 = os.path.join(classification_dir, "TEtrimmer_consensus_merged_round2.fasta")
 
     # Round 2 merge requires that the alignment coverage for the long and short sequence are both greater than 0.8
     # and the similarity is greater than 0.85
@@ -897,7 +897,7 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
         """
         # If the current folder is not empty, create a new folder with current time stamp
         current_time = time.strftime("%Y%m%d_%H%M%S")
-        new_output_dir = os.path.join(output_dir, f"TETrimmer_output_{current_time}")
+        new_output_dir = os.path.join(output_dir, f"TEtrimmer_output_{current_time}")
         os.makedirs(new_output_dir, exist_ok=True)
         output_dir = new_output_dir
         prgre(f"\nThe given output directory is not empty. Results will be stored into folder: \n"
@@ -926,7 +926,7 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
         hmm_dir = ''
 
     # Define proof_annotation folder path
-    proof_annotation_dir = os.path.join(output_dir, "TETrimmer_for_proof_annotation")
+    proof_annotation_dir = os.path.join(output_dir, "TEtrimmer_for_proof_annotation")
     os.makedirs(proof_annotation_dir, exist_ok=True)
 
     # Define clustered proof annotation folder inside proof_annotation_dir
@@ -1006,12 +1006,12 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
         return
 
     # Define consensus files. Temporary (temp) files will be used for the final RepeatMasker classification.
-    final_con_file = os.path.join(output_dir, "TETrimmer_consensus.fasta")
-    final_unknown_con_file = os.path.join(classification_dir, "temp_TETrimmer_unknown_consensus.fasta")
-    final_classified_con_file = os.path.join(classification_dir, "temp_TETrimmer_classified_consensus.fasta")
+    final_con_file = os.path.join(output_dir, "TEtrimmer_consensus.fasta")
+    final_unknown_con_file = os.path.join(classification_dir, "temp_TEtrimmer_unknown_consensus.fasta")
+    final_classified_con_file = os.path.join(classification_dir, "temp_TEtrimmer_classified_consensus.fasta")
 
     # Define consensus file without low copy
-    final_con_file_no_low_copy = os.path.join(classification_dir, "TETrimmer_consensus_no_low_copy.fasta")
+    final_con_file_no_low_copy = os.path.join(classification_dir, "TEtrimmer_consensus_no_low_copy.fasta")
 
     return bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, \
         low_copy_dir, perfect_proof, good_proof, intermediate_proof, need_check_proof, progress_file, pfam_dir, \

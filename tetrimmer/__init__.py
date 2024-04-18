@@ -1,1 +1,1 @@
-"""Top-level package for TETrimmer."""
+"""Top-level package for TEtrimmer."""

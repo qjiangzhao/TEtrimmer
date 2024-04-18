@@ -11,7 +11,7 @@ build:
   number: 0
   script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
   entry_points:
-    - tetrimmer=tetrimmer.TETrimmer:main
+    - tetrimmer=tetrimmer.TEtrimmer:main
 
 
 requirements:
@@ -58,9 +58,9 @@ test:
     - tetrimmer
     
 about:
-  home: https://github.com/qjiangzhao/TETrimmer.git
+  home: https://github.com/qjiangzhao/TEtrimmer.git
   license: GPLv3
-  summary: "TETrimmer is designed to replace and assistant TE manual curation."
+  summary: "TEtrimmer is designed to replace and assistant TE manual curation."
 
 extra:
   recipe-maintainers:
