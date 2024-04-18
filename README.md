@@ -25,18 +25,18 @@ We highly recommend installation with `mamba`, as it is much faster.
 
 ```commandline
 # Create TEtrimmer environment
-conda create --name tetrimmerenv
-# Activate environment
-conda activate tetrimmerenv
 # Install mamba 
 conda install -c conda-forge mamba
-# Install TEtrimmer dependencies
-mamba install -c bioconda -c conda-forge perl r-base python biopython matplotlib multiprocess \
-pandas pypdf2 numpy scikit-learn urllib3 regex tk click requests bedtools blast cd-hit emboss \
-hmmer mafft pfam_scan repeatmasker samtools repeatmodeler iqtree -y
+
 # Clone the github repository for TEtrimmer.
 git clone https://github.com/qjiangzhao/TEtrimmer.git
+
+# Install TEtrimmer by the "yml" file
+mambe env create -f <path to/TEtrimmer_env_for_linux.yml>
 ```
+Here is the provided [TEtrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TEtrimmer_env_for_linux.yml)
+
+
 
 **or** if you are using macOS, you can install TEtrimmer conda package directly. Note: TEtrimmer installation requires python=3.10 
 ```commandline
@@ -49,7 +49,7 @@ TETrimmer --help
 TEtrimmer conda package only works for macOS currently. We are developing conda package for Linux. 
 We are working on uploading the package to the Bioconda channel and dockerize it. 
 
-**or** See required dependencies [TEtrimmer_dependencies](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies) and [TEtrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/docs/TEtrimmer_env_for_linux.yml). 
+**or** See required dependencies [TEtrimmer_dependencies](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies). 
 
 ## Usage:
 Use --help to access all [options](#All-available-options)
