@@ -43,7 +43,7 @@ def change_permissions_recursive(input_dir, mode):
             for filename in filenames:
                 os.chmod(os.path.join(dirpath, filename), mode)
     except PermissionError:
-        click.echo("TETrimmer don't have right to change permissions. Pleas use sudo to run TETrimmer")
+        click.echo("TEtrimmer don't have right to change permissions. Pleas use sudo to run TEtrimmer")
         return False
     return True
 
@@ -66,14 +66,14 @@ if os_type == "Windows":
 
 @click.command()
 @click.option('--te_trimmer_proof_annotation_dir', '-i', default=None, type=str,
-              help='Supply the TETrimmer output directory path')
+              help='Supply the TEtrimmer output directory path')
 @click.option('--output_dir', '-o', default=None, type=str,
               help='Define the output directory for TE proof annotation. Default: input folder directory')
 def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     """
     This tool can help do quick proof annotation
 
-    python ./path_to_TETrimmer_bin/Class_TKinter_proof_annotation.py -i "TETrimmer_output_folder"
+    python ./path_to_TEtrimmer_bin/Class_TKinter_proof_annotation.py -i "TEtrimmer_output_folder"
     """
 
     # Define empty list to store copy history, which enable undo button
@@ -85,7 +85,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
 
     # If the -o option is not given, use the parent directory of -i as output directory.
     if output_dir is None:
-        output_dir = os.path.join(te_trimmer_proof_annotation_dir, "TETrimmer_proof_anno_results")
+        output_dir = os.path.join(te_trimmer_proof_annotation_dir, "TEtrimmer_proof_anno_results")
     # Define output folders, create them when they are not found
     consensus_folder = os.path.abspath(os.path.join(output_dir, "Proof_annotation_consensus_folder"))
     need_more_extension = os.path.abspath(os.path.join(output_dir, "Proof_annotation_need_more_extension"))
@@ -104,7 +104,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
 
     # Initialize Tk window
     root = Tk()
-    root.title("TETrimmer proof annotation tool")
+    root.title("TEtrimmer proof annotation tool")
     root.geometry('1200x900')
 
     # Create canvas on root
@@ -167,7 +167,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                "   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝\n"\
 
 
-    initial_text = "TETrimmer manual proof annotation assistant tool\n\n" \
+    initial_text = "TEtrimmer manual proof annotation assistant tool\n\n" \
                    "Introduction:\n\n" \
                    "We highly recommend to do manual proof annotation to increase your TE annotation quality.\n\n"\
                    "1, Click the <Clustered_proof_annotation> buttons in the menu bar.\n\n" \
@@ -438,7 +438,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
                                                             source_dir, current_win))
 
             # Define "Use input" button, click it when user want to use the input sequence before
-            # TETrimmer analysis
+            # TEtrimmer analysis
             use_input_button = Button(button_frame, text="Use input", bg='white', fg='black')
             use_input_button.grid(row=0, column=2, padx=5)
             # Bind "Use input" button with copy_file function with different destination folder

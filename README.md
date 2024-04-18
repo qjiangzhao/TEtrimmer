@@ -12,59 +12,58 @@
 
 ## Introduction
 Many tools have been developed for *de novo* transposable element (TE) identification. However, manual 
-curation is still required for high-quality TE annotation by experts. TETrimmer is designed to replace and assist
-manual TE curation. You can find more details about TETrimmer below [flowchart](#Flowchart).
+curation is still required for high-quality TE annotation by experts. TEtrimmer is designed to replace and assist
+manual TE curation. You can find more details about TEtrimmer below [flowchart](#Flowchart).
 
 ## Manual
 For detailed instructions, including installation steps, usage options, example outputs, and more, 
-please refer to [TETrimmerv1.1.9Manual.pdf](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmerv1.1.9Manual.pdf) 
+please refer to [TEtrimmerv1.2.0Manual.pdf](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerv1.2.0Manual.pdf) 
 
 ## Installation
-Install Conda package for TETrimmer. Note: TETrimmer installation requires python=3.10. 
+Install TEtrimmer dependencies. 
 We highly recommend installation with `mamba`, as it is much faster. 
 
 ```commandline
-# Create TETrimmer environment
-conda create --name tetrimmerenv python=3.10
+# Create TEtrimmer environment
+conda create --name tetrimmerenv
 # Activate environment
 conda activate tetrimmerenv
 # Install mamba 
 conda install -c conda-forge mamba
+# Install TEtrimmer dependencies
+mamba install -c bioconda -c conda-forge perl r-base python biopython matplotlib multiprocess pandas pypdf2 numpy scikit-learn urllib3 regex tk click requests bedtools blast cd-hit emboss hmmer mafft pfam_scan repeatmasker samtools repeatmodeler iqtree -y
+# Clone the github repository for TEtrimmer.
+git clone https://github.com/qjiangzhao/TEtrimmer.git
+```
+
+**or** if you are using macOS, you can install TEtrimmer conda package directly. Note: TEtrimmer installation requires python=3.10 
+```commandline
+conda create --name tetrimmerenv python=3.10
 # Install TETrimmer 
 mamba install qianjiangzhao::tetrimmer
 # Display options of TETrimmer 
 TETrimmer --help
 ```
-Note: Currently "mamba install qianjiangzhao::tetrimmer" is only possible for macOS. We are developing conda package for Linux and Windows WSL. 
-
+TEtrimmer conda package only works for macOS currently. We are developing conda package for Linux. 
 We are working on uploading the package to the Bioconda channel and dockerize it. 
 
-**or** install the required dependencies as listed here (https://github.com/qjiangzhao/TETrimmer/blob/main/TETrimmer_dependencies) and clone the github repository for TETrimmer.
-
-**or** install using mamba based on [TETrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TETrimmer_env_for_linux.yml). ***Use this for linux and Windows WSL***.
-
-```commandline
-conda install -c conda-forge mamba
-mamba env create -f TETrimmer_env_for_linux.yml
-```
-For ***Windows WSL***, you can follow the same instructions used for Linux. 
+**or** See required dependencies [TEtrimmer_dependencies] (https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies) and [TEtrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/docs/TEtrimmer_env_for_linux.yml). 
 
 ## Usage:
 Use --help to access all [options](#All-available-options)
-
 ```commandline
-TETrimmer --help
+python {path to TEtrimmer}/TEtrimmer.py --help
 ```
-**or** for developers
+**or** If using TEtrimmer conda package
 ```commandline
-python {path to TETrimmer}/TETrimmer.py --help
+TEtrimmer --help
 ```
 
 ## Hardware requirements
 System: Linux, macOS, Windows WSL
 
 RAM:
-- For HPC Linux user, enough RAM needs to be assigned. We highly recommend running TETrimmer on HPC with at least 40 threads and assigning at least 5 GB ram to each thread.
+- For HPC Linux user, enough RAM needs to be assigned. We highly recommend running TEtrimmer on HPC with at least 40 threads and assigning at least 5 GB ram to each thread.
 
 
 | Threads | RAM    |
@@ -79,14 +78,14 @@ RAM:
 | 1700                  | Macbook Pro M1 | 20      | 16 GB + Virtual Memory | 50 hours     |
 | 1700                  | HPC            | 40      | 150 GB                 | 5 hours      | 
 
-- We have not tested it on the WLS of Windows, but it should be feasible to run TETrimmer on it as well given sufficient resources. 
+- We have not tested it on the WLS of Windows, but it should be feasible to run TEtrimmer on it as well given sufficient resources. 
 
 ## Test
 
-- Download the test files [test_input.fa](https://github.com/qjiangzhao/TETrimmer/blob/main/tests/test_input.fa) and [test_genome.fasta](https://github.com/qjiangzhao/TETrimmer/blob/main/tests/test_genome.fasta).
+- Download the test files [test_input.fa](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_input.fa) and [test_genome.fasta](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_genome.fasta).
 
 ```commandline
-TETrimmer --input_file {path to test_input.fa} \
+TEtrimmer --input_file {path to test_input.fa} \
           --genome_file {path to test_genome.fasta} \
           --output_dir {output directory} \
           --num_threads 10
@@ -94,13 +93,13 @@ TETrimmer --input_file {path to test_input.fa} \
 ```
 ## Inputs
 - **Genome file**: The genome sequence in FASTA format (.fa or .fasta).
-- **TE consensus library**: TETrimmer uses the TE consensus library from *de novo* TE annotation tools, like `RepeatModeler` or `EDTA`, as input. 
+- **TE consensus library**: TEtrimmer uses the TE consensus library from *de novo* TE annotation tools, like `RepeatModeler` or `EDTA`, as input. 
 For this reason, you have to run `RepeatModeler` or other TE annotation software first. 
 
 Example:
 
 ```commandline
-TETrimmer --input_file {TE consensus library} \
+TEtrimmer --input_file {TE consensus library} \
           --genome_file {genome file} \
           --output_dir {output directory} \
           --num_threads 10
@@ -108,15 +107,15 @@ TETrimmer --input_file {TE consensus library} \
 ```
 If you want to **continue the analysis based on previous unfinished results in the same directory:**:
 ```commandline
-TETrimmer --input_file {TE consensus library} \
+TEtrimmer --input_file {TE consensus library} \
           --genome_file {genome file} \
           --output_dir {directory contains previous unfinished results} \
           --num_threads 10 \
           --continue_analysis
 ```
-If you want to **combine files from different sources for the input file, we recommend removing duplicate sequences during processing. This step can potentially save overall run time in the input file**:
+If you want to **combine files from different sources for the input file, we recommend removing duplicate sequences before processing. This step can potentially save overall run time in the input file**:
 ```commandline
-TETrimmer --input_file {TE consensus library} \
+TEtrimmer --input_file {TE consensus library} \
           --genome_file {genome file} \
           --output_dir {output directory} \
           --num_threads 10 \
@@ -125,17 +124,17 @@ TETrimmer --input_file {TE consensus library} \
 More options are available:
 ```commandline
   -s, --preset [conserved|divergent]
-                                  Choose one preset config (conserved or divergent).
+                                  Choose one preset config (conserved or divergent). Default: conserved.
   --classify_unknown              Use RepeatClassifier to classify the consensus sequence if the input
                                   sequence is not classified or is unknown or the processed sequence
-                                  length by TETrimmer is 2000 bp longer or shorter than the query
+                                  length by TEtrimmer is 2000 bp longer or shorter than the query
                                   sequence.
   --classify_all                  Use RepeatClassifier to classify every consensus sequence. WARNING:
                                   This may take a long time.
-  -ca, --continue_analysis        Continue from previous unfinished TETrimmer run and would use the
+  -ca, --continue_analysis        Continue from previous unfinished TEtrimmer run and would use the
                                   same output directory.
   --dedup                         Remove duplicate sequences in input file.
-  -ga, --genome_anno              Perform genome TE annotation using RepeatMasker with the TETrimmer
+  -ga, --genome_anno              Perform genome TE annotation using RepeatMasker with the TEtrimmer
                                   curated TE libraries.
 
 ```
@@ -144,7 +143,7 @@ More options are available:
 - 📁**Multiple_sequence_alignment** - *All raw files will be stored in this folder if < --debug > is enabled.*
   - 📄**error_file.txt** - *Error file to store all error messages, only visible if errors were found.*
 - 📁**Single_fasta_files** - *All sequences in the input file will be separated into single FASTA files and stored here.*
-- 📁**TETrimmer_for_proof_annotation** - *This folder contains files used for manual inspection of TETrimmer annotations.* 
+- 📁**TEtrimmer_for_proof_annotation** - *This folder contains files used for manual inspection of TEtrimmer annotations.* 
   - 📁**Annotation_perfect** - *Four files are associated with each sequence (anno.fa; fa; pdf).*
     - 📄**TE_name.anno.fa** - *Multiple sequence alignment file before cleaning.*
     - 📄**TE_name.fa** - *Multiple sequence alignment file after cleaning.*
@@ -156,36 +155,34 @@ More options are available:
   - 📁**Clustered_proof_annotation** - *The folder group processed TEs to different clusters based on TE consensus sequence similarity.*
   - 📁**TE_low_copy** - *This folder contains low copy TEs.*
   - 📁**TE_skipped** - *Contains TE_Aid plots for all skipped TEs.*
-  - 📁**TETrimmer_proof_anno_GUI** - *The folder contains graphical user interface tools for manual proof annotation.*
+  - 📁**TEtrimmer_proof_anno_GUI** - *The folder contains graphical user interface tools for manual proof annotation.*
     - 📄**annoGUI.py** - *Use python ./annoGUI.py to start manual proof annotation GUI.*
 - 📁**HMM** - *This folder is used to store Hidden Markov Model file. Only visible when < --hmm > is enabled.*
-- 📄**Sequence_name_mapping.txt** - *This file connects the input sequence names with the modified names from TETrimmer.*
+- 📄**Sequence_name_mapping.txt** - *This file connects the input sequence names with the modified names from TEtrimmer.*
 - 📄**summary.txt** - *Summary file.* 
-- 📄**TETrimmer_consensus.fasta** - *TE consensus library file before de-duplication.*
-- 📄**TETrimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
+- 📄**TEtrimmer_consensus.fasta** - *TE consensus library file before de-duplication.*
+- 📄**TEtrimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
 
 
-## Proof annotation: Manual inspection of TETrimmer annotations
-You can use this graphical user interface tool to assist the manual inspection of TETrimmer-generated annotations. We highly recommend to perform
+## Proof annotation: Manual inspection of TEtrimmer annotations
+You can use this graphical user interface tool to assist the manual inspection of TEtrimmer-generated annotations. We highly recommend to perform
 manual inspection of TE annotations in the "Recommend_check_annotation" and "Need_check_annotation" folders to generate a high-quality TE
 ```commandline
 # To start the manual inspection GUI tool
 # Open your Linux, macOS, or Windows terminal and type
-python <path to your output_directory>/TETrimmer_for_proof_annotation/TETrimmer_proof_anno_GUI/annoGUI.py
+python <path to your output_directory>/TEtrimmer_for_proof_annotation/TEtrimmer_proof_anno_GUI/annoGUI.py
 ```
-You can follow these instructions to perform the inspection. 
-![TETrimmer_interface1](https://www.dropbox.com/scl/fi/nhlit6ttz8zf8yemqfop4/Screenshot-2024-02-22-at-13.59.18.png?rlkey=qrwcdlecmxpiww4ys4dwmn5ey&dl=1)
 The following are clusters and files (Click the "Clustered_proof_annotation" button in the menu bar to show this.)
-![TETrimmer_interfact2](https://www.dropbox.com/scl/fi/hosv7ot39m4qluhpdaygd/Screenshot-2024-02-22-at-14.05.49.png?rlkey=kiz48atyqzg2d78tcyup30bid&dl=1)
+![Proof annotation GUI](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/Proof_annotation.pdf)
                         
 ## Benchmarking
-TETrimmer is 6-times more accurate to annotate the intact TE than RepeatModeler in case of *Blumeria hordei*. 
+TEtrimmer is 6-times more accurate to annotate the intact TE than RepeatModeler in case of *Blumeria hordei*. 
 ![Benchmarking1](https://www.dropbox.com/scl/fi/v1ex6txe0mb9200gmtir3/Benchamrking_joined2.png?rlkey=i742b8ykyht0zw885r3mj9u64&raw=1)
 
 ## Acknowledgements
 
 ## Flowchart
-![image](https://www.dropbox.com/scl/fi/4s0sd2e0ndic62pyt22dt/TE_Trimmer_vertical_flowchart.png?rlkey=ixwbo1p7h05xhz80nh2j47y2o&raw=1)
+![image](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerFlowchart.pdf)
 
 ## All available options 
 ```commandline
@@ -200,21 +197,21 @@ Options:
   -s, --preset [conserved|divergent]
                                   Choose one preset config (conserved or divergent).
 
-  -t, --num_threads INTEGER       Thread number used for TETrimmer. Default: 10
+  -t, --num_threads INTEGER       Thread number used for TEtrimmer. Default: 10
 
   --classify_unknown              Use RepeatClassifier to classify the consensus sequence if the input
                                   sequence is not classified or is unknown or the processed sequence
-                                  length by TETrimmer is 2000 bp longer or shorter than the query
+                                  length by TEtrimmer is 2000 bp longer or shorter than the query
                                   sequence.
 
   --classify_all                  Use RepeatClassifier to classify every consensus sequence. WARNING:
                                   This may take a long time.
 
-  -ca, --continue_analysis        Continue from previous unfinished TETrimmer run and would use the
+  -ca, --continue_analysis        Continue from previous unfinished TEtrimmer run and would use the
                                   same output directory.
   --dedup                         Remove duplicate sequences in input file.
 
-  -ga, --genome_anno              Perform genome TE annotation using RepeatMasker with the TETrimmer
+  -ga, --genome_anno              Perform genome TE annotation using RepeatMasker with the TEtrimmer
                                   curated TE libraries.
 
   --hmm                           Generate HMM files for each processed consensus sequence.
@@ -231,16 +228,16 @@ Options:
   --cons_thr FLOAT                The minimum level of agreement required at a given position in the
                                   alignment for a consensus character to be called. Default: 0.8
 
-  --mini_orf INTEGER              Define the minimum ORF length to be predicted by TETrimmer. Default:
+  --mini_orf INTEGER              Define the minimum ORF length to be predicted by TEtrimmer. Default:
                                   200
 
   --max_msa_lines INTEGER         Set the maximum number of sequences to be included in a multiple
                                   sequence alignment. Default: 100
 
   --top_msa_lines INTEGER         If the sequence number of multiple sequence alignment (MSA) is
-                                  greater than <max_msa_lines>, TETrimmer will first sort sequences by
+                                  greater than <max_msa_lines>, TEtrimmer will first sort sequences by
                                   length and choose <top_msa_lines> number of sequences. Then,
-                                  TETrimmer will randomly select sequences from all remaining BLAST
+                                  TEtrimmer will randomly select sequences from all remaining BLAST
                                   hits until <max_msa_lines>sequences are found for the multiple
                                   sequence alignment. Default: 100
 
@@ -262,7 +259,7 @@ Options:
                                   <ext_thr>, a “N” will be called at this position. Used with
                                   <ext_check_win>. The lower the value of <ext_thr>, the more likely to
                                   get longer the extensions on both ends. You can try reducing
-                                  <ext_thr> if TETrimmer fails to find full-length TEs. Default: 0.7
+                                  <ext_thr> if TEtrimmer fails to find full-length TEs. Default: 0.7
 
   --ext_check_win TEXT            the check windows size during defining start and end of the consensus
                                   sequence based on the multiple sequence alignment. Used with
@@ -311,8 +308,8 @@ Options:
                                   <--crop_end_gap_thr> option. Default: 250
 
   --start_patterns TEXT           LTR elements always start with a conserved sequence pattern.
-                                  TETrimmer searches the beginning of the consensus sequence for these
-                                  patterns. If the pattern is not found, TETrimmer will extend the
+                                  TEtrimmer searches the beginning of the consensus sequence for these
+                                  patterns. If the pattern is not found, TEtrimmer will extend the
                                   search of <--start_patterns> to up to 15 nucleotides from the
                                   beginning of the consensus sequence and redefine the start of the
                                   consensus sequence if the pattern is found. Note: The user can
@@ -320,9 +317,9 @@ Options:
                                   TG,TA,TC (no spaces; the order of patterns determines the priority
                                   for the search). Default: TG
 
-  --end_patterns TEXT             LTR elements always end with a conserved sequence pattern. TETrimmer
+  --end_patterns TEXT             LTR elements always end with a conserved sequence pattern. TEtrimmer
                                   searches the end of the consensus sequence for these patterns. If the
-                                  pattern is not found, TETrimmer will extend the search of
+                                  pattern is not found, TEtrimmer will extend the search of
                                   <--end_patterns> to up to 15 nucleotides from the end of the
                                   consensus sequence and redefine the end of the consensus sequence if
                                   the pattern is found. Note: The user can provide multiple LTR end

@@ -1842,7 +1842,7 @@ def merge_pdfs(output_dir, output_file_n, *pdfs):
 
 def dotplot(sequence1, sequence2, output_dir):
 
-    # Define based on TETrimmer analysis file name
+    # Define based on TEtrimmer analysis file name
     n_after_tetrimmer = os.path.basename(sequence1)
 
     # Define the output filenames
@@ -1856,8 +1856,8 @@ def dotplot(sequence1, sequence2, output_dir):
         "-windowsize", "25",
         "-threshold", "50",
         "-gtitle", "Dotplot",
-        "-gxtitle", "After TETrimmer treatment",
-        "-gytitle", "Before TETrimmer treatment",
+        "-gxtitle", "After TEtrimmer treatment",
+        "-gytitle", "Before TEtrimmer treatment",
         "-graph", "ps",
         "-goutfile", sequence1
     ]
@@ -1904,7 +1904,7 @@ def multi_seq_dotplot(input_file, output_dir, title):
 
     # Define the output filenames
     ps_out = os.path.join(output_dir, f"{title}.ps")
-    pdf_out = os.path.join(output_dir, f"0TETrimmer_{title}_multiple_sequence_dotplot.pdf")
+    pdf_out = os.path.join(output_dir, f"0TEtrimmer_{title}_multiple_sequence_dotplot.pdf")
 
     # Define command for dotmatcher
     polydot_command = [

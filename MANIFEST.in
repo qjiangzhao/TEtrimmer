@@ -1,5 +1,5 @@
 include README.md
 include MANIFEST.in
 include LICENSE.txt
-recursive-include tetrimmer/TETrimmer_proof_anno_GUI *
+recursive-include tetrimmer/TEtrimmer_proof_anno_GUI *
 recursive-include tetrimmer/TE-Aid-master *
