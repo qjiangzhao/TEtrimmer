@@ -44,7 +44,7 @@ with open(config_path, "r") as config_file:
                   ██║   ███████╗   ██║   ██║  ██║██║██║ ╚═╝ ██║██║ ╚═╝ ██║███████╗██║  ██║
                   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝
                   
-                Version: v1.1.6 (21/Feb/2024) 
+                Version: v1.2.0 (19/April/2024) 
 
                 Github: https://github.com/qjiangzhao/TEtrimmer
 
