@@ -24,7 +24,6 @@ Install TEtrimmer dependencies.
 We highly recommend installation with `mamba`, as it is much faster. 
 
 ```commandline
-# Create TEtrimmer environment
 # Install mamba 
 conda install -c conda-forge mamba
 

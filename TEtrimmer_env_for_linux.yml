@@ -249,6 +249,7 @@ dependencies:
   - repeatscout=1.0.6=hec16e2b_3
   - requests=2.31.0=pyhd8ed1ab_0
   - rmblast=2.14.1=h4565617_0
+  - ruptures=1.1.9=py310h1f7b6fc_0
   - samtools=1.18=h50ea8bc_1
   - scikit-learn=1.3.2=py310h1fdf081_1
   - scipy=1.11.3=py310hb13e2d6_1
