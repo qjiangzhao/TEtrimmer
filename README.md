@@ -90,7 +90,7 @@ TEtrimmer --input_file {path to test_input.fa} \
           --genome_file {path to test_genome.fasta} \
           --output_dir {output directory} \
           --num_threads 10
-          --classify_unknown                                          
+          --classify_all                                          
 ```
 ## Inputs
 - **Genome file**: The genome sequence in FASTA format (.fa or .fasta).
@@ -103,7 +103,8 @@ Example:
 TEtrimmer --input_file {TE consensus library} \
           --genome_file {genome file} \
           --output_dir {output directory} \
-          --num_threads 10
+          --num_threads 10 \
+          --classify_all
                                           
 ```
 If you want to **continue the analysis based on previous unfinished results in the same directory:**:
@@ -112,14 +113,18 @@ TEtrimmer --input_file {TE consensus library} \
           --genome_file {genome file} \
           --output_dir {directory contains previous unfinished results} \
           --num_threads 10 \
+          --classify_all \
           --continue_analysis
 ```
-If you want to **combine files from different sources for the input file, we recommend removing duplicate sequences before processing. This step can potentially save overall run time in the input file**:
+If you want to **combine files from different sources for the input file, we recommend removing duplicate sequences 
+before processing. This step can potentially save overall run time in the input file** (TEtrimmer only accepts single file
+input, you have to combine files in advance):
 ```commandline
 TEtrimmer --input_file {TE consensus library} \
           --genome_file {genome file} \
           --output_dir {output directory} \
           --num_threads 10 \
+          --classify_all
           --dedup    
 ```
 More options are available:
@@ -166,21 +171,40 @@ More options are available:
 
 
 ## Proof annotation: Manual inspection of TEtrimmer annotations
-You can use this graphical user interface tool to assist the manual inspection of TEtrimmer-generated annotations. We highly recommend to perform
-manual inspection of TE annotations in the "Recommend_check_annotation" and "Need_check_annotation" folders to generate a high-quality TE
+You can use this graphical user interface tool to assist the manual inspection of TEtrimmer-generated annotations. We highly recommend doing 
+manual proof annotation to increase TE consensus library quality.
+
+
+MSA files can be inspected by double-clicking the corresponding file button. AliView is used to open MSA files.
 ```commandline
 # To start the manual inspection GUI tool
 # Open your Linux, macOS, or Windows terminal and type
 python <path to your output_directory>/TEtrimmer_for_proof_annotation/TEtrimmer_proof_anno_GUI/annoGUI.py
 ```
 The following are clusters and files (Click the "Clustered_proof_annotation" button in the menu bar to show this.)
-![Proof annotation GUI](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/Proof_annotation.pdf)
-                        
-## Benchmarking
-TEtrimmer is 6-times more accurate to annotate the intact TE than RepeatModeler in case of *Blumeria hordei*. 
-![Benchmarking1](https://www.dropbox.com/scl/fi/v1ex6txe0mb9200gmtir3/Benchamrking_joined2.png?rlkey=i742b8ykyht0zw885r3mj9u64&raw=1)
+![Proof annotation GUI](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_GUI.pdf)
+
+You can integrate TEtrimmer cleaning functions into AliView to facilitate the manual inspection.
+```commandline
+# Copy the following codes into AliView "External commands" configuration window
+
+#remove column gap
+python ./remove_gap.py -i CURRENT_ALIGNMENT_FASTA -o TEMP_OUT_FILE --gap_threshold 0.8 --simi_check_gap_thr 0.4 --similarity_thr 0.7 --min_nucleotide 5
+ALIVIEW_OPEN TEMP_OUT_FILE
+
+#crop end by divergence
+python ./crop_end_divergence.py -i CURRENT_ALIGNMENT_FASTA -o TEMP_OUT_FILE --threshold 0.8 --window_size 40
+ALIVIEW_OPEN TEMP_OUT_FILE
+
+#crop end by gap
+python ./crop_end_gap.py -i CURRENT_ALIGNMENT_FASTA -o TEMP_OUT_FILE --gap_threshold 0.05 --window_size 200
+ALIVIEW_OPEN TEMP_OUT_FILE
+```
+![Configure_AliView](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/AliView_configuration.pdf)
 
 ## Acknowledgements
+Coming soon!!!
+Many thanks to all the people who contributed to TEtrimmer development. 
 
 ## Flowchart
 ![image](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerFlowchart.pdf)
