@@ -31,7 +31,7 @@ conda install -c conda-forge mamba
 git clone https://github.com/qjiangzhao/TEtrimmer.git
 
 # Install TEtrimmer by the "yml" file
-mambe env create -f <path to/TEtrimmer_env_for_linux.yml>
+mamba env create -f <path to/TEtrimmer_env_for_linux.yml>
 ```
 Here is the provided [TEtrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TEtrimmer_env_for_linux.yml)
 
