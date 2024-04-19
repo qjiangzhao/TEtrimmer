@@ -60,7 +60,7 @@ test:
 about:
   home: https://github.com/qjiangzhao/TEtrimmer.git
   license: GPLv3
-  summary: "TEtrimmer is designed to replace and assistant TE manual curation."
+  summary: "TEtrimmer is designed to replace and assist TE manual curation."
 
 extra:
   recipe-maintainers:

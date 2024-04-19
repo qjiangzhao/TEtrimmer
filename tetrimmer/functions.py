@@ -14,7 +14,6 @@ import pandas as pd
 import pandas.errors
 import numpy as np
 from PyPDF2 import PdfMerger, PdfFileReader, PdfFileWriter
-
 import warnings
 from Bio import BiopythonDeprecationWarning
 
