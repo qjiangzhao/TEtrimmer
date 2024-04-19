@@ -182,7 +182,7 @@ MSA files can be inspected by double-clicking the corresponding file button. Ali
 python <path to your output_directory>/TEtrimmer_for_proof_annotation/TEtrimmer_proof_anno_GUI/annoGUI.py
 ```
 The following are clusters and files (Click the "Clustered_proof_annotation" button in the menu bar to show this.)
-![Proof annotation GUI](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_GUI.pdf)
+![Proof annotation GUI](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_GUI.png)
 
 You can integrate TEtrimmer cleaning functions into AliView to facilitate the manual inspection.
 ```commandline
@@ -200,14 +200,14 @@ ALIVIEW_OPEN TEMP_OUT_FILE
 python ./crop_end_gap.py -i CURRENT_ALIGNMENT_FASTA -o TEMP_OUT_FILE --gap_threshold 0.05 --window_size 200
 ALIVIEW_OPEN TEMP_OUT_FILE
 ```
-![Configure_AliView](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/AliView_configuration.pdf)
+![Configure_AliView](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/AliView_configuration.png)
 
 ## Acknowledgements
 Coming soon!!!
 Many thanks to all the people who contributed to TEtrimmer development. 
 
 ## Flowchart
-![image](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerFlowchart.pdf)
+![image](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerFlowchart.png)
 
 ## All available options 
 ```commandline
