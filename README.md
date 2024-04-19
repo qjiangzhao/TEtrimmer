@@ -202,15 +202,14 @@ ALIVIEW_OPEN TEMP_OUT_FILE
 ```
 ![Configure_AliView](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/AliView_configuration.png)
 
-## Acknowledgements
-Coming soon!!!
-Many thanks to all the people who contributed to TEtrimmer development. 
-
 ## Flowchart
 ![TEtrimmerFlowchart](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TETrimmerFlowchart.png)
 
 ## Example report plots for each output TE consensus sequence
 ![Reportplots](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_report_plots_for_each_output.png)
+
+## Acknowledgements
+Many thanks to all the people who contributed to the TEtrimmer development. 
 
 ## All available options 
 ```commandline
