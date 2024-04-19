@@ -207,7 +207,10 @@ Coming soon!!!
 Many thanks to all the people who contributed to TEtrimmer development. 
 
 ## Flowchart
-![image](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerFlowchart.png)
+![TEtrimmerFlowchart](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TETrimmerFlowchart.png)
+
+## Example report plots for each output TE consensus sequence
+![Reportplots](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_report_plots_for_each_output.png)
 
 ## All available options 
 ```commandline
