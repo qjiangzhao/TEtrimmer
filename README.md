@@ -11,9 +11,18 @@
 - [All available options](#All-available-options)
 
 ## Introduction
-Many tools have been developed for *de novo* transposable element (TE) identification. However, manual 
-curation is still required for high-quality TE annotation by experts. TEtrimmer is designed to replace and assist
-manual TE curation. You can find more details about TEtrimmer below [flowchart](#Flowchart).
+Many tools have been developed for the discovery and annotation of transposable elements (TEs). 
+However, the high-quality TE consensus library construction still requires manual curation of TEs, 
+which is time-consuming and needs experts with an in-depth understanding of TE biology. 
+
+
+
+TEtrimmer is a powerful software designed to automate the manual curation of TEs. The input can be a TE library from 
+**de novo** TE discovery tools, such as EDTA2 and RepeatModeler2, or a TE library from closely related species. 
+For each input consensus sequence, TEtrimmer automatically performs BLAST,  sequence extraction, extension, 
+multiple sequence alignment (MSA), MSA clustering, MSA cleaning, TE boundary definition, and TE classification. 
+TEtrimmer also provides a graphical user interface (GUI) to inspect and improve predicted TEs, which can assist 
+achieving manual curation-level TE consensus libraries easily. 
 
 ## Manual
 For detailed instructions, including installation steps, usage options, example outputs, and more, 
@@ -24,11 +33,11 @@ Install TEtrimmer dependencies.
 We highly recommend installation with `mamba`, as it is much faster. 
 
 ```commandline
-# Install mamba 
-conda install -c conda-forge mamba
-
 # Clone the github repository for TEtrimmer.
 git clone https://github.com/qjiangzhao/TEtrimmer.git
+
+# Install mamba 
+conda install -c conda-forge mamba
 
 # Install TEtrimmer by the "yml" file
 mamba env create -f <path to/TEtrimmer_env_for_linux.yml>
@@ -39,7 +48,9 @@ Here is the provided [TEtrimmer_env_for_linux.yml](https://github.com/qjiangzhao
 
 **or** if you are using macOS, you can install TEtrimmer conda package directly. Note: TEtrimmer installation requires python=3.10 
 ```commandline
-conda create --name tetrimmerenv python=3.10
+conda create --name TEtrimmer python=3.10
+conda activate TEtrimmer
+
 # Install TETrimmer 
 mamba install qianjiangzhao::tetrimmer
 # Display options of TETrimmer 
