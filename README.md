@@ -63,17 +63,7 @@ TETrimmer --help
 TEtrimmer conda package only works for macOS currently. We are developing conda package for Linux. 
 We are working on uploading the package to the Bioconda channel and dockerize it (Many thanks to [Hang Xue](https://github.com/hangxue-wustl). 
 
-**or** See required dependencies [TEtrimmer_dependencies](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies). 
-
-## Usage:
-Use --help to access all [options](#All-available-options)
-```commandline
-python {path to TEtrimmer}/TEtrimmer.py --help
-```
-**or** If using TEtrimmer conda package
-```commandline
-TEtrimmer --help
-```
+**or** See required dependencies [TEtrimmer_dependencies](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies).
 
 ## Hardware requirements
 System: Linux, macOS, Windows WSL
@@ -97,6 +87,10 @@ RAM:
 - We have not tested it on the WLS of Windows, but it should be feasible to run TEtrimmer on it as well given sufficient resources. 
 
 ## Test
+```commandline
+# To see all options 
+python {path to TEtrimmer}/TEtrimmer.py --help
+```
 
 - Download the test files [test_input.fa](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_input.fa) and [test_genome.fasta](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_genome.fasta).
 
