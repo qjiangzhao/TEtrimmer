@@ -196,7 +196,7 @@ The following are clusters and files (Click the "Clustered_proof_annotation" but
 
 You can integrate TEtrimmer cleaning functions into AliView to facilitate the manual inspection.
 ```commandline
-# Double click any ".fa" file from the the GUI. The TE multiple sequence alignment file will be opend by AliView.
+# Double click any ".fa" file from the GUI. The TE multiple sequence alignment file will be opend by AliView.
 # Copy the following codes into AliView "External commands" configuration window
 
 #remove column gap
