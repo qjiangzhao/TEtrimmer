@@ -60,8 +60,8 @@ mamba install qianjiangzhao::tetrimmer
 # Display options of TETrimmer 
 TETrimmer --help
 ```
-TEtrimmer conda package only works for macOS currently. We are developing conda package for Linux. 
-We are working on uploading the package to the Bioconda channel and dockerize it (Many thanks to [Hang Xue](https://github.com/hangxue-wustl). 
+TEtrimmer conda package only works for macOS currently. We are developing conda package for Linux and working on 
+uploading the package to the Bioconda channel and dockerize it (Many thanks to [Hang Xue](https://github.com/hangxue-wustl)). 
 
 **or** See required dependencies [TEtrimmer_dependencies](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies).
 
