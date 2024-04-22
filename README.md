@@ -18,7 +18,7 @@ which is time-consuming and needs experts with an in-depth understanding of TE b
 
 
 TEtrimmer is a powerful software designed to automate the manual curation of TEs. The input can be a TE library from 
-**de novo** TE discovery tools, such as EDTA2 and RepeatModeler2, or a TE library from closely related species. 
+*de novo* TE discovery tools, such as EDTA2 and RepeatModeler2, or a TE library from closely related species. 
 For each input consensus sequence, TEtrimmer automatically performs BLAST,  sequence extraction, extension, 
 multiple sequence alignment (MSA), MSA clustering, MSA cleaning, TE boundary definition, and TE classification. 
 TEtrimmer also provides a graphical user interface (GUI) to inspect and improve predicted TEs, which can assist 
@@ -29,8 +29,8 @@ For detailed instructions, including installation steps, usage options, example 
 please refer to [TEtrimmerv1.2.0Manual.pdf](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerv1.2.0Manual.pdf) 
 
 ## Installation
-Install TEtrimmer dependencies. 
-We highly recommend installation with `mamba`, as it is much faster. 
+You have to install [miniconda](https://docs.anaconda.com/free/miniconda/) on your computer. 
+Install TEtrimmer dependencies. We highly recommend installation with `mamba`, as it is much faster. 
 
 ```commandline
 # Clone the github repository for TEtrimmer.
@@ -140,8 +140,6 @@ TEtrimmer --input_file {TE consensus library} \
 ```
 More options are available:
 ```commandline
-  -s, --preset [conserved|divergent]
-                                  Choose one preset config (conserved or divergent). Default: conserved.
   --classify_unknown              Use RepeatClassifier to classify the consensus sequence if the input
                                   sequence is not classified or is unknown or the processed sequence
                                   length by TEtrimmer is 2000 bp longer or shorter than the query
@@ -181,22 +179,26 @@ More options are available:
 - 📄**TEtrimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
 
 
-## Proof annotation: Manual inspection of TEtrimmer annotations
-You can use this graphical user interface tool to assist the manual inspection of TEtrimmer-generated annotations. We highly recommend doing 
-manual proof annotation to increase TE consensus library quality.
+## Proof curation: Manual inspection of TEtrimmer outputs
+You can use this graphical user interface (GUI) tool to inspect and improve TEtrimmer generated TE consensus library. 
+We highly recommend doing this to increase TE consensus library quality to the traditional manual curation level.
 
 
 MSA files can be inspected by double-clicking the corresponding file button. AliView is used to open MSA files.
 ```commandline
 # To start the manual inspection GUI tool
-# Open your Linux, macOS, or Windows terminal and type
+# Open your Linux, or Windows terminal and type
 python <path to your output_directory>/TEtrimmer_for_proof_annotation/TEtrimmer_proof_anno_GUI/annoGUI.py
+# Note: The GUI doesn't perfectly support macOS. We are trying to solve this problem.
 ```
 The following are clusters and files (Click the "Clustered_proof_annotation" button in the menu bar to show this.)
 ![Proof annotation GUI](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_GUI.png)
 
+
+
 You can integrate TEtrimmer cleaning functions into AliView to facilitate the manual inspection.
 ```commandline
+# Double click any ".fa" file from the the GUI. The TE multiple sequence alignment file will be opend by AliView.
 # Copy the following codes into AliView "External commands" configuration window
 
 #remove column gap
