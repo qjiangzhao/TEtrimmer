@@ -69,7 +69,7 @@ uploading the package to the Bioconda channel and dockerize it (Many thanks to [
 System: Linux, macOS, Windows WSL
 
 RAM:
-- For HPC Linux user, enough RAM needs to be assigned. We highly recommend running TEtrimmer on HPC with at least 40 threads and assigning at least 5 GB ram to each thread.
+- For HPC Linux user, enough RAM needs to be assigned. We highly recommend running TEtrimmer on HPC with at least 40 threads and assigning at least 5 GB RAM to each thread.
 
 
 | Threads | RAM    |
@@ -77,7 +77,7 @@ RAM:
 | 40      | 200 GB |
 | 100     | 600 GB |
 
-- PC macOS users can use Virtual Memory. Simply assign 20 threads to push the CPU to its limits. We did tests on a Macbook Pro (2020 M1 chip, 16 GB RAM) and compared with HPC, you can find the running time here:
+- Windows and macOS PC users can use Virtual Memory. Simply assign 20 threads to push the CPU to its limits. We did tests on a Macbook Pro (2020 M1 chip, 16 GB RAM) and compared with HPC, you can find the running time here:
 
 | Query sequence number | Platform       | Threads | RAM                    | Run time |
 |-----------------------|----------------|---------|------------------------|--------------| 
@@ -142,11 +142,16 @@ More options are available:
                                   sequence is not classified or is unknown or the processed sequence
                                   length by TEtrimmer is 2000 bp longer or shorter than the query
                                   sequence.
-  --classify_all                  Use RepeatClassifier to classify every consensus sequence. WARNING:
-                                  This may take a long time.
-  -ca, --continue_analysis        Continue from previous unfinished TEtrimmer run and would use the
-                                  same output directory.
-  --dedup                         Remove duplicate sequences in input file.
+                                  
+  --cons_thr FLOAT                The minimum level of agreement required at a given position in the
+                                  alignment for a consensus character to be called. Default: 0.8
+                                  
+  --mini_orf INTEGER              Define the minimum ORF length to be predicted by TEtrimmer. Default:
+                                  200
+
+  --max_msa_lines INTEGER         Set the maximum number of sequences to be included in a multiple
+                                  sequence alignment. Default: 100
+                                  
   -ga, --genome_anno              Perform genome TE annotation using RepeatMasker with the TEtrimmer
                                   curated TE libraries.
 
@@ -256,8 +261,6 @@ Options:
 
   --debug                         debug mode. This will keep all raw files. WARNING: Many files will be
                                   generated.
-
-  --fast_mode                     Reduce running time at the cost of lower accuracy and specificity.
 
   -pd, --pfam_dir TEXT            Pfam database directory. TE Trimmer will download the database
                                   automatically. Only turn on this option if you want to use a local
