@@ -500,9 +500,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     cd_hit_est_final_merged = os.path.join(output_dir, "TEtrimmer_consensus_merged.fasta")
 
     try:
-        click.echo("\nTEtrimmer is removing sequence duplications.")
+        click.echo("\nTEtrimmer is removing sequence duplications. This might take long time when many sequences"
+                   "are included into the final consensus library. Please be patient!")
         sequence_info = analyze.merge_cons(classification_dir, final_con_file, progress_file, cd_hit_est_final_merged, num_threads)# Do first round of CD-HIT-EST
-       
 
     except Exception as e:
         final_merge_success = False
@@ -521,7 +521,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     #####################################################################################################
 
     try:
-        click.echo("TEtrimmer is clustering proof annotation files.\n")
+        click.echo("TEtrimmer is clustering TE consensus library. This can potentially take long time when many "
+                   "sequences exist in the consensus library. Please be patient!\n")
         multi_dotplot_dir = os.path.join(classification_dir, "Multiple_sequence_dotplot")
         os.makedirs(multi_dotplot_dir, exist_ok=True)
         analyze.cluster_proof_anno_file(multi_dotplot_dir, final_con_file_no_low_copy, continue_analysis, cluster_proof_anno_dir, num_threads, \
