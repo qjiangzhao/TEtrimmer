@@ -98,30 +98,41 @@ python {path to TEtrimmer}/TEtrimmer.py --help
 TEtrimmer --input_file {path to test_input.fa} \
           --genome_file {path to test_genome.fasta} \
           --output_dir {output directory} \
-          --num_threads 10
+          --num_threads 20
           --classify_all                                          
 ```
 ## Inputs
 - **Genome file**: The genome sequence in FASTA format (.fa or .fasta).
 - **TE consensus library**: TEtrimmer uses the TE consensus library from *de novo* TE annotation tools, like `RepeatModeler` or `EDTA`, as input. 
-For this reason, you have to run `RepeatModeler` or other TE annotation software first. 
+For this reason, you have to run `RepeatModeler` or other TE annotation software first.
+
+```commandline
+# TEtrimmer package already includes RepeatModeler. Below is an exmpale command of running RepeatModeler.
+# Build genome database index files
+BuildDatabase -name {genome_file_database_name} {genome_file.fa}
+
+# Run RepeatModeler
+RepeatModeler -database {genome_file_database_name} \
+              -threads 20 \
+              -LTRStruct
+# Then you will get the TE_consensus_library.fa file
+```
 
 Example:
 
 ```commandline
-TEtrimmer --input_file {TE consensus library} \
-          --genome_file {genome file} \
-          --output_dir {output directory} \
-          --num_threads 10 \
-          --classify_all
-                                          
+TEtrimmer --input_file {TE_consensus_library.fa} \
+          --genome_file {genome_file.fa} \
+          --output_dir {output_directory} \
+          --num_threads 20 \
+          --classify_all                       
 ```
 If you want to **continue the analysis based on previous unfinished results in the same directory:**:
 ```commandline
-TEtrimmer --input_file {TE consensus library} \
-          --genome_file {genome file} \
-          --output_dir {directory contains previous unfinished results} \
-          --num_threads 10 \
+TEtrimmer --input_file {TE_consensus_library.fa} \
+          --genome_file {genome_file.fa} \
+          --output_dir {directory_contains_previous_unfinished_results} \
+          --num_threads 20 \
           --classify_all \
           --continue_analysis
 ```
@@ -129,10 +140,10 @@ If you want to **combine files from different sources for the input file, we rec
 before processing. This step can potentially save overall run time in the input file** (TEtrimmer only accepts single file
 input, you have to combine files in advance):
 ```commandline
-TEtrimmer --input_file {TE consensus library} \
-          --genome_file {genome file} \
-          --output_dir {output directory} \
-          --num_threads 10 \
+TEtrimmer --input_file {TE_consensus_library.fa} \
+          --genome_file {genome_file.fa} \
+          --output_dir {output_directory} \
+          --num_threads 20 \
           --classify_all
           --dedup    
 ```
