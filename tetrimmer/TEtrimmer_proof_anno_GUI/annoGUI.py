@@ -371,21 +371,23 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
                    "   All clusters will be displayed. TEs with more than 90% identity are placed into one cluster.\n\n" \
                    "2, Click each <Cluster> button.\n\n" \
                    "   For each TE, you can find four files: \n" \
-                   "     <seq_name.anno.fa>: the multiple sequence alignment (MSA) file before cleaning\n" \
-                   "     <seq_name.fa>: the multiple sequence alignment (MSA) file after cleaning\n" \
+                   "     <seq_name.cluster.fa>: the multiple sequence alignment (MSA) before clustering and extension\n" \
+                   "     <seq_name.raw.fa>: the MSA file before cleaning\n" \
+                   "     <seq_name.fa>: the MSA file after cleaning and boundaries definition\n" \
                    "     <seq_name.pdf>: the report file contains 7 plots used to evaluate annotation quality\n" \
-                   "     <seq_name.bed>: the MSA bed file. Used for further MSA extension.\n\n" \
                    "   More than one TE can be found, theoretically, you only need to choose one from each cluster.\n\n"\
                    "3, Double click <seq_name.pdf> and evaluate annotation quality.\n\n" \
                    "4, If you are satisfied with the result, click <Consensus> button behind <seq_name.fa>.\n" \
                    "   This MSA file goes to <Proof_annotation_consensus_folder>.\n\n" \
-                   "   If you are not satisfied, click <seq_name.fa> or <seq_name.anno.fa> to modify MSA and " \
+                   "   If you are not satisfied, click <seq_name.fa> or <seq_name.raw.fa> to modify MSA and " \
                    "save it to consensus folder.\n\n" \
-                   "   If you want more extension for the MSA, click <Extension> behind <seq_name.bed>\n" \
-                   "   This bed file is salved to <Proof_annotation_need_more_extension> folder.\n\n" \
+                   "   If you want more extension for the MSA, click <Extension> behind the fasta file\n" \
+                   "   The MSA will be automatically extended and opened by AliView.\n\n" \
                    "   If you want to use the original input TE, click <Use input> behind <seq_name.pdf>\n" \
                    "   The pdf report file goes to <Proof_annotation_use_input_sequence>.\n\n"\
-                   "5, For skipped and low copy elements, check the pdf file and decide if to include it into " \
+                   "5, In case you want to cluster the initial MSA, double click <seq_name.cluster.fa>.\n" \
+                   "   Select the sequences you want to use and use <Extension> to find the boundary\n\n" \
+                   "6, For skipped and low copy elements, check the pdf file and decide if to include it into " \
                    "the final consensus library.\n"\
                    "   Note: Skipped and low copy elements do not have multiple sequence alignment files"
 

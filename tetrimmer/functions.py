@@ -2056,7 +2056,7 @@ def modify_fasta_headers(bed_file_path, fasta_file_path):
         modified_records.append(record)
 
     # Define the output file path
-    output_fasta_path = os.path.join(fasta_file_path, "_nm.fa")
+    output_fasta_path = f"{fasta_file_path}_nm.fa"
     # Write the modified records to a new FASTA file
     with open(output_fasta_path, 'w') as output_file:
         SeqIO.write(modified_records, output_file, 'fasta')
