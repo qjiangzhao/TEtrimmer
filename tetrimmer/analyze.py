@@ -15,7 +15,7 @@ from functions import blast, remove_files_with_start_pattern, check_bed_uniquene
     handle_sequence_low_copy, handle_sequence_skipped, update_low_copy_cons_file, prcyan, prgre, \
     repeatmasker, repeatmasker_output_classify, rename_cons_file, rename_files_based_on_dict, \
     cd_hit_est, parse_cd_hit_est_result, copy_files_with_start_pattern, multi_seq_dotplot, \
-    fasta_file_to_dict, process_lines
+    fasta_file_to_dict, process_lines, modify_fasta_headers
 
 from seqclass import SeqObject
 from boundarycrop import find_boundary_and_crop
@@ -178,7 +178,7 @@ def check_database(genome_file, search_type="blast"):
 
 
 # Print iterations progress
-def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r", final = False):
+def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r", final=False):
     """
     Call in a loop to create terminal progress bar
     @params:
@@ -484,8 +484,8 @@ def merge_cons(classification_dir, final_con_file, progress_file, cd_hit_est_fin
     return sequence_info
 
 
-def cluster_proof_anno_file(multi_dotplot_dir, final_con_file_no_low_copy, continue_analysis, cluster_proof_anno_dir, num_threads, \
-                       sequence_info, perfect_proof, good_proof, intermediate_proof, need_check_proof ):
+def cluster_proof_anno_file(multi_dotplot_dir, final_con_file_no_low_copy, continue_analysis, cluster_proof_anno_dir,
+                            num_threads, sequence_info, perfect_proof, good_proof, intermediate_proof, need_check_proof):
 
     # Load fast file to a dictionary, key is record.id, value is record project
     # When separate_name is true, the key of the dictionary will be the sequence name separated by '#'
@@ -542,16 +542,16 @@ def cluster_proof_anno_file(multi_dotplot_dir, final_con_file_no_low_copy, conti
             seq_name_proof_anno_m = f"{seq_name_proof_anno}#"
             if evaluation_level == "Perfect":
                 copy_files_with_start_pattern(perfect_proof, seq_name_proof_anno_m, cluster_folder,
-                                                seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
+                                              seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
             elif evaluation_level == "Good":
                 copy_files_with_start_pattern(good_proof, seq_name_proof_anno_m, cluster_folder,
-                                                seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
+                                              seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
             elif evaluation_level == "Reco_check":
                 copy_files_with_start_pattern(intermediate_proof, seq_name_proof_anno_m, cluster_folder,
-                                                seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
+                                              seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
             elif evaluation_level == "Need_check":
                 copy_files_with_start_pattern(need_check_proof, seq_name_proof_anno_m, cluster_folder,
-                                                seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
+                                              seq_length_proof_anno, seq_per_proof_anno, evaluation_level)
 
             # Plot multiple sequence dotplot when more than one sequence are included inside one cluster
             if seq_info_proof_anno_len > 1:
@@ -739,7 +739,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         # randomly selected from the remaining sequences.
         # top_mas_lines has to be equal to or smaller than max_mas_lines.
         bed_out_filter_file = process_lines(bed_out_file, MSA_dir, threshold=max_msa_lines,
-                                                      top_longest_lines_count=top_mas_lines)
+                                            top_longest_lines_count=top_mas_lines)
 
         # Extract FASTA from bed_out_filter_file
         # Return fasta_out_flank_file absolute path of FASTA file
@@ -791,7 +791,12 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                                         orf_plot=input_orf_domain_plot)
             return
         else:
-            cluster_bed_files_list = cluster_MSA_result
+            cluster_bed_files_list, fasta_out_flank_mafft_gap_rm = cluster_MSA_result
+
+            # modify fasta_out_flank_mafft_gap_rm fasta header based on the bed file, this can allow the
+            # extension function in the final GUI.
+            # For example: change 1(+) to scaffold_1:23256-24757(+)
+            fasta_out_flank_mafft_gap_rm_nm = modify_fasta_headers(bed_out_filter_file, fasta_out_flank_mafft_gap_rm)
 
             # cluster_pattern_alignment_list has the same index as cluster_bed_files_list
             all_inner_skipped = True
@@ -806,8 +811,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                         crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
                         crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
                         start_patterns=start_patterns, end_patterns=end_patterns,
-                        mini_orf=mini_orf, define_boundary_win=check_extension_win,
-                        fast_mode=fast_mode, engine=engine, input_orf_pfam=input_orf_domain_plot, debug=debug)
+                        mini_orf=mini_orf, define_boundary_win=check_extension_win, fast_mode=fast_mode, engine=engine,
+                        input_orf_pfam=input_orf_domain_plot, debug=debug, cluster_msa=fasta_out_flank_mafft_gap_rm_nm)
                 except Exception as e:
                     return
 

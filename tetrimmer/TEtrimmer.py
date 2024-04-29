@@ -232,6 +232,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # rc.fa reverse complement fasta file
     # cd.fa cd-hit-est output file
     # fasta_rc reverse complementary fasta file
+    # _nm.fa fasta header name modified
 
     #####################################################################################################
     # Code block: Change permissions of Aliview and TE_Aid
@@ -525,8 +526,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                    "sequences exist in the consensus library. Please be patient!\n")
         multi_dotplot_dir = os.path.join(classification_dir, "Multiple_sequence_dotplot")
         os.makedirs(multi_dotplot_dir, exist_ok=True)
-        analyze.cluster_proof_anno_file(multi_dotplot_dir, final_con_file_no_low_copy, continue_analysis, cluster_proof_anno_dir, num_threads, \
-                       sequence_info, perfect_proof, good_proof, intermediate_proof, need_check_proof)
+        analyze.cluster_proof_anno_file(
+            multi_dotplot_dir, final_con_file_no_low_copy, continue_analysis, cluster_proof_anno_dir, num_threads,
+            sequence_info, perfect_proof, good_proof, intermediate_proof, need_check_proof)
         
         # clear remove_files_with_start_pattern folder
         if not debug and os.path.exists(multi_dotplot_dir):

@@ -178,7 +178,8 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
         mmseqs_cmd = (f"mmseqs easy-search {seq_file} {genome_file}_db {blast_out_file} {blast_out_file}_tmp --search-type 3 "
                       f"--min-seq-id 0.6 --format-output \"query,target,pident,alnlen,mismatch,qstart,qend,tstart,tend,evalue,qcov\" "
                       f"--cov-mode 4 -c 0.5 --e-profile 1e-40 --threads 1 --min-aln-len {min_length}")
-        print(f"Running analysis with MMseqs2. \nWARNING: MMseqs2 is less accurate than 'blastn' and may return faulty results. We strongly recommend to use 'blastn' instead.")
+        print(f"Running analysis with MMseqs2. \nWARNING: MMseqs2 is less accurate than 'blastn' and may return "
+              f"faulty results. We strongly recommend to use 'blastn' instead.")
         result = subprocess.run(mmseqs_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         error_output = result.stderr.decode("utf-8")
 
@@ -246,6 +247,7 @@ def check_bed_uniqueness(output_dir, bed_file):
             file.write(f"{line}\n")
     return bed_out_file
 
+
 def read_bed_file(input_file):
     with open(input_file, 'r') as file:
         return [line.strip().split('\t') for line in file]
@@ -308,6 +310,7 @@ def process_lines(input_file, output_dir, threshold=100, top_longest_lines_count
         shutil.copy(input_file, bed_out_filter_file)
 
     return bed_out_filter_file
+
 
 # Calculate average sequence length in the bed file
 def bed_ave_sequence_len(bed_content, start_rank, end_rank):
@@ -2022,3 +2025,41 @@ def calculate_con_coverage_num(consensus_file, blast_file):
                 coverage[position] += 1
 
     return coverage
+
+
+# Modify fasta header based on the bed files
+def modify_fasta_headers(bed_file_path, fasta_file_path):
+    # Parse the BED file and store information in a dictionary
+    bed_dict = {}
+    with open(bed_file_path, 'r') as bed_file:
+        for line in bed_file:
+            parts = line.strip().split()
+            if len(parts) < 6:
+                continue
+            identifier = parts[3]
+            scaffold = parts[0]
+            start = parts[1]
+            end = parts[2]
+            strand = parts[5]
+            bed_dict[identifier] = f"{scaffold}:{start}-{end}({strand})"
+
+    # Process the FASTA file using SeqIO for efficient reading and writing
+    records = SeqIO.parse(fasta_file_path, 'fasta')
+    modified_records = []
+    for record in records:
+        header_parts = record.id.split('(')
+        identifier = header_parts[0].strip()
+        if identifier in bed_dict:
+            # Update record.id with the new header information
+            record.id = bed_dict[identifier]
+            record.description = ''  # Clear the description to avoid duplication in output
+        modified_records.append(record)
+
+    # Define the output file path
+    output_fasta_path = os.path.join(fasta_file_path, "_nm.fa")
+    # Write the modified records to a new FASTA file
+    with open(output_fasta_path, 'w') as output_file:
+        SeqIO.write(modified_records, output_file, 'fasta')
+
+    return output_fasta_path
+

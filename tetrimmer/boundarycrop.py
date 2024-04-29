@@ -13,7 +13,7 @@ from functions import generate_hmm_from_msa, extract_fasta, remove_gaps_with_sim
     con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, \
     con_generater, reverse_complement_seq_file, classify_single, check_terminal_repeat, select_star_to_end, \
     define_crop_end_simi_thr, prcyan, prgre, merge_pdfs, dotplot, scale_single_page_pdf, \
-    remove_files_with_start_pattern, find_poly_a_end_position, is_LTR, check_and_update
+    remove_files_with_start_pattern, find_poly_a_end_position, is_LTR, check_and_update, modify_fasta_headers
 from boundaryclass import CropEnd, CropEndByGap, DefineBoundary
 from TEaid import TEAid
 from orfdomain import PlotPfam, determine_sequence_direction
@@ -349,7 +349,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                            max_extension=7000, gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=0.8, crop_end_win=40,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
                            mini_orf=200, define_boundary_win=150, fast_mode=False, engine="blast",
-                           input_orf_pfam=False, debug=False):
+                           input_orf_pfam=False, debug=False, cluster_msa=None):
     """
     :param bed_file: str, BED file directory
     :param genome_file: str, directory containing the genome FASTA file
@@ -490,18 +490,20 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 # len(final_msa_consistency) == 1 means clustering is not necessary
                 if not final_msa_consistency:
                     break
+                else:
+                    cluster_bed_files_list, fasta_out_flank_mafft_gap_rm = final_msa_consistency
 
                 # If the clustered MSA contains only 1 element, check if the BED file has the same line number as the original file
-                elif len(final_msa_consistency) == 1:
-                    df_new = pd.read_csv(final_msa_consistency[0], sep='\t', header=None)
+                if len(cluster_bed_files_list) == 1:
+                    df_new = pd.read_csv(cluster_bed_files_list[0], sep='\t', header=None)
 
                     if len(df) == len(df_new):
                         break
                     else:
-                        bed_file = final_msa_consistency[0]
+                        bed_file = cluster_bed_files_list[0]
                 else:
                     # Only use the top 1 cluster for further analysis
-                    bed_file = final_msa_consistency[0]
+                    bed_file = cluster_bed_files_list[0]
         except Exception as e:
             with open(error_files, "a") as f:
                 # Get the traceback content as a string
@@ -1015,17 +1017,24 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             consi_obj.set_cons_evaluation("Need_check")
 
     #####################################################################################################
-    # Code block: Code block: Move file for manual inspection and HMM search
+    # Code block: Code block: Move file for manual inspection
     #####################################################################################################
 
         consi_obj.set_proof_annotation_file()
 
+        # modify fasta_out_flank_mafft_gap_rm fasta header based on the bed file, this can allow the
+        # extension function in the final GUI.
+        # For example: change 1(+) to scaffold_1:23256-24757(+)
+        cropped_boundary_MSA_nm = modify_fasta_headers(bed_out_flank_file, cropped_boundary_MSA)
+        bed_fasta_mafft_boundary_crop_for_select_nm = modify_fasta_headers(bed_out_flank_file,
+                                                                           bed_fasta_mafft_boundary_crop_for_select)
+
         # Define file name for inspection file
         file_copy_pattern = [
             (merged_pdf_path, str(consi_obj.proof_pdf)),
-            (cropped_boundary_MSA, str(consi_obj.proof_fasta)),
-            (bed_fasta_mafft_boundary_crop_for_select, str(consi_obj.proof_anno)),
-            (bed_out_flank_file, str(consi_obj.proof_bed))  # BED file used for further extension
+            (cropped_boundary_MSA_nm, str(consi_obj.proof_fasta)),
+            (bed_fasta_mafft_boundary_crop_for_select_nm, str(consi_obj.proof_raw)),
+            (cluster_msa, str(consi_obj.proof_cluster))
         ]
 
         files_moved_successfully = True

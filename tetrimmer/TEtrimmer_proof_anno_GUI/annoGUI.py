@@ -26,11 +26,12 @@ import os
 import re
 import shutil
 import subprocess
-from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, Toplevel
+from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, Toplevel, simpledialog
 import click
 from functools import partial
 import platform
-
+from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
 
 #####################################################################################################
 # Code block: make Aliveiw available to be used
@@ -69,12 +70,18 @@ if os_type == "Windows":
               help='Supply the TEtrimmer output directory path')
 @click.option('--output_dir', '-o', default=None, type=str,
               help='Define the output directory for TE proof annotation. Default: input folder directory')
-def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
+@click.option('--genome_file', '-g', required=True, type=str,
+              help='The genome file path')
+def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
     """
     This tool can help do quick proof annotation
 
     python ./path_to_TEtrimmer_bin/Class_TKinter_proof_annotation.py -i "TEtrimmer_output_folder"
     """
+
+    # Make directory for temporary files
+    temp_folder = os.path.join(bin_py_path, "temp_folder")
+    os.makedirs(temp_folder, exist_ok=True)
 
     # Define empty list to store copy history, which enable undo button
     copy_history = []
@@ -114,6 +121,196 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
     # in its parent widget. The canvas will take up as much space as possible in both directions.
     # expand=True  If the window is resized, the canvas will grow or shrink accordingly.
     canvas.pack(side='left', fill='both', expand=True)
+
+    #####################################################################################################
+    # Code block: get genome length file
+    #####################################################################################################
+    # Check if genome length file available, otherwise create it
+    def calculate_genome_length(genome_file, genome_length_output):
+        """
+        Calculate the length of each sequence in a genome file in FASTA format
+        and write the lengths to an output file.
+
+        :param genome_file: str, path to genome file in FASTA format
+        :return: str, path to the output file containing sequence names and lengths
+        """
+        genome_lengths = {}
+        with open(genome_file, "r") as f:
+            current_seq = None
+            current_length = 0
+            for line in f:
+                line = line.strip()
+                if line.startswith(">"):
+                    if current_seq is not None:
+                        genome_lengths[current_seq] = current_length
+                    # If chromosome header contains empty spaces, only consider the content before the first space
+                    current_seq = line[1:].split(" ")[0]
+                    current_length = 0
+                else:
+                    current_length += len(line)
+            # Add length of last sequence to dictionary
+            if current_seq is not None:
+                genome_lengths[current_seq] = current_length
+
+        # Write lengths to output file
+        with open(genome_length_output, "w") as out:
+            for seq_name, length in genome_lengths.items():
+                out.write(f"{seq_name}\t{length}\n")
+
+        return genome_length_output
+
+    def read_genome_lengths(genome_length_file):
+
+        chrom_sizes = {}
+        with open(genome_length_file, 'r') as file:
+            for line in file:
+                parts = line.strip().split()
+                chrom_sizes[parts[0]] = int(parts[1])
+        return chrom_sizes
+
+    # Check is genome length file exist otherwise create it
+    # Define genome length file name
+    genome_length_f = os.path.join(bin_py_path, f"{os.path.basename(genome_file)}.length")
+    try:
+        if os.path.isfile(genome_length_f):
+            chrom_size = read_genome_lengths(genome_length_f)
+        else:
+            # Generate genome length file when it can't be found
+            genome_length_f = calculate_genome_length(genome_file, genome_length_f)
+            chrom_size = read_genome_lengths(genome_length_f)
+    except Exception as e:
+        click.echo(f"\nError while generate genome length file. Error: {str(e)}\n")
+        return
+
+    #####################################################################################################
+    # Code block: extension module
+    #####################################################################################################
+
+    # Generate bed file based on fasta header
+    # The fasta header could look like
+    """
+    > scaffold_1:343622-349068(+)
+    > scaffold_1:346171-347467(+)
+    > scaffold_1:346385-347665(+)
+    > scaffold_1:346200-347196(+)
+    """
+    def fasta_header_to_bed(input_file, output_file):
+        with open(input_file, 'r') as fasta, open(output_file, 'w') as bed:
+            for line in fasta:
+                if line.startswith('>'):
+                    header = line.strip().lstrip('>')  # Remove '>'
+                    parts = header.rsplit(':', 2)  # Split from right side
+                    scaffold = parts[0]
+                    range_strand = parts[1].split('(')
+                    range_part = range_strand[0]
+                    strand = range_strand[1].split(')')[0]
+                    start, end = range_part.split('-')
+                    bed.write(f'{scaffold}\t{start}\t{end}\tTEtrimmer\t0\t{strand}\n')
+        return output_file
+
+    # Avoid to use bedtools slop and getfasta to make it compatible with Windows system
+    def extend_bed_regions(bed_file, left_extension, right_extension, chrom_sizes, output_bed):
+
+        with open(bed_file, 'r') as infile, open(output_bed, 'w') as outfile:
+            for line in infile:
+                parts = line.strip().split()
+                chrom, start, end, strand = parts[0], int(parts[1]), int(parts[2]), parts[5]
+
+                # Adjust extensions based on strand
+                if strand == '+':
+                    new_start = max(0, start - left_extension)
+                    new_end = min(chrom_sizes[chrom], end + right_extension)
+                else:  # For anti sense strand
+                    new_start = max(0, start - right_extension)  # Extend "start" less, as it's the "end"
+                    new_end = min(chrom_sizes[chrom], end + left_extension)  # Extend "end" more, as it's the "start"
+
+                # Write the extended region to the output BED file
+                outfile.write(f"{chrom}\t{new_start}\t{new_end}\tTEtrimmer\t0\t{strand}\n")
+        return output_bed
+
+    def read_bed(bed_file):
+
+        with open(bed_file, 'r') as file:
+            for line in file:
+                parts = line.strip().split('\t')
+                if len(parts) < 6:
+                    continue
+                yield {
+                    'chrom': parts[0],
+                    'start': int(parts[1]),
+                    'end': int(parts[2]),
+                    'strand': parts[5]
+                }
+
+    def extract_fasta_from_bed(genome_fasta, bed_file, output_fasta):
+
+        genome = SeqIO.to_dict(SeqIO.parse(genome_fasta, 'fasta'))
+        with open(output_fasta, 'w') as out_fasta:
+            for region in read_bed(bed_file):
+                chrom = region['chrom']
+                start = region['start']
+                end = region['end']
+                strand = region['strand']
+                if chrom in genome:
+                    sequence = genome[chrom].seq[start:end]
+                    if strand == '-':
+                        sequence = sequence.reverse_complement()  # Reverse complement if on negative strand
+                    seq_record = SeqRecord(sequence, id=f"{chrom}:{start}-{end}({strand})", description="")
+                    SeqIO.write(seq_record, out_fasta, 'fasta')
+        return output_fasta
+
+    # Combined extension module
+    def extension_module(input_fasta_n, button, source_dir, parent_win):
+        def _extension_module(event):
+
+            # Prompt the user to input the extension lengths
+            left_ex = simpledialog.askinteger("Input", "Enter left extension length (bp):",
+                                              parent=parent_win, minvalue=0, initialvalue=1000)
+            right_ex = simpledialog.askinteger("Input", "Enter right extension length (bp):",
+                                               parent=parent_win, minvalue=0, initialvalue=1000)
+
+            if input_fasta_n.lower().endswith(('.fa', '.fasta')):
+                input_fasta_bed = os.path.join(temp_folder, f"{input_fasta_n}.bed")
+                input_fasta_after_ex_bed = os.path.join(temp_folder, f"{input_fasta_n}_{left_ex}_{right_ex}.bed")
+                output_fasta = os.path.join(temp_folder, f"{input_fasta_n}_{left_ex}_{right_ex}.fa")
+
+                try:
+                    # Generate bed file based on fasta header
+                    fasta_header_to_bed(os.path.join(source_dir, input_fasta_n), input_fasta_bed)
+
+                except Exception as e:
+                    messagebox.showerror("Error", f"The conversion from fasta to bed file failed: {str(e)}",
+                                         parent=parent_win)
+                try:
+                    # Do bed file extension
+                    extend_bed_regions(input_fasta_bed, left_ex, right_ex, chrom_size, input_fasta_after_ex_bed)
+
+                except Exception as e:
+                    messagebox.showerror("Error", f"Extension failed: {str(e)}",
+                                         parent=parent_win)
+                try:
+                    # Get fasta file based on the extended bed file
+                    extract_fasta_from_bed(genome_file, input_fasta_after_ex_bed, output_fasta)
+
+                    # Open fasta with AliView
+                    if os_type == "Windows":
+                        subprocess.run(["java", "-jar", aliview_path, output_fasta])
+                    else:
+                        subprocess.run([aliview_path, output_fasta])
+
+                    if os_type == "Darwin":
+                        button.config(fg='red')  # Change button text color under macOS system
+                        button.update_idletasks()  # Update UI immediately
+                    else:
+                        button.config(bg='light green')  # Change button color
+                        button.update_idletasks()  # Update UI immediately
+                    button.update_idletasks()
+
+                except Exception as e:
+                    messagebox.showerror("Error", f"Extracting sequence failed after extension: {str(e)}",
+                                         parent=parent_win)
+
+        return _extension_module
 
     #####################################################################################################
     # Code block: set a vertical scroll bar
@@ -434,8 +631,8 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
             more_extend_button = Button(button_frame, text="Extension", bg='white', fg='black')
             more_extend_button.grid(row=0, column=1, padx=5)
             # Bind "Extension" button with copy_file function with different destination folder
-            more_extend_button.bind('<Button-1>', copy_file(filename, more_extend_button, need_more_extension,
-                                                            source_dir, current_win))
+            more_extend_button.bind('<Button-1>', extension_module(filename, more_extend_button, source_dir,
+                                                                   current_win))
 
             # Define "Use input" button, click it when user want to use the input sequence before
             # TEtrimmer analysis
@@ -443,7 +640,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir):
             use_input_button.grid(row=0, column=2, padx=5)
             # Bind "Use input" button with copy_file function with different destination folder
             use_input_button.bind('<Button-1>', copy_file(filename, use_input_button, use_original_input_sequence,
-                                                            source_dir, current_win))
+                                                          source_dir, current_win))
 
             # Define "Others" button
             others_button = Button(button_frame, text="Others", bg='white', fg='black')

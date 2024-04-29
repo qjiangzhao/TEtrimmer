@@ -475,7 +475,7 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
         # Subset bed file and return a list contain all clustered bed absolute files
         bed_dfs = process_labels(bed_file, filtered_cluster_records)
         cluster_bed_files_list = subset_bed_file(bed_file, bed_dfs, output_dir)
-        return cluster_bed_files_list
+        return cluster_bed_files_list, fasta_out_flank_mafft_file_gap_filter
     else:
         """
         if cluster = False, it means no cluster has line numbers greater than "min_lines" or only has a small '-1' cluster. In this case, 
