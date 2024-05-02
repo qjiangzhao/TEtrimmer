@@ -665,7 +665,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
                                                                      temp_folder, current_win, chrom_size))
 
             # Define "Plotter" button
-            plot_button = Button(button_frame, text="Plotter", bg='white', fg='black')
+            plot_button = Button(button_frame, text="TEAid", bg='white', fg='black')
             plot_button.grid(row=0, column=2, padx=5)
             # Bind "Plotter" button with plotter_function
             plot_button.bind('<Button-1>', plotter_function(filename, plot_button, source_dir, temp_folder, genome_file,
