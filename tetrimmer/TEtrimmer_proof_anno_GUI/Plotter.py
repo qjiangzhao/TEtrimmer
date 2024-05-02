@@ -14,6 +14,10 @@ from Bio import BiopythonDeprecationWarning
 # Suppress all deprecation warnings
 warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
 
+"""
+The plot codes are derived from TE-Aid. https://github.com/clemgoub/TE-Aid.git
+"""
+
 
 def con_generater(input_file, output_dir, threshold=0.8, ambiguous="N"):
     # Read input file
@@ -475,15 +479,4 @@ def GUI_plotter(input_file, output_dir, genome_file):
             fig_coverage.show()
         if fig_dot is not None:
             fig_dot.show()
-
-
-"""
-
-input_file = "/Users/panstrugamacbook/Documents/TE_Trimmer/Plotly_figure/clipboard-alignment_3073100289831958694.fasta"
-genome = "/Users/panstrugamacbook/Documents/TE_Trimmer/bgh_genome/bgh_dh14_v4.fa"
-
-output_dir = "/Users/panstrugamacbook/Documents/TE_Trimmer/Plotly_figure"
-
-GUI_plotter(input_file, output_dir, genome)
-"""
 

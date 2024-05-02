@@ -77,7 +77,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
     """
     This tool can help do quick proof annotation
 
-    python ./path_to_TEtrimmer_bin/Class_TKinter_proof_annotation.py -i "TEtrimmer_output_folder"
+    python ./path_to_TEtrimmer_bin/Class_TKinter_proof_annotation.py -i <TEtrimmer_output_folder> -g <genome_file>
     """
 
     # Make directory for temporary files
