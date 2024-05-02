@@ -42,9 +42,9 @@ sequence_length <- as.numeric(system(paste(wdir,"/getlength.sh ", query, sep = "
 
 # Check the value of tm and update the title accordingly
 if (tm) {
-  pdf_title <- paste("After TEtrimmer treatment ", as.character(sequence_length), "bp")
+  pdf_title <- paste("After TEtrimmer", as.character(sequence_length), "bp")
 } else {
-  pdf_title <- paste("Before TEtrimmer treatment ", as.character(sequence_length), "bp")
+  pdf_title <- paste("Before TEtrimmer", as.character(sequence_length), "bp")
 }
 
 pdf(

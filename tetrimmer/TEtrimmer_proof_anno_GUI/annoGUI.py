@@ -18,7 +18,7 @@ def install_and_import(required_packages_dict):
                 return
 
 
-required_packages = {'click': 'click', 'Bio': 'biopython', 'numpy': 'numpy', 'pandas': 'pandas'}
+required_packages = {'click': 'click', 'Bio': 'biopython', 'numpy': 'numpy', 'pandas': 'pandas', 'plotly': 'plotly'}
 install_and_import(required_packages)
 
 
@@ -32,6 +32,7 @@ from functools import partial
 import platform
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
+from Plotter import GUI_plotter
 
 #####################################################################################################
 # Code block: make Aliveiw available to be used
@@ -96,13 +97,11 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
     # Define output folders, create them when they are not found
     consensus_folder = os.path.abspath(os.path.join(output_dir, "Proof_annotation_consensus_folder"))
     need_more_extension = os.path.abspath(os.path.join(output_dir, "Proof_annotation_need_more_extension"))
-    use_original_input_sequence = os.path.abspath(os.path.join(output_dir, "Proof_annotation_use_input_sequence"))
     others_dir = os.path.abspath(os.path.join(output_dir, "Proof_annotation_others"))
     low_copy_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_low_copy_elements"))
     rescue_skip_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_rescued_skip_elements"))
 
-    for dir_path in [consensus_folder, need_more_extension, use_original_input_sequence, others_dir,
-                     low_copy_elements, rescue_skip_elements]:
+    for dir_path in [consensus_folder, need_more_extension, others_dir, low_copy_elements, rescue_skip_elements]:
         os.makedirs(dir_path, exist_ok=True)
 
     #####################################################################################################
@@ -260,8 +259,8 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
         return output_fasta
 
     # Combined extension module
-    def extension_module(input_fasta_n, button, source_dir, parent_win):
-        def _extension_module(event):
+    def extension_function(input_fasta_n, button, source_dir, parent_win):
+        def _extension_function(event):
 
             # Prompt the user to input the extension lengths
             left_ex = simpledialog.askinteger("Input", "Enter left extension length (bp):",
@@ -310,7 +309,28 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
                     messagebox.showerror("Error", f"Extracting sequence failed after extension: {str(e)}",
                                          parent=parent_win)
 
-        return _extension_module
+        return _extension_function
+
+    #####################################################################################################
+    # Code block: set GUI plotter function
+    #####################################################################################################
+    def plotter_function(input_file, button, output_dir, genome_file, parent_win):
+        def _plotter_function(event):
+            try:
+                GUI_plotter(input_file, output_dir, genome_file)
+
+                if os_type == "Darwin":
+                    button.config(fg='red')  # Change button text color under macOS system
+                    button.update_idletasks()  # Update UI immediately
+                else:
+                    button.config(bg='light green')  # Change button color
+                    button.update_idletasks()  # Update UI immediately
+                button.update_idletasks()
+
+            except Exception as e:
+                messagebox.showerror("Error", f"Plotting failed. Make sure BLAST is correctly installed: {str(e)}",
+                                     parent=parent_win)
+        return _plotter_function
 
     #####################################################################################################
     # Code block: set a vertical scroll bar
@@ -633,16 +653,15 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
             more_extend_button = Button(button_frame, text="Extension", bg='white', fg='black')
             more_extend_button.grid(row=0, column=1, padx=5)
             # Bind "Extension" button with copy_file function with different destination folder
-            more_extend_button.bind('<Button-1>', extension_module(filename, more_extend_button, source_dir,
-                                                                   current_win))
+            more_extend_button.bind('<Button-1>', extension_function(filename, more_extend_button, source_dir,
+                                                                     current_win))
 
-            # Define "Use input" button, click it when user want to use the input sequence before
-            # TEtrimmer analysis
-            use_input_button = Button(button_frame, text="Use input", bg='white', fg='black')
-            use_input_button.grid(row=0, column=2, padx=5)
-            # Bind "Use input" button with copy_file function with different destination folder
-            use_input_button.bind('<Button-1>', copy_file(filename, use_input_button, use_original_input_sequence,
-                                                          source_dir, current_win))
+            # Define "Plotter" button
+            plot_button = Button(button_frame, text="Plotter", bg='white', fg='black')
+            plot_button.grid(row=0, column=2, padx=5)
+            # Bind "Plotter" button with plotter_function
+            plot_button.bind('<Button-1>', plotter_function(filename, plot_button, output_dir, genome_file,
+                                                            current_win))
 
             # Define "Others" button
             others_button = Button(button_frame, text="Others", bg='white', fg='black')
