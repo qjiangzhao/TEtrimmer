@@ -259,7 +259,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
         return output_fasta
 
     # Combined extension module
-    def extension_function(input_fasta_n, button, source_dir, parent_win):
+    def extension_function(input_fasta_n, button, source_dir, output_dir, parent_win, chrom_s):
         def _extension_function(event):
 
             # Prompt the user to input the extension lengths
@@ -269,20 +269,22 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
                                                parent=parent_win, minvalue=0, initialvalue=1000)
 
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
-                input_fasta_bed = os.path.join(temp_folder, f"{input_fasta_n}.bed")
-                input_fasta_after_ex_bed = os.path.join(temp_folder, f"{input_fasta_n}_{left_ex}_{right_ex}.bed")
-                output_fasta = os.path.join(temp_folder, f"{input_fasta_n}_{left_ex}_{right_ex}.fa")
+                input_fasta_bed = os.path.join(output_dir, f"{input_fasta_n}.bed")
+                input_fasta_after_ex_bed = os.path.join(output_dir, f"{input_fasta_n}_{left_ex}_{right_ex}.bed")
+                output_fasta = os.path.join(output_dir, f"{input_fasta_n}_{left_ex}_{right_ex}.fa")
+
+                input_fasta_f = os.path.join(source_dir, input_fasta_n)
 
                 try:
                     # Generate bed file based on fasta header
-                    fasta_header_to_bed(os.path.join(source_dir, input_fasta_n), input_fasta_bed)
+                    fasta_header_to_bed(input_fasta_f, input_fasta_bed)
 
                 except Exception as e:
                     messagebox.showerror("Error", f"The conversion from fasta to bed file failed: {str(e)}",
                                          parent=parent_win)
                 try:
                     # Do bed file extension
-                    extend_bed_regions(input_fasta_bed, left_ex, right_ex, chrom_size, input_fasta_after_ex_bed)
+                    extend_bed_regions(input_fasta_bed, left_ex, right_ex, chrom_s, input_fasta_after_ex_bed)
 
                 except Exception as e:
                     messagebox.showerror("Error", f"Extension failed: {str(e)}",
@@ -291,11 +293,14 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
                     # Get fasta file based on the extended bed file
                     extract_fasta_from_bed(genome_file, input_fasta_after_ex_bed, output_fasta)
 
+                    # Replace the original fasta file with the extended fasta file
+                    os.rename(output_fasta, input_fasta_f)
+
                     # Open fasta with AliView
                     if os_type == "Windows":
-                        subprocess.run(["java", "-jar", aliview_path, output_fasta])
+                        subprocess.run(["java", "-jar", aliview_path, input_fasta_f])
                     else:
-                        subprocess.run([aliview_path, output_fasta])
+                        subprocess.run([aliview_path, input_fasta_f])
 
                     if os_type == "Darwin":
                         button.config(fg='red')  # Change button text color under macOS system
@@ -314,22 +319,25 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
     #####################################################################################################
     # Code block: set GUI plotter function
     #####################################################################################################
-    def plotter_function(input_file, button, output_dir, genome_file, parent_win):
+    def plotter_function(input_fasta_n, button, source_dir, output_dir, genome_file, parent_win):
         def _plotter_function(event):
-            try:
-                GUI_plotter(input_file, output_dir, genome_file)
+            if input_fasta_n.lower().endswith(('.fa', '.fasta')):
+                input_file = os.path.join(source_dir, input_fasta_n)
 
-                if os_type == "Darwin":
-                    button.config(fg='red')  # Change button text color under macOS system
-                    button.update_idletasks()  # Update UI immediately
-                else:
-                    button.config(bg='light green')  # Change button color
-                    button.update_idletasks()  # Update UI immediately
-                button.update_idletasks()
+                try:
+                    GUI_plotter(input_file, output_dir, genome_file)
 
-            except Exception as e:
-                messagebox.showerror("Error", f"Plotting failed. Make sure BLAST is correctly installed: {str(e)}",
-                                     parent=parent_win)
+                    if os_type == "Darwin":
+                        button.config(fg='red')  # Change button text color under macOS system
+                        button.update_idletasks()  # Update UI immediately
+                    else:
+                        button.config(bg='light green')  # Change button color
+                        button.update_idletasks()  # Update UI immediately
+                    button.update_idletasks()
+
+                except Exception as e:
+                    messagebox.showerror("Error", f"Plotting failed. Make sure BLAST is correctly installed: {str(e)}",
+                                         parent=parent_win)
         return _plotter_function
 
     #####################################################################################################
@@ -654,13 +662,13 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
             more_extend_button.grid(row=0, column=1, padx=5)
             # Bind "Extension" button with copy_file function with different destination folder
             more_extend_button.bind('<Button-1>', extension_function(filename, more_extend_button, source_dir,
-                                                                     current_win))
+                                                                     temp_folder, current_win, chrom_size))
 
             # Define "Plotter" button
             plot_button = Button(button_frame, text="Plotter", bg='white', fg='black')
             plot_button.grid(row=0, column=2, padx=5)
             # Bind "Plotter" button with plotter_function
-            plot_button.bind('<Button-1>', plotter_function(filename, plot_button, output_dir, genome_file,
+            plot_button.bind('<Button-1>', plotter_function(filename, plot_button, source_dir, temp_folder, genome_file,
                                                             current_win))
 
             # Define "Others" button
