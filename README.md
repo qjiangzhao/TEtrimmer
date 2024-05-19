@@ -6,7 +6,7 @@
   - [Hardware requirements](#Hardware-requirements)
   - [Inputs](#Inputs) 
   - [Outputs](#Outputs)
-  - [Proof annotation](#Proof-annotation)
+  - [Proof curation](#Proof-annotation)
 - [Flowchart](#Flowchart)
 - [All available options](#All-available-options)
 
@@ -172,7 +172,7 @@ More options are available:
 - 📁**Multiple_sequence_alignment** - *All raw files will be stored in this folder if < --debug > is enabled.*
   - 📄**error_file.txt** - *Error file to store all error messages, only visible if errors were found.*
 - 📁**Single_fasta_files** - *All sequences in the input file will be separated into single FASTA files and stored here.*
-- 📁**TEtrimmer_for_proof_annotation** - *This folder contains files used for manual inspection of TEtrimmer annotations.* 
+- 📁**TEtrimmer_for_proof_curation** - *This folder contains files used for manual inspection of TEtrimmer annotations.* 
   - 📁**Annotation_perfect** - *Four files are associated with each sequence (anno.fa; fa; pdf).*
     - 📄**TE_name.anno.fa** - *Multiple sequence alignment file before cleaning.*
     - 📄**TE_name.fa** - *Multiple sequence alignment file after cleaning.*
@@ -181,11 +181,11 @@ More options are available:
   - 📁**Annotation_good** 
   - 📁**Annotation_check_recommended**
   - 📁**Annotation_check_required**
-  - 📁**Clustered_proof_annotation** - *The folder group processed TEs to different clusters based on TE consensus sequence similarity.*
+  - 📁**Clustered_proof_curation** - *The folder group processed TEs to different clusters based on TE consensus sequence similarity.*
   - 📁**TE_low_copy** - *This folder contains low copy TEs.*
   - 📁**TE_skipped** - *Contains TE_Aid plots for all skipped TEs.*
-  - 📁**TEtrimmer_proof_anno_GUI** - *The folder contains graphical user interface tools for manual proof annotation.*
-    - 📄**annoGUI.py** - *Use python ./annoGUI.py to start manual proof annotation GUI.*
+  - 📁**TEtrimmer_proof_anno_GUI** - *The folder contains graphical user interface tools for manual proof curation.*
+    - 📄**annoGUI.py** - *Use python ./annoGUI.py to start manual proof curation GUI.*
 - 📁**HMM** - *This folder is used to store Hidden Markov Model file. Only visible when < --hmm > is enabled.*
 - 📄**Sequence_name_mapping.txt** - *This file connects the input sequence names with the modified names from TEtrimmer.*
 - 📄**summary.txt** - *Summary file.* 
@@ -202,11 +202,11 @@ MSA files can be inspected by double-clicking the corresponding file button. Ali
 ```commandline
 # To start the manual inspection GUI tool
 # Open your Linux, or Windows terminal and type
-python <path to your output_directory>/TEtrimmer_for_proof_annotation/TEtrimmer_proof_anno_GUI/annoGUI.py
+python <path to your output_directory>/TEtrimmer_for_proof_curation/TEtrimmer_proof_anno_GUI/annoGUI.py
 # Note: The GUI doesn't perfectly support macOS. We are trying to solve this problem.
 ```
-The following are clusters and files (Click the "Clustered_proof_annotation" button in the menu bar to show this.)
-![Proof annotation GUI](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_GUI.png)
+The following are clusters and files (Click the "Clustered_proof_curation" button in the menu bar to show this.)
+![Proof curation GUI](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_GUI.png)
 
 
 

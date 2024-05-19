@@ -220,7 +220,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # _orf.txt ORF prediction file
     # _me.fa merged. Merged fasta file
     # _me.pdf merged. Merged pdf file
-    # _proof_anno_me.fa proof annotation merged
+    # _proof_anno_me.fa proof curation merged
     # .b blast
     # _orfm.txt ORF modified
     # _orfmt.txt ORF modified table
@@ -311,7 +311,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     # Code block: Define input file, output directory, genome
     #####################################################################################################
     try:
-        bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, \
+        bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_curation_dir, \
             low_copy_dir, perfect_proof, good_proof, intermediate_proof, need_check_proof, progress_file, pfam_dir, \
             final_con_file, final_con_file_no_low_copy, final_unknown_con_file, final_classified_con_file, \
             error_files, input_file, genome_file, skipped_dir, cluster_proof_anno_dir\
@@ -320,12 +320,12 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         return
 
     #####################################################################################################
-    # Code block: Copy TEtrimmer_proof_anno_GUI to proof_annotation_dir
+    # Code block: Copy TEtrimmer_proof_anno_GUI to proof_curation_dir
     #####################################################################################################
     proof_anno_GUI_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TEtrimmer_proof_anno_GUI")
 
     # Create the full path for the new directory inside the destination
-    proof_anno_GUI_destination_dir = os.path.join(proof_annotation_dir, os.path.basename(proof_anno_GUI_dir))
+    proof_anno_GUI_destination_dir = os.path.join(proof_curation_dir, os.path.basename(proof_anno_GUI_dir))
 
     # Check if the destination directory exists
     if os.path.exists(proof_anno_GUI_destination_dir):
@@ -409,7 +409,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
          start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, single_fasta_n, hmm, hmm_dir,
          ext_check_win, debug, progress_file, classify_unknown, classify_all,
          final_con_file, final_con_file_no_low_copy, final_unknown_con_file, final_classified_con_file, low_copy_dir,
-         fast_mode, error_files, plot_skip, skipped_dir, plot_query, engine, proof_annotation_dir
+         fast_mode, error_files, plot_skip, skipped_dir, plot_query, engine, proof_curation_dir
          ) for seq in seq_list]
 
     # Using a ProcessPoolExecutor to run the function in parallel
@@ -432,14 +432,14 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     if processed_count == single_fasta_n:
         click.echo(f"\n\nAll sequences have been analysed!\n"
                    f"In the analysed sequences {skipped_count} are skipped. Note: not all skipped sequences can have "
-                   f"TE Aid plot in the 'TEtrimmer_for_proof_annotation' folder.\n"
+                   f"TE Aid plot in the 'TEtrimmer_for_proof_curation' folder.\n"
                    f"In the analysed sequences {low_copy_count} are identified as low copy TE.")
 
     else:
         remaining = single_fasta_n - processed_count
         click.echo(f"\n\n{remaining} sequences have not been analysed.\n"
                    f"In the analysed sequences {skipped_count} are skipped. Note: not all skipped sequences can have "
-                   f"TE Aid plot in the 'TEtrimmer_for_proof_annotation' folder.\n"
+                   f"TE Aid plot in the 'TEtrimmer_for_proof_curation' folder.\n"
                    f"In the analysed sequences {low_copy_count} are identified as low copy TE.\n")
         prgre("You might find the reasons why some sequences were not analysed from the 'error_file.txt' in the "
               "'Multiple_sequence_alignment' directory.")
@@ -455,7 +455,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
                        "Unknown elements.")
             analyze.repeatmasker_classification(
                 final_unknown_con_file, final_classified_con_file, classification_dir, num_threads, progress_file,
-                final_con_file, proof_annotation_dir, perfect_proof, good_proof, intermediate_proof,
+                final_con_file, proof_curation_dir, perfect_proof, good_proof, intermediate_proof,
                 need_check_proof, low_copy_dir, hmm, hmm_dir)
         elif classified_pro >= 0.99:
             click.echo("\nMore than 99% TE are classified, TEtrimmer won't classify 'Unknown' TE by classified TE.")
@@ -518,7 +518,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
               "in the 'Multiple_sequence_alignment' directory.\n")
 
     #####################################################################################################
-    # Code block: Cluster proof annotation files
+    # Code block: Cluster proof curation files
     #####################################################################################################
 
     try:
@@ -538,12 +538,12 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
-            f.write(f"\nFinal clustering of proof annotation files failed.\n")
+            f.write(f"\nFinal clustering of proof curation files failed.\n")
             f.write(tb_content + '\n\n')
-        prcyan(f"\nFinal clustering of proof annotation files failed with error {e}")
+        prcyan(f"\nFinal clustering of proof curation files failed with error {e}")
         prcyan('\n' + tb_content + '')
         prgre("\nThis does not affect the final TE consensus sequences. But this can heavily complicate the "
-              "TE proof annotation. If you don't plan to do proof annotation, you can choose to ignore "
+              "TE proof curation. If you don't plan to do proof curation, you can choose to ignore "
               "this error.\n")
 
     #####################################################################################################

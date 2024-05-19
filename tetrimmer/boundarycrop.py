@@ -344,7 +344,7 @@ def crop_end_and_remove_gap(input_file, output_dir, crop_end_threshold=0.8, wind
 
 def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj, hmm, classify_all, classify_unknown,
                            error_files, plot_query, classification_dir, final_con_file, final_con_file_no_low_copy,
-                           proof_annotation_dir, hmm_dir,
+                           proof_curation_dir, hmm_dir,
                            cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000,
                            max_extension=7000, gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=0.8, crop_end_win=40,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
@@ -865,14 +865,14 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         # Create a folder in the same directory as output_dir to store annotation files
         parent_output_dir = os.path.dirname(output_dir)
 
-        # Define different levels of proof_annotation folder
-        perfect_proof = os.path.join(proof_annotation_dir, "Annotations_perfect")
-        good_proof = os.path.join(proof_annotation_dir, "Annotations_good")
-        intermediate_proof = os.path.join(proof_annotation_dir, "Annotations_check_recommended")
-        need_check_proof = os.path.join(proof_annotation_dir, "Annotations_check_required")
+        # Define different levels of proof_curation folder
+        perfect_proof = os.path.join(proof_curation_dir, "Annotations_perfect")
+        good_proof = os.path.join(proof_curation_dir, "Annotations_good")
+        intermediate_proof = os.path.join(proof_curation_dir, "Annotations_check_recommended")
+        need_check_proof = os.path.join(proof_curation_dir, "Annotations_check_required")
 
         # Create the directory if it does not exist
-        os.makedirs(proof_annotation_dir, exist_ok=True)
+        os.makedirs(proof_curation_dir, exist_ok=True)
         os.makedirs(perfect_proof, exist_ok=True)
         os.makedirs(good_proof, exist_ok=True)
         os.makedirs(intermediate_proof, exist_ok=True)
@@ -1020,7 +1020,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Code block: Code block: Move file for manual inspection
     #####################################################################################################
 
-        consi_obj.set_proof_annotation_file()
+        consi_obj.set_proof_curation_file()
 
         # modify fasta_out_flank_mafft_gap_rm fasta header based on the bed file, this can allow the
         # extension function in the final GUI.

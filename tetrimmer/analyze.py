@@ -302,7 +302,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
 
 
 def repeatmasker_classification(final_unknown_con_file, final_classified_con_file, classification_dir, num_threads, progress_file, \
-                                final_con_file, proof_annotation_dir, perfect_proof, good_proof, intermediate_proof, \
+                                final_con_file, proof_curation_dir, perfect_proof, good_proof, intermediate_proof, \
                                 need_check_proof, low_copy_dir, hmm, hmm_dir):
     if os.path.exists(final_unknown_con_file) and os.path.exists(final_classified_con_file):
         temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmasker_classification")
@@ -323,7 +323,7 @@ def repeatmasker_classification(final_unknown_con_file, final_classified_con_fil
 
                 # Update final consensus file
                 rename_cons_file(final_con_file, reclassified_dict)
-                rename_files_based_on_dict(proof_annotation_dir, reclassified_dict)
+                rename_files_based_on_dict(proof_curation_dir, reclassified_dict)
                 rename_files_based_on_dict(perfect_proof, reclassified_dict)
                 rename_files_based_on_dict(good_proof, reclassified_dict)
                 rename_files_based_on_dict(intermediate_proof, reclassified_dict)
@@ -457,7 +457,7 @@ def merge_cons(classification_dir, final_con_file, progress_file, cd_hit_est_fin
     missing_ids = original_ids - merged_ids
 
     """
-    # Based on missing_ids delete files in proof annotation folder and HMM folder
+    # Based on missing_ids delete files in proof curation folder and HMM folder
     for missing_id in missing_ids:
 
         # if not, set evaluation_level to "Need_check". The "get" method will return the default value
@@ -575,7 +575,7 @@ def cluster_proof_anno_file(multi_dotplot_dir, final_con_file_no_low_copy, conti
             # Do multiple sequence dotplot
             multi_dotplot_pdf = multi_seq_dotplot(cluster_fasta, multi_dotplot_dir, cluster_name_proof_anno)
 
-            # Move muti_dotplot_pdf to proof annotation cluster folder
+            # Move muti_dotplot_pdf to proof curation cluster folder
             if os.path.isfile(multi_dotplot_pdf):
                 shutil.copy(multi_dotplot_pdf, cluster_folder)
 
@@ -595,7 +595,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                      single_fasta_n, hmm, hmm_dir, check_extension_win, debug, progress_file,
                      classify_unknown, classify_all, final_con_file, final_con_file_no_low_copy, final_unknown_con_file,
                      final_classified_con_file, low_copy_dir, fast_mode, error_files, plot_skip, skipped_dir,
-                     plot_query, engine, proof_annotation_dir):
+                     plot_query, engine, proof_curation_dir):
     #####################################################################################################
     # Code block: Set different elongation number for different elements and do BLAST search
     #####################################################################################################
@@ -805,7 +805,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     find_boundary_result = find_boundary_and_crop(
                         cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
                         hmm, classify_all, classify_unknown, error_files, plot_query, classification_dir,
-                        final_con_file, final_con_file_no_low_copy, proof_annotation_dir, hmm_dir, cons_threshold=cons_thr,
+                        final_con_file, final_con_file_no_low_copy, proof_curation_dir, hmm_dir, cons_threshold=cons_thr,
                         ext_threshold=ext_thr, ex_step_size=ex_step, max_extension=max_extension,
                         gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
                         crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,
@@ -930,30 +930,30 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     else:
         hmm_dir = ''
 
-    # Define proof_annotation folder path
-    proof_annotation_dir = os.path.join(output_dir, "TEtrimmer_for_proof_annotation")
-    os.makedirs(proof_annotation_dir, exist_ok=True)
+    # Define proof_curation folder path
+    proof_curation_dir = os.path.join(output_dir, "TEtrimmer_for_proof_curation")
+    os.makedirs(proof_curation_dir, exist_ok=True)
 
-    # Define clustered proof annotation folder inside proof_annotation_dir
-    cluster_proof_anno_dir = os.path.join(proof_annotation_dir, "Clustered_proof_annotation")
+    # Define clustered proof curation folder inside proof_curation_dir
+    cluster_proof_anno_dir = os.path.join(proof_curation_dir, "Clustered_proof_curation")
     os.makedirs(cluster_proof_anno_dir, exist_ok=True)
 
     # Define skipped folder if required
     if plot_skip:
-        skipped_dir = os.path.join(proof_annotation_dir, "TE_skipped")
+        skipped_dir = os.path.join(proof_curation_dir, "TE_skipped")
         os.makedirs(skipped_dir, exist_ok=True)
     else:
         skipped_dir = None
 
     # Define low-copy folder
-    low_copy_dir = os.path.join(proof_annotation_dir, "TE_low_copy")
+    low_copy_dir = os.path.join(proof_curation_dir, "TE_low_copy")
     os.makedirs(low_copy_dir, exist_ok=True)
 
     # Define annotation evaluation folders
-    perfect_proof = os.path.join(proof_annotation_dir, "Annotations_perfect")
-    good_proof = os.path.join(proof_annotation_dir, "Annotations_good")
-    intermediate_proof = os.path.join(proof_annotation_dir, "Annotations_check_recommended")
-    need_check_proof = os.path.join(proof_annotation_dir, "Annotations_check_required")
+    perfect_proof = os.path.join(proof_curation_dir, "Annotations_perfect")
+    good_proof = os.path.join(proof_curation_dir, "Annotations_good")
+    intermediate_proof = os.path.join(proof_curation_dir, "Annotations_check_recommended")
+    need_check_proof = os.path.join(proof_curation_dir, "Annotations_check_required")
     os.makedirs(perfect_proof, exist_ok=True)
     os.makedirs(good_proof, exist_ok=True)
     os.makedirs(intermediate_proof, exist_ok=True)
@@ -1018,7 +1018,7 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
     # Define consensus file without low copy
     final_con_file_no_low_copy = os.path.join(classification_dir, "TEtrimmer_consensus_no_low_copy.fasta")
 
-    return bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_annotation_dir, \
+    return bin_py_path, output_dir, single_file_dir, MSA_dir, classification_dir, hmm_dir, proof_curation_dir, \
         low_copy_dir, perfect_proof, good_proof, intermediate_proof, need_check_proof, progress_file, pfam_dir, \
         final_con_file, final_con_file_no_low_copy, final_unknown_con_file, final_classified_con_file, \
         error_files, input_file, genome_file, skipped_dir, cluster_proof_anno_dir

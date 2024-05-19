@@ -67,17 +67,17 @@ if os_type == "Windows":
 #####################################################################################################
 
 @click.command()
-@click.option('--te_trimmer_proof_annotation_dir', '-i', default=None, type=str,
+@click.option('--te_trimmer_proof_curation_dir', '-i', default=None, type=str,
               help='Supply the TEtrimmer output directory path')
 @click.option('--output_dir', '-o', default=None, type=str,
-              help='Define the output directory for TE proof annotation. Default: input folder directory')
+              help='Define the output directory for TE proof curation. Default: input folder directory')
 @click.option('--genome_file', '-g', required=True, type=str,
               help='The genome file path')
-def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
+def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     """
-    This tool can help do quick proof annotation
+    This tool can help do quick proof curation
 
-    python ./path_to_TEtrimmer_bin/Class_TKinter_proof_annotation.py -i <TEtrimmer_output_folder> -g <genome_file>
+    python ./annoGUI.py -i <TEtrimmer_output_folder> -g <genome_file>
     """
 
     # Make directory for temporary files
@@ -88,18 +88,18 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
     copy_history = []
 
     # If the -i option is None define the default input directory
-    if te_trimmer_proof_annotation_dir is None:
-        te_trimmer_proof_annotation_dir = os.path.abspath(os.path.join(bin_py_path, os.pardir))
+    if te_trimmer_proof_curation_dir is None:
+        te_trimmer_proof_curation_dir = os.path.abspath(os.path.join(bin_py_path, os.pardir))
 
     # If the -o option is not given, use the parent directory of -i as output directory.
     if output_dir is None:
-        output_dir = os.path.join(te_trimmer_proof_annotation_dir, "TEtrimmer_proof_anno_results")
+        output_dir = os.path.join(te_trimmer_proof_curation_dir, "TEtrimmer_proof_anno_results")
     # Define output folders, create them when they are not found
-    consensus_folder = os.path.abspath(os.path.join(output_dir, "Proof_annotation_consensus_folder"))
-    need_more_extension = os.path.abspath(os.path.join(output_dir, "Proof_annotation_need_more_extension"))
-    others_dir = os.path.abspath(os.path.join(output_dir, "Proof_annotation_others"))
-    low_copy_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_low_copy_elements"))
-    rescue_skip_elements = os.path.abspath(os.path.join(output_dir, "Proof_annotation_rescued_skip_elements"))
+    consensus_folder = os.path.abspath(os.path.join(output_dir, "Proof_curation_consensus_folder"))
+    need_more_extension = os.path.abspath(os.path.join(output_dir, "Proof_curation_need_more_extension"))
+    others_dir = os.path.abspath(os.path.join(output_dir, "Proof_curation_others"))
+    low_copy_elements = os.path.abspath(os.path.join(output_dir, "Proof_curation_low_copy_elements"))
+    rescue_skip_elements = os.path.abspath(os.path.join(output_dir, "Proof_curation_rescued_skip_elements"))
 
     for dir_path in [consensus_folder, need_more_extension, others_dir, low_copy_elements, rescue_skip_elements]:
         os.makedirs(dir_path, exist_ok=True)
@@ -110,7 +110,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
 
     # Initialize Tk window
     root = Tk()
-    root.title("TEtrimmer proof annotation tool")
+    root.title("TEtrimmer proof curation tool")
     root.geometry('1200x900')
 
     # Create canvas on root
@@ -392,10 +392,10 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
                "   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝\n"\
 
 
-    initial_text = "TEtrimmer manual proof annotation assistant tool\n\n" \
+    initial_text = "TEtrimmer manual proof curation assistant tool\n\n" \
                    "Introduction:\n\n" \
-                   "We highly recommend to do manual proof annotation to increase your TE annotation quality.\n\n"\
-                   "1, Click the <Clustered_proof_annotation> buttons in the menu bar.\n\n" \
+                   "We highly recommend to do manual proof curation to increase your TE annotation quality.\n\n"\
+                   "1, Click the <Clustered_proof_curation> buttons in the menu bar.\n\n" \
                    "   All clusters will be displayed. TEs with more than 90% identity are placed into one cluster.\n\n" \
                    "2, Click each <Cluster> button.\n\n" \
                    "   For each TE, you can find four files: \n" \
@@ -406,13 +406,13 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
                    "   More than one TE can be found, theoretically, you only need to choose one from each cluster.\n\n"\
                    "3, Double click <seq_name.pdf> and evaluate annotation quality.\n\n" \
                    "4, If you are satisfied with the result, click <Consensus> button behind <seq_name.fa>.\n" \
-                   "   This MSA file goes to <Proof_annotation_consensus_folder>.\n\n" \
+                   "   This MSA file goes to <Proof_curation_consensus_folder>.\n\n" \
                    "   If you are not satisfied, click <seq_name.fa> or <seq_name.raw.fa> to modify MSA and " \
                    "save it to consensus folder.\n\n" \
                    "   If you want more extension for the MSA, click <Extension> behind the fasta file\n" \
                    "   The MSA will be automatically extended and opened by AliView.\n\n" \
                    "   If you want to use the original input TE, click <Use input> behind <seq_name.pdf>\n" \
-                   "   The pdf report file goes to <Proof_annotation_use_input_sequence>.\n\n"\
+                   "   The pdf report file goes to <Proof_curation_use_input_sequence>.\n\n"\
                    "5, In case you want to cluster the initial MSA, double click <seq_name.cluster.fa>.\n" \
                    "   Select the sequences you want to use and use <Extension> to find the boundary\n\n" \
                    "6, For skipped and low copy elements, check the pdf file and decide if to include it into " \
@@ -503,7 +503,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
                                          parent=parent_win)
         return _copy_file
 
-    def load_files(start, end, frame, canvas, source_dir=te_trimmer_proof_annotation_dir):
+    def load_files(start, end, frame, canvas, source_dir=te_trimmer_proof_curation_dir):
         clear_frame()
         canvas.yview_moveto(0)  # Reset scrollbar to top
         if not os.path.exists(source_dir) or not os.listdir(source_dir):
@@ -527,14 +527,14 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
             button_frame = Frame(frame, bg='white')
             button_frame.grid(row=i - start, column=2, sticky='e')
 
-            # If it's a folder in "Clustered_proof_annotation", add a label with the file count
-            if source_dir.endswith("Clustered_proof_annotation") and os.path.isdir(os.path.join(source_dir, filename)):
+            # If it's a folder in "Clustered_proof_curation", add a label with the file count
+            if source_dir.endswith("Clustered_proof_curation") and os.path.isdir(os.path.join(source_dir, filename)):
                 file_count = len(os.listdir(os.path.join(source_dir, filename)))
                 file_count_label = Label(frame, text=f"({file_count} files)", bg='white')
                 file_count_label.grid(row=i - start, column=3)
 
-            # Don't show "Consensus" and "Extension" button for low copy and clustered proof annotation
-            if not source_dir.endswith("TE_low_copy") and not source_dir.endswith("Clustered_proof_annotation")\
+            # Don't show "Consensus" and "Extension" button for low copy and clustered proof curation
+            if not source_dir.endswith("TE_low_copy") and not source_dir.endswith("Clustered_proof_curation")\
                     and not source_dir.endswith("TE_skipped"):
                 # Create "Consensus" button inside button_frame
                 copy_button = Button(button_frame, text="Consensus", bg='white', fg='black')
@@ -775,13 +775,13 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
     # Show menu on the window
     root.configure(menu=menubar)
 
-    annotation_folders = ["Clustered_proof_annotation", "TE_low_copy", "TE_skipped"]
+    annotation_folders = ["Clustered_proof_curation", "TE_low_copy", "TE_skipped"]
 
     # Create sub-menu
     for annotation in annotation_folders:
         annotationMenu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label=annotation, menu=annotationMenu)
-        annotation_path = os.path.join(te_trimmer_proof_annotation_dir, annotation)
+        annotation_path = os.path.join(te_trimmer_proof_curation_dir, annotation)
 
         # Give hits when folder isn't found
         if not os.path.exists(annotation_path):
@@ -789,7 +789,7 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
                                        command=partial(messagebox.showerror,
                                                        "Error", "Please use the correct input directory."
                                                                 " three folder should be contained in your input path, "
-                                                                "including 'Clustered_proof_annotation', "
+                                                                "including 'Clustered_proof_curation', "
                                                                 "'TE_skipped', and 'TE_low_copy'"))
             continue
 
@@ -826,4 +826,4 @@ def proof_annotation(te_trimmer_proof_annotation_dir, output_dir, genome_file):
 
 
 if __name__ == '__main__':
-    proof_annotation()
+    proof_curation()

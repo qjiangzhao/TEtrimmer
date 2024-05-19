@@ -87,7 +87,7 @@ class ConsensusObject:
     def __init__(self, parent_seq_object, consensus_name):
         self.parent_seq_object = parent_seq_object
         self.consensus_name = str(consensus_name)
-        self.proof_annotation_file = "None"
+        self.proof_curation_file = "None"
         self.hmm_file = "None"
         self.proof_pdf = "None"
         self.proof_fasta = "None"
@@ -139,7 +139,7 @@ class ConsensusObject:
     def set_blast_full_n(self, blast_full_length_n):
         self.new_TE_blast_full_length_n = int(blast_full_length_n)
 
-    def set_proof_annotation_file(self):
+    def set_proof_curation_file(self):
 
         proof_TE_type = self.new_TE_type.replace("/", "__")
         self.proof_pdf = f"{self.consensus_name}#{proof_TE_type}.pdf"
