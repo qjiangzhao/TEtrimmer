@@ -61,7 +61,7 @@ with open(config_path, "r") as config_file:
 
                 python ./path_to_TEtrimmer_bin/TEtrimmer.py -i <TE_consensus_file> -g <genome_file>
 
-                TEtrimmer is designed to replace manual curation of transposable elements (TEs). 
+                TEtrimmer is designed to automate manual curation of transposable elements (TEs). 
 
                 Two mandatory arguments are required, including 
                 <genome file>, the genome FASTA file, and 

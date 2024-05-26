@@ -26,7 +26,7 @@ import os
 import re
 import shutil
 import subprocess
-from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, Toplevel, simpledialog
+from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, Toplevel, simpledialog, Text
 import click
 from functools import partial
 import platform
@@ -110,8 +110,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
 
     # Initialize Tk window
     root = Tk()
-    root.title("TEtrimmer proof curation tool")
-    root.geometry('1200x900')
+    root.title("TEtrimmer Proof Curation Tool")
+    root.geometry('900x700')
 
     # Create canvas on root
     canvas = Canvas(root, bg='white')
@@ -392,32 +392,25 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                "   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝\n"\
 
 
-    initial_text = "TEtrimmer manual proof curation assistant tool\n\n" \
-                   "Introduction:\n\n" \
-                   "We highly recommend to do manual proof curation to increase your TE annotation quality.\n\n"\
-                   "1, Click the <Clustered_proof_curation> buttons in the menu bar.\n\n" \
-                   "   All clusters will be displayed. TEs with more than 90% identity are placed into one cluster.\n\n" \
+    initial_text = "Manual proof curation is highly recommended to improve the quality of TE annotations.\n\n"\
+                   "1, Click the <Clustered_proof_curation> button in the menu bar.\n\n" \
+                   "   TEs with more than 90% identity are grouped into one cluster.\n\n" \
                    "2, Click each <Cluster> button.\n\n" \
                    "   For each TE, you can find four files: \n" \
-                   "     <seq_name.cluster.fa>: the multiple sequence alignment (MSA) before clustering and extension\n" \
-                   "     <seq_name.raw.fa>: the MSA file before cleaning\n" \
-                   "     <seq_name.fa>: the MSA file after cleaning and boundaries definition\n" \
-                   "     <seq_name.pdf>: the report file contains 7 plots used to evaluate annotation quality\n" \
-                   "   More than one TE can be found, theoretically, you only need to choose one from each cluster.\n\n"\
-                   "3, Double click <seq_name.pdf> and evaluate annotation quality.\n\n" \
-                   "4, If you are satisfied with the result, click <Consensus> button behind <seq_name.fa>.\n" \
-                   "   This MSA file goes to <Proof_curation_consensus_folder>.\n\n" \
-                   "   If you are not satisfied, click <seq_name.fa> or <seq_name.raw.fa> to modify MSA and " \
-                   "save it to consensus folder.\n\n" \
-                   "   If you want more extension for the MSA, click <Extension> behind the fasta file\n" \
-                   "   The MSA will be automatically extended and opened by AliView.\n\n" \
-                   "   If you want to use the original input TE, click <Use input> behind <seq_name.pdf>\n" \
-                   "   The pdf report file goes to <Proof_curation_use_input_sequence>.\n\n"\
-                   "5, In case you want to cluster the initial MSA, double click <seq_name.cluster.fa>.\n" \
-                   "   Select the sequences you want to use and use <Extension> to find the boundary\n\n" \
-                   "6, For skipped and low copy elements, check the pdf file and decide if to include it into " \
-                   "the final consensus library.\n"\
-                   "   Note: Skipped and low copy elements do not have multiple sequence alignment files"
+                   "     <seq_name.cluster.fa>: multiple sequence alignment (MSA) before clustering\n" \
+                   "     <seq_name.raw.fa>: MSA file before cleaning\n" \
+                   "     <seq_name.fa>: MSA file corresponding to TE consensus sequence\n" \
+                   "     <seq_name.pdf>: report plots file for evaluating annotation quality\n" \
+                   "3, Double click <seq_name.pdf> to evaluate annotation quality.\n\n" \
+                   "4, If satisfied, click <Consensus> button next to <seq_name.fa>.\n" \
+                   "   This MSA file will be copied to <Proof_curation_consensus_folder>.\n\n" \
+                   "5, If not satisfied, check <seq_name.fa> or <seq_name.raw.fa> \n\n" \
+                   "6, For more extension, click <Extension> button next to the fasta file\n" \
+                   "   Use <TEAid> button to generate interactive report plots. \n\n" \
+                   "7, If still not satisfied, check <seq_name.cluster.fa>.\n" \
+                   "   Select the sequences you want to use and click <Extension> to find the boundary\n\n" \
+                   "8, For skipped and low copy elements, evaluate by checking the PDF file.\n"\
+
 
     # Display ASCII logo with 'Courier' font
     if os_type == "Linux":
@@ -623,6 +616,18 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
 
         return _open_file
 
+    def show_help():
+        help_window = Toplevel(root)
+        help_window.title("Help")
+        help_window.geometry('900x700')
+
+        help_text_widget = Text(help_window, bg='white', font=('Arial', 15), wrap='word')
+        help_text_widget.insert('1.0', initial_text)
+        help_text_widget.config(state='disabled')  # Make the Text widget read-only
+        help_text_widget.pack(fill='both', expand=True)
+
+        help_window.update_idletasks()  # Ensure that all widget sizes are calculated
+
     #####################################################################################################
     # Code block: Define child canvas
     #####################################################################################################
@@ -821,6 +826,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     # Add Undo child menu
     undo_menu.add_command(label="undo last copy", command=undo_last_copy)
     menubar.add_cascade(label="Undo", menu=undo_menu)
+
+    # Add the Help button to the menu
+    help_menu = Menu(menubar, tearoff=0)
+    help_menu.add_command(label="Show instruction", command=show_help)
+    menubar.add_cascade(label="Help", menu=help_menu)
 
     root.mainloop()
 
