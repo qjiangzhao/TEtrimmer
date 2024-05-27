@@ -28,6 +28,7 @@ import shutil
 import subprocess
 from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, Toplevel, simpledialog, Text
 import click
+import traceback
 from functools import partial
 import platform
 from Bio import SeqIO
@@ -260,63 +261,81 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
         return output_fasta
 
     # Combined extension module
-    
-    def extension_function(input_fasta_n, button, source_dir, output_dir, parent_win, chrom_s):
+    def extension_function(input_fasta_n, ext_button, source_dir, output_dir, parent_win, chrom_s, child_frame,
+                           child_canvas, child_source_dir, current_win):
         def _extension_function(event):
-
-            # Prompt the user to input the extension lengths
             left_ex = simpledialog.askinteger("Input", "Enter left extension length (bp):",
                                               parent=parent_win, minvalue=0, initialvalue=1000)
             right_ex = simpledialog.askinteger("Input", "Enter right extension length (bp):",
                                                parent=parent_win, minvalue=0, initialvalue=1000)
 
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
-
-                # Define file paths
-                input_fasta_bed = os.path.join(output_dir, f"{input_fasta_n}.bed")
-                input_fasta_after_ex_bed = os.path.join(output_dir, f"{input_fasta_n}_{left_ex}_{right_ex}.bed")
-                output_fasta = os.path.join(output_dir, f"{input_fasta_n}_{left_ex}_{right_ex}.fa")
-
                 input_fasta_f = os.path.join(source_dir, input_fasta_n)
+                base_name = os.path.splitext(input_fasta_n)[0]
+                output_fasta = os.path.join(source_dir, f"{input_fasta_n}_{left_ex}_{right_ex}.fa")
 
                 try:
                     # Generate bed file based on fasta header
-                    fasta_header_to_bed(input_fasta_f, input_fasta_bed)
+                    input_fasta_bed = fasta_header_to_bed(input_fasta_f, os.path.join(output_dir, f"{base_name}.bed"))
 
-                except Exception as e:
-                    messagebox.showerror("Error", f"The conversion from fasta to bed file failed: {str(e)}",
-                                         parent=parent_win)
-                try:
                     # Do bed file extension
-                    extend_bed_regions(input_fasta_bed, left_ex, right_ex, chrom_s, input_fasta_after_ex_bed)
+                    input_fasta_after_ex_bed = extend_bed_regions(input_fasta_bed, left_ex, right_ex, chrom_s,
+                                                                  os.path.join(output_dir,
+                                                                               f"{base_name}_{left_ex}_{right_ex}.bed"))
 
-                except Exception as e:
-                    messagebox.showerror("Error", f"Extension failed: {str(e)}",
-                                         parent=parent_win)
-                try:
                     # Get fasta file based on the extended bed file
                     extract_fasta_from_bed(genome_file, input_fasta_after_ex_bed, output_fasta)
 
-                    # Replace the original fasta file with the extended fasta file
-                    os.rename(output_fasta, input_fasta_f)
-
-                    # Open fasta with AliView
-                    if os_type == "Windows":
-                        subprocess.run(["java", "-jar", aliview_path, input_fasta_f])
-                    else:
-                        subprocess.run([aliview_path, input_fasta_f])
-
                     if os_type == "Darwin":
-                        button.config(fg='red')  # Change button text color under macOS system
-                        button.update_idletasks()  # Update UI immediately
+                        ext_button.config(fg='red')  # Change button text color under macOS system
                     else:
-                        button.config(bg='light green')  # Change button color
-                        button.update_idletasks()  # Update UI immediately
-                    button.update_idletasks()
+                        ext_button.config(bg='light green')  # Change button color
+                    ext_button.update_idletasks()
+
+                    # Record the current scroll position and button states
+                    scroll_position = child_canvas.yview()[0]
+
+                    button_states = {}
+
+                    for row in range(len(child_frame.grid_slaves(column=0))):
+                        row_widgets = child_frame.grid_slaves(row=row)
+
+                        # Before sort looks like
+                        # [<tkinter.Frame object .!toplevel.!canvas.!frame.!frame>, <tkinter.Button object .!toplevel.!canvas.!frame.!button>, <tkinter.Label object .!toplevel.!canvas.!frame.!label>]
+                        # After sort looks like
+                        # [<tkinter.Label object .!toplevel.!canvas.!frame.!label>, <tkinter.Button object .!toplevel.!canvas.!frame.!button>, <tkinter.Frame object .!toplevel.!canvas.!frame.!frame>]
+                        row_widgets.sort(key=lambda widget: widget.grid_info()["column"])
+
+                        # This corresponds to file name button
+                        filename = row_widgets[1].cget("text")
+                        file_bg = row_widgets[1].cget("bg")
+
+                        # Update background dictionary
+                        button_states[filename] = [file_bg]
+
+                        # Get the button frame which is the third widget in the row
+                        button_frame = row_widgets[2]
+
+                        # Iterate over the children of the button frame
+                        for button in button_frame.winfo_children():
+                            # Get the button text and background color
+                            button_bg = button.cget("bg")
+
+                            # Update button_states to include other button background
+                            button_states[filename].append(button_bg)
+
+                    # Destroy all widgets in child_frame before reload it
+                    for widget in child_frame.winfo_children():
+                        widget.destroy()
+
+                    # Reload the child canvas to show the new file
+                    child_load_files(0, 1000, child_frame, child_canvas, child_source_dir, current_win,
+                                     scroll_position=scroll_position, button_states=button_states)
 
                 except Exception as e:
-                    messagebox.showerror("Error", f"Extracting sequence failed after extension: {str(e)}",
-                                         parent=parent_win)
+                    click.echo(traceback.format_exc())
+
+                    messagebox.showerror("Error", f"An error occurred: {str(e)}", parent=parent_win)
 
         return _extension_function
 
@@ -635,63 +654,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     # Code block: Define child canvas
     #####################################################################################################
 
-    def child_load_files(start, end, frame, canvas, source_dir, current_win):
-
-        canvas.yview_moveto(0)  # Reset scrollbar to top
-        if not os.path.exists(source_dir) or not os.listdir(source_dir):
-            label = Label(frame, text="No files found here, try another folder.", bg='white')
-            label.pack(pady=20)
-            return
-        # Sort files
-        sorted_files = [f for f in sorted(os.listdir(source_dir))]
-        for i, filename in enumerate(sorted_files[start:end], start=start):
-            # Add line number into canvas frame
-            line_number = Label(frame, text=str(i + 1), bg='white')
-            line_number.grid(row=i - start, column=0)
-
-            # Add file name button into canvas frame
-            file_button = Button(frame, text=filename, anchor='w', bg='white')
-            file_button.grid(row=i - start, column=1, sticky='ew')
-            # Bind with child_open_file function to open file
-            file_button.bind('<Double-Button-1>', child_open_file(filename, file_button, source_dir))
-
-            # Build a child button_frame inside frame
-            button_frame = Frame(frame, bg='white')
-            button_frame.grid(row=i - start, column=2, sticky='e')
-
-            # Create "Consensus" button inside button_frame
-            copy_button = Button(button_frame, text="Consensus", bg='white', fg='black')
-            copy_button.grid(row=0, column=0, padx=5)
-            # Bind "Consensus" button with copy_file function with specific source and destination folder
-            copy_button.bind('<Button-1>', copy_file(filename, copy_button, consensus_folder,
-                                                     source_dir, current_win))
-
-            # Define "Extension" button
-            more_extend_button = Button(button_frame, text="Extension", bg='white', fg='black')
-            more_extend_button.grid(row=0, column=1, padx=5)
-            # Bind "Extension" button with copy_file function with different destination folder
-            more_extend_button.bind('<Button-1>', extension_function(filename, more_extend_button, source_dir,
-                                                                     temp_folder, current_win, chrom_size))
-
-            # Define "Plotter" button
-            plot_button = Button(button_frame, text="TEAid", bg='white', fg='black')
-            plot_button.grid(row=0, column=2, padx=5)
-            # Bind "Plotter" button with plotter_function
-            plot_button.bind('<Button-1>', plotter_function(filename, plot_button, source_dir, temp_folder, genome_file,
-                                                            current_win))
-
-            # Define "Others" button
-            others_button = Button(button_frame, text="Others", bg='white', fg='black')
-            others_button.grid(row=0, column=3, padx=5)
-            # Bind "Extension" button with copy_file function with different destination folder
-            others_button.bind('<Button-1>', copy_file(filename, others_button, others_dir,
-                                                       source_dir, current_win))
-
-            button_frame.grid_columnconfigure(0, weight=1)
-            button_frame.grid_rowconfigure(0, weight=1)
-            frame.grid_columnconfigure(1, weight=1)
-            frame.grid_columnconfigure(2, weight=0)
-
     def child_open_file(filename, button, source_dir):
         def _child_open_file(event):
             filepath = os.path.join(source_dir, filename)
@@ -740,8 +702,93 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
 
         return _child_open_file
 
-    def open_cluster_folder(folder_n, source_dir):
+    def child_load_files(start, end, frame, canvas, source_dir, current_win, scroll_position=None, button_states=None):
+        if scroll_position is not None:
+            canvas.yview_moveto(scroll_position)  # Set scrollbar to saved position
+        else:
+            canvas.yview_moveto(0)  # Reset scrollbar to top if no position is provided
 
+        if button_states is None:
+            button_states = {}
+
+        if not os.path.exists(source_dir) or not os.listdir(source_dir):
+            label = Label(frame, text="No files found here, try another folder.", bg='white')
+            label.pack(pady=20)
+            return
+
+        # Sort files
+        sorted_files = [f for f in sorted(os.listdir(source_dir))]
+        for i, filename in enumerate(sorted_files[start:end], start=start):
+            # Add line number into canvas frame
+            line_number = Label(frame, text=str(i + 1), bg='white')
+            line_number.grid(row=i - start, column=0)
+
+            # Get button states
+            file_button_bg = 'white'
+            consensus_button_bg = 'white'
+            extension_button_bg = 'white'
+            teaid_button_bg = 'white'
+            others_button_bg = 'white'
+
+            if filename in button_states:
+                states = button_states[filename]
+                if len(states) >= 1:
+                    file_button_bg = states[0]
+                if len(states) >= 2:
+                    consensus_button_bg = states[1]
+                if len(states) >= 3:
+                    extension_button_bg = states[2]
+                if len(states) >= 4:
+                    teaid_button_bg = states[3]
+                if len(states) >= 5:
+                    others_button_bg = states[4]
+
+            # Add file name button into canvas frame
+            file_button = Button(frame, text=filename, anchor='w', bg=file_button_bg)
+            file_button.grid(row=i - start, column=1, sticky='ew')
+            # Bind with child_open_file function to open file
+            file_button.bind('<Double-Button-1>', child_open_file(filename, file_button, source_dir))
+
+            # Build a child button_frame inside frame
+            button_frame = Frame(frame, bg='white')
+            button_frame.grid(row=i - start, column=2, sticky='e')
+
+            # Create "Consensus" button inside button_frame
+            copy_button = Button(button_frame, text="Consensus", bg=consensus_button_bg, fg='black')
+            copy_button.grid(row=0, column=0, padx=5)
+            # Bind "Consensus" button with copy_file function with specific source and destination folder
+            copy_button.bind('<Button-1>', copy_file(filename, copy_button, consensus_folder, source_dir, current_win))
+
+            # Define "Extension" button
+            more_extend_button = Button(button_frame, text="Extension", bg=extension_button_bg, fg='black')
+            more_extend_button.grid(row=0, column=1, padx=5)
+            # Bind "Extension" button with copy_file function with different destination folder
+            more_extend_button.bind('<Button-1>', extension_function(filename, more_extend_button, source_dir,
+                                                                     temp_folder, current_win, chrom_size, frame,
+                                                                     canvas, source_dir, current_win))
+
+            # Define "Plotter" button
+            plot_button = Button(button_frame, text="TEAid", bg=teaid_button_bg, fg='black')
+            plot_button.grid(row=0, column=2, padx=5)
+            # Bind "Plotter" button with plotter_function
+            plot_button.bind('<Button-1>',
+                             plotter_function(filename, plot_button, source_dir, temp_folder, genome_file, current_win))
+
+            # Define "Others" button
+            others_button = Button(button_frame, text="Others", bg=others_button_bg, fg='black')
+            others_button.grid(row=0, column=3, padx=5)
+            # Bind "Others" button with copy_file function with different destination folder
+            others_button.bind('<Button-1>', copy_file(filename, others_button, others_dir, source_dir, current_win))
+
+            button_frame.grid_columnconfigure(0, weight=1)
+            button_frame.grid_rowconfigure(0, weight=1)
+            frame.grid_columnconfigure(1, weight=1)
+            frame.grid_columnconfigure(2, weight=0)
+
+        #frame.update_idletasks()  # Update the layout
+        #canvas.update_idletasks()
+
+    def open_cluster_folder(folder_n, source_dir):
         # Create a new top-level window
         folder_window = Toplevel()
         folder_window.title(folder_n)
@@ -765,7 +812,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
         folder_frame = Frame(folder_canvas, bg='white')
         folder_canvas_frame = folder_canvas.create_window((0, 0), window=folder_frame, anchor='nw')
 
-        # Load file, show maximum 1000 file
+        # Load file, show maximum 1000 files
         child_load_files(0, 1000, folder_frame, folder_canvas, os.path.join(source_dir, folder_n), folder_window)
 
         # Bind events to the new window's canvas and frame
