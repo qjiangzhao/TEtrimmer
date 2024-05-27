@@ -47,21 +47,6 @@ def calc_conservation(col):
     return max_count / total_nucleotides
 
 
-@click.command()
-@click.option("--input_file", "-i", required="True", type=str,
-              help="Multiple sequence alignment FASTA file path")
-@click.option("--output_file", "-o", required="True", type=str,
-              help="Output file")
-@click.option("--gap_threshold", default=0.8, type=float,
-              help="Columns with gap percentage greater than and not equal to threshold will be removed directly")
-@click.option("--simi_check_gap_thr", default=0.4, type=float,
-              help="Columns with gap percentage between --simi_check_gap_thr and --gap_threshold will be deleted "
-                   "when the most abundant nucleotide proportion is smaller than --similarity_thr")
-@click.option("--similarity_thr", default=0.7, type=float,
-              help="If the most abundant nucleotide proportion is smaller than --similarity_thr and gap proportion is "
-                   "greater than --simi_check_gap_thr, this colum will be removed")
-@click.option("--min_nucleotide", default=5, type=int,
-              help="Columns with less than --min_nucleotide nucleotides will be removed")
 def remove_gaps_with_similarity_check(input_file, output_file, gap_threshold,
                                       simi_check_gap_thr, similarity_thr, min_nucleotide):
     """
@@ -126,5 +111,26 @@ def remove_gaps_with_similarity_check(input_file, output_file, gap_threshold,
         raise FileNotFoundError(f"The file '{input_file}' does not exist.")
 
 
+@click.command()
+@click.option("--input_file", "-i", required="True", type=str,
+              help="Multiple sequence alignment FASTA file path")
+@click.option("--output_file", "-o", required="True", type=str,
+              help="Output file")
+@click.option("--gap_threshold", default=0.8, type=float,
+              help="Columns with gap percentage greater than and not equal to threshold will be removed directly")
+@click.option("--simi_check_gap_thr", default=0.4, type=float,
+              help="Columns with gap percentage between --simi_check_gap_thr and --gap_threshold will be deleted "
+                   "when the most abundant nucleotide proportion is smaller than --similarity_thr")
+@click.option("--similarity_thr", default=0.7, type=float,
+              help="If the most abundant nucleotide proportion is smaller than --similarity_thr and gap proportion is "
+                   "greater than --simi_check_gap_thr, this colum will be removed")
+@click.option("--min_nucleotide", default=5, type=int,
+              help="Columns with less than --min_nucleotide nucleotides will be removed")
+def remove_gaps_with_similarity_check_click(input_file, output_file, gap_threshold, simi_check_gap_thr, similarity_thr,
+                                            min_nucleotide):
+    remove_gaps_with_similarity_check(input_file, output_file, gap_threshold, simi_check_gap_thr, similarity_thr,
+                                      min_nucleotide)
+
+
 if __name__ == '__main__':
-    remove_gaps_with_similarity_check()
+    remove_gaps_with_similarity_check_click()

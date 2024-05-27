@@ -26,7 +26,7 @@ import os
 import re
 import shutil
 import subprocess
-from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, Toplevel, simpledialog, Text
+from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, Toplevel, simpledialog, Text, Entry
 import click
 import traceback
 from functools import partial
@@ -34,6 +34,10 @@ import platform
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Plotter import GUI_plotter
+# Import cleaning module
+from crop_end_divergence import crop_end_div
+from crop_end_gap import crop_end_gap
+from remove_gap import remove_gaps_with_similarity_check
 
 #####################################################################################################
 # Code block: make Aliveiw available to be used
@@ -89,6 +93,20 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     # Define empty list to store copy history, which enable undo button
     copy_history = []
 
+    # Define cleaning module global parameters
+    # Define cleaning module global parameters
+    global crop_div_thr_g, crop_div_win_g, crop_gap_thr_g, crop_gap_win_g
+    global column_gap_thr_g, simi_check_gap_thr_g, similarity_thr_g, min_nucleotide_g
+
+    crop_div_thr_g = 0.65
+    crop_div_win_g = 40
+    crop_gap_thr_g = 0.05
+    crop_gap_win_g = 150
+    column_gap_thr_g = 0.8
+    simi_check_gap_thr_g = 0.4
+    similarity_thr_g = 0.7
+    min_nucleotide_g = 5
+
     # If the -i option is None define the default input directory
     if te_trimmer_proof_curation_dir is None:
         te_trimmer_proof_curation_dir = os.path.abspath(os.path.join(bin_py_path, os.pardir))
@@ -99,7 +117,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     # Define output folders, create them when they are not found
     consensus_folder = os.path.abspath(os.path.join(output_dir, "Proof_curation_consensus_folder"))
     need_more_extension = os.path.abspath(os.path.join(output_dir, "Proof_curation_need_more_extension"))
-    others_dir = os.path.abspath(os.path.join(output_dir, "Proof_curation_others"))
+    others_dir = os.path.abspath(os.path.join(output_dir, "Proof_curation_discard"))
     low_copy_elements = os.path.abspath(os.path.join(output_dir, "Proof_curation_low_copy_elements"))
     rescue_skip_elements = os.path.abspath(os.path.join(output_dir, "Proof_curation_rescued_skip_elements"))
 
@@ -186,6 +204,46 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     #####################################################################################################
     # Code block: extension module
     #####################################################################################################
+    def fresh_child_canvas(child_frame, child_canvas, child_source_dir, current_win):
+        # Record the current scroll position and button states
+        scroll_position = child_canvas.yview()[0]
+
+        button_states = {}
+
+        for row in range(len(child_frame.grid_slaves(column=0))):
+            row_widgets = child_frame.grid_slaves(row=row)
+
+            # Before sort looks like
+            # [<tkinter.Frame object .!toplevel.!canvas.!frame.!frame>, <tkinter.Button object .!toplevel.!canvas.!frame.!button>, <tkinter.Label object .!toplevel.!canvas.!frame.!label>]
+            # After sort looks like
+            # [<tkinter.Label object .!toplevel.!canvas.!frame.!label>, <tkinter.Button object .!toplevel.!canvas.!frame.!button>, <tkinter.Frame object .!toplevel.!canvas.!frame.!frame>]
+            row_widgets.sort(key=lambda widget: widget.grid_info()["column"])
+
+            # This corresponds to file name button
+            filename = row_widgets[1].cget("text")
+            file_bg = row_widgets[1].cget("bg")
+
+            # Update background dictionary
+            button_states[filename] = [file_bg]
+
+            # Get the button frame which is the third widget in the row
+            button_frame = row_widgets[2]
+
+            # Iterate over the children of the button frame
+            for button in button_frame.winfo_children():
+                # Get the button text and background color
+                button_bg = button.cget("bg")
+
+                # Update button_states to include other button background
+                button_states[filename].append(button_bg)
+
+        # Destroy all widgets in child_frame before reload it
+        for widget in child_frame.winfo_children():
+            widget.destroy()
+
+        # Reload the child canvas to show the new file
+        child_load_files(0, 1000, child_frame, child_canvas, child_source_dir, current_win,
+                         scroll_position=scroll_position, button_states=button_states)
 
     # Generate bed file based on fasta header
     # The fasta header could look like
@@ -292,55 +350,17 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                         ext_button.config(bg='light green')  # Change button color
                     ext_button.update_idletasks()
 
-                    # Record the current scroll position and button states
-                    scroll_position = child_canvas.yview()[0]
-
-                    button_states = {}
-
-                    for row in range(len(child_frame.grid_slaves(column=0))):
-                        row_widgets = child_frame.grid_slaves(row=row)
-
-                        # Before sort looks like
-                        # [<tkinter.Frame object .!toplevel.!canvas.!frame.!frame>, <tkinter.Button object .!toplevel.!canvas.!frame.!button>, <tkinter.Label object .!toplevel.!canvas.!frame.!label>]
-                        # After sort looks like
-                        # [<tkinter.Label object .!toplevel.!canvas.!frame.!label>, <tkinter.Button object .!toplevel.!canvas.!frame.!button>, <tkinter.Frame object .!toplevel.!canvas.!frame.!frame>]
-                        row_widgets.sort(key=lambda widget: widget.grid_info()["column"])
-
-                        # This corresponds to file name button
-                        filename = row_widgets[1].cget("text")
-                        file_bg = row_widgets[1].cget("bg")
-
-                        # Update background dictionary
-                        button_states[filename] = [file_bg]
-
-                        # Get the button frame which is the third widget in the row
-                        button_frame = row_widgets[2]
-
-                        # Iterate over the children of the button frame
-                        for button in button_frame.winfo_children():
-                            # Get the button text and background color
-                            button_bg = button.cget("bg")
-
-                            # Update button_states to include other button background
-                            button_states[filename].append(button_bg)
-
-                    # Destroy all widgets in child_frame before reload it
-                    for widget in child_frame.winfo_children():
-                        widget.destroy()
-
-                    # Reload the child canvas to show the new file
-                    child_load_files(0, 1000, child_frame, child_canvas, child_source_dir, current_win,
-                                     scroll_position=scroll_position, button_states=button_states)
+                    # Fresh child canvas
+                    fresh_child_canvas(child_frame, child_canvas, child_source_dir, current_win)
 
                 except Exception as e:
-                    click.echo(traceback.format_exc())
-
-                    messagebox.showerror("Error", f"An error occurred: {str(e)}", parent=parent_win)
+                    click.echo(f"An error occurred during extension: \n {traceback.format_exc()}")
+                    messagebox.showerror("Error", f"An error occurred during extension: {str(e)}", parent=parent_win)
 
         return _extension_function
 
     #####################################################################################################
-    # Code block: set GUI plotter function
+    # Code block: set plotter function
     #####################################################################################################
     def plotter_function(input_fasta_n, button, source_dir, output_dir, genome_file, parent_win):
         def _plotter_function(event):
@@ -359,9 +379,98 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                     button.update_idletasks()
 
                 except Exception as e:
+                    click.echo(f"An error occurred during plotting: \n {traceback.format_exc()}")
                     messagebox.showerror("Error", f"Plotting failed. Make sure BLAST is correctly installed: {str(e)}",
                                          parent=parent_win)
         return _plotter_function
+
+    #####################################################################################################
+    # Code block: define cleaning functions
+    #####################################################################################################
+
+    # Define cleaning functions using global parameters
+    def crop_end_div_gui(input_fasta_n, button, source_dir, output_dir, parent_win,
+                         child_frame, child_canvas, child_source_dir, current_win):
+        def _crop_end_div_gui(event):
+            try:
+                input_file = os.path.join(source_dir, input_fasta_n)
+                output_file = os.path.join(output_dir, f"{input_fasta_n}_cld.fa")
+
+                crop_end_div(input_file, output_file, threshold=crop_div_thr_g, window_size=crop_div_win_g)
+
+                if os_type == "Darwin":
+                    button.config(fg='red')  # Change button text color under macOS system
+                    button.update_idletasks()  # Update UI immediately
+                else:
+                    button.config(bg='light green')  # Change button color
+                    button.update_idletasks()  # Update UI immediately
+                button.update_idletasks()
+
+                # Fresh child canvas
+                fresh_child_canvas(child_frame, child_canvas, child_source_dir, current_win)
+
+            except Exception as e:
+                click.echo(f"An error occurred for crop end by divergence: \n {traceback.format_exc()}")
+                messagebox.showerror("Error", f"MSA cleaning crop end by divergence failed: {str(e)}",
+                                     parent=parent_win)
+
+        return _crop_end_div_gui
+
+    def crop_end_gap_gui(input_fasta_n, button, source_dir, output_dir, parent_win,
+                         child_frame, child_canvas, child_source_dir, current_win):
+        def _crop_end_gap_gui(event):
+            try:
+                input_file = os.path.join(source_dir, input_fasta_n)
+                output_file = os.path.join(output_dir, f"{input_fasta_n}_clg.fa")
+
+                crop_end_gap(input_file, output_file, gap_threshold=crop_gap_thr_g, window_size=crop_gap_win_g)
+
+                if os_type == "Darwin":
+                    button.config(fg='red')  # Change button text color under macOS system
+                    button.update_idletasks()  # Update UI immediately
+                else:
+                    button.config(bg='light green')  # Change button color
+                    button.update_idletasks()  # Update UI immediately
+                button.update_idletasks()
+
+                # Fresh child canvas
+                fresh_child_canvas(child_frame, child_canvas, child_source_dir, current_win)
+
+            except Exception as e:
+                click.echo(f"An error occurred for crop end by gap: \n {traceback.format_exc()}")
+                messagebox.showerror("Error", f"MSA cleaning crop end by gap failed: {str(e)}",
+                                     parent=parent_win)
+
+        return _crop_end_gap_gui
+
+    def remove_gaps_with_similarity_check_gui(input_fasta_n, button, source_dir, output_dir, parent_win,
+                                              child_frame, child_canvas, child_source_dir, current_win):
+        def _remove_gaps_with_similarity_check_gui(event):
+            try:
+                input_file = os.path.join(source_dir, input_fasta_n)
+                output_file = os.path.join(output_dir, f"{input_fasta_n}_gr.fa")
+
+                remove_gaps_with_similarity_check(input_file, output_file, gap_threshold=column_gap_thr_g,
+                                                  simi_check_gap_thr=simi_check_gap_thr_g,
+                                                  similarity_thr=similarity_thr_g,
+                                                  min_nucleotide=min_nucleotide_g)
+                if os_type == "Darwin":
+                    button.config(fg='red')  # Change button text color under macOS system
+                    button.update_idletasks()  # Update UI immediately
+                else:
+                    button.config(bg='light green')  # Change button color
+                    button.update_idletasks()  # Update UI immediately
+                button.update_idletasks()
+
+                # Fresh child canvas
+                fresh_child_canvas(child_frame, child_canvas, child_source_dir, current_win)
+
+            except Exception as e:
+                click.echo(f"An error occurred for cleaning gap columns: \n {traceback.format_exc()}")
+                messagebox.showerror("Error", f"MSA cleaning remove gap column failed: {str(e)}",
+                                     parent=parent_win)
+
+        return _remove_gaps_with_similarity_check_gui
 
     #####################################################################################################
     # Code block: set a vertical scroll bar
@@ -449,7 +558,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     text_label.pack(pady=10)
 
     #####################################################################################################
-    # Code block: Define functions
+    # Code block: Define GUI functions
     #####################################################################################################
 
     def numerical_sort_key(filename):
@@ -470,6 +579,73 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
             text_label.destroy()
             text_label = None
 
+    # Set function to allow to modify MSA cleaning parameters
+    def show_settings_dialog():
+        settings_window = Toplevel(root)
+        settings_window.title("Modify Cleaning Parameters")
+        settings_window.geometry('300x400')
+
+        def save_settings():
+            global crop_div_thr_g, crop_div_win_g, crop_gap_thr_g, crop_gap_win_g
+            global column_gap_thr_g, simi_check_gap_thr_g, similarity_thr_g, min_nucleotide_g
+
+            try:
+                crop_div_thr_g = float(crop_div_thr_entry.get())
+                crop_div_win_g = int(crop_div_win_entry.get())
+                crop_gap_thr_g = float(crop_gap_thr_entry.get())
+                crop_gap_win_g = int(crop_gap_win_entry.get())
+                column_gap_thr_g = float(column_gap_thr_entry.get())
+                simi_check_gap_thr_g = float(simi_check_gap_thr_entry.get())
+                similarity_thr_g = float(similarity_thr_entry.get())
+                min_nucleotide_g = int(min_nucleotide_entry.get())
+                settings_window.destroy()
+
+            except ValueError as e:
+                messagebox.showerror("Invalid input", f"Please enter valid values. Error: {str(e)}")
+
+        Label(settings_window, text="Crop End Divergence Threshold:").pack(pady=2)
+        crop_div_thr_entry = Entry(settings_window, bg='white')
+        crop_div_thr_entry.insert(0, str(crop_div_thr_g))
+        crop_div_thr_entry.pack(pady=2)
+
+        Label(settings_window, text="Crop End Divergence Window Size:").pack(pady=2)
+        crop_div_win_entry = Entry(settings_window, bg='white')
+        crop_div_win_entry.insert(0, str(crop_div_win_g))
+        crop_div_win_entry.pack(pady=2)
+
+        Label(settings_window, text="Crop End Gap Threshold:").pack(pady=2)
+        crop_gap_thr_entry = Entry(settings_window, bg='white')
+        crop_gap_thr_entry.insert(0, str(crop_gap_thr_g))
+        crop_gap_thr_entry.pack(pady=2)
+
+        Label(settings_window, text="Crop End Gap Window Size:").pack(pady=2)
+        crop_gap_win_entry = Entry(settings_window, bg='white')
+        crop_gap_win_entry.insert(0, str(crop_gap_win_g))
+        crop_gap_win_entry.pack(pady=2)
+
+        Label(settings_window, text="Column Gap Threshold:").pack(pady=2)
+        column_gap_thr_entry = Entry(settings_window, bg='white')
+        column_gap_thr_entry.insert(0, str(column_gap_thr_g))
+        column_gap_thr_entry.pack(pady=2)
+
+        Label(settings_window, text="Similarity Check Gap Threshold:").pack(pady=2)
+        simi_check_gap_thr_entry = Entry(settings_window, bg='white')
+        simi_check_gap_thr_entry.insert(0, str(simi_check_gap_thr_g))
+        simi_check_gap_thr_entry.pack(pady=2)
+
+        Label(settings_window, text="Similarity Threshold:").pack(pady=2)
+        similarity_thr_entry = Entry(settings_window, bg='white')
+        similarity_thr_entry.insert(0, str(similarity_thr_g))
+        similarity_thr_entry.pack(pady=2)
+
+        Label(settings_window, text="Min Nucleotide number:").pack(pady=2)
+        min_nucleotide_entry = Entry(settings_window, bg='white')
+        min_nucleotide_entry.insert(0, str(min_nucleotide_g))
+        min_nucleotide_entry.pack(pady=2)
+
+        Button(settings_window, text="Save", command=save_settings).pack(pady=2)
+
+    # Define function to allow retrieve copy operation
     def undo_last_copy():
         if not copy_history:
             messagebox.showinfo("Info", "No actions to undo.")
@@ -494,6 +670,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
             except Exception as e:
                 messagebox.showerror("Error", f"An error occurred while deleting the file: {str(e)}")
 
+    # copy_file function is bundled with copy buttons like Consensus
     def copy_file(filename, button, target_directory, source_dir, parent_win):
         def _copy_file(event):
 
@@ -551,6 +728,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
             # Don't show "Consensus" and "Extension" button for low copy and clustered proof curation
             if not source_dir.endswith("TE_low_copy") and not source_dir.endswith("Clustered_proof_curation")\
                     and not source_dir.endswith("TE_skipped"):
+
                 # Create "Consensus" button inside button_frame
                 copy_button = Button(button_frame, text="Consensus", bg='white', fg='black')
                 copy_button.grid(row=0, column=0, padx=5)
@@ -559,7 +737,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                                                          source_dir, root))
 
                 # Define "Extension" button
-                more_extend_button = Button(button_frame, text="Extension", bg='white', fg='black')
+                more_extend_button = Button(button_frame, text="Copy for extension", bg='white', fg='black')
                 more_extend_button.grid(row=0, column=1, padx=5)
                 # Bind "Extension" button with copy_file function with different destination folder
                 more_extend_button.bind('<Button-1>', copy_file(filename, more_extend_button, need_more_extension,
@@ -728,6 +906,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
             consensus_button_bg = 'white'
             extension_button_bg = 'white'
             teaid_button_bg = 'white'
+            crop_end_by_div_button_bg = 'white'
+            crop_end_by_gap_button_bg = 'white'
+            remove_gap_column_button_bg = "white"
             others_button_bg = 'white'
 
             if filename in button_states:
@@ -741,7 +922,13 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                 if len(states) >= 4:
                     teaid_button_bg = states[3]
                 if len(states) >= 5:
-                    others_button_bg = states[4]
+                    crop_end_by_div_button_bg = states[4]
+                if len(states) >= 6:
+                    crop_end_by_gap_button_bg = states[5]
+                if len(states) >= 7:
+                    remove_gap_column_button_bg = states[6]
+                if len(states) >= 8:
+                    others_button_bg = states[7]
 
             # Add file name button into canvas frame
             file_button = Button(frame, text=filename, anchor='w', bg=file_button_bg)
@@ -754,14 +941,14 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
             button_frame.grid(row=i - start, column=2, sticky='e')
 
             # Create "Consensus" button inside button_frame
-            copy_button = Button(button_frame, text="Consensus", bg=consensus_button_bg, fg='black')
-            copy_button.grid(row=0, column=0, padx=5)
+            copy_button = Button(button_frame, text="Cons", bg=consensus_button_bg, fg='black')
+            copy_button.grid(row=0, column=0, padx=1)
             # Bind "Consensus" button with copy_file function with specific source and destination folder
             copy_button.bind('<Button-1>', copy_file(filename, copy_button, consensus_folder, source_dir, current_win))
 
             # Define "Extension" button
-            more_extend_button = Button(button_frame, text="Extension", bg=extension_button_bg, fg='black')
-            more_extend_button.grid(row=0, column=1, padx=5)
+            more_extend_button = Button(button_frame, text="Extend", bg=extension_button_bg, fg='black')
+            more_extend_button.grid(row=0, column=1, padx=1)
             # Bind "Extension" button with copy_file function with different destination folder
             more_extend_button.bind('<Button-1>', extension_function(filename, more_extend_button, source_dir,
                                                                      temp_folder, current_win, chrom_size, frame,
@@ -769,14 +956,37 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
 
             # Define "Plotter" button
             plot_button = Button(button_frame, text="TEAid", bg=teaid_button_bg, fg='black')
-            plot_button.grid(row=0, column=2, padx=5)
+            plot_button.grid(row=0, column=2, padx=1)
             # Bind "Plotter" button with plotter_function
             plot_button.bind('<Button-1>',
                              plotter_function(filename, plot_button, source_dir, temp_folder, genome_file, current_win))
 
-            # Define "Others" button
-            others_button = Button(button_frame, text="Others", bg=others_button_bg, fg='black')
-            others_button.grid(row=0, column=3, padx=5)
+            # Define "Crop end by divergence" button
+            crop_end_by_div_button = Button(button_frame, text="C_div", bg=crop_end_by_div_button_bg, fg='black')
+            crop_end_by_div_button.grid(row=0, column=3, padx=1)
+            crop_end_by_div_button.bind('<Button-1>',
+                                        crop_end_div_gui(filename, crop_end_by_div_button, source_dir, source_dir,
+                                                         current_win, frame, canvas, source_dir, current_win))
+
+            # Define "Crop end by gap" button
+            crop_end_by_gap_button = Button(button_frame, text="C_gap", bg=crop_end_by_gap_button_bg, fg='black')
+            crop_end_by_gap_button.grid(row=0, column=4, padx=1)
+
+            crop_end_by_gap_button.bind('<Button-1>',
+                                        crop_end_gap_gui(filename, crop_end_by_gap_button, source_dir, source_dir,
+                                                         current_win, frame, canvas, source_dir, current_win))
+
+            # Define "Clean gap column" button
+            clean_gap_column_button = Button(button_frame, text="C_col", bg=remove_gap_column_button_bg, fg='black')
+            clean_gap_column_button.grid(row=0, column=5, padx=1)
+
+            clean_gap_column_button.bind('<Button-1>', remove_gaps_with_similarity_check_gui(
+                filename, clean_gap_column_button, source_dir, source_dir, current_win,
+                frame, canvas, source_dir, current_win))
+
+            # Define "Others" button (discard)
+            others_button = Button(button_frame, text="Discard", bg=others_button_bg, fg='black')
+            others_button.grid(row=0, column=6, padx=1)
             # Bind "Others" button with copy_file function with different destination folder
             others_button.bind('<Button-1>', copy_file(filename, others_button, others_dir, source_dir, current_win))
 
@@ -785,14 +995,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
             frame.grid_columnconfigure(1, weight=1)
             frame.grid_columnconfigure(2, weight=0)
 
-        #frame.update_idletasks()  # Update the layout
-        #canvas.update_idletasks()
-
     def open_cluster_folder(folder_n, source_dir):
         # Create a new top-level window
         folder_window = Toplevel()
         folder_window.title(folder_n)
-        folder_window.geometry('1000x600')
+        folder_window.geometry('1100x600')
 
         # Create canvas on the new window
         folder_canvas = Canvas(folder_window, bg='white')
@@ -871,6 +1078,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     confirm_menu.add_checkbutton(label="Show Confirmation Window", onvalue=True, offvalue=False,
                                  variable=show_confirmation)
     menubar.add_cascade(label="Settings", menu=confirm_menu)
+
+    # Enable setting cleaning module parameters
+    settings_menu = Menu(menubar, tearoff=0)
+    settings_menu.add_command(label="Modify Parameters", command=show_settings_dialog)
+    menubar.add_cascade(label="Modify parameters", menu=settings_menu)
 
     # Add Undo button
     undo_menu = Menu(menubar, tearoff=0)

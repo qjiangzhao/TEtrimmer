@@ -123,17 +123,6 @@ class CropEndByGap:
         return output_file
 
 
-
-@click.command()
-@click.option("--input_file", "-i", required="True", type=str,
-              help="Multiple sequence alignment FASTA file path")
-@click.option("--output_file", "-o", required="True", type=str,
-              help="Output file")
-@click.option("--gap_threshold", "-thr", default=0.05, type=float,
-              help="If the gap proportion in the selected window is greater than --gap_threshold, convert all "
-                   "nucleotides to '-' in this window")
-@click.option("--window_size", "-ws", default=300, type=int,
-              help="Window size used for cropping end")
 def crop_end_gap(input_file, output_file, gap_threshold, window_size):
 
     if os.path.isfile(input_file):
@@ -146,5 +135,21 @@ def crop_end_gap(input_file, output_file, gap_threshold, window_size):
         raise FileNotFoundError(f"The file '{input_file}' does not exist.")
 
 
+
+@click.command()
+@click.option("--input_file", "-i", required="True", type=str,
+              help="Multiple sequence alignment FASTA file path")
+@click.option("--output_file", "-o", required="True", type=str,
+              help="Output file")
+@click.option("--gap_threshold", "-thr", default=0.05, type=float,
+              help="If the gap proportion in the selected window is greater than --gap_threshold, convert all "
+                   "nucleotides to '-' in this window")
+@click.option("--window_size", "-ws", default=300, type=int,
+              help="Window size used for cropping end")
+def crop_end_gap_click(input_file, output_file, gap_threshold, window_size):
+
+    crop_end_gap(input_file, output_file, gap_threshold, window_size)
+
+
 if __name__ == '__main__':
-    crop_end_gap()
+    crop_end_gap_click()

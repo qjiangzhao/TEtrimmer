@@ -156,6 +156,19 @@ class CropEnd:
         with open(output_file, "w") as f:
             AlignIO.write(self.cropped_alignment, f, "fasta")
         return output_file
+
+
+def crop_end_div(input_file, output_file, threshold, window_size):
+
+    if os.path.isfile(input_file):
+
+        crop_end_thr = threshold * window_size
+        crop_end_div_object = CropEnd(input_file, threshold=crop_end_thr, window_size=window_size)
+        crop_alignment = crop_end_div_object.crop_alignment()
+        with open(output_file, "w") as f:
+            AlignIO.write(crop_alignment, f, "fasta")
+    else:
+        raise FileNotFoundError(f"The file '{input_file}' does not exist.")
     
 
 
@@ -168,18 +181,10 @@ class CropEnd:
               help="Higher number means more stringent cropping. Range: 0-1")
 @click.option("--window_size", "-ws", default=20, type=int,
               help="Window size used for cropping end")
-def crop_end_div(input_file, output_file, threshold, window_size):
+def crop_end_div_click(input_file, output_file, threshold, window_size):
 
-    if os.path.isfile(input_file):
-
-        crop_end_thr = threshold * window_size
-        crop_end_div_object = CropEnd(input_file, threshold=crop_end_thr, window_size=window_size)
-        crop_alignment = crop_end_div_object.crop_alignment()
-        with open(output_file, "w") as f:
-            AlignIO.write(crop_alignment, f, "fasta")
-    else:
-        raise FileNotFoundError(f"The file '{input_file}' does not exist.")
+    crop_end_div(input_file, output_file, threshold, window_size)
 
 
 if __name__ == '__main__':
-    crop_end_div()
+    crop_end_div_click()
