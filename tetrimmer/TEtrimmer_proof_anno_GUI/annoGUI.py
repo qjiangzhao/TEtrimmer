@@ -68,11 +68,12 @@ if os_type == "Windows":
 
 @click.command()
 @click.option('--te_trimmer_proof_curation_dir', '-i', default=None, type=str,
-              help='Supply the TEtrimmer output directory path')
+              help='Define TEtrimmer proof curation output path. '
+                   'Like <TEtrimmer_output_path>/<TEtrimmer_for_proof_curation>')
 @click.option('--output_dir', '-o', default=None, type=str,
-              help='Define the output directory for TE proof curation. Default: input folder directory')
+              help='Output directory. Default: input directory')
 @click.option('--genome_file', '-g', required=True, type=str,
-              help='The genome file path')
+              help='Genome fasta file path.')
 def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     """
     This tool can help do quick proof curation
@@ -111,7 +112,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     # Initialize Tk window
     root = Tk()
     root.title("TEtrimmer Proof Curation Tool")
-    root.geometry('900x700')
+    root.geometry('900x750')
 
     # Create canvas on root
     canvas = Canvas(root, bg='white')
@@ -259,6 +260,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
         return output_fasta
 
     # Combined extension module
+    
     def extension_function(input_fasta_n, button, source_dir, output_dir, parent_win, chrom_s):
         def _extension_function(event):
 
@@ -269,6 +271,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                                                parent=parent_win, minvalue=0, initialvalue=1000)
 
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
+
+                # Define file paths
                 input_fasta_bed = os.path.join(output_dir, f"{input_fasta_n}.bed")
                 input_fasta_after_ex_bed = os.path.join(output_dir, f"{input_fasta_n}_{left_ex}_{right_ex}.bed")
                 output_fasta = os.path.join(output_dir, f"{input_fasta_n}_{left_ex}_{right_ex}.fa")
@@ -392,15 +396,15 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                "   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝\n"\
 
 
-    initial_text = "Manual proof curation is highly recommended to improve the quality of TE annotations.\n\n"\
+    initial_text = "Manual proof curation is highly recommended to improve the quality of TE annotations.\n\n" \
                    "1, Click the <Clustered_proof_curation> button in the menu bar.\n\n" \
                    "   TEs with more than 90% identity are grouped into one cluster.\n\n" \
                    "2, Click each <Cluster> button.\n\n" \
-                   "   For each TE, you can find four files: \n" \
-                   "     <seq_name.cluster.fa>: multiple sequence alignment (MSA) before clustering\n" \
-                   "     <seq_name.raw.fa>: MSA file before cleaning\n" \
-                   "     <seq_name.fa>: MSA file corresponding to TE consensus sequence\n" \
-                   "     <seq_name.pdf>: report plots file for evaluating annotation quality\n" \
+                   "   For each TE, you can find four files: \n\n" \
+                   "     <seq_name.cluster.fa>          multiple sequence alignment (MSA) before clustering\n" \
+                   "     <seq_name.raw.fa>               MSA file before cleaning\n" \
+                   "     <seq_name.fa>                      MSA file corresponding to TE consensus sequence\n" \
+                   "     <seq_name.pdf>                    report plots file for evaluating annotation quality\n\n" \
                    "3, Double click <seq_name.pdf> to evaluate annotation quality.\n\n" \
                    "4, If satisfied, click <Consensus> button next to <seq_name.fa>.\n" \
                    "   This MSA file will be copied to <Proof_curation_consensus_folder>.\n\n" \
@@ -409,8 +413,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                    "   Use <TEAid> button to generate interactive report plots. \n\n" \
                    "7, If still not satisfied, check <seq_name.cluster.fa>.\n" \
                    "   Select the sequences you want to use and click <Extension> to find the boundary\n\n" \
-                   "8, For skipped and low copy elements, evaluate by checking the PDF file.\n"\
-
+                   "8, For skipped and low copy elements, evaluate by checking the PDF file.\n"
 
     # Display ASCII logo with 'Courier' font
     if os_type == "Linux":
@@ -576,7 +579,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                 button.config(bg='yellow')  # Change button color
                 button.update_idletasks()  # Update UI immediately
             if os.path.isdir(filepath):
-                open_folder(filename, source_dir)
+                open_cluster_folder(filename, source_dir)
             else:
                 if filename.lower().endswith(('.fa', '.fasta')):
                     if os_type == "Windows":
@@ -633,6 +636,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     #####################################################################################################
 
     def child_load_files(start, end, frame, canvas, source_dir, current_win):
+
         canvas.yview_moveto(0)  # Reset scrollbar to top
         if not os.path.exists(source_dir) or not os.listdir(source_dir):
             label = Label(frame, text="No files found here, try another folder.", bg='white')
@@ -736,7 +740,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
 
         return _child_open_file
 
-    def open_folder(folder_n, source_dir):
+    def open_cluster_folder(folder_n, source_dir):
 
         # Create a new top-level window
         folder_window = Toplevel()
