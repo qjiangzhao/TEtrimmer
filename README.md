@@ -26,7 +26,7 @@ achieving manual curation-level TE consensus libraries easily.
 
 ## Manual
 For detailed instructions, including installation steps, usage options, example outputs, and more, 
-please refer to [TEtrimmerv1.2.0Manual.pdf](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerv1.2.0Manual.pdf) 
+please refer to [TEtrimmerv1.2.0Manual.pdf](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerv1.3.0Manual.pdf) 
 
 ## Installation
 You have to install [miniconda](https://docs.anaconda.com/free/miniconda/) on your computer in advance. 
@@ -174,10 +174,10 @@ More options are available:
 - 📁**Single_fasta_files** - *All sequences in the input file will be separated into single FASTA files and stored here.*
 - 📁**TEtrimmer_for_proof_curation** - *This folder contains files used for manual inspection of TEtrimmer annotations.* 
   - 📁**Annotation_perfect** - *Four files are associated with each sequence (anno.fa; fa; pdf).*
-    - 📄**TE_name.anno.fa** - *Multiple sequence alignment file before cleaning.*
+    - 📄**TE_name.raw.fa** - *Multiple sequence alignment file before cleaning.*
     - 📄**TE_name.fa** - *Multiple sequence alignment file after cleaning.*
     - 📄**TE_name.pdf** - *Plot file used to evaluate output.*
-    - 📄**TE_name.bed** - *BED file used for further sequence elongation.*
+    - 📄**TE_name.cluster.fa** - *Multiple sequence alignment file before clustering.*
   - 📁**Annotation_good** 
   - 📁**Annotation_check_recommended**
   - 📁**Annotation_check_required**
@@ -185,7 +185,7 @@ More options are available:
   - 📁**TE_low_copy** - *This folder contains low copy TEs.*
   - 📁**TE_skipped** - *Contains TE_Aid plots for all skipped TEs.*
   - 📁**TEtrimmer_proof_anno_GUI** - *The folder contains graphical user interface tools for manual proof curation.*
-    - 📄**annoGUI.py** - *Use python ./annoGUI.py to start manual proof curation GUI.*
+    - 📄**annoGUI.py** - *Use {python ./annoGUI.py -g <genome.fa>} to start manual proof curation GUI.*
 - 📁**HMM** - *This folder is used to store Hidden Markov Model file. Only visible when < --hmm > is enabled.*
 - 📄**Sequence_name_mapping.txt** - *This file connects the input sequence names with the modified names from TEtrimmer.*
 - 📄**summary.txt** - *Summary file.* 
@@ -201,39 +201,19 @@ We highly recommend doing this to increase TE consensus library quality to the t
 MSA files can be inspected by double-clicking the corresponding file button. AliView is used to open MSA files.
 ```commandline
 # To start the manual inspection GUI tool
-# Open your Linux, or Windows terminal and type
-python <path to your output_directory>/TEtrimmer_for_proof_curation/TEtrimmer_proof_anno_GUI/annoGUI.py
-# Note: The GUI doesn't perfectly support macOS. We are trying to solve this problem.
+# Open your Linux, macOS, or Windows terminal and type
+python <output_directory>/TEtrimmer_for_proof_curation/TEtrimmer_proof_anno_GUI/annoGUI.py -g <genome.fa>
+# Note: The GUI doesn't perfectly support Windows for "TEAid" plotting function.
 ```
 The following are clusters and files (Click the "Clustered_proof_curation" button in the menu bar to show this.)
-![Proof curation GUI](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_GUI.png)
-
-
-
-You can integrate TEtrimmer cleaning functions into AliView to facilitate the manual inspection.
-```commandline
-# Double click any ".fa" file from the GUI. The TE multiple sequence alignment file will be opend by AliView.
-# Copy the following codes into AliView "External commands" configuration window
-
-#remove column gap
-python ./remove_gap.py -i CURRENT_ALIGNMENT_FASTA -o TEMP_OUT_FILE --gap_threshold 0.8 --simi_check_gap_thr 0.4 --similarity_thr 0.7 --min_nucleotide 5
-ALIVIEW_OPEN TEMP_OUT_FILE
-
-#crop end by divergence
-python ./crop_end_divergence.py -i CURRENT_ALIGNMENT_FASTA -o TEMP_OUT_FILE --threshold 0.8 --window_size 40
-ALIVIEW_OPEN TEMP_OUT_FILE
-
-#crop end by gap
-python ./crop_end_gap.py -i CURRENT_ALIGNMENT_FASTA -o TEMP_OUT_FILE --gap_threshold 0.05 --window_size 200
-ALIVIEW_OPEN TEMP_OUT_FILE
-```
-![Configure_AliView](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/AliView_configuration.png)
+![Proof curation GUI](docs/TEtrimmer_GUI_start_page.png)
+![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space.png)
 
 ## Flowchart
-![TEtrimmerFlowchart](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TETrimmerFlowchart.png)
+![TEtrimmerFlowchart](docs/TEtrimmerFlowchart.jpg)
 
 ## Example report plots for each output TE consensus sequence
-![Reportplots](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_report_plots_for_each_output.png)
+![Reportplots](docs/TEtrimmer_report_plots_for_each_output.png)
 
 ## Acknowledgements
 Many thanks to all the people who contributed to the TEtrimmer development. 
