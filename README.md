@@ -8,6 +8,7 @@
   - [Outputs](#Outputs)
   - [Proof curation](#Proof-annotation)
 - [All available options](#All-available-options)
+- [Update history](#Update-history)
 
 ## Introduction
 Many tools have been developed for the discovery and annotation of transposable elements (TEs). 
@@ -28,7 +29,7 @@ achieving manual curation-level TE consensus libraries easily.
 
 ## Manual
 For detailed instructions, including installation steps, usage options, example outputs, and more, 
-please refer to [TEtrimmerv1.2.0Manual.pdf](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerv1.3.0Manual.pdf) 
+please refer to [TEtrimmerv1.3.0Manual.pdf](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerv1.3.0Manual.pdf) 
 
 ## Installation
 You have to install [miniconda](https://docs.anaconda.com/free/miniconda/) on your computer in advance. 
@@ -369,3 +370,9 @@ Options:
 
   --help                          Show this message and exit.
 ```
+
+## Update history
+**TEtrimmer v1.3.0 Released May.28.2024**
+
+Integrated "Extend", "TEAid", and MSA cleaning buttons into TEtrimmer GUI. "TEAid" can generate interactive plots, which
+can help identifying TE boundaries.
