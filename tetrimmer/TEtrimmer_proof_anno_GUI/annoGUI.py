@@ -647,7 +647,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
         if os_type == "Darwin":
             settings_window.geometry('300x500')
         else:
-            settings_window.geometry('300x400')
+            settings_window.geometry('300x410')
 
         def save_settings():
             global crop_div_thr_g, crop_div_win_g, crop_gap_thr_g, crop_gap_win_g

@@ -1858,8 +1858,8 @@ def dotplot(sequence1, sequence2, output_dir):
         "-windowsize", "25",
         "-threshold", "50",
         "-gtitle", "Dotplot",
-        "-gxtitle", "After TEtrimmer treatment",
-        "-gytitle", "Before TEtrimmer treatment",
+        "-gxtitle", "After TEtrimmer sequence",
+        "-gytitle", "Before TEtrimmer sequence",
         "-graph", "ps",
         "-goutfile", sequence1
     ]

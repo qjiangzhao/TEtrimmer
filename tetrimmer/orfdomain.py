@@ -369,9 +369,9 @@ class PlotPfam:
         plt.ylim(-1, 2)
         plt.gca().axes.get_yaxis().set_visible(False)  # hides the y-axis
         if self.after_tetrimmer:
-            plt.title('After TEtrimmer treatment ORF and PFAM domain plot', fontsize=20, fontweight="bold")
+            plt.title('After TEtrimmer ORF and PFAM domain plot', fontsize=20, fontweight="bold")
         else:
-            plt.title('Before TEtrimmer treatment ORF and PFAM domain plot', fontsize=20, fontweight="bold")
+            plt.title('Before TEtrimmer ORF and PFAM domain plot', fontsize=20, fontweight="bold")
 
         output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_orf_pfam.pdf")
         plt.savefig(output_file, format="pdf")
