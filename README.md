@@ -7,7 +7,6 @@
   - [Inputs](#Inputs) 
   - [Outputs](#Outputs)
   - [Proof curation](#Proof-annotation)
-- [Flowchart](#Flowchart)
 - [All available options](#All-available-options)
 
 ## Introduction
@@ -23,6 +22,9 @@ For each input consensus sequence, TEtrimmer automatically performs BLAST,  sequ
 multiple sequence alignment (MSA), MSA clustering, MSA cleaning, TE boundary definition, and TE classification. 
 TEtrimmer also provides a graphical user interface (GUI) to inspect and improve predicted TEs, which can assist 
 achieving manual curation-level TE consensus libraries easily. 
+
+![TEtrimmerFlowchart](docs/TEtrimmerFlowchart.jpg)
+
 
 ## Manual
 For detailed instructions, including installation steps, usage options, example outputs, and more, 
@@ -205,14 +207,20 @@ MSA files can be inspected by double-clicking the corresponding file button. Ali
 python <output_directory>/TEtrimmer_for_proof_curation/TEtrimmer_proof_anno_GUI/annoGUI.py -g <genome.fa>
 # Note: The GUI doesn't perfectly support Windows for "TEAid" plotting function.
 ```
-The following are clusters and files (Click the "Clustered_proof_curation" button in the menu bar to show this.)
+You can easily check and improve TEtrimmer outputs and get manual curation level TE consensus library.
+
+
+
+TEtrimmer GUI tool can extend MSA, generate interactive plots, and clean MSA. 
+
+
+
+
 ![Proof curation GUI](docs/TEtrimmer_GUI_start_page.png)
 ![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space.png)
 
-## Flowchart
-![TEtrimmerFlowchart](docs/TEtrimmerFlowchart.jpg)
-
 ## Example report plots for each output TE consensus sequence
+For each TEtrimmer output TE consensus sequence. You will get a report plot file like this:
 ![Reportplots](docs/TEtrimmer_report_plots_for_each_output.png)
 
 ## Acknowledgements
