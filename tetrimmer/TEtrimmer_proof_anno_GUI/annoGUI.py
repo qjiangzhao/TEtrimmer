@@ -1,6 +1,6 @@
 import subprocess
 import sys
-
+import threading
 
 def install_and_import(required_packages_dict):
     for package in required_packages_dict:
@@ -26,7 +26,8 @@ import os
 import re
 import shutil
 import subprocess
-from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, Toplevel, simpledialog, Text, Entry
+from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, \
+    Toplevel, simpledialog, Text, Entry, ttk
 import click
 import traceback
 from functools import partial
@@ -131,7 +132,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     # Initialize Tk window
     root = Tk()
     root.title("TEtrimmer Proof Curation Tool")
-    root.geometry('900x750')
+    # width * height
+    root.geometry('900x800')
 
     # Create canvas on root
     canvas = Canvas(root, bg='white')
@@ -324,8 +326,15 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
         def _extension_function(event):
             left_ex = simpledialog.askinteger("Input", "Enter left extension length (bp):",
                                               parent=parent_win, minvalue=0, initialvalue=1000)
+            if left_ex is None:  # If the user clicks cancel, stop the function
+                return
+
             right_ex = simpledialog.askinteger("Input", "Enter right extension length (bp):",
                                                parent=parent_win, minvalue=0, initialvalue=1000)
+            if right_ex is None:  # If the user clicks cancel, stop the function
+                return
+
+            progress = show_progress_bar(child_canvas)  # Show progress bar
 
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
                 input_fasta_f = os.path.join(source_dir, input_fasta_n)
@@ -357,13 +366,19 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                     click.echo(f"An error occurred during extension: \n {traceback.format_exc()}")
                     messagebox.showerror("Error", f"An error occurred during extension: {str(e)}", parent=parent_win)
 
+                finally:
+                    progress.stop()
+                    progress.pack_forget()  # Hide the progress bar
+
         return _extension_function
 
     #####################################################################################################
     # Code block: set plotter function
     #####################################################################################################
-    def plotter_function(input_fasta_n, button, source_dir, output_dir, genome_file, parent_win):
+    def plotter_function(input_fasta_n, button, source_dir, output_dir, genome_file, child_canvas, parent_win):
         def _plotter_function(event):
+            progress = show_progress_bar(child_canvas)  # Show progress bar
+
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
                 input_file = os.path.join(source_dir, input_fasta_n)
 
@@ -382,6 +397,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                     click.echo(f"An error occurred during plotting: \n {traceback.format_exc()}")
                     messagebox.showerror("Error", f"Plotting failed. Make sure BLAST is correctly installed: {str(e)}",
                                          parent=parent_win)
+                finally:
+                    progress.stop()
+                    progress.pack_forget()  # Hide the progress bar
         return _plotter_function
 
     #####################################################################################################
@@ -392,9 +410,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     def crop_end_div_gui(input_fasta_n, button, source_dir, output_dir, parent_win,
                          child_frame, child_canvas, child_source_dir, current_win):
         def _crop_end_div_gui(event):
+            progress = show_progress_bar(child_canvas)  # Show progress bar
+
             try:
                 input_file = os.path.join(source_dir, input_fasta_n)
-                output_file = os.path.join(output_dir, f"{input_fasta_n}_cld.fa")
+                output_file = os.path.join(output_dir, f"{input_fasta_n}_CDiv.fa")
 
                 crop_end_div(input_file, output_file, threshold=crop_div_thr_g, window_size=crop_div_win_g)
 
@@ -414,14 +434,19 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                 messagebox.showerror("Error", f"MSA cleaning crop end by divergence failed: {str(e)}",
                                      parent=parent_win)
 
+            finally:
+                progress.stop()
+                progress.pack_forget()  # Hide the progress bar
+
         return _crop_end_div_gui
 
     def crop_end_gap_gui(input_fasta_n, button, source_dir, output_dir, parent_win,
                          child_frame, child_canvas, child_source_dir, current_win):
         def _crop_end_gap_gui(event):
+            progress = show_progress_bar(child_canvas)  # Show progress bar
             try:
                 input_file = os.path.join(source_dir, input_fasta_n)
-                output_file = os.path.join(output_dir, f"{input_fasta_n}_clg.fa")
+                output_file = os.path.join(output_dir, f"{input_fasta_n}_CGap.fa")
 
                 crop_end_gap(input_file, output_file, gap_threshold=crop_gap_thr_g, window_size=crop_gap_win_g)
 
@@ -440,15 +465,19 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                 click.echo(f"An error occurred for crop end by gap: \n {traceback.format_exc()}")
                 messagebox.showerror("Error", f"MSA cleaning crop end by gap failed: {str(e)}",
                                      parent=parent_win)
+            finally:
+                progress.stop()
+                progress.pack_forget()  # Hide the progress bar
 
         return _crop_end_gap_gui
 
     def remove_gaps_with_similarity_check_gui(input_fasta_n, button, source_dir, output_dir, parent_win,
                                               child_frame, child_canvas, child_source_dir, current_win):
         def _remove_gaps_with_similarity_check_gui(event):
+            progress = show_progress_bar(child_canvas)  # Show progress bar
             try:
                 input_file = os.path.join(source_dir, input_fasta_n)
-                output_file = os.path.join(output_dir, f"{input_fasta_n}_gr.fa")
+                output_file = os.path.join(output_dir, f"{input_fasta_n}_CCol.fa")
 
                 remove_gaps_with_similarity_check(input_file, output_file, gap_threshold=column_gap_thr_g,
                                                   simi_check_gap_thr=simi_check_gap_thr_g,
@@ -469,6 +498,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                 click.echo(f"An error occurred for cleaning gap columns: \n {traceback.format_exc()}")
                 messagebox.showerror("Error", f"MSA cleaning remove gap column failed: {str(e)}",
                                      parent=parent_win)
+            finally:
+                progress.stop()
+                progress.pack_forget()  # Hide the progress bar
 
         return _remove_gaps_with_similarity_check_gui
 
@@ -534,11 +566,12 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                    "     <seq_name.fa>                      MSA file corresponding to TE consensus sequence\n" \
                    "     <seq_name.pdf>                    report plots file for evaluating annotation quality\n\n" \
                    "3, Double click <seq_name.pdf> to evaluate annotation quality.\n\n" \
-                   "4, If satisfied, click <Consensus> button next to <seq_name.fa>.\n" \
+                   "4, If satisfied, click <Cons> button next to <seq_name.fa>.\n" \
                    "   This MSA file will be copied to <Proof_curation_consensus_folder>.\n\n" \
-                   "5, If not satisfied, check <seq_name.fa> or <seq_name.raw.fa> \n\n" \
-                   "6, For more extension, click <Extension> button next to the fasta file\n" \
-                   "   Use <TEAid> button to generate interactive report plots. \n\n" \
+                   "5, If not satisfied, check <seq_name.fa> or <seq_name.raw.fa>. \n\n" \
+                   "6, For more extension, click <Extend> button next to the fasta file.\n\n" \
+                   "   Use <CropDiv> <CropGap> and <CleanCol> to clean the MSA. \n" \
+                   "   Use <TEAid> to generate interactive report plots. \n\n" \
                    "7, If still not satisfied, check <seq_name.cluster.fa>.\n" \
                    "   Select the sequences you want to use and click <Extension> to find the boundary\n\n" \
                    "8, For skipped and low copy elements, evaluate by checking the PDF file.\n"
@@ -579,6 +612,25 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
             text_label.destroy()
             text_label = None
 
+    def show_progress_bar(parent, height=5, speed=1000):
+        # Create a custom style
+        style = ttk.Style()
+        style.configure("custom.Horizontal.TProgressbar", thickness=height)
+
+        progress = ttk.Progressbar(parent, mode='indeterminate', style="custom.Horizontal.TProgressbar")
+        progress.pack(side='bottom', fill='x')
+        parent.update_idletasks()  # Ensure the layout is updated
+
+        def update_progress():
+            if progress.winfo_exists():  # Check if the widget exists before updating
+                progress.step(1)
+                parent.after(speed, update_progress)  # Adjust the speed as needed
+
+        progress.start()
+        update_progress()  # Start updating the progress bar
+
+        return progress
+
     # Set function to allow to modify MSA cleaning parameters
     def show_settings_dialog():
         settings_window = Toplevel(root)
@@ -603,42 +655,42 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
             except ValueError as e:
                 messagebox.showerror("Invalid input", f"Please enter valid values. Error: {str(e)}")
 
-        Label(settings_window, text="Crop End Divergence Threshold:").pack(pady=2)
+        Label(settings_window, text="Crop End Divergence (CropDiv)Threshold:").pack(pady=2)
         crop_div_thr_entry = Entry(settings_window, bg='white')
         crop_div_thr_entry.insert(0, str(crop_div_thr_g))
         crop_div_thr_entry.pack(pady=2)
 
-        Label(settings_window, text="Crop End Divergence Window Size:").pack(pady=2)
+        Label(settings_window, text="Crop End Divergence (CropDiv) Window Size:").pack(pady=2)
         crop_div_win_entry = Entry(settings_window, bg='white')
         crop_div_win_entry.insert(0, str(crop_div_win_g))
         crop_div_win_entry.pack(pady=2)
 
-        Label(settings_window, text="Crop End Gap Threshold:").pack(pady=2)
+        Label(settings_window, text="Crop End Gap (CropGap) Threshold:").pack(pady=2)
         crop_gap_thr_entry = Entry(settings_window, bg='white')
         crop_gap_thr_entry.insert(0, str(crop_gap_thr_g))
         crop_gap_thr_entry.pack(pady=2)
 
-        Label(settings_window, text="Crop End Gap Window Size:").pack(pady=2)
+        Label(settings_window, text="Crop End Gap (GropGap) Window Size:").pack(pady=2)
         crop_gap_win_entry = Entry(settings_window, bg='white')
         crop_gap_win_entry.insert(0, str(crop_gap_win_g))
         crop_gap_win_entry.pack(pady=2)
 
-        Label(settings_window, text="Column Gap Threshold:").pack(pady=2)
+        Label(settings_window, text="Clean Column (CleanCol) Threshold:").pack(pady=2)
         column_gap_thr_entry = Entry(settings_window, bg='white')
         column_gap_thr_entry.insert(0, str(column_gap_thr_g))
         column_gap_thr_entry.pack(pady=2)
 
-        Label(settings_window, text="Similarity Check Gap Threshold:").pack(pady=2)
+        Label(settings_window, text="Similarity Check Gap Threshold (CleanCol):").pack(pady=2)
         simi_check_gap_thr_entry = Entry(settings_window, bg='white')
         simi_check_gap_thr_entry.insert(0, str(simi_check_gap_thr_g))
         simi_check_gap_thr_entry.pack(pady=2)
 
-        Label(settings_window, text="Similarity Threshold:").pack(pady=2)
+        Label(settings_window, text="Similarity Threshold (CleanCol):").pack(pady=2)
         similarity_thr_entry = Entry(settings_window, bg='white')
         similarity_thr_entry.insert(0, str(similarity_thr_g))
         similarity_thr_entry.pack(pady=2)
 
-        Label(settings_window, text="Min Nucleotide number:").pack(pady=2)
+        Label(settings_window, text="Min Nucleotide number (CleanCol):").pack(pady=2)
         min_nucleotide_entry = Entry(settings_window, bg='white')
         min_nucleotide_entry.insert(0, str(min_nucleotide_g))
         min_nucleotide_entry.pack(pady=2)
@@ -959,17 +1011,18 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
             plot_button.grid(row=0, column=2, padx=1)
             # Bind "Plotter" button with plotter_function
             plot_button.bind('<Button-1>',
-                             plotter_function(filename, plot_button, source_dir, temp_folder, genome_file, current_win))
+                             plotter_function(filename, plot_button, source_dir, temp_folder, genome_file,
+                                              canvas, current_win))
 
             # Define "Crop end by divergence" button
-            crop_end_by_div_button = Button(button_frame, text="C_div", bg=crop_end_by_div_button_bg, fg='black')
+            crop_end_by_div_button = Button(button_frame, text="CropDiv", bg=crop_end_by_div_button_bg, fg='black')
             crop_end_by_div_button.grid(row=0, column=3, padx=1)
             crop_end_by_div_button.bind('<Button-1>',
                                         crop_end_div_gui(filename, crop_end_by_div_button, source_dir, source_dir,
                                                          current_win, frame, canvas, source_dir, current_win))
 
             # Define "Crop end by gap" button
-            crop_end_by_gap_button = Button(button_frame, text="C_gap", bg=crop_end_by_gap_button_bg, fg='black')
+            crop_end_by_gap_button = Button(button_frame, text="CropGap", bg=crop_end_by_gap_button_bg, fg='black')
             crop_end_by_gap_button.grid(row=0, column=4, padx=1)
 
             crop_end_by_gap_button.bind('<Button-1>',
@@ -977,7 +1030,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                                                          current_win, frame, canvas, source_dir, current_win))
 
             # Define "Clean gap column" button
-            clean_gap_column_button = Button(button_frame, text="C_col", bg=remove_gap_column_button_bg, fg='black')
+            clean_gap_column_button = Button(button_frame, text="CleanCol", bg=remove_gap_column_button_bg, fg='black')
             clean_gap_column_button.grid(row=0, column=5, padx=1)
 
             clean_gap_column_button.bind('<Button-1>', remove_gaps_with_similarity_check_gui(
@@ -1071,18 +1124,14 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                                                            i, end, frame, canvas,annotation_path))
 
     # Add confirm menu button
-    confirm_menu = Menu(menubar, tearoff=0)
+    settings_menu = Menu(menubar, tearoff=0)
     # Set confirm_menu child menu
     # Initialize the BooleanVar to store "Show Confirmation Window" status
     show_confirmation = BooleanVar(value=True)
-    confirm_menu.add_checkbutton(label="Show Confirmation Window", onvalue=True, offvalue=False,
-                                 variable=show_confirmation)
-    menubar.add_cascade(label="Settings", menu=confirm_menu)
-
-    # Enable setting cleaning module parameters
-    settings_menu = Menu(menubar, tearoff=0)
+    settings_menu.add_checkbutton(label="Show Confirmation Window", onvalue=True, offvalue=False,
+                                  variable=show_confirmation)
     settings_menu.add_command(label="Modify Parameters", command=show_settings_dialog)
-    menubar.add_cascade(label="Modify parameters", menu=settings_menu)
+    menubar.add_cascade(label="Settings", menu=settings_menu)
 
     # Add Undo button
     undo_menu = Menu(menubar, tearoff=0)
@@ -1094,6 +1143,13 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     help_menu = Menu(menubar, tearoff=0)
     help_menu.add_command(label="Show instruction", command=show_help)
     menubar.add_cascade(label="Help", menu=help_menu)
+
+    # Add double confirmation on window close
+    def on_closing():
+        if messagebox.askokcancel("Quit", "Do you really want to quit?"):
+            root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", on_closing)
 
     root.mainloop()
 
