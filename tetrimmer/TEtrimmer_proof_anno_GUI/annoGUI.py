@@ -95,7 +95,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     copy_history = []
 
     # Define cleaning module global parameters
-    # Define cleaning module global parameters
     global crop_div_thr_g, crop_div_win_g, crop_gap_thr_g, crop_gap_win_g
     global column_gap_thr_g, simi_check_gap_thr_g, similarity_thr_g, min_nucleotide_g
 
@@ -1012,7 +1011,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                     others_button_fg = states[7][1]
 
             # Add file name button into canvas frame
-            file_button = Button(frame, text=filename, anchor='w', bg=file_button_bg)
+            file_button = Button(frame, text=filename, anchor='w', bg=file_button_bg, fg=file_button_fg)
             file_button.grid(row=i - start, column=1, sticky='ew')
             # Bind with child_open_file function to open file
             file_button.bind('<Double-Button-1>', child_open_file(filename, file_button, source_dir))
@@ -1077,6 +1076,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
             frame.grid_columnconfigure(1, weight=1)
             frame.grid_columnconfigure(2, weight=0)
 
+    # Build child canvas window
     def open_cluster_folder(folder_n, source_dir):
         # Create a new top-level window
         folder_window = Toplevel()
@@ -1157,9 +1157,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
     # Set confirm_menu child menu
     # Initialize the BooleanVar to store "Show Confirmation Window" status
     show_confirmation = BooleanVar(value=True)
-    settings_menu.add_checkbutton(label="Show Confirmation Window", onvalue=True, offvalue=False,
+    settings_menu.add_checkbutton(label="Show Confirmation Window When Click 'Cons'", onvalue=True, offvalue=False,
                                   variable=show_confirmation)
-    settings_menu.add_command(label="Modify Parameters", command=show_settings_dialog)
+    settings_menu.add_command(label="Modify MSA Cleaning Parameters", command=show_settings_dialog)
     menubar.add_cascade(label="Settings", menu=settings_menu)
 
     # Add Undo button

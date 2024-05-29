@@ -44,7 +44,7 @@ with open(config_path, "r") as config_file:
                   ██║   ███████╗   ██║   ██║  ██║██║██║ ╚═╝ ██║██║ ╚═╝ ██║███████╗██║  ██║
                   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝
                   
-                Version: v1.2.0 (19/April/2024) 
+                Version: v1.3.0 (29/May/2024) 
 
                 Github: https://github.com/qjiangzhao/TEtrimmer
 
@@ -65,7 +65,7 @@ with open(config_path, "r") as config_file:
 
                 Two mandatory arguments are required, including 
                 <genome file>, the genome FASTA file, and 
-                <TE consensus file> from TE annotation software like RepeatModeler, EDTA, or REPET. 
+                <TE consensus file> from TE discovery software like RepeatModeler, EDTA, or REPET. 
                 TEtrimmer can do BLAST, sequence extension, multiple sequence alignment, and defining TE boundaries.
 
 """)
