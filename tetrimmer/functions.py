@@ -1,4 +1,3 @@
-import shutil
 import subprocess
 import os
 import os.path
@@ -9,7 +8,6 @@ from Bio import AlignIO, SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Align import MultipleSeqAlignment, AlignInfo
-from Bio.motifs import Motif
 import pandas as pd
 import pandas.errors
 import numpy as np

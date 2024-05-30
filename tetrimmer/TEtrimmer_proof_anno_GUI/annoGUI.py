@@ -1,6 +1,5 @@
 import subprocess
 import sys
-import threading
 
 def install_and_import(required_packages_dict):
     for package in required_packages_dict:
@@ -25,7 +24,6 @@ install_and_import(required_packages)
 import os
 import re
 import shutil
-import subprocess
 from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, \
     Toplevel, simpledialog, Text, Entry, ttk
 import click
@@ -74,13 +72,15 @@ if os_type == "Windows":
 
 @click.command()
 @click.option('--te_trimmer_proof_curation_dir', '-i', default=None, type=str,
-              help='Define TEtrimmer proof curation output path. '
+              help='Define TEtrimmer proof curation output path.'
                    'Like <TEtrimmer_output_path>/<TEtrimmer_for_proof_curation>')
 @click.option('--output_dir', '-o', default=None, type=str,
               help='Output directory. Default: input directory')
 @click.option('--genome_file', '-g', required=True, type=str,
               help='Genome fasta file path.')
-def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
+#@click.option('--consensus_lib', '-clib', default=None, type=str,
+#              help='TE consensus library fasta file.')
+def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, consensus_lib):
     """
     This tool can help do quick proof curation
 
@@ -512,6 +512,20 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file):
                 progress.pack_forget()  # Hide the progress bar
 
         return _remove_gaps_with_similarity_check_gui
+
+    #####################################################################################################
+    # Code block: functions related with checking TE consensus library
+    #####################################################################################################
+
+    # Do BLASTn, do MSA in AliView, extension, TEAid, cleaning
+    # Buttons
+    # Cons, BLASTn, extension, TEAid, MSA cleaning
+    # Read consensus library header names
+    # care of / sign and other special ones
+    # how to deal with two sequences with same name after header modification
+
+    # Do BLASTn if BLASTn equal to 0
+    # Convert
 
     #####################################################################################################
     # Code block: set a vertical scroll bar
