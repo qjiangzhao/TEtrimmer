@@ -10,6 +10,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Align import AlignInfo
 import warnings
 from Bio import BiopythonDeprecationWarning
+from GUI_functions import blast
 
 # Suppress all deprecation warnings
 warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
@@ -74,55 +75,10 @@ def check_database(genome_file, output_dir=None):
         return database_path
 
 
-def blast(seq_file, genome_file, output_dir, e_value=1e-40):
-    """
-    Runs BLAST calling a specified task type and saves the results as a BED file.
-
-    :param seq_file: str, path to input FASTA file
-    :param genome_file: str, path to genome FASTA file
-    :param output_dir: str, prefix for output files
-    """
-    input_file = seq_file
-    input_file_n = os.path.basename(input_file)
-    blast_hits_count = 0
-
-    # define blast outfile
-    blast_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b")
-
-    # Modify the blast command to include the specified task
-    blast_cmd = (f"blastn -query {input_file} -db {genome_file} "
-                 f"-outfmt \"10 qseqid sseqid pident length mismatch gapopen qstart qend sstart send sstrand evalue bitscore\" "
-                 f"-evalue {str(e_value)} | awk 'BEGIN{{print \"V1,V2,V3,V4,V5,V6,V7,V8,V9,V10,V11,V12,V13\"}};{{print}}' | sed 's/#/-/g' > {blast_out_file}")
-
-    try:
-        subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    except FileNotFoundError:
-        click.echo("'blastn' command not found. Please ensure 'blastn' is installed correctly.")
-        raise Exception
-
-    except subprocess.CalledProcessError as e:
-        click.echo(f"\nBLAST failed for {input_file_n} with error code {e.returncode}")
-        click.echo(e.stderr)
-        raise Exception
-
-    # Check the number of BLAST hits
-    with open(blast_out_file) as blast_file:
-        for _ in blast_file:
-            blast_hits_count += 1
-
-    if blast_hits_count > 1:
-        return blast_out_file
-    else:
-        click.echo("Blast hits number is 0, blast plots won't show")
-        return False
-
-
 #####################################################################################################
 # Code block: blast with genome
 #####################################################################################################
-
-def blast_with_genome(input_file, output_dir, genome_file):
+def blast_with_genome(input_file, output_dir, genome_file, e_value=1e-40):
 
     # Generate consensus sequence
     con_seq, cons_len = con_generater(input_file, output_dir, threshold=0.6)
@@ -132,14 +88,14 @@ def blast_with_genome(input_file, output_dir, genome_file):
 
     # Run blast
     if blast_database:
-        blast_file = blast(con_seq, blast_database, output_dir)
+        blast_file_teaid, blast_file = blast(con_seq, blast_database, output_dir, e_value=e_value)
 
-        if blast_file:
-            return blast_file, cons_len
+        if blast_file_teaid:
+            return blast_file_teaid, cons_len
         else:
-            return False
+            return False, False
     else:
-        return False
+        return False, False
 
 
 #####################################################################################################
@@ -162,10 +118,10 @@ def self_blast(input_file, output_dir):
 
     # Run blast. Use bigger e_value for self blast
     if blast_database:
-        blast_file = blast(con_seq, blast_database, output_dir_self_blast, e_value=0.05)
+        blast_file_teaid, blast_file = blast(con_seq, blast_database, output_dir_self_blast, e_value=0.05)
 
-        if blast_file:
-            return blast_file
+        if blast_file_teaid:
+            return blast_file_teaid
         else:
             return False
 
@@ -254,7 +210,6 @@ def blast_plot(df, cons_len, full_len_thr=0.8):
 #####################################################################################################
 # Code block: coverage plot
 #####################################################################################################
-
 
 def coverage_plot(df, cons_len):
     # Initialize coverage array
@@ -375,17 +330,16 @@ def dot_plot(df):
 # Code block: TEtrimmer GUI plotter
 #####################################################################################################
 
-def GUI_plotter(input_file, output_dir, genome_file):
+def GUI_plotter(input_file, output_dir, genome_file, e_value=1e-40):
 
     fig_blast = None
     fig_coverage = None
     fig_dot = None
 
     # Do genome blast including database construction and blastn
-    genome_blast = blast_with_genome(input_file, output_dir, genome_file)
+    genome_blast_out, cons_len = blast_with_genome(input_file, output_dir, genome_file, e_value=e_value)
 
-    if genome_blast:
-        genome_blast_out, cons_len = genome_blast
+    if genome_blast_out:
         df_genome_blast_out = pd.read_csv(genome_blast_out)
 
         # Genome blast plot and blast coverage plot

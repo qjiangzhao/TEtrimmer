@@ -212,7 +212,7 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=2):
 
     treefile = f"{alignment}.treefile"
     distance_file = calculate_tree_dis(treefile)
-    cluster, sequence_names = dbscan_cluster(distance_file, pca=True)
+    cluster, sequence_names = dbscan_cluster(distance_file, pca=False)
 
     # map sequence_names name to cluster 
     sequence_cluster_mapping = dict(zip(sequence_names, cluster))
