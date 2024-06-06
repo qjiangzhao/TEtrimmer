@@ -35,7 +35,7 @@ import click
 import traceback
 from functools import partial
 import platform
-from Plotter import GUI_plotter
+from Plotter import GUI_plotter, con_generater
 # Import cleaning module
 from crop_end_divergence import crop_end_div
 from crop_end_gap import crop_end_gap
@@ -84,7 +84,7 @@ if os_type == "Windows":
 @click.option('--genome_file', '-g', required=True, type=str,
               help='Genome fasta file path.')
 @click.option('--consensus_lib', '-clib', default=None, type=str,
-              help='TE consensus library fasta file.')
+              help='TE consensus library fasta file you want to check.')
 def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, consensus_lib):
     """
     This tool can help do quick proof curation
@@ -103,9 +103,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     # Define empty list to store copy history, which enable undo button
     copy_history = []
 
-    # Define cleaning module global parameters
+    # Define cleaning module, blast, and consensus generation global parameters
     global crop_div_thr_g, crop_div_win_g, crop_gap_thr_g, crop_gap_win_g
-    global column_gap_thr_g, simi_check_gap_thr_g, similarity_thr_g, min_nucleotide_g
+    global column_gap_thr_g, simi_check_gap_thr_g, similarity_thr_g, min_nucleotide_g, cons_thre_g, blast_e_value_g
 
     crop_div_thr_g = 0.65
     crop_div_win_g = 40
@@ -115,6 +115,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     simi_check_gap_thr_g = 0.4
     similarity_thr_g = 0.7
     min_nucleotide_g = 5
+    cons_thre_g=0.8
+    blast_e_value_g = 1e-40
 
     # If the -i option is None define the default input directory
     if te_trimmer_proof_curation_dir is None:
@@ -274,7 +276,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                   scroll_position=scroll_position, button_states=button_states)
 
     # Combined extension module
-    # source_dir is the folder path contains all loaded files, like the Cluster folder
+    # source_dir is the folder path contains all loaded files, like the Cluster folder path
     # output_dir is the path to store all intermediate files like temp_folder
     # child_canvas contain child_frame
     # current_win contains child_frame and child_canvas
@@ -514,6 +516,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
                     if other_cons_bed and other_cons_blast:
 
+                        # Allow to cover the old blast file
+                        destination_other_cons_blast_file = os.path.join(source_dir, os.path.basename(other_cons_blast))
+                        if os.path.exists(destination_other_cons_blast_file):
+                            os.remove(destination_other_cons_blast_file)
+
                         # Move other_cons_blast to source_dir
                         shutil.move(other_cons_blast, source_dir)
                         # Define check other consensus library fasta file derived from the bed file
@@ -536,6 +543,38 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                          parent=current_win)
 
         return _check_other_cons_lib_blast
+
+    #####################################################################################################
+    # Code block: define consensus sequence generation function
+    #####################################################################################################
+    def generate_cons(input_fasta_n, cons_button, source_dir, current_win, child_frame, child_canvas,
+                      cons_thre=0.8, ambiguous="N", update_child_canvas=True, file_start=0, file_end=500):
+        def _generate_cons(envet):
+
+            if input_fasta_n.lower().endswith(('.fa', '.fasta')):
+
+                try:
+
+                    input_fasta_file = os.path.join(source_dir, input_fasta_n)
+                    # The consensus file will be added _co.fa at the end of the input file name
+                    # use source_dir here to redirect the consensus file to the same folder with the input file
+                    cons_file, cons_len = con_generater(input_fasta_file, source_dir, threshold=cons_thre, ambiguous=ambiguous)
+
+                    if os_type == "Darwin":
+                        cons_button.config(fg='red')  # Change button text color under macOS system
+                    else:
+                        cons_button.config(bg='light green')  # Change button color
+                    cons_button.update_idletasks()
+
+                    # Fresh child canvas
+                    fresh_child_canvas(child_frame, child_canvas, source_dir, current_win,
+                                       update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end)
+                except Exception as e:
+                    click.echo(f"An error for consensus sequence genration: \n {traceback.format_exc()}")
+                    messagebox.showerror("Error", f"Consensus sequence generation failed. Refer to terminal for more information: {str(e)}",
+                                         parent=current_win)
+
+        return _generate_cons
 
     #####################################################################################################
     # Code block: set a vertical scroll bar
@@ -581,12 +620,16 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     global logo_label
     global text_label
 
-    log_text = "████████╗███████╗████████╗██████╗ ██╗███╗   ███╗███╗   ███╗███████╗██████╗\n"\
-               "╚══██╔══╝██╔════╝╚══██╔══╝██╔══██╗██║████╗ ████║████╗ ████║██╔════╝██╔══██╗\n"\
-               "   ██║   █████╗     ██║   ██████╔╝██║██╔████╔██║██╔████╔██║█████╗  ██████╔╝\n"\
-               "   ██║   ██╔══╝     ██║   ██╔══██╗██║██║╚██╔╝██║██║╚██╔╝██║██╔══╝  ██╔══██╗\n"\
-               "   ██║   ███████╗   ██║   ██║  ██║██║██║ ╚═╝ ██║██║ ╚═╝ ██║███████╗██║  ██║\n"\
-               "   ╚═╝   ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝\n"\
+    log_text = """
+        ████████\\ ████████\\ ██\\               ██\\
+        \\__██  __|██  _____|██ |              \\__|
+           ██ |   ██ |    ██████\\    ██████\\  ██\\ ██████\\████\\  ██████\\████\\   ██████\\   ██████\\
+           ██ |   █████\\  \\_██  _|  ██  __██\\ ██ |██  _██  _██\\ ██  _██  _██\\ ██  __██\\ ██  __██\\
+           ██ |   ██  __|   ██ |    ██ |  \\__|██ |██ / ██ / ██ |██ / ██ / ██ |████████ |██ |  \\__|
+           ██ |   ██ |      ██ |██\\ ██ |      ██ |██ | ██ | ██ |██ | ██ | ██ |██   ____|██ |
+           ██ |   ████████\\ \\████  |██ |      ██ |██ | ██ | ██ |██ | ██ | ██ |\\███████\\ ██ |
+           \\__|   \\________| \\____/ \\__|      \\__|\\__| \\__| \\__|\\__| \\__| \\__| \\_______|\\__|
+        """
 
 
     initial_text = "Manual proof curation is highly recommended to improve the quality of TE annotations.\n\n" \
@@ -667,15 +710,16 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     # Set function to allow to modify MSA cleaning parameters
     def show_settings_dialog():
         settings_window = Toplevel(root)
-        settings_window.title("Modify Cleaning Parameters")
+        settings_window.title("Modify Parameters")
         if os_type == "Darwin":
-            settings_window.geometry('300x500')
+            settings_window.geometry('550x400')
         else:
-            settings_window.geometry('300x410')
+            settings_window.geometry('600x450')
 
         def save_settings():
             global crop_div_thr_g, crop_div_win_g, crop_gap_thr_g, crop_gap_win_g
             global column_gap_thr_g, simi_check_gap_thr_g, similarity_thr_g, min_nucleotide_g
+            global cons_thre_g, blast_e_value_g
 
             try:
                 crop_div_thr_g = float(crop_div_thr_entry.get())
@@ -686,52 +730,83 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 simi_check_gap_thr_g = float(simi_check_gap_thr_entry.get())
                 similarity_thr_g = float(similarity_thr_entry.get())
                 min_nucleotide_g = int(min_nucleotide_entry.get())
+                cons_thre_g = float(cons_thres_entry.get())
+                blast_e_value_g = float(e_value_entry.get())
+
                 settings_window.destroy()
 
             except ValueError as e:
                 messagebox.showerror("Invalid input", f"Please enter valid values. Error: {str(e)}")
 
-        Label(settings_window, text="Crop End Divergence (CropDiv)Threshold:").pack(pady=2)
-        crop_div_thr_entry = Entry(settings_window, bg='white')
+        # Create a frame to hold the labels and entries
+        frame = Frame(settings_window, bg='white')
+        frame.pack(fill='both', expand=True, padx=10, pady=10)
+
+        # Add labels and entries with grid for alignment
+        Label(frame, text="Cons: Consensus generation Threshold (0-1):", anchor='w', bg='white').grid(row=0, column=0,
+                                                                                                      sticky='w',
+                                                                                                      pady=2)
+        cons_thres_entry = Entry(frame, bg='white')
+        cons_thres_entry.insert(0, str(cons_thre_g))
+        cons_thres_entry.grid(row=0, column=1, sticky='w', pady=2)
+
+        Label(frame, text="Blast: BLASTN e-value:", anchor='w', bg='white').grid(row=1, column=0, sticky='w', pady=2)
+        e_value_entry = Entry(frame, bg='white')
+        e_value_entry.insert(0, str(blast_e_value_g))
+        e_value_entry.grid(row=1, column=1, sticky='w', pady=2)
+
+        Label(frame, text="CropDiv: Crop End Divergence Threshold (0-1):", anchor='w', bg='white').grid(row=2, column=0,
+                                                                                                        sticky='w',
+                                                                                                        pady=2)
+        crop_div_thr_entry = Entry(frame, bg='white')
         crop_div_thr_entry.insert(0, str(crop_div_thr_g))
-        crop_div_thr_entry.pack(pady=2)
+        crop_div_thr_entry.grid(row=2, column=1, sticky='w', pady=2)
 
-        Label(settings_window, text="Crop End Divergence (CropDiv) Window Size:").pack(pady=2)
-        crop_div_win_entry = Entry(settings_window, bg='white')
+        Label(frame, text="CropDiv: Crop End Divergence Window Size:", anchor='w', bg='white').grid(row=3, column=0,
+                                                                                                    sticky='w', pady=2)
+        crop_div_win_entry = Entry(frame, bg='white')
         crop_div_win_entry.insert(0, str(crop_div_win_g))
-        crop_div_win_entry.pack(pady=2)
+        crop_div_win_entry.grid(row=3, column=1, sticky='w', pady=2)
 
-        Label(settings_window, text="Crop End Gap (CropGap) Threshold:").pack(pady=2)
-        crop_gap_thr_entry = Entry(settings_window, bg='white')
+        Label(frame, text="CropGap: Crop End Gap Threshold (0-1):", anchor='w', bg='white').grid(row=4, column=0,
+                                                                                                 sticky='w', pady=2)
+        crop_gap_thr_entry = Entry(frame, bg='white')
         crop_gap_thr_entry.insert(0, str(crop_gap_thr_g))
-        crop_gap_thr_entry.pack(pady=2)
+        crop_gap_thr_entry.grid(row=4, column=1, sticky='w', pady=2)
 
-        Label(settings_window, text="Crop End Gap (GropGap) Window Size:").pack(pady=2)
-        crop_gap_win_entry = Entry(settings_window, bg='white')
+        Label(frame, text="CropGap: Crop End Gap Window Size:", anchor='w', bg='white').grid(row=5, column=0,
+                                                                                             sticky='w', pady=2)
+        crop_gap_win_entry = Entry(frame, bg='white')
         crop_gap_win_entry.insert(0, str(crop_gap_win_g))
-        crop_gap_win_entry.pack(pady=2)
+        crop_gap_win_entry.grid(row=5, column=1, sticky='w', pady=2)
 
-        Label(settings_window, text="Clean Column (CleanCol) Threshold:").pack(pady=2)
-        column_gap_thr_entry = Entry(settings_window, bg='white')
+        Label(frame, text="CleanCol: Clean Column Threshold (0-1):", anchor='w', bg='white').grid(row=6, column=0,
+                                                                                                  sticky='w', pady=2)
+        column_gap_thr_entry = Entry(frame, bg='white')
         column_gap_thr_entry.insert(0, str(column_gap_thr_g))
-        column_gap_thr_entry.pack(pady=2)
+        column_gap_thr_entry.grid(row=6, column=1, sticky='w', pady=2)
 
-        Label(settings_window, text="Similarity Check Gap Threshold (CleanCol):").pack(pady=2)
-        simi_check_gap_thr_entry = Entry(settings_window, bg='white')
+        Label(frame, text="CleanCol: Similarity Check Gap Threshold (0-1):", anchor='w', bg='white').grid(row=7,
+                                                                                                          column=0,
+                                                                                                          sticky='w',
+                                                                                                          pady=2)
+        simi_check_gap_thr_entry = Entry(frame, bg='white')
         simi_check_gap_thr_entry.insert(0, str(simi_check_gap_thr_g))
-        simi_check_gap_thr_entry.pack(pady=2)
+        simi_check_gap_thr_entry.grid(row=7, column=1, sticky='w', pady=2)
 
-        Label(settings_window, text="Similarity Threshold (CleanCol):").pack(pady=2)
-        similarity_thr_entry = Entry(settings_window, bg='white')
+        Label(frame, text="CleanCol: Similarity Threshold (0-1):", anchor='w', bg='white').grid(row=8, column=0,
+                                                                                                sticky='w', pady=2)
+        similarity_thr_entry = Entry(frame, bg='white')
         similarity_thr_entry.insert(0, str(similarity_thr_g))
-        similarity_thr_entry.pack(pady=2)
+        similarity_thr_entry.grid(row=8, column=1, sticky='w', pady=2)
 
-        Label(settings_window, text="Min Nucleotide number (CleanCol):").pack(pady=2)
-        min_nucleotide_entry = Entry(settings_window, bg='white')
+        Label(frame, text="CleanCol: Min Nucleotide number:", anchor='w', bg='white').grid(row=9, column=0, sticky='w',
+                                                                                           pady=2)
+        min_nucleotide_entry = Entry(frame, bg='white')
         min_nucleotide_entry.insert(0, str(min_nucleotide_g))
-        min_nucleotide_entry.pack(pady=2)
+        min_nucleotide_entry.grid(row=9, column=1, sticky='w', pady=2)
 
-        Button(settings_window, text="Save", command=save_settings).pack(pady=2)
+        Button(frame, text="Save", command=save_settings).grid(row=10, columnspan=2, pady=10)
 
     # Define function to allow retrieve copy operation
     def undo_last_copy():
@@ -948,21 +1023,23 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
             # Get button states
             file_button_bg = 'white'
-            consensus_button_bg = 'white'
+            save_button_bg = 'white'
             extension_button_bg = 'white'
             teaid_button_bg = 'white'
             crop_end_by_div_button_bg = 'white'
             crop_end_by_gap_button_bg = 'white'
             remove_gap_column_button_bg = "white"
+            cons_button_bg = 'white'
             others_button_bg = 'white'
 
             file_button_fg = 'black'
-            consensus_button_fg = 'black'
+            save_button_fg = 'black'
             extension_button_fg = 'black'
             teaid_button_fg = 'black'
             crop_end_by_div_button_fg = 'black'
             crop_end_by_gap_button_fg = 'black'
             remove_gap_column_button_fg = "black"
+            cons_button_fg = "black"
             others_button_fg = 'black'
 
             if filename in button_states:
@@ -971,8 +1048,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     file_button_bg = states[0][0]
                     file_button_fg = states[0][1]
                 if len(states) >= 2:
-                    consensus_button_bg = states[1][0]
-                    consensus_button_fg = states[1][1]
+                    save_button_bg = states[1][0]
+                    save_button_fg = states[1][1]
                 if len(states) >= 3:
                     extension_button_bg = states[2][0]
                     extension_button_fg = states[2][1]
@@ -989,8 +1066,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     remove_gap_column_button_bg = states[6][0]
                     remove_gap_column_button_fg = states[6][1]
                 if len(states) >= 8:
-                    others_button_bg = states[7][0]
-                    others_button_fg = states[7][1]
+                    cons_button_bg = states[7][0]
+                    cons_button_fg = states[7][1]
+                if len(states) >= 9:
+                    others_button_bg = states[8][0]
+                    others_button_fg = states[8][1]
 
             # Add file name button into canvas frame
             file_button = Button(frame, text=filename, anchor='w', bg=file_button_bg, fg=file_button_fg)
@@ -1003,7 +1083,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             button_frame.grid(row=i - start, column=2, sticky='e')
 
             # Create "Consensus" button inside button_frame
-            copy_button = Button(button_frame, text="Save", bg=consensus_button_bg, fg=consensus_button_fg)
+            copy_button = Button(button_frame, text="Save", bg=save_button_bg, fg=save_button_fg)
             copy_button.grid(row=0, column=0, padx=1)
             # Bind "Consensus" button with copy_file function with specific source and destination folder
             copy_button.bind('<Button-1>', copy_file(filename, copy_button, consensus_folder, source_dir, current_win))
@@ -1047,9 +1127,16 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 filename, clean_gap_column_button, source_dir, source_dir, current_win,
                 frame, canvas))
 
+            # Define "Cons" button
+            cons_button = Button(button_frame, text="Cons", bg=cons_button_bg, fg=cons_button_fg)
+            cons_button.grid(row=0, column=6, padx=1)
+
+            cons_button.bind('<Button-1>', generate_cons(filename, cons_button, source_dir, current_win, frame,
+                                                         canvas, cons_thre=cons_thre_g, ambiguous="N"))
+
             # Define "Others" button (discard)
             others_button = Button(button_frame, text="Discard", bg=others_button_bg, fg=others_button_fg)
-            others_button.grid(row=0, column=6, padx=1)
+            others_button.grid(row=0, column=7, padx=1)
             # Bind "Others" button with copy_file function with different destination folder
             others_button.bind('<Button-1>', copy_file(filename, others_button, others_dir, source_dir, current_win))
 
@@ -1123,22 +1210,24 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
             # Get button states
             file_button_bg = 'white'
-            consensus_button_bg = 'white'
+            save_button_bg = 'white'
             blast_button_bg = 'white'
             extension_button_bg = 'white'
             teaid_button_bg = 'white'
             crop_end_by_div_button_bg = 'white'
             crop_end_by_gap_button_bg = 'white'
             remove_gap_column_button_bg = "white"
+            cons_button_bg = "white"
 
             file_button_fg = 'black'
-            consensus_button_fg = 'black'
+            save_button_fg = 'black'
             blast_button_fg = 'black'
             extension_button_fg = 'black'
             teaid_button_fg = 'black'
             crop_end_by_div_button_fg = 'black'
             crop_end_by_gap_button_fg = 'black'
             remove_gap_column_button_fg = "black"
+            cons_button_fg = "black"
 
             if filename in button_states:
                 states = button_states[filename]
@@ -1146,8 +1235,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     file_button_bg = states[0][0]
                     file_button_fg = states[0][1]
                 if len(states) >= 2:
-                    consensus_button_bg = states[1][0]
-                    consensus_button_fg = states[1][1]
+                    save_button_bg = states[1][0]
+                    save_button_fg = states[1][1]
                 if len(states) >= 3:
                     blast_button_bg = states[2][0]
                     blast_button_fg = states[2][1]
@@ -1166,6 +1255,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 if len(states) >= 8:
                     remove_gap_column_button_bg = states[7][0]
                     remove_gap_column_button_fg = states[7][1]
+                if len(states) >= 9:
+                    cons_button_bg = states[8][0]
+                    cons_button_fg = states[8][1]
 
             # Add file name button into canvas frame
             file_button = Button(frame, text=filename, anchor='w', bg=file_button_bg, fg=file_button_fg)
@@ -1178,7 +1270,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             button_frame.grid(row=i - start, column=2, sticky='e')
 
             # Create "Save" button inside button_frame
-            copy_button = Button(button_frame, text="Save", bg=consensus_button_bg, fg=consensus_button_fg)
+            copy_button = Button(button_frame, text="Save", bg=save_button_bg, fg=save_button_fg)
             copy_button.grid(row=0, column=0, padx=1)
             # Bind "Consensus" button with copy_file function with specific source and destination folder
             copy_button.bind('<Button-1>', copy_file(filename, copy_button, other_cons_lib_result_folder,
@@ -1190,7 +1282,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             # Bind blast button with blast functions
             blast_button.bind('<Button-1>', check_other_cons_lib_blast(filename, blast_button, source_dir,
                                                                        other_cons_lib_folder, current_win, frame,
-                                                                       canvas, genome_file, e_value=1e-40,
+                                                                       canvas, genome_file, e_value=blast_e_value_g,
                                                                        update_child_canvas=False,
                                                                        file_start=start, file_end=end))
 
@@ -1237,6 +1329,14 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 filename, clean_gap_column_button, source_dir, source_dir, current_win,
                 frame, canvas, update_child_canvas=False, file_start=start, file_end=end))
 
+            # Define "Cons" button
+            cons_button = Button(button_frame, text="Cons", bg=cons_button_bg, fg=cons_button_fg)
+            cons_button.grid(row=0, column=7, padx=1)
+
+            cons_button.bind('<Button-1>', generate_cons(filename, cons_button, source_dir, current_win, frame,
+                                                         canvas, cons_thre=cons_thre_g, ambiguous="N",
+                                                         update_child_canvas=False, file_start=start, file_end=end))
+
             button_frame.grid_columnconfigure(0, weight=1)
             button_frame.grid_rowconfigure(0, weight=1)
             frame.grid_columnconfigure(1, weight=1)
@@ -1269,7 +1369,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             if i <= 2:
                 annotationMenu.add_command(label="Cluster folder not detected! Use correct input folder path",
                                            command=partial(messagebox.showerror,
-                                                           "Error", "Please use the correct input directory."
+                                                           "Error", "Please use the correct input directory by '-i' option."
                                                                     " three folder should be contained in your input path, "
                                                                     "including 'Clustered_proof_curation', "
                                                                     "'TE_skipped', and 'TE_low_copy'"))
@@ -1312,7 +1412,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     show_confirmation = BooleanVar(value=True)
     settings_menu.add_checkbutton(label="Show Confirmation Window When Click 'Cons'", onvalue=True, offvalue=False,
                                   variable=show_confirmation)
-    settings_menu.add_command(label="Modify MSA Cleaning Parameters", command=show_settings_dialog)
+    settings_menu.add_command(label="Modify Function Parameters", command=show_settings_dialog)
     menubar.add_cascade(label="Settings", menu=settings_menu)
 
     # Add Undo button
