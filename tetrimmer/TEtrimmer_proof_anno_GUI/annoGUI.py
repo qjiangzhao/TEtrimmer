@@ -77,14 +77,18 @@ if os_type == "Windows":
 
 @click.command()
 @click.option('--te_trimmer_proof_curation_dir', '-i', default=None, type=str,
-              help='Define TEtrimmer proof curation output path.'
-                   'Like <TEtrimmer_output_path>/<TEtrimmer_for_proof_curation>')
+              help='TEtrimmer proof curation output path.'
+                   'Like <TEtrimmer_output_path>/TEtrimmer_for_proof_curation. Three folders should exist in the '
+                   'given path including "Clustered_proof_curation", "TE_low_copy", and "TE_skipped". '
+                   'If you start the "annoGUI.py" from TETrimmer output directory, you do not need to use this option')
 @click.option('--output_dir', '-o', default=None, type=str,
               help='Output directory. Default: input directory')
 @click.option('--genome_file', '-g', required=True, type=str,
               help='Genome fasta file path.')
 @click.option('--consensus_lib', '-clib', default=None, type=str,
-              help='TE consensus library fasta file you want to check.')
+              help='TE consensus library fasta file. You can check and improve other TE consensus '
+                   'library e.g. The TE library directly from EDTA2, RepeatModeler2, and other tools. If you want to '
+                   'check the same TE library as last time, you do not need to use this option again.')
 def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, consensus_lib):
     """
     This tool can help do quick proof curation

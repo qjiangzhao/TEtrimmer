@@ -203,6 +203,8 @@ We highly recommend doing this to increase TE consensus library quality to the t
 
 MSA files can be inspected by double-clicking the corresponding file button. AliView is used to open MSA files.
 ```commandline
+# Use --help to see all options
+python <path_to_GUI_folder>/annoGUI.py --help
 # To start the manual inspection GUI tool
 # Open your Linux, macOS, or Windows terminal and type
 python <output_directory>/TEtrimmer_for_proof_curation/TEtrimmer_proof_anno_GUI/annoGUI.py -g <genome.fa>
@@ -210,13 +212,7 @@ python <output_directory>/TEtrimmer_for_proof_curation/TEtrimmer_proof_anno_GUI/
 ```
 You can easily check and improve TEtrimmer outputs and get manual curation level TE consensus library.
 
-
-
-TEtrimmer GUI tool can extend MSA, generate interactive plots, and clean MSA. 
-
-
-
-
+TEtrimmer GUI tool can extend MSA, generate interactive plots, and clean MSA.
 ![Proof curation GUI](docs/TEtrimmer_GUI_start_page.png)
 ![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space.png)
 
@@ -370,6 +366,19 @@ Options:
 
   --help                          Show this message and exit.
 ```
+The TEtrimmer GUI can also be used to check other TE consensus libraries like the TE library directly from EDTA2,
+RepeatModeler2, REPET, and other tools. 
+```commandline
+# Use --help to see all options
+python <path_to_GUI_folder>/annoGUI.py --help
+
+# Open your Linux, macOS, or Windows terminal and type
+python <path_to_GUI_folder>/annoGUI.py -g <genome.fa> -clib <TE_consensus_library.fa>
+# Note: The GUI doesn't perfectly support Windows for "TEAid" plotting function.
+# To run the GUI tool, you only need to install BLAST. You do not need to install other packages required by TEtrimmer.
+```
+![Proof curation GUI_check_other_consensus_lib](docs/TEtrimmer_GUI_check_consensus_lib.png)
+
 
 ## Update history
 **TEtrimmer v1.3.0 Released May.28.2024**
