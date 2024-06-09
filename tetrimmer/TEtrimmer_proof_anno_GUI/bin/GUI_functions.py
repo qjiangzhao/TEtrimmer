@@ -159,17 +159,25 @@ def blast(input_file, genome_file, blast_out_dir, e_value=1e-40,  bed_file=False
 > scaffold_1:346200-347196(+)
 """
 def fasta_header_to_bed(input_file, output_file):
+    unique_lines = set()
+
     with open(input_file, 'r') as fasta, open(output_file, 'w') as bed:
         for line in fasta:
             if line.startswith('>'):
                 header = line.strip().lstrip('>')  # Remove '>'
-                parts = header.rsplit(':', 2)  # Split from right side
+                parts = header.rsplit(':', 2)  # Split from the right side
                 scaffold = parts[0]
                 range_strand = parts[1].split('(')
                 range_part = range_strand[0]
                 strand = range_strand[1].split(')')[0]
                 start, end = range_part.split('-')
-                bed.write(f'{scaffold}\t{start}\t{end}\tTEtrimmer\t0\t{strand}\n')
+                bed_line = f'{scaffold}\t{start}\t{end}\tTEtrimmer\t0\t{strand}\n'
+
+                # Add the line to the set if it's not already present
+                if bed_line not in unique_lines:
+                    bed.write(bed_line)
+                    unique_lines.add(bed_line)
+
     return output_file
 
 

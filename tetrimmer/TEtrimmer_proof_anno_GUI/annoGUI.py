@@ -42,6 +42,7 @@ from crop_end_gap import crop_end_gap
 from remove_gap import remove_gaps_with_similarity_check
 from GUI_functions import separate_sequences, blast, fasta_header_to_bed, extend_bed_regions, \
     extract_fasta_from_bed
+from cialign_plot import drawMiniAlignment
 
 #####################################################################################################
 # Code block: make Aliveiw available to be used
@@ -119,7 +120,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     simi_check_gap_thr_g = 0.4
     similarity_thr_g = 0.7
     min_nucleotide_g = 5
-    cons_thre_g=0.8
+    cons_thre_g = 0.8
     blast_e_value_g = 1e-40
 
     # If the -i option is None define the default input directory
@@ -558,11 +559,10 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
 
                 try:
-
                     input_fasta_file = os.path.join(source_dir, input_fasta_n)
                     # The consensus file will be added _co.fa at the end of the input file name
                     # use source_dir here to redirect the consensus file to the same folder with the input file
-                    cons_file, cons_len = con_generater(input_fasta_file, source_dir, threshold=cons_thre, ambiguous=ambiguous)
+                    con_generater(input_fasta_file, source_dir, threshold=cons_thre, ambiguous=ambiguous)
 
                     if os_type == "Darwin":
                         cons_button.config(fg='red')  # Change button text color under macOS system
@@ -570,13 +570,29 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                         cons_button.config(bg='light green')  # Change button color
                     cons_button.update_idletasks()
 
-                    # Fresh child canvas
-                    fresh_child_canvas(child_frame, child_canvas, source_dir, current_win,
-                                       update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end)
                 except Exception as e:
                     click.echo(f"An error for consensus sequence genration: \n {traceback.format_exc()}")
-                    messagebox.showerror("Error", f"Consensus sequence generation failed. Refer to terminal for more information: {str(e)}",
+                    messagebox.showerror("Error",
+                                         f"Consensus sequence generation failed. Refer to terminal for more information: {str(e)}",
                                          parent=current_win)
+                    return
+
+                try:
+                    # draw CIAlign style plot
+                    # Define output plot file
+                    cialign_plot_file = os.path.join(source_dir, f"{os.path.basename(input_fasta_file)}_CIAlign.png")
+                    drawMiniAlignment(input_fasta_file, cialign_plot_file, dpi=300)
+
+                except Exception as e:
+                    click.echo(f"An error for CIAlign plotting: \n {traceback.format_exc()}")
+                    messagebox.showerror("Error",
+                                         f"CIAlign plotting failed. please align sequences first. "
+                                         f"Refer to terminal for more information. : {str(e)}",
+                                         parent=current_win)
+
+                # Fresh child canvas
+                fresh_child_canvas(child_frame, child_canvas, source_dir, current_win,
+                                   update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end)
 
         return _generate_cons
 
