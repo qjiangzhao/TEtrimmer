@@ -54,6 +54,7 @@ def FastaToArray(infile):
     arr = np.array(seqs)
     return arr, nams, seq_len
 
+
 def arrNumeric(arr):
     '''
     Converts the sequence array into a numerical matrix and a colour map
@@ -139,7 +140,7 @@ def arrNumeric(arr):
 
 
 def drawMiniAlignment(input_file, outfile, dpi=300, title=None, width=20, height=15, orig_nams=[],
-                      keep_numbers=False, force_numbers=False):
+                       keep_numbers=False, force_numbers=False):
     '''
     Draws a "mini alignment" image showing a small representation of the
     whole alignment so that gaps and poorly aligned regions are visible.
@@ -225,5 +226,3 @@ def drawMiniAlignment(input_file, outfile, dpi=300, title=None, width=20, height
     del arr, arr2, nams
 
     return outfile
-
-

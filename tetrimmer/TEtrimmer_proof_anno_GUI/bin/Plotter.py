@@ -37,7 +37,7 @@ def con_generater(input_file, output_dir, threshold=0.8, ambiguous="N"):
     consensus_length = len(consensus)
 
     # Write consensus sequence to a FASTA file
-    output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_co.fa")
+    output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_cons.fa")
     with open(output_file, "w") as file:
         SeqIO.write(consensus_record, file, "fasta")
 
@@ -128,11 +128,10 @@ def self_blast(input_file, output_dir):
     else:
         return False
 
+
 #####################################################################################################
 # Code block: genome blast plot
 #####################################################################################################
-
-
 # Function to create hover text
 def create_hovertext(row):
     divergence = 100 - row['V3']
@@ -207,10 +206,10 @@ def blast_plot(df, cons_len, full_len_thr=0.8):
     #fig.show()
     return fig, y_max, plot_title
 
+
 #####################################################################################################
 # Code block: coverage plot
 #####################################################################################################
-
 def coverage_plot(df, cons_len):
     # Initialize coverage array
     coverage = np.zeros((len(df), cons_len))
@@ -273,8 +272,6 @@ def coverage_plot(df, cons_len):
 #####################################################################################################
 # Code block: self dot plot
 #####################################################################################################
-
-
 def dot_plot(df):
     fig = go.Figure()
 
