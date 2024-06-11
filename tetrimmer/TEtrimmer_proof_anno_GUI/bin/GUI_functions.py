@@ -140,8 +140,11 @@ def blast(input_file, genome_file, blast_out_dir, e_value=1e-40,  bed_file=False
             # Apply the function to each row and create a new DataFrame
             blast_data_bed_df_processed = blast_data_bed_df.apply(process_row, axis=1, result_type='expand')
 
+            # Drop duplicate rows
+            blast_data_bed_df_processed_unique = blast_data_bed_df_processed.drop_duplicates()
+
             # Save bed file
-            blast_data_bed_df_processed.to_csv(blast_out_bed_file, sep='\t', index=False, header=False)
+            blast_data_bed_df_processed_unique.to_csv(blast_out_bed_file, sep='\t', index=False, header=False)
 
             return blast_out_bed_file, blast_out_file_header
 

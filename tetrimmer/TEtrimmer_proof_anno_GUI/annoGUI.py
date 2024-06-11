@@ -123,6 +123,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     cons_thre_g = 0.8
     blast_e_value_g = 1e-40
 
+    # Define global variable to determine the current canvas contens
+    global current_canvas_content
+
+    current_canvas_content = "tetrimmer_out"
+
     # If the -i option is None define the default input directory
     if te_trimmer_proof_curation_dir is None:
         te_trimmer_proof_curation_dir = os.path.abspath(os.path.join(bin_py_path, os.pardir))
@@ -597,6 +602,58 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         return _generate_cons
 
     #####################################################################################################
+    # Code block: define consensus sequence generation function
+    #####################################################################################################
+    # Define search function
+    def search_files_with_pattern(filename_pattern, dirs, current_canvas_status="tetrimmer_out"):
+
+        # dirs: path contains all files need to search, like te_trimmer_proof_curation_dir
+        # and other_cons_lib_single_file_folder
+        # current_canvas_status can be "tetrimmer_out" and "cons_lib"
+        # "tetrimmer" means to check TEtrimmer output files. "cons_lib" is to search TE consensus library files
+        # te_trimmer_proof_curation_dir
+        found_paths = []
+        print(current_canvas_status)
+
+        if current_canvas_status == "tetrimmer_out":
+            # direct dir to
+            check_paths = [os.path.join(dirs, "Clustered_proof_curation"),
+                           os.path.join(dirs, "TE_low_copy"),
+                           os.path.join(dirs, "TE_skipped")]
+
+            # Define found_path to store search result
+            for directory in check_paths:
+                if not os.path.isdir(directory):
+                    continue
+
+                for root, subdirs, files in os.walk(directory):
+                    # Check files in the current directory
+                    for file in files:
+                        if filename_pattern in file:
+                            # Only show the last folder name of root and the file name
+                            found_paths.append(os.path.join(os.path.basename(root), file))
+
+                    # Check files in each subdirectory
+                    # subdir will be a empty directory if no directory is found under root
+                    for subdir in subdirs:
+                        subdir_path = os.path.join(root, subdir)
+                        for subdir_root, _, subdir_files in os.walk(subdir_path):
+                            for subdir_file in subdir_files:
+                                if filename_pattern in subdir_file:
+                                    # Only show the cluster number and the file name
+                                    found_paths.append(os.path.join(os.path.basename(subdir_root), subdir_file))
+        else:
+            # Then current_canvas_status is "cons_lib"
+            # The dirs variable should be "other_cons_lib_single_file_folder" to search TE consensus library
+            if os.path.isdir(dirs):
+                sorted_cons_files = [f for f in sorted(os.listdir(dirs))]
+                for index, file in enumerate(sorted_cons_files):
+                    if filename_pattern in file:
+                        found_paths.append((f"Position number {index + 1}", file))
+
+        return found_paths
+
+    #####################################################################################################
     # Code block: set a vertical scroll bar
     #####################################################################################################
     # Set scrollbar. command=canvas.yview links the scrollbar to the vertical view of the canvas.
@@ -946,6 +1003,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             frame.grid_columnconfigure(2, weight=0)
 
     def load_files_with_destroy(start, end, frame, canvas, path):
+
+        # update current_canvas_content to help search function
+        global current_canvas_content
+        current_canvas_content = "tetrimmer_out"
+
         destroy_initial_label()
         load_files(start, end, frame, canvas, source_dir=path)
 
@@ -1040,6 +1102,26 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             # Add line number into canvas frame
             line_number = Label(frame, text=str(i + 1), bg='white')
             line_number.grid(row=i - start, column=0)
+
+            """
+            # Get button states
+        button_defaults = {
+            'file_button': ('white', 'black'),
+            'save_button': ('white', 'black'),
+            'extension_button': ('white', 'black'),
+            'teaid_button': ('white', 'black'),
+            'cons_button': ('white', 'black'),
+            'others_button': ('white', 'black')
+        }
+
+        if filename in button_states:
+            states = button_states[filename]
+            for j, key in enumerate(button_defaults.keys()):
+                if j < len(states):
+                    button_defaults[key] = states[j]
+                    
+        Button(button_frame, text="Save", bg=button_defaults['save_button'][0], fg=button_defaults['save_button'][1])
+            """
 
             # Get button states
             file_button_bg = 'white'
@@ -1205,6 +1287,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     # load_files(start, end, frame, canvas, source_dir=te_trimmer_proof_curation_dir)
     # load_files(start, end, frame, canvas, source_dir=path)
     def other_cons_load_files(start, end, frame, canvas, source_dir, current_win, scroll_position=None, button_states=None):
+
+        # Update global current_canvas_content variable to enable search function
+        global current_canvas_content
+        current_canvas_content = "cons_lib"
+
         destroy_initial_label()
         clear_frame()
         if scroll_position is not None:
@@ -1363,6 +1450,72 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             frame.grid_columnconfigure(2, weight=0)
 
     #####################################################################################################
+    # Code block: Define search window
+    #####################################################################################################
+    def open_search_window():
+        search_window = Toplevel(root)
+        search_window.title("Search Files")
+        search_window.geometry('800x600')
+
+        search_frame = Frame(search_window)
+        search_frame.pack(fill='x', padx=10, pady=5)
+
+        search_entry = Entry(search_frame, width=40)
+        search_entry.pack(side='left', padx=5)
+
+        search_button = Button(search_frame, text="Search",
+                               command=lambda: perform_search_in_window(search_entry.get(), result_frame, result_canvas))
+        search_button.pack(side='left', padx=5)
+
+        # Create canvas for displaying search results
+        result_canvas = Canvas(search_window, bg='white')
+        result_canvas.pack(side='left', fill='both', expand=True)
+
+        result_scrollbar = Scrollbar(search_window, orient='vertical', command=result_canvas.yview)
+        result_canvas.configure(yscrollcommand=result_scrollbar.set)
+        result_scrollbar.pack(side='right', fill='y')
+
+        search_window.bind("<MouseWheel>", lambda event: scroll(event, result_canvas))
+        search_window.bind("<Button-4>", lambda event: scroll(event, result_canvas))
+        search_window.bind("<Button-5>", lambda event: scroll(event, result_canvas))
+
+        result_canvas.yview_moveto(0)  # Reset scrollbar to top
+
+        result_frame = Frame(result_canvas, bg='white')
+        result_canvas.create_window((0, 0), window=result_frame, anchor='nw')
+
+        result_frame.bind('<Configure>', lambda e: result_canvas.configure(scrollregion=result_canvas.bbox('all')))
+
+        search_window.mainloop()
+
+    def perform_search_in_window(pattern, frame, canvas):
+        # te_trimmer_proof_curation_dir, current_canvas_content, other_cons_lib_single_file_folder are global variables
+        if pattern:
+            if current_canvas_content == "tetrimmer_out":
+                search_results = search_files_with_pattern(pattern, te_trimmer_proof_curation_dir, current_canvas_content)
+            else:
+                search_results = search_files_with_pattern(pattern, other_cons_lib_single_file_folder,
+                                                           current_canvas_content)
+            display_search_results_in_window(search_results, frame)
+            canvas.yview_moveto(0)  # Reset scrollbar to top
+
+    def display_search_results_in_window(search_results, frame):
+        for widget in frame.winfo_children():
+            widget.destroy()
+
+        if not search_results:
+            label = Label(frame, text="No files found matching the pattern.", bg='white')
+            label.pack(pady=20)
+            return
+
+        for i, result in enumerate(search_results):
+            line_number = Label(frame, text=str(i + 1), bg='white')
+            line_number.grid(row=i, column=0)
+
+            file_label = Label(frame, text=result, anchor='w', bg='white')
+            file_label.grid(row=i, column=1, sticky='ew')
+
+    #####################################################################################################
     # Code block: Add menu bar for mother window
     #####################################################################################################
 
@@ -1378,9 +1531,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     for i, annotation in enumerate(annotation_folders):
         annotationMenu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label=annotation, menu=annotationMenu)
-        if i <= 2:
+
+        # Check which menu button is selected
+        if i <= 2:  # Means "Clustered_proof_curation", "TE_low_copy", "TE_skipped"
             annotation_path = os.path.join(te_trimmer_proof_curation_dir, annotation)
-        else:
+        else:  # Means "Check_consensus_lib"
             annotation_path = other_cons_lib_single_file_folder
 
         # Give hits when folder isn't found
@@ -1408,15 +1563,15 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         if not sorted_files_annotation:
             annotationMenu.add_command(label="No file is found.")
         else:
-            # Show maximum 1000 files on the window
-            if i <= 2:
+            # Show maximum 150 files on the window
+            if i <= 2:  # Means "Clustered_proof_curation", "TE_low_copy", "TE_skipped"
                 for j in range(0, len(sorted_files_annotation), 150):
                     end = min(j + 150, len(sorted_files_annotation))
 
                     annotationMenu.add_command(label=f"{j + 1}-{end}",
                                                command=partial(load_files_with_destroy,
                                                                j, end, frame, canvas, annotation_path))
-            elif i == 3:
+            elif i == 3:  # Means "Check_consensus_lib"
 
                 for j in range(0, len(sorted_files_annotation), 100):
                     end = min(j + 100, len(sorted_files_annotation))
@@ -1440,6 +1595,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     # Add Undo child menu
     undo_menu.add_command(label="undo last copy", command=undo_last_copy)
     menubar.add_cascade(label="Undo", menu=undo_menu)
+
+    # Add the Search button to the menu
+    search_menu = Menu(menubar, tearoff=0)
+    search_menu.add_command(label="Search Files", command=lambda: open_search_window())
+    menubar.add_cascade(label="Search", menu=search_menu)
 
     # Add the Help button to the menu
     help_menu = Menu(menubar, tearoff=0)
