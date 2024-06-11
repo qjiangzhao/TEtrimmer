@@ -35,6 +35,7 @@ import click
 import traceback
 from functools import partial
 import platform
+from Bio import SeqIO
 from Plotter import GUI_plotter, con_generater
 # Import cleaning module
 from crop_end_divergence import crop_end_div
@@ -137,15 +138,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         output_dir = os.path.join(te_trimmer_proof_curation_dir, "TEtrimmer_proof_anno_results")
     # Define output folders, create them when they are not found
     consensus_folder = os.path.abspath(os.path.join(output_dir, "Proof_curation_consensus_folder"))
-    need_more_extension = os.path.abspath(os.path.join(output_dir, "Proof_curation_need_more_extension"))
     others_dir = os.path.abspath(os.path.join(output_dir, "Proof_curation_discard"))
-    low_copy_elements = os.path.abspath(os.path.join(output_dir, "Proof_curation_low_copy_elements"))
-    rescue_skip_elements = os.path.abspath(os.path.join(output_dir, "Proof_curation_rescued_skip_elements"))
 
     other_cons_lib_result_folder = os.path.join(te_trimmer_proof_curation_dir, "Consensus_lib_check_results")
 
-    for dir_path in [consensus_folder, need_more_extension, others_dir, low_copy_elements, rescue_skip_elements,
-                     other_cons_lib_result_folder]:
+    for dir_path in [consensus_folder, others_dir, other_cons_lib_result_folder]:
         os.makedirs(dir_path, exist_ok=True)
 
     #####################################################################################################
@@ -232,9 +229,10 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     # current_win contains child_canvas
     # child_canvas contains child_frame
     # for each row of child_frame, it contains three elements: label, file name frame (include file name button), and
-    # another frame (contains function buttons like "Cons", "Extend", "TEAid". )
-    def fresh_child_canvas(child_frame, child_canvas, child_source_dir, current_win, file_start=0, file_end=500,
-                           update_child_canvas=True):
+    # another frame (contains function buttons like "Cons", "Extend", "TEAid".)
+    # fresh_save_path is used to define save button path. By defaule it save to other_cons_lib_result_folder
+    def fresh_canvas(child_frame, child_canvas, child_source_dir, current_win, file_start=0, file_end=500,
+                     update_child_canvas=True, fresh_save_path=None):
         # Record the current scroll position and button states
         scroll_position = child_canvas.yview()[0]
 
@@ -283,6 +281,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                              scroll_position=scroll_position, button_states=button_states)
         else:
             other_cons_load_files(file_start, file_end, child_frame, child_canvas, child_source_dir, current_win,
+                                  save_path=fresh_save_path,
                                   scroll_position=scroll_position, button_states=button_states)
 
     # Combined extension module
@@ -291,7 +290,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     # child_canvas contain child_frame
     # current_win contains child_frame and child_canvas
     def extension_function(input_fasta_n, ext_button, source_dir, output_dir, current_win, chrom_s, child_frame,
-                           child_canvas, update_child_canvas=True, file_start=0, file_end=500):
+                           child_canvas, update_child_canvas=True, file_start=0, file_end=500, save_path=None):
         def _extension_function(event):
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
 
@@ -331,9 +330,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                         ext_button.update_idletasks()
 
                         # Fresh child canvas
-                        fresh_child_canvas(child_frame, child_canvas, source_dir, current_win,
-                                           update_child_canvas=update_child_canvas,
-                                           file_start=file_start, file_end=file_end)
+                        fresh_canvas(child_frame, child_canvas, source_dir, current_win,
+                                     update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end,
+                                     fresh_save_path=save_path)
 
                     except Exception as e:
                         click.echo(f"An error occurred during extension: \n {traceback.format_exc()}")
@@ -384,8 +383,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     #####################################################################################################
 
     # Define cleaning functions using global parameters
-    def crop_end_div_gui(input_fasta_n, button, source_dir, output_dir, current_win,
-                         child_frame, child_canvas, update_child_canvas=True, file_start=0, file_end=500):
+    def crop_end_div_gui(input_fasta_n, button, source_dir, output_dir, current_win, child_frame, child_canvas,
+                         update_child_canvas=True, file_start=0, file_end=500, save_path=None):
         def _crop_end_div_gui(event):
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
                 progress = show_progress_bar(child_canvas)  # Show progress bar
@@ -405,8 +404,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     button.update_idletasks()
 
                     # Fresh child canvas
-                    fresh_child_canvas(child_frame, child_canvas, source_dir, current_win,
-                                       update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end)
+                    fresh_canvas(child_frame, child_canvas, source_dir, current_win,
+                                 update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end,
+                                 fresh_save_path=save_path)
 
                 except Exception as e:
                     click.echo(f"An error occurred for crop end by divergence: \n {traceback.format_exc()}")
@@ -419,8 +419,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
         return _crop_end_div_gui
 
-    def crop_end_gap_gui(input_fasta_n, button, source_dir, output_dir, current_win,
-                         child_frame, child_canvas, update_child_canvas=True, file_start=0, file_end=500):
+    def crop_end_gap_gui(input_fasta_n, button, source_dir, output_dir, current_win, child_frame, child_canvas,
+                         update_child_canvas=True, file_start=0, file_end=500, save_path=None):
         def _crop_end_gap_gui(event):
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
                 progress = show_progress_bar(child_canvas)  # Show progress bar
@@ -439,8 +439,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     button.update_idletasks()
 
                     # Fresh child canvas
-                    fresh_child_canvas(child_frame, child_canvas, source_dir, current_win,
-                                       update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end)
+                    fresh_canvas(child_frame, child_canvas, source_dir, current_win,
+                                 update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end,
+                                 fresh_save_path=save_path)
 
                 except Exception as e:
                     click.echo(f"An error occurred for crop end by gap: \n {traceback.format_exc()}")
@@ -454,7 +455,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
     def remove_gaps_with_similarity_check_gui(input_fasta_n, button, source_dir, output_dir, current_win,
                                               child_frame, child_canvas, update_child_canvas=True,
-                                              file_start=0, file_end=500):
+                                              file_start=0, file_end=500, save_path=None):
 
         def _remove_gaps_with_similarity_check_gui(event):
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
@@ -476,8 +477,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     button.update_idletasks()
 
                     # Fresh child canvas
-                    fresh_child_canvas(child_frame, child_canvas, source_dir, current_win,
-                                       update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end)
+                    fresh_canvas(child_frame, child_canvas, source_dir, current_win,
+                                 update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end,
+                                 fresh_save_path=save_path)
 
                 except Exception as e:
                     click.echo(f"An error occurred for cleaning gap columns: \n {traceback.format_exc()}")
@@ -512,7 +514,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
     def check_other_cons_lib_blast(input_fasta_n, blast_button, source_dir, output_dir, current_win,
                                    child_frame, child_canvas, genome_f, e_value=1e-40, update_child_canvas=True,
-                                   file_start=0, file_end=500):
+                                   file_start=0, file_end=500, save_path=None):
 
         def _check_other_cons_lib_blast(event):
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
@@ -520,9 +522,18 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 input_fasta_file = os.path.join(source_dir, input_fasta_n)
 
                 try:
+                    # Count the number of sequences in the input file
+                    sequence_count = sum(1 for _ in SeqIO.parse(input_fasta_file, "fasta"))
 
-                    # other_cons_bed and other_cons_blast will be false if some error happened
-                    other_cons_bed, other_cons_blast = blast(input_fasta_file, genome_f, output_dir, e_value=e_value, bed_file=True)
+                    if sequence_count != 1:
+                        messagebox.showerror("Error",
+                                             "Blast can only be performed on files containing exactly one sequence.",
+                                             parent=current_win)
+                        return
+
+                    # Perform the blast operation if the sequence count is exactly one
+                    other_cons_bed, other_cons_blast = blast(input_fasta_file, genome_f, output_dir, e_value=e_value,
+                                                             bed_file=True)
 
                     if other_cons_bed and other_cons_blast:
 
@@ -544,8 +555,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                         blast_button.update_idletasks()
 
                         # Fresh child canvas
-                        fresh_child_canvas(child_frame, child_canvas, source_dir, current_win,
-                                           update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end)
+                        fresh_canvas(child_frame, child_canvas, source_dir, current_win,
+                                     update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end,
+                                     fresh_save_path=save_path)
 
                 except Exception as e:
                     click.echo(f"An error occurred during blast: \n {traceback.format_exc()}")
@@ -558,7 +570,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     # Code block: define consensus sequence generation function
     #####################################################################################################
     def generate_cons(input_fasta_n, cons_button, source_dir, current_win, child_frame, child_canvas,
-                      cons_thre=0.8, ambiguous="N", update_child_canvas=True, file_start=0, file_end=500):
+                      cons_thre=0.8, ambiguous="N", update_child_canvas=True, file_start=0, file_end=500,
+                      save_path=None):
         def _generate_cons(envet):
 
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
@@ -596,8 +609,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                          parent=current_win)
 
                 # Fresh child canvas
-                fresh_child_canvas(child_frame, child_canvas, source_dir, current_win,
-                                   update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end)
+                fresh_canvas(child_frame, child_canvas, source_dir, current_win,
+                             update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end,
+                             fresh_save_path=save_path)
 
         return _generate_cons
 
@@ -965,38 +979,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 file_count_label = Label(frame, text=f"({file_count} files)", bg='white')
                 file_count_label.grid(row=i - start, column=3)
 
-            # Don't show "Consensus" and "Extension" button for low copy and clustered proof curation
-            if not source_dir.endswith("TE_low_copy") and not source_dir.endswith("Clustered_proof_curation")\
-                    and not source_dir.endswith("TE_skipped"):
-
-                # Create "Consensus" button inside button_frame
-                copy_button = Button(button_frame, text="Consensus", bg='white', fg='black')
-                copy_button.grid(row=0, column=0, padx=5)
-                # Bind "Consensus" button with copy_file function with specific source and destination folder
-                copy_button.bind('<Button-1>', copy_file(filename, copy_button, consensus_folder,
-                                                         source_dir, root))
-
-                # Define "Extension" button
-                more_extend_button = Button(button_frame, text="Copy for extension", bg='white', fg='black')
-                more_extend_button.grid(row=0, column=1, padx=5)
-                # Bind "Extension" button with copy_file function with different destination folder
-                more_extend_button.bind('<Button-1>', copy_file(filename, more_extend_button, need_more_extension,
-                                                                source_dir, root))
-            # Add rescue button for skipped TE
-            if os.path.basename(source_dir) == "TE_skipped":
-                rescue_skip_button = Button(button_frame, text="Rescue skip", bg='white', fg='black')
-                rescue_skip_button.grid(row=0, column=1, padx=5)
-                rescue_skip_button.bind('<Button-1>', copy_file(filename, rescue_skip_button, rescue_skip_elements,
-                                                                source_dir, root))
-
-            # Add "Save to low copy" button for low copy TE
-            if os.path.basename(source_dir) == "TE_low_copy":
-                # Define "Low_copy" button with specific source and destination folder
-                low_copy_button = Button(button_frame, text="Save to low copy", bg='white', fg='black')
-                low_copy_button.grid(row=0, column=1, padx=5)
-                low_copy_button.bind('<Button-1>', copy_file(filename, low_copy_button, low_copy_elements,
-                                                             source_dir, root))
-
             button_frame.grid_columnconfigure(0, weight=1)
             button_frame.grid_rowconfigure(0, weight=1)
             frame.grid_columnconfigure(1, weight=1)
@@ -1079,9 +1061,10 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     #####################################################################################################
 
     # source_dir is the folder path contains all files need to be loaded
-    # canvas is the place where to place the buttons
-    # current_win use to locate message box position
     # canvas is inside current_win
+    # frame is inside canvas
+    # frame contains child-frames and buttons
+
     def child_load_files(start, end, frame, canvas, source_dir, current_win, scroll_position=None, button_states=None):
         if scroll_position is not None:
             canvas.yview_moveto(scroll_position)  # Set scrollbar to saved position
@@ -1282,11 +1265,16 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         folder_window.mainloop()
 
     #####################################################################################################
-    # Code block: Define other TE consensus library check canvas
+    # Code block: Define Low_copy_TE, Skipped_TE and other TE consensus library check canvas
     #####################################################################################################
     # load_files(start, end, frame, canvas, source_dir=te_trimmer_proof_curation_dir)
     # load_files(start, end, frame, canvas, source_dir=path)
-    def other_cons_load_files(start, end, frame, canvas, source_dir, current_win, scroll_position=None, button_states=None):
+    # source_dir is the folder path contains all files need to be loaded
+    # canvas is inside current_win
+    # frame is inside canvas
+    # frame contains child-frames and buttons
+    def other_cons_load_files(start, end, frame, canvas, source_dir, current_win, save_path=None,
+                              scroll_position=None, button_states=None):
 
         # Update global current_canvas_content variable to enable search function
         global current_canvas_content
@@ -1380,7 +1368,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             copy_button = Button(button_frame, text="Save", bg=save_button_bg, fg=save_button_fg)
             copy_button.grid(row=0, column=0, padx=1)
             # Bind "Consensus" button with copy_file function with specific source and destination folder
-            copy_button.bind('<Button-1>', copy_file(filename, copy_button, other_cons_lib_result_folder,
+            copy_button.bind('<Button-1>', copy_file(filename, copy_button, save_path,
                                                      source_dir, current_win))
 
             # Define "Blast" button
@@ -1391,7 +1379,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                                                        other_cons_lib_folder, current_win, frame,
                                                                        canvas, genome_file, e_value=blast_e_value_g,
                                                                        update_child_canvas=False,
-                                                                       file_start=start, file_end=end))
+                                                                       file_start=start, file_end=end,
+                                                                       save_path=save_path))
 
             # Define "Extension" button
             more_extend_button = Button(button_frame, text="Extend", bg=extension_button_bg, fg=extension_button_fg)
@@ -1400,7 +1389,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             more_extend_button.bind('<Button-1>', extension_function(filename, more_extend_button, source_dir,
                                                                      temp_folder, current_win, chrom_size, frame,
                                                                      canvas, update_child_canvas=False,
-                                                                     file_start=start, file_end=end))
+                                                                     file_start=start, file_end=end,
+                                                                     save_path=save_path))
 
             # Define "Plotter" button
             plot_button = Button(button_frame, text="TEAid", bg=teaid_button_bg, fg=teaid_button_fg)
@@ -1417,7 +1407,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             crop_end_by_div_button.bind('<Button-1>',
                                         crop_end_div_gui(filename, crop_end_by_div_button, source_dir, source_dir,
                                                          current_win, frame, canvas, update_child_canvas=False,
-                                                         file_start=start, file_end=end))
+                                                         file_start=start, file_end=end, save_path=save_path))
 
             # Define "Crop end by gap" button
             crop_end_by_gap_button = Button(button_frame, text="CropGap", bg=crop_end_by_gap_button_bg,
@@ -1426,7 +1416,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             crop_end_by_gap_button.bind('<Button-1>',
                                         crop_end_gap_gui(filename, crop_end_by_gap_button, source_dir, source_dir,
                                                          current_win, frame, canvas, update_child_canvas=False,
-                                                         file_start=start, file_end=end))
+                                                         file_start=start, file_end=end, save_path=save_path))
 
             # Define "Clean gap column" button
             clean_gap_column_button = Button(button_frame, text="CleanCol", bg=remove_gap_column_button_bg,
@@ -1434,7 +1424,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             clean_gap_column_button.grid(row=0, column=6, padx=1)
             clean_gap_column_button.bind('<Button-1>', remove_gaps_with_similarity_check_gui(
                 filename, clean_gap_column_button, source_dir, source_dir, current_win,
-                frame, canvas, update_child_canvas=False, file_start=start, file_end=end))
+                frame, canvas, update_child_canvas=False, file_start=start, file_end=end, save_path=save_path))
 
             # Define "Cons" button
             cons_button = Button(button_frame, text="Cons", bg=cons_button_bg, fg=cons_button_fg)
@@ -1442,7 +1432,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
             cons_button.bind('<Button-1>', generate_cons(filename, cons_button, source_dir, current_win, frame,
                                                          canvas, cons_thre=cons_thre_g, ambiguous="N",
-                                                         update_child_canvas=False, file_start=start, file_end=end))
+                                                         update_child_canvas=False, file_start=start, file_end=end,
+                                                         save_path=save_path))
 
             button_frame.grid_columnconfigure(0, weight=1)
             button_frame.grid_rowconfigure(0, weight=1)
@@ -1541,16 +1532,20 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         # Give hits when folder isn't found
         if not os.path.exists(annotation_path):
 
-            if i <= 2:
+            if i == 0:
                 annotationMenu.add_command(label="Cluster folder not detected! Use correct input folder path",
                                            command=partial(messagebox.showerror,
                                                            "Error", "Please use the correct input directory by '-i' option."
                                                                     " three folder should be contained in your input path, "
                                                                     "including 'Clustered_proof_curation', "
                                                                     "'TE_skipped', and 'TE_low_copy'"))
+            elif i == 1:
+                annotationMenu.add_command(label="No low copy TEs")
+            elif i == 2:
+                annotationMenu.add_command(label="No skipped TEs")
 
             elif annotation == "Check_consensus_lib":
-                annotationMenu.add_command(label="Consensus sequences not found",
+                annotationMenu.add_command(label="TE consensus sequences not found",
                                            command=partial(messagebox.showerror,
                                                            "Error", "Please use option '--consensus_lib' to define the "
                                                                     "TE consensus library path you want to check"))
@@ -1564,31 +1559,56 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             annotationMenu.add_command(label="No file is found.")
         else:
             # Show maximum 150 files on the window
-            if i <= 2:  # Means "Clustered_proof_curation", "TE_low_copy", "TE_skipped"
+            if i == 0:  # Means "Clustered_proof_curation"
                 for j in range(0, len(sorted_files_annotation), 150):
                     end = min(j + 150, len(sorted_files_annotation))
 
                     annotationMenu.add_command(label=f"{j + 1}-{end}",
                                                command=partial(load_files_with_destroy,
                                                                j, end, frame, canvas, annotation_path))
+            elif i == 1 or i == 2:  # Means "TE_low_copy", "TE_skipped"
+                for j in range(0, len(sorted_files_annotation), 100):
+                    end = min(j + 100, len(sorted_files_annotation))
+
+                    # Add 1000 to the end when checking the last page to enable to show added files by fresh canvas
+                    if end == len(sorted_files_annotation):
+                        annotationMenu.add_command(label=f"{j + 1}-{end}",
+                                                   command=partial(other_cons_load_files,
+                                                                   j, end+1000, frame, canvas, annotation_path, canvas,
+                                                                   save_path=consensus_folder))
+                    else:
+                        annotationMenu.add_command(label=f"{j + 1}-{end}",
+                                                   command=partial(other_cons_load_files,
+                                                                   j, end, frame, canvas, annotation_path,
+                                                                   canvas,
+                                                                   save_path=consensus_folder))
             elif i == 3:  # Means "Check_consensus_lib"
 
                 for j in range(0, len(sorted_files_annotation), 100):
                     end = min(j + 100, len(sorted_files_annotation))
 
-                    annotationMenu.add_command(label=f"{j + 1}-{end}",
-                                               command=partial(other_cons_load_files,
-                                                               j, end, frame, canvas, annotation_path, canvas))
+                    if end == len(sorted_files_annotation):
+
+                        annotationMenu.add_command(label=f"{j + 1}-{end}",
+                                                   command=partial(other_cons_load_files,
+                                                                   j, end+1000, frame, canvas, annotation_path, canvas,
+                                                                   save_path=other_cons_lib_result_folder))
+                    else:
+                        annotationMenu.add_command(label=f"{j + 1}-{end}",
+                                                   command=partial(other_cons_load_files,
+                                                                   j, end, frame, canvas, annotation_path,
+                                                                   canvas,
+                                                                   save_path=other_cons_lib_result_folder))
 
     # Add confirm menu button
     settings_menu = Menu(menubar, tearoff=0)
     # Set confirm_menu child menu
     # Initialize the BooleanVar to store "Show Confirmation Window" status
     show_confirmation = BooleanVar(value=True)
-    settings_menu.add_checkbutton(label="Show Confirmation Window When Click 'Cons'", onvalue=True, offvalue=False,
+    settings_menu.add_checkbutton(label="Show Confirmation Window When Click 'Save'", onvalue=True, offvalue=False,
                                   variable=show_confirmation)
     settings_menu.add_command(label="Modify Function Parameters", command=show_settings_dialog)
-    menubar.add_cascade(label="Settings", menu=settings_menu)
+    menubar.add_cascade(label="Setting", menu=settings_menu)
 
     # Add Undo button
     undo_menu = Menu(menubar, tearoff=0)
