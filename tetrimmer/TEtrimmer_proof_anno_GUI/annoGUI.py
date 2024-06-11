@@ -712,36 +712,50 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     global text_label
 
     log_text = """
-        ████████\\ ████████\\ ██\\               ██\\
-        \\__██  __|██  _____|██ |              \\__|
-           ██ |   ██ |    ██████\\    ██████\\  ██\\ ██████\\████\\  ██████\\████\\   ██████\\   ██████\\
-           ██ |   █████\\  \\_██  _|  ██  __██\\ ██ |██  _██  _██\\ ██  _██  _██\\ ██  __██\\ ██  __██\\
-           ██ |   ██  __|   ██ |    ██ |  \\__|██ |██ / ██ / ██ |██ / ██ / ██ |████████ |██ |  \\__|
-           ██ |   ██ |      ██ |██\\ ██ |      ██ |██ | ██ | ██ |██ | ██ | ██ |██   ____|██ |
-           ██ |   ████████\\ \\████  |██ |      ██ |██ | ██ | ██ |██ | ██ | ██ |\\███████\\ ██ |
-           \\__|   \\________| \\____/ \\__|      \\__|\\__| \\__| \\__|\\__| \\__| \\__| \\_______|\\__|
+    ████████\\ ████████\\ ██\\               ██\\
+    \\__██  __|██  _____|██ |              \\__|
+       ██ |   ██ |    ██████\\    ██████\\  ██\\ ██████\\████\\  ██████\\████\\   ██████\\   ██████\\
+       ██ |   █████\\  \\_██  _|  ██  __██\\ ██ |██  _██  _██\\ ██  _██  _██\\ ██  __██\\ ██  __██\\
+       ██ |   ██  __|   ██ |    ██ |  \\__|██ |██ / ██ / ██ |██ / ██ / ██ |████████ |██ |  \\__|
+       ██ |   ██ |      ██ |██\\ ██ |      ██ |██ | ██ | ██ |██ | ██ | ██ |██   ____|██ |
+       ██ |   ████████\\ \\████  |██ |      ██ |██ | ██ | ██ |██ | ██ | ██ |\\███████\\ ██ |
+       \\__|   \\________| \\____/ \\__|      \\__|\\__| \\__| \\__|\\__| \\__| \\__| \\_______|\\__|
         """
 
 
-    initial_text = "Manual proof curation is highly recommended to improve the quality of TE annotations.\n\n" \
-                   "1, Click the <Clustered_proof_curation> button in the menu bar.\n\n" \
+    initial_text = "This GUI is designed to inspect and improve TEtrimmer outputs and " \
+                   "any TE consensus libraries.\n\n" \
+                   "##################################################################################\n\n" \
+                   "For TEtrimmer outputs:\n\n" \
+                   "1, Click the <Clustered_proof_curation> button in the menu bar.\n" \
                    "   TEs with more than 90% identity are grouped into one cluster.\n\n" \
-                   "2, Click each <Cluster> button.\n\n" \
-                   "   For each TE, you can find four files: \n" \
+                   "2, Click each <Cluster> button.\n" \
+                   "   For each TE, you can find four files:\n" \
                    "     <seq_name.cluster.fa>          multiple sequence alignment (MSA) before clustering\n" \
-                   "     <seq_name.raw.fa>               MSA file before cleaning\n" \
-                   "     <seq_name.fa>                      MSA file corresponding to TE consensus sequence\n" \
+                   "     <seq_name.raw.fa>               MSA file before boundary definition\n" \
+                   "     <seq_name.fa>                      MSA file used to generate TE consensus sequence\n" \
                    "     <seq_name.pdf>                    report plots file for evaluating annotation quality\n\n" \
-                   "3, Double click <seq_name.pdf> to evaluate annotation quality.\n\n" \
-                   "4, If satisfied, click <Cons> button next to <seq_name.fa>.\n" \
-                   "   This MSA file will be copied to <Proof_curation_consensus_folder>.\n\n" \
-                   "5, If not satisfied, check <seq_name.fa> or <seq_name.raw.fa>. \n\n" \
-                   "6, For more extension, click <Extend> button next to the fasta file.\n\n" \
-                   "   Use <CropDiv> <CropGap> and <CleanCol> to clean the MSA. \n" \
-                   "   Use <TEAid> to generate interactive report plots. \n\n" \
+                   "3, Double click <seq_name.pdf>, seven plots will be shown.\n\n" \
+                   "4, If satisfied, click <Cons> button next to <seq_name.fa> to generate consensus sequence.\n" \
+                   "   Use <Save> button to copy files to <Proof_curation_consensus_folder>.\n\n" \
+                   "5, If not satisfied, check and modify <seq_name.fa> or <seq_name.raw.fa> MSA files.\n\n" \
+                   "6, For more sequence extension, click <Extend> button next to the fasta file.\n" \
+                   "   Align sequences in AliView.\n" \
+                   "   Use <CropDiv> <CropGap> and <CleanCol> to clean the MSA.\n" \
+                   "   Use <TEAid> to generate interactive report plots.\n\n" \
                    "7, If still not satisfied, check <seq_name.cluster.fa>.\n" \
-                   "   Select the sequences you want to use and click <Extension> to find the boundary\n\n" \
-                   "8, For skipped and low copy elements, evaluate by checking the PDF file.\n"
+                   "   Select the sequences you want to use and click <Extend> to find the TE boundaries.\n\n" \
+                   "8, For skipped and low copy elements, evaluating follow the similar procedure.\n\n" \
+                   "##################################################################################\n\n" \
+                   "For TE consensus library from other tools like EDTA and RepeatModeler:\n\n" \
+                   "1, Use <-clib> option to define the TE library path.\n\n" \
+                   "2, Click <TEAid> button to evaluate consensus sequence.\n\n" \
+                   "3, For improving consensus sequence, click <Blast> button to perform BLASTN.\n" \
+                   "   Two files <seq_name_blast.txt> and <seq_name_blast.txt.fa> will appear.\n\n" \
+                   "4, Click <seq_name_blast.txt.fa> file and align sequence in AliView.\n\n" \
+                   "5, For more sequence extension, click <Extend> button next to the aligned fasta file.\n\n" \
+                   "6, Use <CropDiv> <CropGap> and <CleanCol> to clean the MSA and evaluate by <TEAid>.\n\n" \
+                   "7, Click <Cons> to generate consensus sequence and save it by <Save> button.\n\n"
 
     # Display ASCII logo with 'Courier' font
     if os_type == "Linux":
