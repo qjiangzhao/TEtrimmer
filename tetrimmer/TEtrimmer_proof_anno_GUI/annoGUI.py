@@ -750,11 +750,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         logo_font = ('Courier', 13)
     else:
         logo_font = ('Courier', 5)
-    logo_label = Label(canvas, text=log_text, bg='white', font=logo_font, justify='left', wraplength=1100)
+    logo_label = Label(frame, text=log_text, bg='white', font=logo_font, justify='left', wraplength=1100)
     logo_label.pack(pady=10)
 
     # Display the explanatory text with 'Arial' font
-    text_label = Label(canvas, text=initial_text, bg='white', font=('Arial', 15), justify='left', wraplength=1100)
+    text_label = Label(frame, text=initial_text, bg='white', font=('Arial', 15), justify='left', wraplength=1100)
     text_label.pack(pady=10)
 
     #####################################################################################################
