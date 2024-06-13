@@ -817,28 +817,25 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         else:
             dotplot_pdf = dotplot(orf_cons, seq_file, output_dir)
     except Exception as e:
+        # dotplot is not mandatory; skip if any error occurred
         with open(error_files, "a") as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
             f.write(f"\nDotplot failed for {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
-        # dotplot is not mandatory; skip if any error occurred
-        pass
 
     try:
-        if dotplot_pdf is None:
-            pass
-        # Because dotmatcher can't change output size, scale it up to make it more clear in the merged pdf
-        scale_dotplot_pdf = scale_single_page_pdf(dotplot_pdf, f"{dotplot_pdf}_su.pdf", scale_ratio=2)
-        dotplot_pdf = scale_dotplot_pdf
+        if dotplot_pdf is not None:
+            # Because dotmatcher can't change output size, scale it up to make it more clear in the merged pdf
+            scale_dotplot_pdf = scale_single_page_pdf(dotplot_pdf, f"{dotplot_pdf}_su.pdf", scale_ratio=2)
+            dotplot_pdf = scale_dotplot_pdf
     except Exception:
         with open(error_files, "a") as f:
+            # This is not mandatory, skip if any error occurred
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
             f.write(f"\nps file to pdf conversion failed for {seq_name} with error:\n{e}")
             f.write('\n' + tb_content + '\n\n')
-        # This is not mandatory, skip if any error occurred
-        pass
             
     #####################################################################################################
     # Code block: Merge plot files

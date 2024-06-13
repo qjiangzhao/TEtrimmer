@@ -1837,7 +1837,7 @@ def merge_pdfs(output_dir, output_file_n, *pdfs):
 
     if valid_pdf_count == 0:
         merger.close()
-        return False
+        raise Exception
 
 
 def dotplot(sequence1, sequence2, output_dir):
@@ -1886,13 +1886,16 @@ def dotplot(sequence1, sequence2, output_dir):
         subprocess.run(ps2pdf_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except FileNotFoundError:
-        prcyan("\n'ps2pdf' command not found. Please install it with 'sudo apt-get install ghostscript'")
-        prgre("ps2pdf does not affect the final consensus sequence. You can choose to ignore this error.")
+        prcyan("\n'ps2pdf' command not found. Please install it with 'sudo apt-get install ghostscript' or"
+               "'conda install conda-forge::ghostscript'")
+        prgre("ps2pdf does not affect the final consensus sequence. But you won't get dot plots in the report file. "
+              "You can choose to ignore this error.")
         return None
 
     except subprocess.CalledProcessError as e:
         prcyan(f"\n'ps2pdf' failed for {n_after_tetrimmer} with error code {e.returncode}")
-        prgre("\nps2pdf does not affect the final consensus sequence. You can choose to ignore this error.\n")
+        prgre("\nps2pdf does not affect the final consensus sequence. But you won't get dot plots in the report file."
+              " You can choose to ignore this error.\n")
         return None
 
     return pdf_out

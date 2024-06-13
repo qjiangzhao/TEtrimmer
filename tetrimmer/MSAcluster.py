@@ -165,7 +165,7 @@ def calculate_tree_dis(input_file):
         for j in range(1, num_terminals + 1):
             # If i and j are equal, set distance to 1
             if i == j:
-                distance_matrix[i][j] = 1
+                distance_matrix[i][j] = 0
             else:
                 # Calculate the total branch length between terminal nodes i and j
                 total_branch_length = tree.distance(terminals[i - 1], terminals[j - 1])

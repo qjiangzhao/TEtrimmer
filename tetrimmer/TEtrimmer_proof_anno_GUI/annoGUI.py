@@ -627,7 +627,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         # "tetrimmer" means to check TEtrimmer output files. "cons_lib" is to search TE consensus library files
         # te_trimmer_proof_curation_dir
         found_paths = []
-        print(current_canvas_status)
 
         if current_canvas_status == "tetrimmer_out":
             # direct dir to
