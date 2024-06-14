@@ -294,7 +294,7 @@ def dbscan_cluster(input_file, pca=True):
     distance_np[np.isnan(distance_np)] = np.nanmax(distance_np) + 1
 
     # Apply DBSCAN clustering with the recommended eps value
-    dbscan = DBSCAN(eps=0.1, min_samples=2, metric="precomputed")
+    dbscan = DBSCAN(eps=0.1, min_samples=3, metric="precomputed")
     labels = dbscan.fit_predict(distance_np)
     if pca:
         title = os.path.basename(input_file)

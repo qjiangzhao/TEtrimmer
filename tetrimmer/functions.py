@@ -1888,14 +1888,14 @@ def dotplot(sequence1, sequence2, output_dir):
     except FileNotFoundError:
         prcyan("\n'ps2pdf' command not found. Please install it with 'sudo apt-get install ghostscript' or"
                "'conda install conda-forge::ghostscript'")
-        prgre("ps2pdf does not affect the final consensus sequence. But you won't get dot plots in the report file. "
-              "You can choose to ignore this error.")
+        #prgre("ps2pdf does not affect the final consensus sequence. But you won't get dot plots in the report file. "
+              #"You can choose to ignore this error.")
         return None
 
     except subprocess.CalledProcessError as e:
         prcyan(f"\n'ps2pdf' failed for {n_after_tetrimmer} with error code {e.returncode}")
-        prgre("\nps2pdf does not affect the final consensus sequence. But you won't get dot plots in the report file."
-              " You can choose to ignore this error.\n")
+        #prgre("\nps2pdf does not affect the final consensus sequence. But you won't get dot plots in the report file."
+              #" You can choose to ignore this error.\n")
         return None
 
     return pdf_out
