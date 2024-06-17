@@ -364,10 +364,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     # Get fasta file based on the extended bed file
                     extract_fasta_from_bed(genome_f, input_fasta_after_ex_bed, output_fasta)
 
-                    if os_type == "Darwin":
-                        ext_button.config(fg='red')  # Change button text color under macOS system
-                    else:
-                        ext_button.config(bg='light green')  # Change button color
+                    # if os_type == "Darwin":
+                    #     ext_button.config(fg='red')  # Change button text color under macOS system
+                    # else:
+                    #     ext_button.config(bg='light green')  # Change button color
+                    ext_button.config(fg='red')
                     ext_button.update_idletasks()
 
                     # Fresh child canvas
@@ -420,12 +421,13 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
                     # Only change button background or text color when GUI_plotter is successfull
                     if GUI_plotter_succeed:
-                        if os_type == "Darwin":
-                            button.config(fg='red')  # Change button text color under macOS system
-                            button.update_idletasks()  # Update UI immediately
-                        else:
-                            button.config(bg='light green')  # Change button color
-                            button.update_idletasks()  # Update UI immediately
+                        # if os_type == "Darwin":
+                        #     button.config(fg='red')  # Change button text color under macOS system
+                        #     button.update_idletasks()  # Update UI immediately
+                        # else:
+                        #     button.config(bg='light green')  # Change button color
+                        #     button.update_idletasks()  # Update UI immediately
+                        button.config(fg='red')
                         button.update_idletasks()
 
                 except Exception as e:
@@ -458,12 +460,13 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
                     crop_end_div(input_file, output_file, threshold=crop_div_thr_g, window_size=crop_div_win_g)
 
-                    if os_type == "Darwin":
-                        button.config(fg='red')  # Change button text color under macOS system
-                        button.update_idletasks()  # Update UI immediately
-                    else:
-                        button.config(bg='light green')  # Change button color
-                        button.update_idletasks()  # Update UI immediately
+                    # if os_type == "Darwin":
+                    #     button.config(fg='red')  # Change button text color under macOS system
+                    #     button.update_idletasks()  # Update UI immediately
+                    # else:
+                    #     button.config(bg='light green')  # Change button color
+                    #     button.update_idletasks()  # Update UI immediately
+                    button.config(fg='red')
                     button.update_idletasks()
 
                     # Fresh child canvas
@@ -497,12 +500,13 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
                     crop_end_gap(input_file, output_file, gap_threshold=crop_gap_thr_g, window_size=crop_gap_win_g)
 
-                    if os_type == "Darwin":
-                        button.config(fg='red')  # Change button text color under macOS system
-                        button.update_idletasks()  # Update UI immediately
-                    else:
-                        button.config(bg='light green')  # Change button color
-                        button.update_idletasks()  # Update UI immediately
+                    # if os_type == "Darwin":
+                    #     button.config(fg='red')  # Change button text color under macOS system
+                    #     button.update_idletasks()  # Update UI immediately
+                    # else:
+                    #     button.config(bg='light green')  # Change button color
+                    #     button.update_idletasks()  # Update UI immediately
+                    button.config(fg='red')
                     button.update_idletasks()
 
                     # Fresh child canvas
@@ -539,12 +543,13 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                                       simi_check_gap_thr=simi_check_gap_thr_g,
                                                       similarity_thr=similarity_thr_g,
                                                       min_nucleotide=min_nucleotide_g)
-                    if os_type == "Darwin":
-                        button.config(fg='red')  # Change button text color under macOS system
-                        button.update_idletasks()  # Update UI immediately
-                    else:
-                        button.config(bg='light green')  # Change button color
-                        button.update_idletasks()  # Update UI immediately
+                    # if os_type == "Darwin":
+                    #     button.config(fg='red')  # Change button text color under macOS system
+                    #     button.update_idletasks()  # Update UI immediately
+                    # else:
+                    #     button.config(bg='light green')  # Change button color
+                    #     button.update_idletasks()  # Update UI immediately
+                    button.config(fg='red')
                     button.update_idletasks()
 
                     # Fresh child canvas
@@ -678,10 +683,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                         other_cons_fasta = os.path.join(source_dir, f"{os.path.basename(other_cons_blast)}.fa")
                         extract_fasta_from_bed(genome_f, other_cons_bed, other_cons_fasta)
 
-                        if os_type == "Darwin":
-                            blast_button.config(fg='red')  # Change button text color under macOS system
-                        else:
-                            blast_button.config(bg='light green')  # Change button color
+                        # if os_type == "Darwin":
+                        #     blast_button.config(fg='red')  # Change button text color under macOS system
+                        # else:
+                        #     blast_button.config(bg='light green')  # Change button color
+                        blast_button.config(fg='red')
                         blast_button.update_idletasks()
 
                         # Fresh child canvas
@@ -717,10 +723,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     # use source_dir here to redirect the consensus file to the same folder with the input file
                     con_generater(input_fasta_file, source_dir, threshold=cons_thre, ambiguous=ambiguous)
 
-                    if os_type == "Darwin":
-                        cons_button.config(fg='red')  # Change button text color under macOS system
-                    else:
-                        cons_button.config(bg='light green')  # Change button color
+                    # if os_type == "Darwin":
+                    #     cons_button.config(fg='red')  # Change button text color under macOS system
+                    # else:
+                    #     cons_button.config(bg='light green')  # Change button color
+                    cons_button.config(fg='red')
                     cons_button.update_idletasks()
 
                 except Exception as e:
@@ -1062,12 +1069,14 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 os.remove(last_copied_file)
                 copy_history.pop()
 
-                if os_type == "Darwin":
-                    last_button.config(fg='black')  # Change button text color under macOS system
-                    last_button.update_idletasks()  # Update UI immediately
-                else:
-                    last_button.config(bg='white')  # Change button color
-                    last_button.update_idletasks()  # Update UI immediately
+                # if os_type == "Darwin":
+                #     last_button.config(fg='black')  # Change button text color under macOS system
+                #     last_button.update_idletasks()  # Update UI immediately
+                # else:
+                #     last_button.config(bg='white')  # Change button color
+                #     last_button.update_idletasks()  # Update UI immediately
+                last_button.config(fg='black')  # Change button text color under macOS system
+                last_button.update_idletasks()  # Update UI immediately
 
                 messagebox.showinfo("Info", f"Successfully removed '{last_copied_file}'.")
             except Exception as e:
@@ -1083,12 +1092,13 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 os.makedirs(target_directory, exist_ok=True)
                 try:
                     shutil.copy(file_path, target_directory)
-                    if os_type == "Darwin":
-                        button.config(fg='red')  # Change button text color under macOS system
-                        button.update_idletasks()  # Update UI immediately
-                    else:
-                        button.config(bg='light green')  # Change button color
-                        button.update_idletasks()  # Update UI immediately
+                    # if os_type == "Darwin":
+                    #     button.config(fg='red')  # Change button text color under macOS system
+                    #     button.update_idletasks()  # Update UI immediately
+                    # else:
+                    #     button.config(bg='light green')  # Change button color
+                    #     button.update_idletasks()  # Update UI immediately
+                    button.config(fg='red')
                     button.update_idletasks()
                     if len(copy_history) >= 100:
                         copy_history.pop(0)
@@ -1145,12 +1155,15 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     def open_file(filename, button, source_dir):
         def _open_file(event):
             filepath = os.path.join(source_dir, filename)
-            if os_type == "Darwin":
-                button.config(fg='red')  # Change button text color under macOS system
-                button.update_idletasks()  # Update UI immediately
-            else:
-                button.config(bg='yellow')  # Change button color
-                button.update_idletasks()  # Update UI immediately
+            # if os_type == "Darwin":
+            #     button.config(fg='red')  # Change button text color under macOS system
+            #     button.update_idletasks()  # Update UI immediately
+            # else:
+            #     button.config(bg='yellow')  # Change button color
+            #     button.update_idletasks()  # Update UI immediately
+            button.config(fg='red')
+            button.update_idletasks()
+
             if os.path.isdir(filepath):
                 open_cluster_folder(filename, source_dir)
             else:
@@ -1315,7 +1328,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                         others_button_bg = states[8][0]
                         others_button_fg = states[8][1]
                 else:
-                    file_button_bg = 'blue'
+                    file_button_bg = 'white'
                     file_button_fg = 'blue'
 
             # Add file name button into canvas frame
@@ -1514,7 +1527,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                         cons_button_bg = states[8][0]
                         cons_button_fg = states[8][1]
                 else:
-                    file_button_bg = 'blue'
+                    file_button_bg = 'white'
                     file_button_fg = 'blue'
 
             # Add file name button into canvas frame
