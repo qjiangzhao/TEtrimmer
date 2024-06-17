@@ -10,7 +10,8 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Align import AlignInfo
 import warnings
 from Bio import BiopythonDeprecationWarning
-from GUI_functions import blast
+from tkinter import messagebox
+from GUI_functions import blast, check_database
 
 # Suppress all deprecation warnings
 warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
@@ -44,60 +45,6 @@ def con_generater(input_file, output_dir, threshold=0.8, ambiguous="N"):
     return output_file, consensus_length
 
 
-def check_database(genome_file, output_dir=None):
-
-    # Define database path
-    genome_n = os.path.basename(genome_file)
-    if output_dir is None:
-        database_path = genome_file
-    else:
-        database_path = os.path.join(output_dir, genome_n)
-
-    database_file = f"{database_path}.nin"
-
-    if not os.path.isfile(database_file):
-
-        try:
-            makeblastdb_cmd = f"makeblastdb -in {genome_file} -dbtype nucl -out {database_path} "
-            subprocess.run(makeblastdb_cmd, shell=True, check=True, stdout=subprocess.PIPE,
-                           stderr=subprocess.PIPE, text=True)
-            return database_path
-
-        except FileNotFoundError:
-            click.echo("'makeblastdb' command not found. Please ensure 'makeblastdb' is installed correctly.")
-            raise Exception
-
-        except subprocess.CalledProcessError as e:
-            click.echo(f"makeblastdb failed with exit code {e.returncode}")
-            click.echo(e.stderr)
-            return False
-    else:
-        return database_path
-
-
-#####################################################################################################
-# Code block: blast with genome
-#####################################################################################################
-def blast_with_genome(input_file, output_dir, genome_file, e_value=1e-40):
-
-    # Generate consensus sequence
-    con_seq, cons_len = con_generater(input_file, output_dir, threshold=0.6)
-
-    # Check genome blast database availability
-    blast_database = check_database(genome_file)
-
-    # Run blast
-    if blast_database:
-        blast_file_teaid, blast_file = blast(con_seq, blast_database, output_dir, e_value=e_value)
-
-        if blast_file_teaid:
-            return blast_file_teaid, cons_len
-        else:
-            return False, False
-    else:
-        return False, False
-
-
 #####################################################################################################
 # Code block: self blast
 #####################################################################################################
@@ -117,10 +64,11 @@ def self_blast(input_file, output_dir):
     blast_database = check_database(con_seq, output_dir_self_blast)
 
     # Run blast. Use bigger e_value for self blast
-    if blast_database:
+    if blast_database != "makeblastdb_not_found" and blast_database != "makeblastdb_got_error":
+
         blast_file_teaid, blast_file = blast(con_seq, blast_database, output_dir_self_blast, e_value=0.05)
 
-        if blast_file_teaid:
+        if blast_file_teaid not in ["blastn_not_found", "blastn_got_error", "blast_n_zero"] and blast_file_teaid:
             return blast_file_teaid
         else:
             return False
@@ -327,21 +275,69 @@ def dot_plot(df):
 # Code block: TEtrimmer GUI plotter
 #####################################################################################################
 
-def GUI_plotter(input_file, output_dir, genome_file, e_value=1e-40):
+def GUI_plotter(input_file, output_dir, genome_file, current_win, e_value=1e-40):
 
+    run_succeed = True
     fig_blast = None
     fig_coverage = None
     fig_dot = None
 
-    # Do genome blast including database construction and blastn
-    genome_blast_out, cons_len = blast_with_genome(input_file, output_dir, genome_file, e_value=e_value)
+    # Generate consensus sequence
+    con_seq, cons_len = con_generater(input_file, output_dir, threshold=0.6)
 
-    if genome_blast_out:
-        df_genome_blast_out = pd.read_csv(genome_blast_out)
+    # Check genome blast database availability
+    blast_database = check_database(genome_file)
 
-        # Genome blast plot and blast coverage plot
-        fig_blast, divergence_max, blast_plot_title = blast_plot(df_genome_blast_out, cons_len)
-        fig_coverage, coverage_max = coverage_plot(df_genome_blast_out, cons_len)
+    # Check if makeblastdb is correctly installed
+    if blast_database == "makeblastdb_not_found":
+        messagebox.showerror("Error",
+                             "makeblastdb command not found. Please make sure BLAST is correctly installed.",
+                             parent=current_win)
+        run_succeed = False
+        return run_succeed
+
+    # Check if error happened
+    elif blast_database == "makeblastdb_got_error":
+        messagebox.showerror("Error",
+                             "BLAST database can't be established. Refer to terminal for more information.",
+                             parent=current_win)
+        run_succeed = False
+        return run_succeed
+
+    genome_blast_out, _ = blast(con_seq, blast_database, output_dir, e_value=e_value)
+
+    if genome_blast_out == "blastn_not_found":
+        messagebox.showerror("Error",
+                             "BLAST command not found. Please make sure BLAST is correctly installed.",
+                             parent=current_win)
+        run_succeed = False
+        return run_succeed
+
+    elif genome_blast_out == "blastn_got_error":
+        messagebox.showerror("Error",
+                             "BLAST can't be conducted. Refer to terminal for more information.",
+                             parent=current_win)
+        run_succeed = False
+        return run_succeed
+
+    elif genome_blast_out == "blast_n_zero":
+        messagebox.showerror("Warning",
+                             "BLAST hit number is 0 for this sequence.",
+                             parent=current_win)
+        run_succeed = False
+        return run_succeed
+    elif not genome_blast_out:
+        messagebox.showerror("Warning",
+                             "BLAST can't be conducted. Refer to terminal for more information.",
+                             parent=current_win)
+        run_succeed = False
+        return run_succeed
+
+    df_genome_blast_out = pd.read_csv(genome_blast_out)
+
+    # Genome blast plot and blast coverage plot
+    fig_blast, divergence_max, blast_plot_title = blast_plot(df_genome_blast_out, cons_len)
+    fig_coverage, coverage_max = coverage_plot(df_genome_blast_out, cons_len)
 
     # Perform self blast
     dotplot_blast = self_blast(input_file, output_dir)
@@ -430,4 +426,6 @@ def GUI_plotter(input_file, output_dir, genome_file, e_value=1e-40):
             fig_coverage.show()
         if fig_dot is not None:
             fig_dot.show()
+
+    return run_succeed
 

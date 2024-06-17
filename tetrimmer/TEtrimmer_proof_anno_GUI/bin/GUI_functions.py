@@ -61,7 +61,40 @@ def separate_sequences(input_file, output_dir):
                 SeqIO.write(record, output_file, 'fasta')
 
 
-def blast(input_file, genome_file, blast_out_dir, e_value=1e-40,  bed_file=False):
+def check_database(genome_file, output_dir=None):
+
+    # Define database path
+    genome_n = os.path.basename(genome_file)
+    if output_dir is None:
+        database_path = genome_file
+    else:
+        database_path = os.path.join(output_dir, genome_n)
+
+    database_file = f"{database_path}.nin"
+
+    if not os.path.isfile(database_file):
+
+        try:
+            makeblastdb_cmd = f"makeblastdb -in {genome_file} -dbtype nucl -out {database_path} "
+            subprocess.run(makeblastdb_cmd, shell=True, check=True, stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE, text=True)
+            return database_path
+
+        except FileNotFoundError:
+            click.echo(f"'makeblastdb' command not found. Please ensure 'makeblastdb' is installed correctly.\n"
+                       f"{traceback.format_exc()}")
+            return "makeblastdb_not_found"
+
+        except subprocess.CalledProcessError as e:
+            click.echo(f"makeblastdb failed with exit code {e.returncode} \n"
+                       f"{traceback.format_exc()}")
+            click.echo(e.stderr)
+            return "makeblastdb_got_error"
+    else:
+        return database_path
+
+
+def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=False):
 
     # Define blast out without header
     blast_out_file = os.path.join(blast_out_dir, f"{os.path.basename(input_file)}_no_header.b")
@@ -72,60 +105,69 @@ def blast(input_file, genome_file, blast_out_dir, e_value=1e-40,  bed_file=False
     blast_cmd = [
         "blastn",
         "-query", input_file,
-        "-db", genome_file,
+        "-db", blast_database,
         "-outfmt", "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send sstrand evalue bitscore",
         "-evalue", str(e_value),
         "-out", blast_out_file
     ]
 
-    subprocess.run(blast_cmd, check=True, text=True)
-
-    # Check if the blast hit number is 0
-    if os.path.getsize(blast_out_file) == 0:
-        return False, False
-
-    # Add header to blast out
-    # Define the header
-    header = [
-        "qseqid", "sseqid", "pident", "length", "mismatch", "gapopen",
-        "qstart", "qend", "sstart", "send", "sstrand", "evalue", "bitscore"
-    ]
-
-    # Read the BLAST output into a DataFrame
-    blast_out_file_df = pd.read_csv(blast_out_file, delimiter='\t', header=None, names=header)
-
-    # Save the DataFrame back to the file
-    blast_out_file_df.to_csv(blast_out_file_header, sep='\t', index=False)
-
     try:
         # Run the BLAST command
         subprocess.run(blast_cmd, check=True, capture_output=True, text=True)
 
+    except FileNotFoundError:
+        click.echo(f"'blastn' command not found. Please ensure 'blastn' is installed correctly.\n"
+                   f"{traceback.format_exc()}")
+        return "blastn_not_found", False
+
     except subprocess.CalledProcessError as e:
         click.echo(f"An error occurred during BLAST: \n {traceback.format_exc()}")
         click.echo(f"\nBLAST failed with error code {e.returncode}")
+        # Print the error generated from the BLAST itself
         click.echo(e.stderr)
-        return False, False
+        return "blastn_got_error", False
 
+    # Check if the blast hit number is 0
+    if os.path.isfile(blast_out_file) and os.path.getsize(blast_out_file) == 0:
+        return "blast_n_zero", False
+
+    # TE-Aid analysis don't need bed file
     if not bed_file:
-        # Define the header
+        # TE-Aid used different headers to deal with the blast output file.
+        # Define the header for TE-Aid
         col_n = ["V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12", "V13"]
 
         # Read the BLAST output file into a pandas DataFrame
         try:
+            # Define blast output file for TE-Aid
             blast_out_teaid_file = f"{blast_out_file}_TEAid.b"
+
+            # Add TE-Aid style header to the blast output
             blast_data_teaid_df = pd.read_csv(blast_out_file, delimiter="\t", header=None, names=col_n)
 
             # Save the DataFrame back to the file with the header, use "," as deliminator for TE-Aid
             blast_data_teaid_df.to_csv(blast_out_teaid_file, sep=',', index=False)
 
-            return blast_out_teaid_file, blast_out_file_header
+            return blast_out_teaid_file, False
 
         except Exception as e:
             click.echo(f"An error occurred while processing the BLAST output for TE-Aid : \n {traceback.format_exc()}")
             return False, False
+    # "Blast" button need bed file to allow to extract sequence from the genome
     else:
         try:
+            # Add header to blast out
+            # Define the header
+            header = [
+                "qseqid", "sseqid", "pident", "length", "mismatch", "gapopen",
+                "qstart", "qend", "sstart", "send", "sstrand", "evalue", "bitscore"
+            ]
+
+            # Read the BLAST output into a DataFrame and add header to the blast output
+            blast_out_file_df = pd.read_csv(blast_out_file, delimiter='\t', header=None, names=header)
+
+            # Save the DataFrame back to blast_out_file_header file, this file will be shown in the GUI
+            blast_out_file_df.to_csv(blast_out_file_header, sep='\t', index=False)
             blast_out_bed_file = f"{blast_out_file}.bed"
 
             blast_data_bed_df = pd.read_csv(blast_out_file, delimiter='\t', header=None)

@@ -42,7 +42,7 @@ from crop_end_divergence import crop_end_div
 from crop_end_gap import crop_end_gap
 from remove_gap import remove_gaps_with_similarity_check
 from GUI_functions import separate_sequences, blast, fasta_header_to_bed, extend_bed_regions, \
-    extract_fasta_from_bed
+    extract_fasta_from_bed, check_database
 from cialign_plot import drawMiniAlignment
 
 #####################################################################################################
@@ -85,10 +85,10 @@ if os_type == "Windows":
                    'If you start the "annoGUI.py" from TETrimmer output directory, you do not need to use this option')
 @click.option('--output_dir', '-o', default=None, type=str,
               help='Output directory. Default: input directory')
-@click.option('--genome_file', '-g', required=True, type=str,
+@click.option('--genome_file', '-g', default=None, type=str,
               help='Genome fasta file path.')
 @click.option('--consensus_lib', '-clib', default=None, type=str,
-              help='TE consensus library fasta file. You can check and improve other TE consensus '
+              help='TE consensus library FASTA file. You can check and improve other TE consensus '
                    'library e.g. The TE library directly from EDTA2, RepeatModeler2, and other tools. If you want to '
                    'check the same TE library as last time, you do not need to use this option again.')
 def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, consensus_lib):
@@ -110,8 +110,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     copy_history = []
 
     # Define cleaning module, blast, and consensus generation global parameters
-    global crop_div_thr_g, crop_div_win_g, crop_gap_thr_g, crop_gap_win_g
-    global column_gap_thr_g, simi_check_gap_thr_g, similarity_thr_g, min_nucleotide_g, cons_thre_g, blast_e_value_g
+    global crop_div_thr_g, crop_div_win_g, crop_gap_thr_g, crop_gap_win_g, column_gap_thr_g, simi_check_gap_thr_g, \
+        similarity_thr_g, min_nucleotide_g, cons_thre_g, blast_e_value_g
 
     crop_div_thr_g = 0.65
     crop_div_win_g = 40
@@ -124,10 +124,13 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     cons_thre_g = 0.8
     blast_e_value_g = 1e-40
 
-    # Define global variable to determine the current canvas contens
+    # Define global variable to determine the current canvas content
     global current_canvas_content
-
     current_canvas_content = "tetrimmer_out"
+
+    # Define global genome length file variable
+    global chrom_size
+    chrom_size = None
 
     # If the -i option is None define the default input directory
     if te_trimmer_proof_curation_dir is None:
@@ -202,26 +205,33 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
     def read_genome_lengths(genome_length_file):
 
-        chrom_sizes = {}
+        chrom_s = {}
         with open(genome_length_file, 'r') as file:
             for line in file:
                 parts = line.strip().split()
-                chrom_sizes[parts[0]] = int(parts[1])
-        return chrom_sizes
+                chrom_s[parts[0]] = int(parts[1])
+        return chrom_s
 
-    # Check is genome length file exist otherwise create it
+    # Check if genome length file exist otherwise create it
     # Define genome length file name
-    genome_length_f = os.path.join(bin_py_path, f"{os.path.basename(genome_file)}.length")
-    try:
-        if os.path.isfile(genome_length_f):
-            chrom_size = read_genome_lengths(genome_length_f)
-        else:
-            # Generate genome length file when it can't be found
-            genome_length_f = calculate_genome_length(genome_file, genome_length_f)
-            chrom_size = read_genome_lengths(genome_length_f)
-    except Exception as e:
-        click.echo(f"\nError while generate genome length file. Error: {str(e)}\n")
-        return
+    def do_genome_length_calculation(genome_f):
+        genome_length_f = os.path.join(bin_py_path, f"{os.path.basename(genome_f)}.length")
+        try:
+            # Check if genome file is provided by the user
+            if genome_f is None:
+                return None
+
+            if os.path.isfile(genome_length_f):
+                chrom_s = read_genome_lengths(genome_length_f)
+            else:
+                # Generate genome length file when it can't be found
+                genome_length_f = calculate_genome_length(genome_f, genome_length_f)
+                chrom_s = read_genome_lengths(genome_length_f)
+
+            return chrom_s
+        except Exception as e:
+            click.echo(f"\nError while generate genome length file. Error: {str(e)}\n")
+            return None
 
     #####################################################################################################
     # Code block: extension module
@@ -290,9 +300,41 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     # child_canvas contain child_frame
     # current_win contains child_frame and child_canvas
     def extension_function(input_fasta_n, ext_button, source_dir, output_dir, current_win, chrom_s, child_frame,
-                           child_canvas, update_child_canvas=True, file_start=0, file_end=500, save_path=None):
-        def _extension_function(event):
+                           child_canvas, genome_f, update_child_canvas=True, file_start=0, file_end=500, save_path=None):
+        def _extension_function(event, chrom_s=chrom_s):
+
+            global chrom_size
+
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
+                # Check if genome file is provided
+                if genome_f is None:
+                    messagebox.showerror("Error",
+                                         "Genome file not found. Extension can not be performed. Please provide "
+                                         "genome file by option '-g'",
+                                         parent=current_win)
+                    return
+                # Check if provided genome file exist
+                elif not os.path.isfile(genome_f):
+                    messagebox.showerror("Error",
+                                         "Your provided genome file not exist. Extension can not be performed.",
+                                         parent=current_win)
+                    return
+
+                try:
+                    if chrom_s is None:
+                        # When genome file is provided calculate genome length when it is not available
+                        chrom_s = do_genome_length_calculation(genome_f)
+                        # Assign genome length file path to global variable chrom_size
+                        chrom_size = chrom_s
+
+                except Exception as e:
+                    # Error could happen during genome length calculation, for example when the provided genome
+                    # file is not a FAST format file.
+                    click.echo(f"An error occurred during genome length file generation: \n {traceback.format_exc()}")
+                    messagebox.showerror("Error", f"Genome length file generation failed, please make sure you provide"
+                                                  f" FASTA format file. Refer to terminal for more information.",
+                                         parent=current_win)
+                    return
 
                 left_ex = simpledialog.askinteger("Input", "Enter left extension length (bp):",
                                                   parent=current_win, minvalue=0, initialvalue=1000)
@@ -306,42 +348,45 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
                 progress = show_progress_bar(child_canvas)  # Show progress bar
 
-                if input_fasta_n.lower().endswith(('.fa', '.fasta')):
-                    input_fasta_f = os.path.join(source_dir, input_fasta_n)
-                    base_name = os.path.splitext(input_fasta_n)[0]
-                    output_fasta = os.path.join(source_dir, f"{input_fasta_n}_{left_ex}_{right_ex}.fa")
+                input_fasta_f = os.path.join(source_dir, input_fasta_n)
+                base_name = os.path.splitext(input_fasta_n)[0]
+                output_fasta = os.path.join(source_dir, f"{input_fasta_n}_{left_ex}_{right_ex}.fa")
 
-                    try:
-                        # Generate bed file based on fasta header
-                        input_fasta_bed = fasta_header_to_bed(input_fasta_f, os.path.join(output_dir, f"{base_name}.bed"))
+                try:
+                    # Generate bed file based on fasta header
+                    input_fasta_bed = fasta_header_to_bed(input_fasta_f, os.path.join(output_dir, f"{base_name}.bed"))
 
-                        # Do bed file extension
-                        input_fasta_after_ex_bed = extend_bed_regions(input_fasta_bed, left_ex, right_ex, chrom_s,
-                                                                      os.path.join(output_dir,
-                                                                                   f"{base_name}_{left_ex}_{right_ex}.bed"))
+                    # Do bed file extension
+                    input_fasta_after_ex_bed = extend_bed_regions(input_fasta_bed, left_ex, right_ex, chrom_s,
+                                                                  os.path.join(output_dir,
+                                                                               f"{base_name}_{left_ex}_{right_ex}.bed"))
 
-                        # Get fasta file based on the extended bed file
-                        extract_fasta_from_bed(genome_file, input_fasta_after_ex_bed, output_fasta)
+                    # Get fasta file based on the extended bed file
+                    extract_fasta_from_bed(genome_f, input_fasta_after_ex_bed, output_fasta)
 
-                        if os_type == "Darwin":
-                            ext_button.config(fg='red')  # Change button text color under macOS system
-                        else:
-                            ext_button.config(bg='light green')  # Change button color
-                        ext_button.update_idletasks()
+                    if os_type == "Darwin":
+                        ext_button.config(fg='red')  # Change button text color under macOS system
+                    else:
+                        ext_button.config(bg='light green')  # Change button color
+                    ext_button.update_idletasks()
 
-                        # Fresh child canvas
-                        fresh_canvas(child_frame, child_canvas, source_dir, current_win,
-                                     update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end,
-                                     fresh_save_path=save_path)
+                    # Fresh child canvas
+                    fresh_canvas(child_frame, child_canvas, source_dir, current_win,
+                                 update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end,
+                                 fresh_save_path=save_path)
 
-                    except Exception as e:
-                        click.echo(f"An error occurred during extension: \n {traceback.format_exc()}")
-                        messagebox.showerror("Error", f"An error occurred during extension: {str(e)}", parent=current_win)
-
-                    finally:
-                        progress.stop()
-                        progress.pack_forget()  # Hide the progress bar
+                except Exception as e:
+                    click.echo(f"An error occurred during extension: \n {traceback.format_exc()}")
+                    messagebox.showerror("Error", f"An error occurred during extension: {str(e)}. "
+                                                  f"Refer to terminal for more information.", parent=current_win)
+                # finally will make sure the following code will be executed no matter if error happens
+                finally:
+                    progress.stop()
+                    progress.pack_forget()  # Hide the progress bar
             else:
+                messagebox.showerror("Error",
+                                     f"You can only apply Extension for FASTA file (file name end with .fa or .fasta)",
+                                     parent=current_win)
                 return
 
         return _extension_function
@@ -349,7 +394,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     #####################################################################################################
     # Code block: set plotter function
     #####################################################################################################
-    def plotter_function(input_fasta_n, button, source_dir, output_dir, genome_file, child_canvas, current_win):
+    def plotter_function(input_fasta_n, button, source_dir, output_dir, genome_f, child_canvas, current_win):
         def _plotter_function(event):
 
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
@@ -357,24 +402,42 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 input_file = os.path.join(source_dir, input_fasta_n)
 
                 try:
-                    GUI_plotter(input_file, output_dir, genome_file)
+                    if genome_f is None:
+                        messagebox.showerror("Error",
+                                             "Genome file not found. TE-Aid plotting can not be performed. "
+                                             "Please provide genome file by option '-g'",
+                                             parent=current_win)
+                        return
 
-                    if os_type == "Darwin":
-                        button.config(fg='red')  # Change button text color under macOS system
-                        button.update_idletasks()  # Update UI immediately
-                    else:
-                        button.config(bg='light green')  # Change button color
-                        button.update_idletasks()  # Update UI immediately
-                    button.update_idletasks()
+                    # Check if provided genome file exist
+                    elif not os.path.isfile(genome_f):
+                        messagebox.showerror("Error",
+                                             "Your provided genome file not exist. TEAid can not be performed.",
+                                             parent=current_win)
+                        return
+
+                    GUI_plotter_succeed = GUI_plotter(input_file, output_dir, genome_f, current_win, e_value=blast_e_value_g)
+
+                    # Only change button background or text color when GUI_plotter is successfull
+                    if GUI_plotter_succeed:
+                        if os_type == "Darwin":
+                            button.config(fg='red')  # Change button text color under macOS system
+                            button.update_idletasks()  # Update UI immediately
+                        else:
+                            button.config(bg='light green')  # Change button color
+                            button.update_idletasks()  # Update UI immediately
+                        button.update_idletasks()
 
                 except Exception as e:
-                    click.echo(f"An error occurred during plotting: \n {traceback.format_exc()}")
-                    messagebox.showerror("Error", f"Plotting failed, please align sequences first: {str(e)}",
+                    click.echo(f"An error occurred during TEAid plotting: \n {traceback.format_exc()}")
+                    messagebox.showerror("Error", f"TEAid plotting failed, please align sequences first: {str(e)}",
                                          parent=current_win)
                 finally:
                     progress.stop()
                     progress.pack_forget()  # Hide the progress bar
             else:
+                messagebox.showerror("Error", f"You can only apply TEAid for FASTA file (file name end with .fa or .fasta)",
+                                     parent=current_win)
                 return
         return _plotter_function
 
@@ -416,6 +479,10 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 finally:
                     progress.stop()
                     progress.pack_forget()  # Hide the progress bar
+            else:
+                messagebox.showerror("Error",
+                                     f"You can only perform MSA cleaning for FASTA file (file name end with .fa or .fasta)",
+                                     parent=current_win)
 
         return _crop_end_div_gui
 
@@ -450,6 +517,10 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 finally:
                     progress.stop()
                     progress.pack_forget()  # Hide the progress bar
+            else:
+                messagebox.showerror("Error",
+                                     f"You can only perform MSA cleaning for FASTA file (file name end with .fa or .fasta)",
+                                     parent=current_win)
 
         return _crop_end_gap_gui
 
@@ -488,11 +559,15 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 finally:
                     progress.stop()
                     progress.pack_forget()  # Hide the progress bar
+            else:
+                messagebox.showerror("Error",
+                                     f"You can only perform MSA cleaning for FASTA file (file name end with .fa or .fasta)",
+                                     parent=current_win)
 
         return _remove_gaps_with_similarity_check_gui
 
     #####################################################################################################
-    # Code block: functions related with checking TE consensus library
+    # Code block: functions related with checking TE consensus library, this is also used to check low_copy and skipped TEs
     #####################################################################################################
     def check_other_cons_lib(consensus_lib_file):
 
@@ -522,18 +597,73 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 input_fasta_file = os.path.join(source_dir, input_fasta_n)
 
                 try:
+                    if genome_f is None:
+                        messagebox.showerror("Error",
+                                             "Genome file not found. BLAST can not be performed. "
+                                             "Please provide genome file by option '-g'.",
+                                             parent=current_win)
+                        return
+
+                    # Check if provided genome file exist
+                    elif not os.path.isfile(genome_f):
+                        messagebox.showerror("Error",
+                                             "Your provided genome file not exist. BLAST can not be performed.",
+                                             parent=current_win)
+                        return
+
                     # Count the number of sequences in the input file
                     sequence_count = sum(1 for _ in SeqIO.parse(input_fasta_file, "fasta"))
 
                     if sequence_count != 1:
                         messagebox.showerror("Error",
-                                             "Blast can only be performed on files containing exactly one sequence.",
+                                             "BLAST can only be performed on FASTA file containing only one sequence.",
+                                             parent=current_win)
+                        return
+
+                    # Check genome blast database availability
+                    blast_database = check_database(genome_f)
+
+                    # Check if makeblastdb is correctly installed
+                    if blast_database == "makeblastdb_not_found":
+                        messagebox.showerror("Error",
+                                             "makeblastdb command not found. Please make sure BLAST is correctly installed.",
+                                             parent=current_win)
+                        return
+
+                    # Check if error happened
+                    elif blast_database == "makeblastdb_got_error":
+                        messagebox.showerror("Error",
+                                             "BLAST database can't be established. Refer to terminal for more information.",
                                              parent=current_win)
                         return
 
                     # Perform the blast operation if the sequence count is exactly one
-                    other_cons_bed, other_cons_blast = blast(input_fasta_file, genome_f, output_dir, e_value=e_value,
+                    other_cons_bed, other_cons_blast = blast(input_fasta_file, blast_database, output_dir, e_value=e_value,
                                                              bed_file=True)
+
+                    if other_cons_bed == "blastn_not_found":
+                        messagebox.showerror("Error",
+                                             "BLAST command not found. Please make sure BLAST is correctly installed.",
+                                             parent=current_win)
+                        return
+
+                    elif other_cons_bed == "blastn_got_error":
+                        messagebox.showerror("Error",
+                                             "BLAST can't be conducted. Refer to terminal for more information.",
+                                             parent=current_win)
+                        return
+
+                    elif other_cons_bed == "blast_n_zero":
+                        messagebox.showerror("Warning",
+                                             "BLAST hit number is 0 for this sequence.",
+                                             parent=current_win)
+                        return
+
+                    elif not other_cons_bed:
+                        messagebox.showerror("Warning",
+                                             "BLAST can't be conducted. Refer to terminal for more information.",
+                                             parent=current_win)
+                        return
 
                     if other_cons_bed and other_cons_blast:
 
@@ -563,6 +693,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     click.echo(f"An error occurred during blast: \n {traceback.format_exc()}")
                     messagebox.showerror("Error", f"Blast failed. Refer to terminal for more information: {str(e)}",
                                          parent=current_win)
+            else:
+                messagebox.showerror("Error",
+                                     f"You can only perform BLAST for FASTA file (file name end with .fa or .fasta)",
+                                     parent=current_win)
+                return
 
         return _check_other_cons_lib_blast
 
@@ -612,6 +747,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 fresh_canvas(child_frame, child_canvas, source_dir, current_win,
                              update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end,
                              fresh_save_path=save_path)
+            else:
+                messagebox.showerror("Error",
+                                     f"You can only generate consensus sequence for FASTA file "
+                                     f"(file name end with .fa or .fasta)",
+                                     parent=current_win)
 
         return _generate_cons
 
@@ -619,7 +759,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     # Code block: define consensus sequence generation function
     #####################################################################################################
     # Define search function
-    def search_files_with_pattern(filename_pattern, dirs, current_canvas_status="tetrimmer_out"):
+    def search_files_with_pattern(filename_pattern, dirs, current_canvas_status_local="tetrimmer_out"):
 
         # dirs: path contains all files need to search, like te_trimmer_proof_curation_dir
         # and other_cons_lib_single_file_folder
@@ -628,7 +768,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         # te_trimmer_proof_curation_dir
         found_paths = []
 
-        if current_canvas_status == "tetrimmer_out":
+        if current_canvas_status_local == "tetrimmer_out":
             # direct dir to
             check_paths = [os.path.join(dirs, "Clustered_proof_curation"),
                            os.path.join(dirs, "TE_low_copy"),
@@ -763,12 +903,20 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         logo_font = ('Courier', 13)
     else:
         logo_font = ('Courier', 5)
-    logo_label = Label(frame, text=log_text, bg='white', font=logo_font, justify='left', wraplength=1100)
-    logo_label.pack(pady=10)
 
-    # Display the explanatory text with 'Arial' font
-    text_label = Label(frame, text=initial_text, bg='white', font=('Arial', 15), justify='left', wraplength=1100)
-    text_label.pack(pady=10)
+    def clear_frame():
+        for widget in frame.winfo_children():
+            widget.destroy()
+    def open_start_page():
+        clear_frame()
+        logo_label = Label(frame, text=log_text, bg='white', font=logo_font, justify='left', wraplength=1100)
+        logo_label.pack(pady=10)
+
+        # Display the explanatory text with 'Arial' font
+        text_label = Label(frame, text=initial_text, bg='white', font=('Arial', 15), justify='left', wraplength=1100)
+        text_label.pack(pady=10)
+
+    open_start_page()
 
     #####################################################################################################
     # Code block: Define GUI functions
@@ -778,19 +926,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         numbers = re.findall(r'\d+', filename)
         return [int(num) for num in numbers]
 
-    def clear_frame():
-        for widget in frame.winfo_children():
-            widget.destroy()
-
-    def destroy_initial_label():
-        global logo_label
-        if logo_label:
-            logo_label.destroy()
-            logo_label = None
-        global text_label
-        if text_label:
-            text_label.destroy()
-            text_label = None
+    show_confirmation = BooleanVar(value=True)
 
     def show_progress_bar(parent, height=5, speed=1000):
         # Create a custom style
@@ -1003,7 +1139,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         global current_canvas_content
         current_canvas_content = "tetrimmer_out"
 
-        destroy_initial_label()
         load_files(start, end, frame, canvas, source_dir=path)
 
     # Set nested function to enable this function containing parameters to be used by button
@@ -1079,6 +1214,15 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     # frame contains child-frames and buttons
 
     def child_load_files(start, end, frame, canvas, source_dir, current_win, scroll_position=None, button_states=None):
+
+        # Used global variables
+        # chrom_size
+        # consensus_folder
+        # temp_folder
+        # genome_file
+        # cons_thre_g
+        # others_dir
+
         if scroll_position is not None:
             canvas.yview_moveto(scroll_position)  # Set scrollbar to saved position
         else:
@@ -1140,35 +1284,39 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             cons_button_fg = "black"
             others_button_fg = 'black'
 
-            if filename in button_states:
-                states = button_states[filename]
-                if len(states) >= 1:
-                    file_button_bg = states[0][0]
-                    file_button_fg = states[0][1]
-                if len(states) >= 2:
-                    save_button_bg = states[1][0]
-                    save_button_fg = states[1][1]
-                if len(states) >= 3:
-                    extension_button_bg = states[2][0]
-                    extension_button_fg = states[2][1]
-                if len(states) >= 4:
-                    teaid_button_bg = states[3][0]
-                    teaid_button_fg = states[3][1]
-                if len(states) >= 5:
-                    crop_end_by_div_button_bg = states[4][0]
-                    crop_end_by_div_button_fg = states[4][1]
-                if len(states) >= 6:
-                    crop_end_by_gap_button_bg = states[5][0]
-                    crop_end_by_gap_button_fg = states[5][1]
-                if len(states) >= 7:
-                    remove_gap_column_button_bg = states[6][0]
-                    remove_gap_column_button_fg = states[6][1]
-                if len(states) >= 8:
-                    cons_button_bg = states[7][0]
-                    cons_button_fg = states[7][1]
-                if len(states) >= 9:
-                    others_button_bg = states[8][0]
-                    others_button_fg = states[8][1]
+            if len(button_states) != 0:
+                if filename in button_states:
+                    states = button_states[filename]
+                    if len(states) >= 1:
+                        file_button_bg = states[0][0]
+                        file_button_fg = states[0][1]
+                    if len(states) >= 2:
+                        save_button_bg = states[1][0]
+                        save_button_fg = states[1][1]
+                    if len(states) >= 3:
+                        extension_button_bg = states[2][0]
+                        extension_button_fg = states[2][1]
+                    if len(states) >= 4:
+                        teaid_button_bg = states[3][0]
+                        teaid_button_fg = states[3][1]
+                    if len(states) >= 5:
+                        crop_end_by_div_button_bg = states[4][0]
+                        crop_end_by_div_button_fg = states[4][1]
+                    if len(states) >= 6:
+                        crop_end_by_gap_button_bg = states[5][0]
+                        crop_end_by_gap_button_fg = states[5][1]
+                    if len(states) >= 7:
+                        remove_gap_column_button_bg = states[6][0]
+                        remove_gap_column_button_fg = states[6][1]
+                    if len(states) >= 8:
+                        cons_button_bg = states[7][0]
+                        cons_button_fg = states[7][1]
+                    if len(states) >= 9:
+                        others_button_bg = states[8][0]
+                        others_button_fg = states[8][1]
+                else:
+                    file_button_bg = 'blue'
+                    file_button_fg = 'blue'
 
             # Add file name button into canvas frame
             file_button = Button(frame, text=filename, anchor='w', bg=file_button_bg, fg=file_button_fg)
@@ -1192,7 +1340,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             # Bind "Extension" button with extension function
             more_extend_button.bind('<Button-1>', extension_function(filename, more_extend_button, source_dir,
                                                                      temp_folder, current_win, chrom_size, frame,
-                                                                     canvas))
+                                                                     canvas, genome_file))
 
             # Define "Plotter" button
             plot_button = Button(button_frame, text="TEAid", bg=teaid_button_bg, fg=teaid_button_fg)
@@ -1293,7 +1441,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         global current_canvas_content
         current_canvas_content = "cons_lib"
 
-        destroy_initial_label()
         clear_frame()
         if scroll_position is not None:
             canvas.yview_moveto(scroll_position)  # Set scrollbar to saved position
@@ -1336,36 +1483,39 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             crop_end_by_gap_button_fg = 'black'
             remove_gap_column_button_fg = "black"
             cons_button_fg = "black"
-
-            if filename in button_states:
-                states = button_states[filename]
-                if len(states) >= 1:
-                    file_button_bg = states[0][0]
-                    file_button_fg = states[0][1]
-                if len(states) >= 2:
-                    save_button_bg = states[1][0]
-                    save_button_fg = states[1][1]
-                if len(states) >= 3:
-                    blast_button_bg = states[2][0]
-                    blast_button_fg = states[2][1]
-                if len(states) >= 4:
-                    extension_button_bg = states[3][0]
-                    extension_button_fg = states[3][1]
-                if len(states) >= 5:
-                    teaid_button_bg = states[4][0]
-                    teaid_button_fg = states[4][1]
-                if len(states) >= 6:
-                    crop_end_by_div_button_bg = states[5][0]
-                    crop_end_by_div_button_fg = states[5][1]
-                if len(states) >= 7:
-                    crop_end_by_gap_button_bg = states[6][0]
-                    crop_end_by_gap_button_fg = states[6][1]
-                if len(states) >= 8:
-                    remove_gap_column_button_bg = states[7][0]
-                    remove_gap_column_button_fg = states[7][1]
-                if len(states) >= 9:
-                    cons_button_bg = states[8][0]
-                    cons_button_fg = states[8][1]
+            if len(button_states) != 0:
+                if filename in button_states:
+                    states = button_states[filename]
+                    if len(states) >= 1:
+                        file_button_bg = states[0][0]
+                        file_button_fg = states[0][1]
+                    if len(states) >= 2:
+                        save_button_bg = states[1][0]
+                        save_button_fg = states[1][1]
+                    if len(states) >= 3:
+                        blast_button_bg = states[2][0]
+                        blast_button_fg = states[2][1]
+                    if len(states) >= 4:
+                        extension_button_bg = states[3][0]
+                        extension_button_fg = states[3][1]
+                    if len(states) >= 5:
+                        teaid_button_bg = states[4][0]
+                        teaid_button_fg = states[4][1]
+                    if len(states) >= 6:
+                        crop_end_by_div_button_bg = states[5][0]
+                        crop_end_by_div_button_fg = states[5][1]
+                    if len(states) >= 7:
+                        crop_end_by_gap_button_bg = states[6][0]
+                        crop_end_by_gap_button_fg = states[6][1]
+                    if len(states) >= 8:
+                        remove_gap_column_button_bg = states[7][0]
+                        remove_gap_column_button_fg = states[7][1]
+                    if len(states) >= 9:
+                        cons_button_bg = states[8][0]
+                        cons_button_fg = states[8][1]
+                else:
+                    file_button_bg = 'blue'
+                    file_button_fg = 'blue'
 
             # Add file name button into canvas frame
             file_button = Button(frame, text=filename, anchor='w', bg=file_button_bg, fg=file_button_fg)
@@ -1401,7 +1551,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             # Bind "Extension" button with extension function
             more_extend_button.bind('<Button-1>', extension_function(filename, more_extend_button, source_dir,
                                                                      temp_folder, current_win, chrom_size, frame,
-                                                                     canvas, update_child_canvas=False,
+                                                                     canvas, genome_file, update_child_canvas=False,
                                                                      file_start=start, file_end=end,
                                                                      save_path=save_path))
 
@@ -1522,122 +1672,126 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     #####################################################################################################
     # Code block: Add menu bar for mother window
     #####################################################################################################
+    def create_mean_bar():
+        # The used global variables include: "root", "te_trimmer_proof_curation_dir",
+        # Create mother menu
+        menubar = Menu(root)
 
-    # Create mother menu
-    menubar = Menu(root)
+        menubar.delete(0, 'end')  # Clear the existing menu bar
 
-    # Show menu on the window
-    root.configure(menu=menubar)
+        # Show menu on the window
+        root.configure(menu=menubar)
 
-    annotation_folders = ["Clustered_proof_curation", "TE_low_copy", "TE_skipped", "Check_consensus_lib"]
+        annotation_folders = ["Clustered_proof_curation", "TE_low_copy", "TE_skipped", "Check_consensus_lib"]
 
-    # Create sub-menu
-    for i, annotation in enumerate(annotation_folders):
-        annotationMenu = Menu(menubar, tearoff=0)
-        menubar.add_cascade(label=annotation, menu=annotationMenu)
+        # Create sub-menu
+        for i, annotation in enumerate(annotation_folders):
+            annotationMenu = Menu(menubar, tearoff=0)
+            menubar.add_cascade(label=annotation, menu=annotationMenu)
 
-        # Check which menu button is selected
-        if i <= 2:  # Means "Clustered_proof_curation", "TE_low_copy", "TE_skipped"
-            annotation_path = os.path.join(te_trimmer_proof_curation_dir, annotation)
-        else:  # Means "Check_consensus_lib"
-            annotation_path = other_cons_lib_single_file_folder
+            # Check which menu button is selected
+            if i <= 2:  # Means "Clustered_proof_curation", "TE_low_copy", "TE_skipped"
+                annotation_path = os.path.join(te_trimmer_proof_curation_dir, annotation)
+            else:  # Means "Check_consensus_lib"
+                annotation_path = other_cons_lib_single_file_folder
 
-        # Give hits when folder isn't found
-        if not os.path.exists(annotation_path):
+            # Give hits when folder isn't found
+            if not os.path.exists(annotation_path):
 
-            if i == 0:
-                annotationMenu.add_command(label="Cluster folder not detected! Use correct input folder path",
-                                           command=partial(messagebox.showerror,
-                                                           "Error", "Please use the correct input directory by '-i' option."
-                                                                    " three folder should be contained in your input path, "
-                                                                    "including 'Clustered_proof_curation', "
-                                                                    "'TE_skipped', and 'TE_low_copy'"))
-            elif i == 1:
-                annotationMenu.add_command(label="No low copy TEs")
-            elif i == 2:
-                annotationMenu.add_command(label="No skipped TEs")
+                if i == 0:
+                    annotationMenu.add_command(label="Cluster folder not detected! Define correct input folder path by option '-i'",
+                                               command=partial(messagebox.showerror,
+                                                               "Error", "Please use the correct input directory by '-i' option."
+                                                                        " three folder should be contained in your input path, "
+                                                                        "including 'Clustered_proof_curation', "
+                                                                        "'TE_skipped', and 'TE_low_copy'"))
+                elif i == 1:
+                    annotationMenu.add_command(label="No low copy TEs")
+                elif i == 2:
+                    annotationMenu.add_command(label="No skipped TEs")
 
-            elif annotation == "Check_consensus_lib":
-                annotationMenu.add_command(label="TE consensus sequences not found",
-                                           command=partial(messagebox.showerror,
-                                                           "Error", "Please use option '--consensus_lib' to define the "
-                                                                    "TE consensus library path you want to check"))
-            continue
+                elif annotation == "Check_consensus_lib":
+                    annotationMenu.add_command(label="TE consensus sequences not found. Define it by option '-clib'",
+                                               command=partial(messagebox.showerror,
+                                                               "Error", "Please use option '-clib' to define the "
+                                                                        "TE consensus library path you want to check"))
+                continue
 
-        # Sort files inside each folder
-        sorted_files_annotation = sorted(os.listdir(annotation_path))
+            # Sort files inside each folder
+            sorted_files_annotation = sorted(os.listdir(annotation_path))
 
-        # Give No files found when the folder is empty
-        if not sorted_files_annotation:
-            annotationMenu.add_command(label="No file is found.")
-        else:
-            # Show maximum 150 files on the window
-            if i == 0:  # Means "Clustered_proof_curation"
-                for j in range(0, len(sorted_files_annotation), 150):
-                    end = min(j + 150, len(sorted_files_annotation))
-
-                    annotationMenu.add_command(label=f"{j + 1}-{end}",
-                                               command=partial(load_files_with_destroy,
-                                                               j, end, frame, canvas, annotation_path))
-            elif i == 1 or i == 2:  # Means "TE_low_copy", "TE_skipped"
-                for j in range(0, len(sorted_files_annotation), 100):
-                    end = min(j + 100, len(sorted_files_annotation))
-
-                    # Add 1000 to the end when checking the last page to enable to show added files by fresh canvas
-                    if end == len(sorted_files_annotation):
-                        annotationMenu.add_command(label=f"{j + 1}-{end}",
-                                                   command=partial(other_cons_load_files,
-                                                                   j, end+1000, frame, canvas, annotation_path, canvas,
-                                                                   save_path=consensus_folder))
-                    else:
-                        annotationMenu.add_command(label=f"{j + 1}-{end}",
-                                                   command=partial(other_cons_load_files,
-                                                                   j, end, frame, canvas, annotation_path,
-                                                                   canvas,
-                                                                   save_path=consensus_folder))
-            elif i == 3:  # Means "Check_consensus_lib"
-
-                for j in range(0, len(sorted_files_annotation), 100):
-                    end = min(j + 100, len(sorted_files_annotation))
-
-                    if end == len(sorted_files_annotation):
+            # Give No files found when the folder is empty
+            if not sorted_files_annotation:
+                annotationMenu.add_command(label="No file is found.")
+            else:
+                # Show maximum 150 files on the window
+                if i == 0:  # Means "Clustered_proof_curation"
+                    for j in range(0, len(sorted_files_annotation), 150):
+                        end = min(j + 150, len(sorted_files_annotation))
 
                         annotationMenu.add_command(label=f"{j + 1}-{end}",
-                                                   command=partial(other_cons_load_files,
-                                                                   j, end+1000, frame, canvas, annotation_path, canvas,
-                                                                   save_path=other_cons_lib_result_folder))
-                    else:
-                        annotationMenu.add_command(label=f"{j + 1}-{end}",
-                                                   command=partial(other_cons_load_files,
-                                                                   j, end, frame, canvas, annotation_path,
-                                                                   canvas,
-                                                                   save_path=other_cons_lib_result_folder))
+                                                   command=partial(load_files_with_destroy,
+                                                                   j, end, frame, canvas, annotation_path))
+                elif i == 1 or i == 2:  # Means "TE_low_copy", "TE_skipped"
+                    for j in range(0, len(sorted_files_annotation), 100):
+                        end = min(j + 100, len(sorted_files_annotation))
 
-    # Add confirm menu button
-    settings_menu = Menu(menubar, tearoff=0)
-    # Set confirm_menu child menu
-    # Initialize the BooleanVar to store "Show Confirmation Window" status
-    show_confirmation = BooleanVar(value=True)
-    settings_menu.add_checkbutton(label="Show Confirmation Window When Click 'Save'", onvalue=True, offvalue=False,
-                                  variable=show_confirmation)
-    settings_menu.add_command(label="Modify Function Parameters", command=show_settings_dialog)
-    menubar.add_cascade(label="Setting", menu=settings_menu)
+                        # Add 1000 to the end when checking the last page to enable to show added files by fresh canvas
+                        if end == len(sorted_files_annotation):
+                            annotationMenu.add_command(label=f"{j + 1}-{end}",
+                                                       command=partial(other_cons_load_files,
+                                                                       j, end+1000, frame, canvas, annotation_path, canvas,
+                                                                       save_path=consensus_folder))
+                        else:
+                            annotationMenu.add_command(label=f"{j + 1}-{end}",
+                                                       command=partial(other_cons_load_files,
+                                                                       j, end, frame, canvas, annotation_path,
+                                                                       canvas,
+                                                                       save_path=consensus_folder))
+                elif i == 3:  # Means "Check_consensus_lib"
 
-    # Add Undo button
-    undo_menu = Menu(menubar, tearoff=0)
-    # Add Undo child menu
-    undo_menu.add_command(label="undo last copy", command=undo_last_copy)
-    menubar.add_cascade(label="Undo", menu=undo_menu)
+                    for j in range(0, len(sorted_files_annotation), 100):
+                        end = min(j + 100, len(sorted_files_annotation))
 
-    # Add the Search button to the menu
-    search_menu = Menu(menubar, tearoff=0)
-    search_menu.add_command(label="Search Files", command=lambda: open_search_window())
-    menubar.add_cascade(label="Search", menu=search_menu)
+                        if end == len(sorted_files_annotation):
 
-    # Add the Help button to the menu
-    help_menu = Menu(menubar, tearoff=0)
-    help_menu.add_command(label="Show instruction", command=show_help)
-    menubar.add_cascade(label="Help", menu=help_menu)
+                            annotationMenu.add_command(label=f"{j + 1}-{end}",
+                                                       command=partial(other_cons_load_files,
+                                                                       j, end+1000, frame, canvas, annotation_path, canvas,
+                                                                       save_path=other_cons_lib_result_folder))
+                        else:
+                            annotationMenu.add_command(label=f"{j + 1}-{end}",
+                                                       command=partial(other_cons_load_files,
+                                                                       j, end, frame, canvas, annotation_path,
+                                                                       canvas,
+                                                                       save_path=other_cons_lib_result_folder))
+
+        # Add confirm menu button
+        settings_menu = Menu(menubar, tearoff=0)
+        # Set confirm_menu child menu
+        # Initialize the BooleanVar to store "Show Confirmation Window" status
+        settings_menu.add_checkbutton(label="Show Confirmation Window When Click 'Save'", onvalue=True, offvalue=False,
+                                      variable=show_confirmation)
+        settings_menu.add_command(label="Modify Function Parameters", command=show_settings_dialog)
+        menubar.add_cascade(label="Setting", menu=settings_menu)
+
+        # Add Undo button
+        undo_menu = Menu(menubar, tearoff=0)
+        # Add Undo child menu
+        undo_menu.add_command(label="undo last copy", command=undo_last_copy)
+        menubar.add_cascade(label="Undo", menu=undo_menu)
+
+        # Add the Search button to the menu
+        search_menu = Menu(menubar, tearoff=0)
+        search_menu.add_command(label="Search Files", command=lambda: open_search_window())
+        menubar.add_cascade(label="Search", menu=search_menu)
+
+        # Add the Help button to the menu
+        help_menu = Menu(menubar, tearoff=0)
+        help_menu.add_command(label="Show instruction", command=show_help)
+        menubar.add_cascade(label="Help", menu=help_menu)
+
+    create_mean_bar()
 
     # Add double confirmation on window close
     def on_closing():
