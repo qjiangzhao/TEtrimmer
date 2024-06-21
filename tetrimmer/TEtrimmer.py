@@ -3,7 +3,6 @@ import os
 import shutil
 import traceback
 from datetime import timedelta, datetime
-import multiprocessing as mp
 import click
 import concurrent.futures
 import json
