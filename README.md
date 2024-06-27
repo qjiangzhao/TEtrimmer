@@ -34,9 +34,30 @@ please refer to [TEtrimmerv1.3.0Manual.pdf](https://github.com/qjiangzhao/TEtrim
 ## Installation
 You have to install [miniconda](https://docs.anaconda.com/free/miniconda/) on your computer in advance. 
 
+### Conda package installation
+We highly recommend installation with `mamba`, as it is much faster. 
 
-### For Linux and Windows WSL
-Install TEtrimmer dependencies. We highly recommend installation with `mamba`, as it is much faster. 
+```commandline
+# Create new conda environment
+conda create --name TEtrimmer
+
+# Install mamba and python. Note that TEtrimmer requires python 3.10
+conda install -c conda-forge mamba python=3.10
+
+# Activate new environment
+conda activate TEtrimmer
+
+# Install TEtrimmer
+mamba install qianjiangzhao::tetrimmer
+
+# Display options of TETrimmer 
+TETrimmer --help
+```
+**or** See required dependencies [TEtrimmer_dependencies](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies).
+We are working on uploading the package to the Bioconda channel and dockerize it (Many thanks to [Hang Xue](https://github.com/hangxue-wustl)). 
+
+### Or conda installation via .yml (Linux and Windows WSL)
+Install TEtrimmer dependencies. 
 
 ```commandline
 # Clone the github repository for TEtrimmer.
@@ -49,24 +70,6 @@ conda install -c conda-forge mamba
 mamba env create -f <path to/TEtrimmer_env_for_linux.yml>
 ```
 Here is the provided [TEtrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TEtrimmer_env_for_linux.yml)
-
-
-
-### For macOS
-If you are using macOS, you can install TEtrimmer conda package directly. Note: TEtrimmer installation requires python=3.10 
-```commandline
-conda create --name TEtrimmer python=3.10
-conda activate TEtrimmer
-
-# Install TETrimmer 
-mamba install qianjiangzhao::tetrimmer
-# Display options of TETrimmer 
-TETrimmer --help
-```
-TEtrimmer conda package only works for macOS currently. We are developing conda package for Linux and working on 
-uploading the package to the Bioconda channel and dockerize it (Many thanks to [Hang Xue](https://github.com/hangxue-wustl)). 
-
-**or** See required dependencies [TEtrimmer_dependencies](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies).
 
 ## Hardware requirements
 System: Linux, macOS, Windows WSL
@@ -92,9 +95,13 @@ RAM:
 ## Test
 ```commandline
 # To see all options 
+TEtrimmer --help
+```
+**or**
+```commandline
+# To see all options 
 python {path to TEtrimmer}/TEtrimmer.py --help
 ```
-
 - Download the test files [test_input.fa](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_input.fa) and [test_genome.fasta](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_genome.fasta).
 
 ```commandline
