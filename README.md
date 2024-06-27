@@ -41,8 +41,8 @@ We highly recommend installation with `mamba`, as it is much faster.
 # Create new conda environment
 conda create --name TEtrimmer
 
-# Install mamba and python. Note that TEtrimmer requires python 3.10
-conda install -c conda-forge mamba python=3.10
+# Install mamba 
+conda install -c conda-forge mamba 
 
 # Activate new environment
 conda activate TEtrimmer
@@ -51,13 +51,12 @@ conda activate TEtrimmer
 mamba install qianjiangzhao::tetrimmer
 
 # Display options of TETrimmer 
-TETrimmer --help
+TEtrimmer --help
 ```
 **or** See required dependencies [TEtrimmer_dependencies](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies).
 We are working on uploading the package to the Bioconda channel and dockerize it (Many thanks to [Hang Xue](https://github.com/hangxue-wustl)). 
 
 ### Or conda installation via .yml (Linux and Windows WSL)
-Install TEtrimmer dependencies. 
 
 ```commandline
 # Clone the github repository for TEtrimmer.
@@ -225,7 +224,7 @@ TEtrimmer GUI tool can extend MSA, generate interactive plots, and clean MSA.
 
 ## Example report plots for each output TE consensus sequence
 For each TEtrimmer output TE consensus sequence. You will get a report plot file like this:
-![Reportplots](docs/TEtrimmer_report_plots_for_each_output.png)
+![Reportplots](docs/TEtrimmer_report_plots_for_each_output.jpg)
 
 ## Acknowledgements
 Many thanks to all the people who contributed to the TEtrimmer development. 

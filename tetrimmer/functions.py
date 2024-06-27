@@ -1355,11 +1355,11 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, m
     # The regex '\s+' matches one or more whitespace characters
     # error_bad_lines=False to skip errors
     try:
-        df = pd.read_csv(repeatmasker_out, sep='\s+', header=None, skiprows=3, usecols=range(15))
+        df = pd.read_csv(repeatmasker_out, sep=r'\s+', header=None, skiprows=3, usecols=range(15))
     except pandas.errors.EmptyDataError:
         return False
     except pd.errors.ParserError:
-        df = pd.read_csv(repeatmasker_out, sep='\s+', header=None, skiprows=3, error_bad_lines=False, usecols=range(15))
+        df = pd.read_csv(repeatmasker_out, sep=r'\s+', header=None, skiprows=3, error_bad_lines=False, usecols=range(15))
 
     # Rename columns for easier referencing
     df.columns = [
@@ -1718,7 +1718,7 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
         blast_out_file = teaid_blast_out
 
         # TE-Aid self-BLAST output default format is separated by white space
-        df = pd.read_csv(blast_out_file, sep='\s+', header=None, skiprows=1)
+        df = pd.read_csv(blast_out_file, sep=r'\s+', header=None, skiprows=1)
 
     # Return 'None' if the self-BLAST result is empty. This can happen if sequence contains too many ambiguous letters
     # like 'N' or 'X'.
