@@ -48,7 +48,7 @@ conda install -c conda-forge mamba
 conda activate TEtrimmer
 
 # Install TEtrimmer
-mamba install conda install bioconda::tetrimmer
+mamba install bioconda::tetrimmer
 
 # Display options of TETrimmer 
 TEtrimmer --help
