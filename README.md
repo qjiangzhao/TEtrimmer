@@ -48,10 +48,17 @@ conda install -c conda-forge mamba
 conda activate TEtrimmer
 
 # Install TEtrimmer
-mamba install qianjiangzhao::tetrimmer
+mamba install conda install bioconda::tetrimmer
 
 # Display options of TETrimmer 
 TEtrimmer --help
+
+# If you encounter "ClobberError" or "ClobberWarning", don't worry! wait until it is finished!
+# The Error or Warning could be like this:
+ClobberError: This transaction has incompatible packages due to a shared path.
+  packages: bioconda/osx-64::blast-2.5.0-boost1.64_2, bioconda/osx-64::rmblast-2.14.1-hd94f91d_0
+  path: 'bin/blastx'
+
 ```
 **or** See required dependencies [TEtrimmer_dependencies](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies).
 We are working on uploading the package to the Bioconda channel and dockerize it (Many thanks to [Hang Xue](https://github.com/hangxue-wustl)). 
