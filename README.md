@@ -63,7 +63,7 @@ ClobberError: This transaction has incompatible packages due to a shared path.
 **or** See required dependencies [TEtrimmer_dependencies](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies).
 We are working on uploading the package to the Bioconda channel and dockerize it (Many thanks to [Hang Xue](https://github.com/hangxue-wustl)). 
 
-### Or conda installation via .yml (Linux and Windows WSL)
+### Or conda installation via .yml
 
 ```commandline
 # Clone the github repository for TEtrimmer.
@@ -76,6 +76,38 @@ conda install -c conda-forge mamba
 mamba env create -f <path to/TEtrimmer_env_for_linux.yml>
 ```
 Here is the provided [TEtrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TEtrimmer_env_for_linux.yml)
+
+### Singularity (Good for HPC)
+```commandline
+# Download and generate "sif" file
+singularity pull docker://quay.io/biocontainers/tetrimmer:1.4.0--hdfd78af_0
+
+# Run TEtrimmer based on sif file 
+# if <your_path_to_store_PFAM_database> doesn't contain PFAM database
+# TEtrimmer can download PFAM to <your_path_to_store_PFAM_database>
+
+singularity exec --writable-tmpfs \
+--bind <your_path_contain_genome_file>:/genome \
+--bind <your_path_contain_input_TE_library_file>:/input \
+--bind <your_output_path>:/output \
+--bind <your_path_to_store_PFAM_database>:/pfam \  
+<your_path_to_sif_file>/tetrimmer_1.4.0--hdfd78af_0.sif \
+TEtrimmer -i /input/<TE_library_name.fasta> \
+-g /genome/<genome_file_name.fasta> \
+-o /output \
+--pfam_dir /pfam \
+-t 20 --classify_all
+```
+### Docker 
+```commandline
+# Download TEtrimmer docker image
+docker pull quay.io/biocontainers/tetrimmer:1.4.0--hdfd78af_0
+docker run -it --name TEtrimmer -v <bind_your_path>:/data quay.io/biocontainers/tetrimmer:1.4.0--hdfd78af_0
+# Then you can run TEtrimmer inside TEtrimmer container
+# Please note: Run TEtrimmer via Docker is relatively slow than Conda and Singularity. 
+```
+
+
 
 ## Hardware requirements
 System: Linux, macOS, Windows WSL
