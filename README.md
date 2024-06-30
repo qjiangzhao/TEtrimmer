@@ -249,19 +249,21 @@ More options are available:
 - 📄**TEtrimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
 
 
-## Proof curation: Manual inspection of TEtrimmer outputs
+## Optional!!! Manual inspection of TEtrimmer outputs by provided GUI
 You can use this graphical user interface (GUI) tool to inspect and improve TEtrimmer generated TE consensus library. 
-We highly recommend doing this to increase TE consensus library quality to the traditional manual curation level.
+This step is optional! TEtrimmer output can be used for genome-wide TE annotation directly. 
+If you want to get a traditional manual-curation level TE consensus library, you have to perform this step. 
 
 
-MSA files can be inspected by double-clicking the corresponding file button. AliView is used to open MSA files.
+MSA files can be inspected by double-clicking the corresponding file button. 
 ```commandline
 # Use --help to see all options
 python <path_to_GUI_folder>/annoGUI.py --help
+
 # To start the manual inspection GUI tool
 # Open your Linux, macOS, or Windows terminal and type
 python <output_directory>/TEtrimmer_for_proof_curation/TEtrimmer_proof_anno_GUI/annoGUI.py -g <genome.fa>
-# Note: The GUI doesn't perfectly support Windows for "TEAid" plotting function.
+# Note: You have to make BLAST available. 
 ```
 You can easily check and improve TEtrimmer outputs and get manual curation level TE consensus library.
 
