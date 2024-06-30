@@ -61,7 +61,6 @@ ClobberError: This transaction has incompatible packages due to a shared path.
 
 ```
 **or** See required dependencies [TEtrimmer_dependencies](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies).
-We are working on uploading the package to the Bioconda channel and dockerize it (Many thanks to [Hang Xue](https://github.com/hangxue-wustl)). 
 
 **or** conda installation via .yml
 
