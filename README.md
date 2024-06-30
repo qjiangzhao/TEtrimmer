@@ -426,6 +426,11 @@ python <path_to_GUI_folder>/annoGUI.py -g <genome.fa> -clib <TE_consensus_librar
 
 
 ## Update history
+**TEtrimmer v1.4.0 Released June.27.2024**
+
+TEtrimmer GUI can be used to inspect and improve any TE consensus library.
+Modified DBSCAN parameter to improve MSA clustering result. 
+
 **TEtrimmer v1.3.0 Released May.28.2024**
 
 Integrated "Extend", "TEAid", and MSA cleaning buttons into TEtrimmer GUI. "TEAid" can generate interactive plots, which
