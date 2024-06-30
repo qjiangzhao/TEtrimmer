@@ -39,9 +39,10 @@ For detailed instructions, including installation steps, usage options, example 
 please refer to [TEtrimmerv1.3.0Manual.pdf](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerv1.3.0Manual.pdf) 
 
 ## Installation
-You have to install [miniconda](https://docs.anaconda.com/free/miniconda/) on your computer in advance. 
+TEtrimmer can be installed by 1. Conda, 2. Singularity, or 3. Docker. 
 
-### Conda 
+### 1. Conda 
+You have to install [miniconda](https://docs.anaconda.com/free/miniconda/) on your computer in advance. 
 We highly recommend installation with `mamba`, as it is much faster. 
 
 ```commandline
@@ -83,7 +84,7 @@ mamba env create -f <path to/TEtrimmer_env_for_linux.yml>
 ```
 Here is the provided [TEtrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TEtrimmer_env_for_linux.yml)
 
-### Singularity
+### 2. Singularity
 ```commandline
 # Download and generate "sif" file
 singularity pull docker://quay.io/biocontainers/tetrimmer:1.4.0--hdfd78af_0
@@ -105,7 +106,7 @@ TEtrimmer \
 --pfam_dir /pfam \
 -t 20 --classify_all
 ```
-### Docker 
+### 3. Docker 
 ```commandline
 # Download TEtrimmer docker image
 docker pull quay.io/biocontainers/tetrimmer:1.4.0--hdfd78af_0
