@@ -446,6 +446,6 @@ Integrated "Extend", "TEAid", and MSA cleaning buttons into TEtrimmer GUI. "TEAi
 can help identifying TE boundaries.
 
 ## Citation
-Qian, J., Xue, H., Ou, S., Storer, J., Fürtauer, L., Wildermuth, M. C., Kusch, S., & Panstruga, R. **bioRxiv** (2024) https://doi.org/10.1101/2024.06.27.600963
+Qian, J., Xue, H., Ou, S., Storer, J., Fürtauer, L., Wildermuth, M. C., Kusch, S., & Panstruga, R. bioRxiv (2024) https://doi.org/10.1101/2024.06.27.600963
 TEtrimmer: A novel tool to automate the manual curation of transposable 2 elements.
 
