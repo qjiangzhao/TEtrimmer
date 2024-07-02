@@ -86,7 +86,7 @@ Here is the provided [TEtrimmer_env_for_linux.yml](https://github.com/qjiangzhao
 
 ### 2. Singularity
 ```commandline
-# Download and generate "sif" file
+# Download and generate TEtrimmer "sif" file
 singularity pull docker://quay.io/biocontainers/tetrimmer:1.4.0--hdfd78af_0
 
 # Run TEtrimmer based on sif file 
@@ -98,7 +98,7 @@ singularity exec --writable-tmpfs \
 --bind <your_path_contain_input_TE_library_file>:/input \
 --bind <your_output_path>:/output \
 --bind <your_path_to_store_PFAM_database>:/pfam \  
-<your_path_to_sif_file>/tetrimmer_1.4.0--hdfd78af_0.sif \
+<your_path_contain_sif_file>/tetrimmer_1.4.0--hdfd78af_0.sif \
 TEtrimmer \
 -i /input/<TE_library_name.fasta> \
 -g /genome/<genome_file_name.fasta> \
@@ -114,8 +114,6 @@ docker run -it --name TEtrimmer -v <bind_your_path>:/data quay.io/biocontainers/
 # Then you can run TEtrimmer inside TEtrimmer container
 # Please note: Run TEtrimmer via Docker is relatively slower than Conda and Singularity. 
 ```
-
-
 
 ## Hardware requirements
 System: Linux, macOS, Windows WSL
@@ -146,14 +144,14 @@ TEtrimmer --help
 **or**
 ```commandline
 # To see all options 
-python {path to TEtrimmer}/TEtrimmer.py --help
+python <path to TEtrimmer>/TEtrimmer.py --help
 ```
 - Download the test files [test_input.fa](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_input.fa) and [test_genome.fasta](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_genome.fasta).
 
 ```commandline
-TEtrimmer --input_file {path to test_input.fa} \
-          --genome_file {path to test_genome.fasta} \
-          --output_dir {output directory} \
+TEtrimmer --input_file <path to test_input.fa> \
+          --genome_file <path to test_genome.fasta> \
+          --output_dir <output directory> \
           --num_threads 20
           --classify_all                                          
 ```
@@ -165,10 +163,10 @@ For this reason, you have to run `RepeatModeler` or other TE annotation software
 ```commandline
 # TEtrimmer package already includes RepeatModeler. Below is an exmpale command of running RepeatModeler.
 # Build genome database index files
-BuildDatabase -name {genome_file_database_name} {genome_file.fa}
+BuildDatabase -name <genome_file_database_name> <genome_file.fa>
 
 # Run RepeatModeler
-RepeatModeler -database {genome_file_database_name} \
+RepeatModeler -database <genome_file_database_name> \
               -threads 20 \
               -LTRStruct
 # Then you will get the TE_consensus_library.fa file
@@ -177,17 +175,17 @@ RepeatModeler -database {genome_file_database_name} \
 Example:
 
 ```commandline
-TEtrimmer --input_file {TE_consensus_library.fa} \
-          --genome_file {genome_file.fa} \
-          --output_dir {output_directory} \
+TEtrimmer --input_file <TE_consensus_library.fa> \
+          --genome_file <genome_file.fa> \
+          --output_dir <output_directory> \
           --num_threads 20 \
           --classify_all                       
 ```
 If you want to **continue the analysis based on previous unfinished results in the same directory:**:
 ```commandline
-TEtrimmer --input_file {TE_consensus_library.fa} \
-          --genome_file {genome_file.fa} \
-          --output_dir {directory_contains_previous_unfinished_results} \
+TEtrimmer --input_file <TE_consensus_library.fa> \
+          --genome_file <genome_file.fa> \
+          --output_dir <directory_contains_previous_unfinished_results> \
           --num_threads 20 \
           --classify_all \
           --continue_analysis
@@ -196,9 +194,9 @@ If you want to **combine files from different sources for the input file, we rec
 before processing. This step can potentially save overall run time in the input file** (TEtrimmer only accepts single file
 input, you have to combine files in advance):
 ```commandline
-TEtrimmer --input_file {TE_consensus_library.fa} \
-          --genome_file {genome_file.fa} \
-          --output_dir {output_directory} \
+TEtrimmer --input_file <TE_consensus_library.fa> \
+          --genome_file <genome_file.fa> \
+          --output_dir <output_directory> \
           --num_threads 20 \
           --classify_all
           --dedup    
@@ -241,7 +239,7 @@ More options are available:
   - 📁**TE_low_copy** - *This folder contains low copy TEs.*
   - 📁**TE_skipped** - *Contains TE_Aid plots for all skipped TEs.*
   - 📁**TEtrimmer_proof_anno_GUI** - *The folder contains graphical user interface tools for manual proof curation.*
-    - 📄**annoGUI.py** - *Use {python ./annoGUI.py -g <genome.fa>} to start manual proof curation GUI.*
+    - 📄**annoGUI.py** - *Use <python ./annoGUI.py -g <genome.fa>> to start manual proof curation GUI.*
 - 📁**HMM** - *This folder is used to store Hidden Markov Model file. Only visible when < --hmm > is enabled.*
 - 📄**Sequence_name_mapping.txt** - *This file connects the input sequence names with the modified names from TEtrimmer.*
 - 📄**summary.txt** - *Summary file.* 
