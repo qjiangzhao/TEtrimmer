@@ -16,6 +16,7 @@
   - [Proof curation](#Proof-annotation)
 - [All available options](#All-available-options)
 - [Update history](#Update-history)
+- [Citation](#Citation)
 
 ## Introduction
 Many tools have been developed for the discovery and annotation of transposable elements (TEs). 
@@ -443,3 +444,8 @@ Modified DBSCAN parameter to improve MSA clustering result.
 
 Integrated "Extend", "TEAid", and MSA cleaning buttons into TEtrimmer GUI. "TEAid" can generate interactive plots, which
 can help identifying TE boundaries.
+
+## Citation
+Qian, J., Xue, H., Ou, S., Storer, J., Fürtauer, L., Wildermuth, M. C., Kusch, S., & Panstruga, R. bioRxiv (2024) https://doi.org/10.1101/2024.06.27.600963
+TEtrimmer: A novel tool to automate the manual curation of transposable 2 elements.
+
