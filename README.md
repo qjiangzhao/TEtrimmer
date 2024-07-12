@@ -254,7 +254,19 @@ This step is optional! TEtrimmer output can be used for genome-wide TE annotatio
 If you want to get a traditional manual-curation level TE consensus library, you have to perform this step. 
 
 
+TEtrimmerGUI executable file can be downloaded:
+
+macOS ARM: [TEtrimmerGUI_macOS](https://ln5.sync.com/dl/c23d7dff0/p7j4baxe-q7z4t8p5-cfs3vyyt-gqevsc4j) (x86_64 is not tested.)
+
+Linux x64: [TEtrimmerGUI_Linux](https://ln5.sync.com/dl/3c71f2630/5maxp5vh-fyg72mgc-yre5wi6t-m8rbv66p)
+
+Windows x64: [TEtrimmerGUI_Windows.exe](https://ln5.sync.com/dl/4ac3d7210/u33kcizf-gs7kejbb-vis9qzfs-bw9kyqfs)
+
+Installation is not required, unpack the double click the executable file to start TEtrimmerGUI
+
 MSA files can be inspected by double-clicking the corresponding file button. 
+
+**or** you can start it by:
 ```commandline
 # Use --help to see all options
 python <path_to_GUI_folder>/annoGUI.py --help
