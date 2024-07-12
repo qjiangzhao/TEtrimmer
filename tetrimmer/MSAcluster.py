@@ -537,7 +537,7 @@ def replace_bases(alignment_df, base_mapping):
     # Replace bases with corresponding integers from base_mapping
     result_obj = alignment_df.replace(base_mapping)
     # Infer the best possible data types for object columns
-    result_obj = result_obj.infer_objects(copy=False)
+    result_obj = result_obj.infer_objects()
     return result_obj
 
 

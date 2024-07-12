@@ -654,11 +654,11 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
     #####################################################################################################
     # Code block: Perform ORF and PFAM prediction for input sequences
     #####################################################################################################
-
+    input_orf_domain_plot = None
     try:
+
         input_orf_pfam_obj = PlotPfam(seq_file, MSA_dir, pfam_database_dir=pfam_dir, mini_orf=mini_orf,
                                       after_tetrimmer=False)
-        input_orf_domain_plot = None
 
         # "run_getorf()" function will return 'True' if any ORF was detected. Otherwise, it will return 'False'.
         if input_orf_pfam_obj.run_getorf():
@@ -667,6 +667,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
             input_orf_domain_plot = input_orf_pfam_obj.orf_domain_plot()
 
     except Exception as e:
+        input_orf_domain_plot = None
         with open(error_files, "a") as f:
             tb_content = traceback.format_exc()
             f.write(f"Error when doing ORF and PFAM prediction for input sequence {seq_name}\n")
