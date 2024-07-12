@@ -253,6 +253,7 @@ You can use this graphical user interface (GUI) tool to inspect and improve TEtr
 This step is optional! TEtrimmer output can be used for genome-wide TE annotation directly. 
 If you want to get a traditional manual-curation level TE consensus library, you have to perform this step. 
 
+### Run TEtrimmerGUI by executable file
 
 TEtrimmerGUI executable file can be downloaded:
 
@@ -267,11 +268,13 @@ For macOS, please do this first in your terminal after decompression:
 xattr -d com.apple.quarantine <your_path>/TEtrimmerGUI.app
 # We are trying to notarize the app. 
 ```
-it might take around 30s for initialization after double-clicking "TEtrimmerGUI".
-
 Installation is not required, unpack and double-click the executable file to start TEtrimmerGUI
 
-**Besides** downloading executable files, you can clone the source code and run: 
+it might take around 30s for initialization after double-clicking "TEtrimmerGUI", please be patient for the first time.
+
+### Run TEtrimmerGUI by the source code
+
+**If you don't want to ** download executable files, you can clone the source code and run: 
 ```commandline
 # Use --help to see all options
 python <path_to_GUI_folder>/annoGUI.py --help
