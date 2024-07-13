@@ -261,7 +261,7 @@ Linux x64: [TEtrimmerGUI_Linux](https://ln5.sync.com/dl/3c71f2630/5maxp5vh-fyg72
 
 Windows x64: [TEtrimmerGUI_Windows.exe](https://ln5.sync.com/dl/4ac3d7210/u33kcizf-gs7kejbb-vis9qzfs-bw9kyqfs)
 
-macOS ARM: [TEtrimmerGUI_macOS](https://ln5.sync.com/dl/1cd1ef970/6ji8ibcj-4qzd65mx-my5abe7u-qsi4pmx7) (x86_64 has not been tested but should be fine.)
+macOS ARM: [TEtrimmerGUI_macOS](https://ln5.sync.com/dl/1cd1ef970/6ji8ibcj-4qzd65mx-my5abe7u-qsi4pmx7) (x86_64 has not been tested.)
 
 For macOS, please run the following command first after decompression:
 ```commandline
