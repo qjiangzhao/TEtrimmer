@@ -263,7 +263,7 @@ Windows x64: [TEtrimmerGUI_Windows.exe](https://ln5.sync.com/dl/4ac3d7210/u33kci
 
 macOS ARM: [TEtrimmerGUI_macOS](https://ln5.sync.com/dl/1cd1ef970/6ji8ibcj-4qzd65mx-my5abe7u-qsi4pmx7) (x86_64 has not been tested but should be fine.)
 
-For macOS, please do this first in your terminal after decompression:
+For macOS, please run the following command first after decompression:
 ```commandline
 xattr -d com.apple.quarantine <your_path>/TEtrimmerGUI.app
 # We are trying to notarize the app. 
@@ -272,16 +272,19 @@ Installation is not required, unpack and double-click the executable file to sta
 
 it might take around 30s for initialization after double-clicking "TEtrimmerGUI", please be patient for the first time.
 
+You can put the executable file on your desktop or launchpad
+![TEtrimmerGUI](docs/TEtrimmer_in_different_OS.jpg)
+
 ### Run TEtrimmerGUI by the source code
 
-**If you don't want to ** download executable files, you can clone the source code and run: 
+**If you don't want to** download executable files, you can clone the source code and run: 
 ```commandline
 # Use --help to see all options
-python <path_to_GUI_folder>/annoGUI.py --help
+python <your_path>/tetrimmer/TEtrimmer_proof_anno_GUI/annoGUI.py --help
 
 # To start the manual inspection GUI tool
 # Open your Linux, macOS, or Windows terminal and type
-python <output_directory>/TEtrimmer_for_proof_curation/TEtrimmer_proof_anno_GUI/annoGUI.py -g <genome.fa>
+python <your_path>/tetrimmer/TEtrimmer_proof_anno_GUI/annoGUI.py
 # Note: You have to make BLAST available. 
 ```
 You can easily check and improve TEtrimmer outputs and get manual curation level TE consensus library.
