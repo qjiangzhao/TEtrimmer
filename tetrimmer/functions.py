@@ -155,7 +155,7 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
 
     if search_type == "blast":
         # Modify the blast command to include the specified task
-        blast_cmd = (f"blastn -task {task} -query {input_file} -db {genome_file} "
+        blast_cmd = (f"blastn -max_target_seqs 10000 -task {task} -query {input_file} -db {genome_file} "
                      f"-outfmt \"6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand evalue qcovhsp\" "
                      f"-evalue 1e-40 -qcov_hsp_perc 20 | "
                      f"awk -v ml={min_length} 'BEGIN{{OFS=\"\\t\"}} $4 > ml {{print $0}}' >> {blast_out_file}")

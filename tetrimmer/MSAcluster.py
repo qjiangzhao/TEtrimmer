@@ -119,7 +119,7 @@ class CleanAndSelectColumn:
         columns_to_keep = sorted(columns_to_keep)
 
         """
-        If alignment length is greater than 1000, the number of distinct columns has to be greater than 100.
+        If alignment length is greater than 2000, the number of distinct columns has to be greater than 100.
         Otherwise, the number will be ten percent of the MSA length but no less than 50 columns.
         """
         min_length = max(50, int(0.05 * self.alignment_length)) if self.alignment_length <= cluster_col_thr / 0.05 \

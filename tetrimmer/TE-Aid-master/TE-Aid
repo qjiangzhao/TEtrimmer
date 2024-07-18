@@ -82,7 +82,7 @@ HEREDOC
 # if no parameter given, output help and qui
 if [[ $# -eq 0 ]] ; then
     echo '   **********************************'
-    echo '   Error! No mendatory argument given'
+    echo '   Error! No mandatory argument given'
     echo '   **********************************'
     usage
     exit 0

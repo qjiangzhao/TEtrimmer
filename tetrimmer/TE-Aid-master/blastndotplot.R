@@ -3,7 +3,7 @@
 blastdotplot=function(query = NULL, db = NULL, blast = NULL, os = NULL, tables = NULL, output = NULL){
   
   # run the selfblast
-  bl=read.table(text=system(paste("blastn -query", query, "-db", db, "-evalue 0.05 -outfmt 6 -word_size 11 -gapopen 5 -gapextend 2 -reward 2 -penalty -3 | cut -f 1,7-10 | sed 's/#/-/g'"),
+  bl=read.table(text=system(paste("blastn -max_target_seqs 10000 -query", query, "-db", db, "-evalue 0.05 -outfmt 6 -word_size 11 -gapopen 5 -gapextend 2 -reward 2 -penalty -3 | cut -f 1,7-10 | sed 's/#/-/g'"),
                             intern = TRUE)
                 )
   # order from left to right

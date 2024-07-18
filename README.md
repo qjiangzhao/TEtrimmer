@@ -268,9 +268,8 @@ For macOS, please run the following command first after decompression:
 xattr -d com.apple.quarantine <your_path>/TEtrimmerGUI.app
 # We are trying to notarize the app. 
 ```
-Installation is not required, unpack and double-click the executable file to start TEtrimmerGUI
-
-it might take around 30s for initialization after double-clicking "TEtrimmerGUI", please be patient for the first time.
+Installation is not required, unpack and double-click the executable file to start TEtrimmerGUI. It may take 
+around 30s for initialization after double-clicking "TEtrimmerGUI", please be patient for the first time.
 
 You can put the executable file on your desktop or launchpad
 ![TEtrimmerGUI](docs/TEtrimmer_in_different_OS.jpg)

@@ -126,7 +126,7 @@ class TEAid:
             "-f", str(self.full_length_threshold)
             ]
 
-        # If it is low copy element, add '-t' option to enable self-BLAST from TE-Aid file
+        # If it is low copy element, add '-t' option to keep self-BLAST file from TE-Aid file
         if low_copy:
             command.extend(["-T"])
         if label:
