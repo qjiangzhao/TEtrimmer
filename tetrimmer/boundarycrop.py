@@ -73,6 +73,8 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
 
     # The following code calculates the majority of the alignment length and finds the longest alignment for extension
     # while ignoring the shorter ones.
+    # long_bed function won't do length selection
+    # It generates the proper bed file for left and right extension.
     reset_left_long_bed, reset_right_long_bed = long_bed(input_file, output_dir)
 
     # 100 bp are added to avoid a case where the boundary is at the edge. Therefore, the alignment length is actually
