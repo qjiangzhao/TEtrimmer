@@ -282,6 +282,8 @@ TEtrimmer GUI tool can extend MSA, generate interactive plots, and clean MSA.
 [![Proof curation GUI](docs/TEtrimmer_GUI_start_page.png)](https://youtu.be/TtEcvR1DTqA)
 ![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space.png)
 
+<iframe width="560" height="315" src="https://www.youtube.com/embed/TtEcvR1DTqA" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 ## Example report plots for each output TE consensus sequence
 For each TEtrimmer output TE consensus sequence. You will get a report plot file like this:
 ![Reportplots](docs/TEtrimmer_report_plots_for_each_output.jpg)
