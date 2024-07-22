@@ -279,7 +279,7 @@ python <output_directory>/TEtrimmer_for_proof_curation/TEtrimmer_proof_anno_GUI/
 You can easily check and improve TEtrimmer outputs and get manual curation level TE consensus library.
 
 TEtrimmer GUI tool can extend MSA, generate interactive plots, and clean MSA.
-![Proof curation GUI](docs/TEtrimmer_GUI_start_page.png)
+[![Proof curation GUI](docs/TEtrimmer_GUI_start_page.png)](https://youtu.be/TtEcvR1DTqA)
 ![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space.png)
 
 ## Example report plots for each output TE consensus sequence
