@@ -248,7 +248,7 @@ More options are available:
 - 📄**TEtrimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
 
 
-## Optional! But highly recommended! Manual inspection of TEtrimmer outputs by provided GUI
+## Optional! Manual inspection of TEtrimmer outputs by provided TEtrimmerGUI. 
 You can use the TEtrimmerGUI tool to inspect and improve TEtrimmer generated TE consensus library. 
 This step is optional! TEtrimmer output can be used for genome-wide TE annotation directly. 
 But if you want to get a traditional manual-curation level TE consensus library, you have to perform this step. 
@@ -269,9 +269,8 @@ xattr -d com.apple.quarantine <your_path>/TEtrimmerGUI.app
 # We are trying to notarize the app. 
 ```
 Installation is not required, unpack and double-click the executable file to start TEtrimmerGUI. It may take 
-around 30s for initialization after double-clicking "TEtrimmerGUI", please be patient for the first time.
-
-You can put the executable file on your desktop or launchpad.
+around 30s for initialization after double-clicking "TEtrimmerGUI", please be patient for the first time. You can put 
+the executable file on your desktop or launchpad to make it easier to start it.
 
 ### Run TEtrimmerGUI by the source code
 

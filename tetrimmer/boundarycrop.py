@@ -387,6 +387,12 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     while msa_loop_n <= 2:
 
+        # TEtrimmer will do the second round clustering and extension. The MSA has been extensively extended during
+        # the first time of loop, reduce the max_extension to 2000 for the second round, which can prevent to generate
+        # very long sequence especially for tandem repeats.
+        if msa_loop_n == 2:
+            max_extension = 2*ex_step_size
+
         try:
             # Read BED file and build dictionary to store sequence position
             df = pd.read_csv(bed_file, sep='\t', header=None)
