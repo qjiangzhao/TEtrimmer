@@ -457,7 +457,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 df.loc[df[3] == key, [1, 2]] = value[:2]
 
             # Define BED file name for final MSA
-            bed_final_MSA = bed_file + "_fm.bed"
+            bed_final_MSA = f"{bed_file}_fm_{msa_loop_n}.bed"
             df.to_csv(bed_final_MSA, sep='\t', index=False, header=False)
 
             # final_MSA return 'False' if when the start crop point is greater than the end crop point, which means the
@@ -488,14 +488,16 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         # Code block: Check the consistency of the final MSA
         #####################################################################################################
         # Plotting is done after PFAM predictions in case consensus/MSA are in the wrong direction.
+        # Don't do second round MSA clustering after boundary definition when LTR or TIR is found.
         try:
-            if msa_loop_n <= 1:
+            if msa_loop_n <= 1 and not found_match_crop:
                 final_msa_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file,
                                                               output_dir, input_msa=cropped_boundary_MSA,
                                                               clean_column_threshold=0.01,
                                                               min_length_num=10, cluster_num=2, cluster_col_thr=500)
 
-                # len(final_msa_consistency) == 1 means clustering is not necessary
+                # final_msa_consistency will be false if no cluster available. In this case, use the original MSA
+                # after boundary definition
                 if not final_msa_consistency:
                     break
                 else:
@@ -525,7 +527,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         msa_loop_n += 1
 
         # Use smaller extension step for the next round extension
-        ex_step_size = 700
+        #ex_step_size = 700
 
     #####################################################################################################
     # Code block: Check if the final MSA contains too many instances of the ambiguous letter "N"
