@@ -455,6 +455,9 @@ python <path_to_GUI_folder>/annoGUI.py -g <genome.fa> -clib <TE_consensus_librar
 
 
 ## Update history
+
+July.24.2024 Don't do second round MSA clustering after TE boundary definition when LTR or TIR is found.
+
 **TEtrimmer v1.4.0 Released June.27.2024**
 
 TEtrimmer GUI can be used to inspect and improve any TE consensus library.
