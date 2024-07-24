@@ -490,7 +490,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         # Plotting is done after PFAM predictions in case consensus/MSA are in the wrong direction.
         # Don't do second round MSA clustering after boundary definition when LTR or TIR is found.
         try:
-            if msa_loop_n <= 1 and not found_match_crop:
+            if msa_loop_n <= 1:
                 final_msa_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file,
                                                               output_dir, input_msa=cropped_boundary_MSA,
                                                               clean_column_threshold=0.01,
