@@ -248,10 +248,10 @@ More options are available:
 - 📄**TEtrimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
 
 
-## Optional!!! Manual inspection of TEtrimmer outputs by provided GUI
-You can use this graphical user interface (GUI) tool to inspect and improve TEtrimmer generated TE consensus library. 
+## Optional! But highly recommended! Manual inspection of TEtrimmer outputs by provided GUI
+You can use the TEtrimmerGUI tool to inspect and improve TEtrimmer generated TE consensus library. 
 This step is optional! TEtrimmer output can be used for genome-wide TE annotation directly. 
-If you want to get a traditional manual-curation level TE consensus library, you have to perform this step. 
+But if you want to get a traditional manual-curation level TE consensus library, you have to perform this step. 
 
 ### Run TEtrimmerGUI by executable file
 
@@ -271,8 +271,7 @@ xattr -d com.apple.quarantine <your_path>/TEtrimmerGUI.app
 Installation is not required, unpack and double-click the executable file to start TEtrimmerGUI. It may take 
 around 30s for initialization after double-clicking "TEtrimmerGUI", please be patient for the first time.
 
-You can put the executable file on your desktop or launchpad
-![TEtrimmerGUI](docs/TEtrimmer_in_different_OS.jpg)
+You can put the executable file on your desktop or launchpad.
 
 ### Run TEtrimmerGUI by the source code
 
@@ -288,7 +287,7 @@ python <your_path>/tetrimmer/TEtrimmer_proof_anno_GUI/annoGUI.py
 ```
 You can easily check and improve TEtrimmer outputs and get manual curation level TE consensus library.
 
-TEtrimmer GUI tool can extend MSA, generate interactive plots, and clean MSA.
+TEtrimmer GUI tool can extend MSA, generate interactive plots, and clean MSA. A demo video is provided.
 [![Proof curation GUI](docs/TEtrimmerGUI_video.png)](https://youtu.be/u1WxPmS9eBk)
 ![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space.png)
 

@@ -775,7 +775,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
 
         # Because terminal repeats were found before, use the previous result
-        # Run TE_aid. If low_copy is 'True', a self-BLAST will be performed
+        # Run TE_aid. If low_copy is 'True'
+        # The low_copy will only affect it to keep self blast result from TEAid.
+        # it is Ture, TE_aid_object.run will check the terminal repeat based on the self blast output of TEAid
+        # Otherwise, it use the terminal repeat result "found_match_crop"
         if not found_match_crop:
             TE_aid_object = TEAid(orf_cons, output_dir, genome_file, error_file=error_files, TE_aid_dir=TE_aid_path)
             TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
