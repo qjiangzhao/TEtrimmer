@@ -683,7 +683,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         # Check if BLAST hit number is exactly 0. If so, skip this sequence
         if blast_hits_count == 0:
             click.echo(f"\n{seq_name} is skipped due to blast hit number is 0\n")
-            handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir)
+            handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir, skip_proof_dir=skipped_dir)
             return
 
         # Check if BLAST hit number is smaller than "min_seq_num"; do not include "min_seq_num"
@@ -714,7 +714,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
 
     except Exception as e:
         # Add sequence to skip if check low-copy module returns errors
-        handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir)
+        handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classification_dir, skip_proof_dir=skipped_dir)
         with open(error_files, "a") as f:
             # Return the traceback content as a string
             tb_content = traceback.format_exc()
