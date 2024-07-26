@@ -1556,8 +1556,10 @@ def handle_sequence_skipped(seq_obj, progress_file, debug, MSA_dir, classificati
 
     try:
         seq_obj.update_status("skipped", progress_file)
-        if plot_skip and (te_aid_plot is not None or orf_plot is not None) and skip_proof_dir is not None:
-            merge_pdfs(skip_proof_dir, f"{seq_name}#{te_type_modified}", te_aid_plot, orf_plot)
+        if plot_skip and skip_proof_dir is not None:
+
+            if te_aid_plot is not None or orf_plot is not None:
+                merge_pdfs(skip_proof_dir, f"{seq_name}#{te_type_modified}", te_aid_plot, orf_plot)
 
             # Copy skipped input sequence into skip_proof_dir
             skip_fasta_file = os.path.join(skip_proof_dir, f"{seq_name}#{te_type_modified}.fa")
