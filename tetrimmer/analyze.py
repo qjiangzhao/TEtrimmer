@@ -748,7 +748,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         fasta_out_flank_file, bed_out_flank_file = extract_fasta(
             bed_out_filter_file, genome_file, MSA_dir, left_ex=0, right_ex=0, nameonly=True)
 
-        # Return 'False' if cluster number is 0. Return 'True' if divergent column number is smaller than 100.
+        # Return 'False' if cluster number is 0 (sequence number in each cluster is smaller than 10).
         # Otherwise, return the subset BED and alignment files.
         cluster_MSA_result = clean_and_cluster_MSA(fasta_out_flank_file, bed_out_filter_file, MSA_dir,
                                                    clean_column_threshold=0.02,

@@ -25,7 +25,7 @@ consensus2genome=function(query=NULL, db=NULL, evalue=10e-8, FL_thresh=0.9, alph
   if(is.null(query)){print('query not specified')}
   if(is.null(db)){print('db not specified')}
   #perform the blast
-  blast=read.table(text=system(paste("blastn -query", query, "-db", db , "-evalue", evalue, "-outfmt 6 | sed 's/#/-/g'"), intern = TRUE))
+  blast=read.table(text=system(paste("blastn -max_target_seqs 10000 -query", query, "-db", db , "-evalue", evalue, "-outfmt 6 | sed 's/#/-/g'"), intern = TRUE))
   # Write BLAST results to the output directory
   output_filepath <- file.path(output, "blastn.txt")
   write.table(blast, file = output_filepath, quote = FALSE, row.names = FALSE)

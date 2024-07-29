@@ -73,6 +73,8 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
 
     # The following code calculates the majority of the alignment length and finds the longest alignment for extension
     # while ignoring the shorter ones.
+    # long_bed function won't do length selection
+    # It generates the proper bed file for left and right extension.
     reset_left_long_bed, reset_right_long_bed = long_bed(input_file, output_dir)
 
     # 100 bp are added to avoid a case where the boundary is at the edge. Therefore, the alignment length is actually
@@ -385,6 +387,12 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
     while msa_loop_n <= 2:
 
+        # TEtrimmer will do the second round clustering and extension. The MSA has been extensively extended during
+        # the first time of loop, reduce the max_extension to 2000 for the second round, which can prevent to generate
+        # very long sequence especially for tandem repeats.
+        if msa_loop_n == 2:
+            max_extension = 2*ex_step_size
+
         try:
             # Read BED file and build dictionary to store sequence position
             df = pd.read_csv(bed_file, sep='\t', header=None)
@@ -449,7 +457,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 df.loc[df[3] == key, [1, 2]] = value[:2]
 
             # Define BED file name for final MSA
-            bed_final_MSA = bed_file + "_fm.bed"
+            bed_final_MSA = f"{bed_file}_fm_{msa_loop_n}.bed"
             df.to_csv(bed_final_MSA, sep='\t', index=False, header=False)
 
             # final_MSA return 'False' if when the start crop point is greater than the end crop point, which means the
@@ -480,6 +488,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         # Code block: Check the consistency of the final MSA
         #####################################################################################################
         # Plotting is done after PFAM predictions in case consensus/MSA are in the wrong direction.
+        # Don't do second round MSA clustering after boundary definition when LTR or TIR is found.
         try:
             if msa_loop_n <= 1:
                 final_msa_consistency = clean_and_cluster_MSA(cropped_boundary_MSA, bed_out_flank_file,
@@ -487,7 +496,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                                                               clean_column_threshold=0.01,
                                                               min_length_num=10, cluster_num=2, cluster_col_thr=500)
 
-                # len(final_msa_consistency) == 1 means clustering is not necessary
+                # final_msa_consistency will be false if no cluster available. In this case, use the original MSA
+                # after boundary definition
                 if not final_msa_consistency:
                     break
                 else:
@@ -517,7 +527,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         msa_loop_n += 1
 
         # Use smaller extension step for the next round extension
-        ex_step_size = 700
+        #ex_step_size = 700
 
     #####################################################################################################
     # Code block: Check if the final MSA contains too many instances of the ambiguous letter "N"
@@ -773,7 +783,10 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
 
         # Because terminal repeats were found before, use the previous result
-        # Run TE_aid. If low_copy is 'True', a self-BLAST will be performed
+        # Run TE_aid. If low_copy is 'True'
+        # The low_copy will only affect it to keep self blast result from TEAid.
+        # it is Ture, TE_aid_object.run will check the terminal repeat based on the self blast output of TEAid
+        # Otherwise, it use the terminal repeat result "found_match_crop"
         if not found_match_crop:
             TE_aid_object = TEAid(orf_cons, output_dir, genome_file, error_file=error_files, TE_aid_dir=TE_aid_path)
             TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)

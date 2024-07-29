@@ -248,37 +248,45 @@ More options are available:
 - 📄**TEtrimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
 
 
-## Optional!!! Manual inspection of TEtrimmer outputs by provided GUI
-You can use this graphical user interface (GUI) tool to inspect and improve TEtrimmer generated TE consensus library. 
+## Optional! Manual inspection of TEtrimmer outputs by provided TEtrimmerGUI. 
+You can use the TEtrimmerGUI tool to inspect and improve TEtrimmer generated TE consensus library. 
 This step is optional! TEtrimmer output can be used for genome-wide TE annotation directly. 
-If you want to get a traditional manual-curation level TE consensus library, you have to perform this step. 
+But if you want to get a traditional manual-curation level TE consensus library, you have to perform this step. 
 
+### Run TEtrimmerGUI by executable file
 
 TEtrimmerGUI executable file can be downloaded:
-
-macOS ARM: [TEtrimmerGUI_macOS](https://ln5.sync.com/dl/c23d7dff0/p7j4baxe-q7z4t8p5-cfs3vyyt-gqevsc4j) (x86_64 is not tested.)
 
 Linux x64: [TEtrimmerGUI_Linux](https://ln5.sync.com/dl/3c71f2630/5maxp5vh-fyg72mgc-yre5wi6t-m8rbv66p)
 
 Windows x64: [TEtrimmerGUI_Windows.exe](https://ln5.sync.com/dl/4ac3d7210/u33kcizf-gs7kejbb-vis9qzfs-bw9kyqfs)
 
-Installation is not required, unpack the double click the executable file to start TEtrimmerGUI
+macOS ARM: [TEtrimmerGUI_macOS](https://ln5.sync.com/dl/1cd1ef970/6ji8ibcj-4qzd65mx-my5abe7u-qsi4pmx7) (x86_64 has not been tested.)
 
-MSA files can be inspected by double-clicking the corresponding file button. 
+For macOS, please run the following command first after decompression:
+```commandline
+xattr -d com.apple.quarantine <your_path>/TEtrimmerGUI.app
+# We are trying to notarize the app. 
+```
+Installation is not required, unpack and double-click the executable file to start TEtrimmerGUI. It may take 
+around 30s for initialization after double-clicking "TEtrimmerGUI", please be patient for the first time. You can put 
+the executable file on your desktop or launchpad to make it easier to start it.
 
-**or** you can start it by:
+### Run TEtrimmerGUI by the source code
+
+**If you don't want to** download executable files, you can clone the source code and run: 
 ```commandline
 # Use --help to see all options
-python <path_to_GUI_folder>/annoGUI.py --help
+python <your_path>/tetrimmer/TEtrimmer_proof_anno_GUI/annoGUI.py --help
 
 # To start the manual inspection GUI tool
 # Open your Linux, macOS, or Windows terminal and type
-python <output_directory>/TEtrimmer_for_proof_curation/TEtrimmer_proof_anno_GUI/annoGUI.py -g <genome.fa>
+python <your_path>/tetrimmer/TEtrimmer_proof_anno_GUI/annoGUI.py
 # Note: You have to make BLAST available. 
 ```
 You can easily check and improve TEtrimmer outputs and get manual curation level TE consensus library.
 
-TEtrimmer GUI tool can extend MSA, generate interactive plots, and clean MSA.
+TEtrimmer GUI tool can extend MSA, generate interactive plots, and clean MSA. A demo video is provided.
 [![Proof curation GUI](docs/TEtrimmerGUI_video.png)](https://youtu.be/u1WxPmS9eBk)
 ![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space.png)
 
@@ -447,6 +455,7 @@ python <path_to_GUI_folder>/annoGUI.py -g <genome.fa> -clib <TE_consensus_librar
 
 
 ## Update history
+
 **TEtrimmer v1.4.0 Released June.27.2024**
 
 TEtrimmer GUI can be used to inspect and improve any TE consensus library.
@@ -459,5 +468,5 @@ can help identifying TE boundaries.
 
 ## Citation
 Qian, J., Xue, H., Ou, S., Storer, J., Fürtauer, L., Wildermuth, M. C., Kusch, S., & Panstruga, R. bioRxiv (2024) https://doi.org/10.1101/2024.06.27.600963
-TEtrimmer: A novel tool to automate the manual curation of transposable 2 elements.
+TEtrimmer: A novel tool to automate the manual curation of transposable elements.
 
