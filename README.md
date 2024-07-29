@@ -228,15 +228,15 @@ More options are available:
   - 📄**error_file.txt** - *Error file to store all error messages, only visible if errors were found.*
 - 📁**Single_fasta_files** - *All sequences in the input file will be separated into single FASTA files and stored here.*
 - 📁**TEtrimmer_for_proof_curation** - *This folder contains files used for manual inspection of TEtrimmer annotations.* 
-  - 📁**Annotation_perfect** - *Four files are associated with each sequence (anno.fa; fa; pdf).*
-    - 📄**TE_name.raw.fa** - *Multiple sequence alignment file before cleaning.*
-    - 📄**TE_name.fa** - *Multiple sequence alignment file after cleaning.*
+  - 📁**Annotation_perfect** - *Four files are associated with each sequence as showed below.*
+    - 📄**TE_name.raw.fa** - *Multiple sequence alignment file before TE boundary definition.*
+    - 📄**TE_name.fa** - *Multiple sequence alignment file after TE boundary definition, which is used to generate the consensus sequence.*
     - 📄**TE_name.pdf** - *Plot file used to evaluate output.*
     - 📄**TE_name.cluster.fa** - *Multiple sequence alignment file before clustering.*
   - 📁**Annotation_good** 
   - 📁**Annotation_check_recommended**
   - 📁**Annotation_check_required**
-  - 📁**Clustered_proof_curation** - *The folder group processed TEs to different clusters based on TE consensus sequence similarity.*
+  - 📁**Clustered_proof_curation** - *This folder contains all the output files from folder "Annotation_perfect", "Annotation_good", "Annotation_check_recommended", and "Annotation_check_required". The difference is TEtrimmer group similar output TEs into one "Cluster", which can make it easier to compare similar outputs.*
   - 📁**TE_low_copy** - *This folder contains low copy TEs.*
   - 📁**TE_skipped** - *Contains TE_Aid plots for all skipped TEs.*
   - 📁**TEtrimmer_proof_anno_GUI** - *The folder contains graphical user interface tools for manual proof curation.*
