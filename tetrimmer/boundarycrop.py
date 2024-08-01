@@ -300,9 +300,10 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
             if "LINE" in bed_file:
                 # For highly divergent regions, more gaps can be found. According to this feature, remove
                 # high-divergence regions. This function is very useful for dealing with LINE elements.
-                cropped_MSA_by_gap = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
-                                                  window_size=crop_end_gap_win)
-                bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap.write_to_file(output_dir)
+                cropped_MSA_by_gap_object = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
+                                                        window_size=crop_end_gap_win)
+                cropped_alignment_line = cropped_MSA_by_gap_object.cropped_alignment()
+                bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap_object.write_to_file(output_dir, cropped_alignment_line)
 
             # Gaps are removed again after processing with CropEnd
             cropped_alignment_output_file_g, column_mapping = crop_end_and_remove_gap(
