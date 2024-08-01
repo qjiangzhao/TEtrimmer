@@ -160,7 +160,7 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
                      f"-evalue 1e-40 -qcov_hsp_perc 20 | "
                      f"awk -v ml={min_length} 'BEGIN{{OFS=\"\\t\"}} $4 > ml {{print $0}}' >> {blast_out_file}")
         try:
-            subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         except FileNotFoundError:
             prcyan("'blastn' command not found. Please ensure 'blastn' is installed correctly.")
@@ -168,7 +168,8 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
 
         except subprocess.CalledProcessError as e:
             prcyan(f"\nBLAST failed for {input_file_n} with error code {e.returncode}")
-            prcyan(e.stderr)
+            prcyan(f"\n{e.stdout}")
+            prcyan(f"\n{e.stderr}\n")
             raise Exception
 
     elif search_type == "mmseqs":
@@ -178,8 +179,8 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
                       f"--cov-mode 4 -c 0.5 --e-profile 1e-40 --threads 1 --min-aln-len {min_length}")
         print(f"Running analysis with MMseqs2. \nWARNING: MMseqs2 is less accurate than 'blastn' and may return "
               f"faulty results. We strongly recommend to use 'blastn' instead.")
-        result = subprocess.run(mmseqs_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        error_output = result.stderr.decode("utf-8")
+        result = subprocess.run(mmseqs_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        error_output = result.stderr
 
         if error_output:
             print(f"Error running MMseqs2: {error_output}")
@@ -203,11 +204,12 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
                        f"if ($7>$6){{print $2, $8, $9, counter, $3, \"+\", $4, $1}} "
                        f"else {{print $2, $8, $9, counter, $3, \"-\", $4, $1}}}}' < {blast_out_file} > {bed_out_file}")
         try:
-            subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         except subprocess.CalledProcessError as e:
             prcyan(f"\nBLAST to BED file conversion failed for {input_file_n} with error code {e.returncode}")
-            prcyan(e.stderr)
+            prcyan(f"\n{e.stdout}")
+            prcyan(f"\n{e.stderr}\n")
             raise Exception
 
         # Append BLAST hit number to sequence object when seq_obj is provided
@@ -369,7 +371,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
     bed_cmd = f"bedtools slop -s -i {input_file} -g {genome_file}.length -l {left_ex} -r {right_ex} > {bed_out_flank_file_dup}"
 
     try:
-        subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(bed_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except FileNotFoundError:
         prcyan("'bedtools slop' command not found. Please ensure 'bedtools' is installed correctly.")
@@ -377,7 +379,8 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
 
     except subprocess.CalledProcessError as e:
         prcyan(f"\nbedtools slop failed for {input_file_n} with error code {e.returncode}")
-        prcyan(e.stderr)
+        prcyan(f"\n{e.stdout}")
+        prcyan(f"\n{e.stderr}\n")
         raise Exception
 
     bed_out_flank_file = check_bed_uniqueness(output_dir, bed_out_flank_file_dup)
@@ -388,7 +391,7 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
         fasta_cmd = f"bedtools getfasta -s -fi {genome_file} -fo {fasta_out_flank_file} -bed {bed_out_flank_file}"
 
     try:
-        subprocess.run(fasta_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(fasta_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except FileNotFoundError:
         prcyan("'bedtools getfasta' command not found. Please ensure 'bedtools' is installed correctly.")
@@ -396,17 +399,20 @@ def extract_fasta(input_file, genome_file, output_dir, left_ex, right_ex, nameon
 
     except subprocess.CalledProcessError as e:
         prcyan(f"\nbedtools getfasta failed for {input_file_n} with error code {e.returncode}")
-        prcyan(e.stderr)
+        prcyan(f"\n{e.stdout}")
+        prcyan(f"\n{e.stderr}\n")
         raise Exception
 
     # Use awk to remove letters other than: A G C T a g c t
     fasta_nucleotide_clean = f"awk '/^>/ {{print}} !/^>/ {{gsub(/[^AGCTagct]/, \"\"); print}}' {fasta_out_flank_file}" \
                              f" > {fasta_out_flank_file_nucleotide_clean}"
     try:
-        subprocess.run(fasta_nucleotide_clean, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(fasta_nucleotide_clean, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except subprocess.CalledProcessError as e:
-        prcyan(e.stderr)
+        prcyan("Fasta nucleotide clean failed by awk")
+        prcyan(f"\n{e.stdout}")
+        prcyan(f"\n{e.stderr}\n")
         raise Exception
 
     return fasta_out_flank_file_nucleotide_clean, bed_out_flank_file_dup
@@ -450,8 +456,9 @@ def align_sequences(input_file, output_dir):
 
     except subprocess.CalledProcessError as e:
         error_message = e.stderr
-        prcyan(f"MAFFT failed for {input_file_n} with error code {e.returncode}\n")
-        prcyan(e.stderr)
+        prcyan(f"\nMAFFT failed for {input_file_n} with error code {e.returncode}")
+        prcyan(f"\n{e.stdout}")
+        prcyan(f"\n{e.stderr}\n")
 
         if "Killed" in error_message and "disttbfast" in error_message and "memopt" in error_message:
             prgre(f"It seems insufficient RAM was available for MAFFT multiple sequence alignment. Please assign more "
@@ -470,7 +477,7 @@ def muscle_align(input_file, output_dir, ite_times=4):
     muscle_cmd = ["muscle", "-maxiters", str(ite_times), "-in", input_file, "-out", output_file]
 
     # Execute MUSCLE
-    result = subprocess.run(muscle_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(muscle_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     if result.returncode != 0:
         return False
@@ -573,7 +580,7 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
 
     try:
         # Execute the command
-        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except FileNotFoundError:
         prcyan("'hmmbuild' command not found. Please ensure 'hmmbuild' is installed correctly.")
@@ -582,8 +589,11 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
     except subprocess.CalledProcessError as e:
         with open(error_file, 'a') as f:
             f.write(f"\nhmm file generation failed for {os.path.basename(output_hmm_file)} with error code {e.returncode}")
-            f.write('\n' + e.stderr)
+            f.write(f"\n{e.stdout}")
+            f.write(f"\n{e.stderr}\n")
         prcyan(f"\nhmm file generation failed for {os.path.basename(output_hmm_file)} with error code {e.returncode}")
+        prcyan(f"\n{e.stdout}")
+        prcyan(f"\n{e.stderr}\n")
         prgre("\nThis hmm error will not affect the final TE consensus library, you can ignore it."
               "\nFor traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n")
 
@@ -1240,7 +1250,9 @@ def cd_hit_est(input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9,
 
     except subprocess.CalledProcessError as e:
         prcyan(f"\ncd-hit-est failed for {os.path.basename(input_file)} with error code {e.returncode}")
-        prcyan(e.stderr)
+        prcyan(f"\n{e.stdout}")
+        prcyan(f"\n{e.stderr}\n")
+
         raise Exception
 
 
@@ -1329,7 +1341,7 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
                    "-a",  # Writes alignments in .align output file
                    ]
     try:
-        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return True
 
     except FileNotFoundError:
@@ -1339,12 +1351,14 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
     except subprocess.CalledProcessError as e:
         if classify:
             prcyan(f"\nRepeatMasker failed during final classification step with error code {e.returncode}")
-            prcyan(e.stderr)
+            prcyan(f"\n{e.stdout}")
+            prcyan(f"\n{e.stderr}\n")
             prgre("This will not affect the final result. Only the classification of TE may not be correct.")
             raise Exception
         else:
             prcyan(f"\nRepeatMasker failed during final whole-genome TE annotation with error code {e.returncode}")
-            prcyan(e.stderr)
+            prcyan(f"\n{e.stdout}")
+            prcyan(f"\n{e.stderr}\n")
             prgre("This does not affect the final TE consensus library. You can perform the final genome-wide TE"
                   " annotation by yourself with RepeatMasker.")
             raise Exception
@@ -1636,7 +1650,7 @@ def classify_single(consensus_fasta):
 
     try:
         # Run RepeatClassifier using subprocess
-        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     except FileNotFoundError:
         prcyan("'RepeatClassifier' command not found. Please ensure 'RepeatModeler' is installed correctly.")
@@ -1644,7 +1658,8 @@ def classify_single(consensus_fasta):
 
     except subprocess.CalledProcessError as e:
         prcyan(f"RepeatClassifier failed for {os.path.basename(consensus_fasta)} with error code {e.returncode}")
-        prcyan(e.stderr)
+        prcyan(f"\n{e.stdout}")
+        prcyan(f"\n{e.stderr}\n")
         prgre("This only affects classification but not the consensus sequence. "
               "You can run 'RepeatClassifier -consensi <your_consensus_file>' manually.")
         # Change the working directory back to the original directory
@@ -1684,7 +1699,7 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
 
         # If an error was encountered, abort and return
         try:
-            subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         except subprocess.CalledProcessError:
             return None, None, False
 
@@ -1707,7 +1722,8 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
                 return None, None, False
         except subprocess.CalledProcessError as e:
             prcyan(f"\nTerminal repeat detection failed for {os.path.basename(input_file)} with error code {e.returncode}")
-            prcyan('\n' + e.stderr + '\n')
+            prcyan(f"\n{e.stdout}")
+            prcyan(f"\n{e.stderr}\n")
             raise Exception
 
         # Define BLAST output file
@@ -1876,7 +1892,9 @@ def dotplot(sequence1, sequence2, output_dir):
 
     except subprocess.CalledProcessError as e:
         prcyan(f"\n'dotmatcher' failed for {n_after_tetrimmer} with error code {e.returncode}")
-        prgre("\ndotmatcher does not affect the final consensus sequence. You can choose to ignore this error.")
+        prcyan(f"\n{e.stdout}")
+        prcyan(f"\n{e.stderr}")
+        prgre("\ndotmatcher does not affect the final consensus sequence. You can choose to ignore this error.\n")
         return None
 
     # Define command to convert ps to pdf
@@ -1900,6 +1918,8 @@ def dotplot(sequence1, sequence2, output_dir):
         prcyan(f"\n'ps2pdf' failed for {n_after_tetrimmer} with error code {e.returncode}")
         #prgre("\nps2pdf does not affect the final consensus sequence. But you won't get dot plots in the report file."
               #" You can choose to ignore this error.\n")
+        prcyan(f"\n{e.stdout}")
+        prcyan(f"\n{e.stderr}\n")
         return None
 
     return pdf_out
@@ -1934,7 +1954,9 @@ def multi_seq_dotplot(input_file, output_dir, title):
 
     except subprocess.CalledProcessError as e:
         prcyan(f"\npolydot failed for {input_name} with error code {e.returncode}")
-        prgre("\npolydot won't affect the final consensus sequence. You can choose to ignore this error")
+        prcyan(f"\n{e.stdout}")
+        prcyan(f"\n{e.stderr}")
+        prgre("\npolydot won't affect the final consensus sequence. You can choose to ignore this error\n")
         raise Exception
 
     # Define command to convert ps to pdf
@@ -1954,6 +1976,8 @@ def multi_seq_dotplot(input_file, output_dir, title):
 
     except subprocess.CalledProcessError as e:
         prcyan(f"\nps2pdf failed for {input_name} with error code {e.returncode}")
+        prcyan(f"\n{e.stdout}")
+        prcyan(f"\n{e.stderr}")
         prgre("\nps2pdf won't affect the final consensus sequence. You can choose to ignore this error\n")
         raise Exception
 

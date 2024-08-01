@@ -97,7 +97,7 @@ def prepare_pfam_database(pfam_database_dir):
                 # Create binary files that allow for faster access by other HMMER programs
                 hmmpress_pfam_command = ["hmmpress", os.path.join(pfam_database_dir, "Pfam-A.hmm")]
                 try:
-                    subprocess.run(hmmpress_pfam_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    subprocess.run(hmmpress_pfam_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
                 except FileNotFoundError:
                     prcyan("'hmmpress' command not found. Please ensure 'hmmpress' is installed correctly.")
@@ -105,8 +105,10 @@ def prepare_pfam_database(pfam_database_dir):
 
                 except subprocess.CalledProcessError as e:
                     prcyan(f"\nhmmpress index file generation failed with error code {e.returncode}")
-                    prgre("Please check if 'hmmpress' has been installed correctly in your system.\n"
-                          "Try running hmmpress <your_downloaded_pfam_file> Pfam-A.hmm")
+                    prcyan(f"\n{e.stdout}")
+                    prcyan(f"\n{e.stderr}")
+                    prgre("\nPlease check if 'hmmpress' has been installed correctly in your system.\n"
+                          "Try running hmmpress <your_downloaded_pfam_file> Pfam-A.hmm\n")
                     return False
         else:
             return False
@@ -189,7 +191,7 @@ class PlotPfam:
         ]
 
         try:
-            subprocess.run(get_orf_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(get_orf_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         except FileNotFoundError:
             prcyan("getorf command not found. Please ensure that getorf is installed and available in your PATH.")
@@ -197,7 +199,8 @@ class PlotPfam:
 
         except subprocess.CalledProcessError as e:
             prcyan(f"\ngetorf failed for {self.input_file_n} with error code {e.returncode}.")
-            prcyan('\n' + e.stderr + '\n')
+            prcyan(f"\n{e.stdout}")
+            prcyan(f"\n{e.stderr}\n")
             raise Exception
 
         # Check if the output_orf_file is empty
@@ -207,10 +210,11 @@ class PlotPfam:
         change_orf_name = f"cat {output_orf_file} | awk '{{if(/>/){{print $1$2$3$4}}else{{print}}}}' > {self.output_orf_file_name_modified}"
 
         try:
-            subprocess.run(change_orf_name, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(change_orf_name, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         except subprocess.CalledProcessError as e:
             prcyan(f"\nFilter ORF columns failed for {self.input_file_n} with error code {e.returncode}")
-            prcyan('\n' + e.stderr + '\n')
+            prcyan(f"\n{e.stdout}")
+            prcyan(f"\n{e.stderr}\n")
             raise Exception
 
         # Generate orf table for orf plot
@@ -223,12 +227,13 @@ class PlotPfam:
         )
         try:
             subprocess.run(output_orf_file_name_modified_table, shell=True, check=True,
-                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             return True
         except subprocess.CalledProcessError as e:
             prcyan(f"\nConverting ORF result to table failed for {self.input_file_n} with "
                    f"error code {e.returncode}")
-            prcyan('\n' + e.stderr + '\n')
+            prcyan(f"\n{e.stdout}")
+            prcyan(f"\n{e.stderr}\n")
             raise Exception
 
     def run_pfam_scan(self):
@@ -251,7 +256,7 @@ class PlotPfam:
             "-cpu", str("1")
         ]
         try:
-            subprocess.run(pfam_sacn_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(pfam_sacn_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         except FileNotFoundError:
             prcyan("'pfam_scan.pl' command not found. Please ensure 'pfam_scan.pl' is correctly installed.")
@@ -259,7 +264,8 @@ class PlotPfam:
 
         except subprocess.CalledProcessError as e:
             prcyan(f"\npfam_scan.pl failed for {self.input_file_n} with error code {e.returncode}")
-            prcyan('\n' + e.stderr + '\n')
+            prcyan(f"\n{e.stdout}")
+            prcyan(f"\n{e.stderr}\n")
             raise Exception
 
         # Modify PFAM output file for plot
@@ -272,10 +278,11 @@ class PlotPfam:
         )
 
         try:
-            subprocess.run(modify_pfam_result, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(modify_pfam_result, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         except subprocess.CalledProcessError as e:
             prcyan(f"\nTransform Pfam result failed for {self.input_file_n} with error code {e.returncode}")
-            prcyan('\n' + e.stderr + '\n')
+            prcyan(f"\n{e.stdout}")
+            prcyan(f"\n{e.stderr}\n")
             raise Exception
 
         # Check if the output file has only one line, which would mean no PFAM predictions.

@@ -138,7 +138,8 @@ class TEAid:
             if self.error_file is not None:
                 with open(self.error_file, 'a') as f:
                     f.write(f"\nTE Aid error for {os.path.basename(self.input_file)} with error code {e.returncode}")
-                    f.write('\n' + e.stderr + '\n')
+                    f.write(f"\n{e.stdout}")
+                    f.write(f"\n{e.stderr}\n")
 
         if low_copy:
 

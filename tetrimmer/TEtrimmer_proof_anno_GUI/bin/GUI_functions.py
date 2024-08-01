@@ -88,7 +88,8 @@ def check_database(genome_file, output_dir=None):
         except subprocess.CalledProcessError as e:
             click.echo(f"makeblastdb failed with exit code {e.returncode} \n"
                        f"{traceback.format_exc()}")
-            click.echo(e.stderr)
+            click.echo(f"\n{e.stdout}")
+            click.echo(f"\n{e.stderr}\n")
             return "makeblastdb_got_error"
     else:
         return database_path
@@ -124,7 +125,8 @@ def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=Fa
         click.echo(f"An error occurred during BLAST: \n {traceback.format_exc()}")
         click.echo(f"\nBLAST failed with error code {e.returncode}")
         # Print the error generated from the BLAST itself
-        click.echo(e.stderr)
+        click.echo(f"\n{e.stdout}")
+        click.echo(f"\n{e.stderr}\n")
         return "blastn_got_error", False
 
     # Check if the blast hit number is 0

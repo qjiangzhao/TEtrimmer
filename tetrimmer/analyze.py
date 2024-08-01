@@ -114,8 +114,9 @@ def check_database(genome_file, search_type="blast"):
                 raise Exception
 
             except subprocess.CalledProcessError as e:
-                prcyan(f"makeblastdb failed with exit code {e.returncode}")
-                prcyan(e.stderr)
+                prcyan(f"\nmakeblastdb failed with exit code {e.returncode}")
+                prcyan(f"\n{e.stdout}")
+                prcyan(f"\n{e.stderr}\n")
                 return False
     elif search_type == "mmseqs":
         mmseqs_database_dir = genome_file + "_db"
@@ -128,8 +129,9 @@ def check_database(genome_file, search_type="blast"):
                                stderr=subprocess.PIPE, text=True)
 
             except subprocess.CalledProcessError as e:
-                prcyan(f"mmseqs failed with exit code {e.returncode}")
-                prcyan(e.stderr)
+                prcyan(f"\nmmseqs failed with exit code {e.returncode}")
+                prcyan(f"\n{e.stdout}")
+                prcyan(f"\n{e.stderr}\n")
 
             # Check if MMseqs2 database files have been created
             if os.path.exists(f"{mmseqs_database_dir}.dbtype"):
@@ -139,8 +141,8 @@ def check_database(genome_file, search_type="blast"):
                 print("Creating index for MMseqs2 database...")
                 mmseqs_createindex_cmd = f"mmseqs createindex {mmseqs_database_dir} {mmseqs_database_dir}_tmp " \
                                          f"--search-type 3"
-                result = subprocess.run(mmseqs_createindex_cmd, shell=True, check=True, stderr=subprocess.PIPE)
-                error_output = result.stderr.decode("utf-8")
+                result = subprocess.run(mmseqs_createindex_cmd, shell=True, check=True, stderr=subprocess.PIPE, text=True)
+                error_output = result.stderr
                 if error_output:
                     print(f"Error creating MMseqs2 index: {error_output}\n")
                 else:
@@ -162,7 +164,7 @@ def check_database(genome_file, search_type="blast"):
         faidx_cmd = f"samtools faidx {genome_file}"
 
         try:
-            subprocess.run(faidx_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(faidx_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         except FileNotFoundError:
             prcyan("'samtools' command not found. Please ensure 'samtools' is correctly installed.")
@@ -170,7 +172,8 @@ def check_database(genome_file, search_type="blast"):
 
         except subprocess.CalledProcessError as e:
             prcyan(f"\nsamtool faidx failed with error code {e.returncode}")
-            prcyan(e.stderr)
+            prcyan(f"\n{e.stdout}")
+            prcyan(f"\n{e.stderr}\n")
             prgre("Please check if samtools was installed correctly \n"
                   "or try running samtools faidx <your_genome> to build the genome index file manually.")
             return False

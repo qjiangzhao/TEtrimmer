@@ -113,11 +113,11 @@ def detect_ltr_for_sequence(record, output_dir):
     makeblastdb_cmd = f"makeblastdb -in {sequence_file} -dbtype nucl -out {database_file}"
 
     try:
-        subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(makeblastdb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     except subprocess.CalledProcessError as e:
-        print(f"\nmakeblastdb encountered an error for sequence {record_name} and returned error code {e.returncode}.\n")
-        print(e.stdout)
-        print(e.stderr)
+        print(f"\nmakeblastdb encountered an error for sequence {record_name} and returned error code {e.returncode}.")
+        print(f"\n{e.stdout}")
+        print(f"\n{e.stderr}\n")
         return None
 
     blast_cmd = f"blastn -query {sequence_file} -db {database_file} " \
@@ -126,14 +126,14 @@ def detect_ltr_for_sequence(record, output_dir):
 
     try:
         # Execute the command
-        result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run(blast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     except subprocess.CalledProcessError as e:
-        print(f"\nblast encountered an error for sequence {record_name} and returned error code {e.returncode}.\n")
-        print(e.stdout)
-        print(e.stderr)
+        print(f"\nblast encountered an error for sequence {record_name} and returned error code {e.returncode}.")
+        print(f"\n{e.stdout}")
+        print(f"\n{e.stderr}\n")
         return None
 
-    blast_out = result.stdout.decode('utf-8').strip()
+    blast_out = result.stdout.strip()
     if not blast_out:
         return None
 

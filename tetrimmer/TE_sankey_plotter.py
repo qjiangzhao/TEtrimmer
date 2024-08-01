@@ -304,9 +304,11 @@ def read_rm_out(input_file, output_dir, categories, reverse_categories, genome_l
     bed_sort = f"bedtools sort -i {output_df_path} -g {genome_length} > {sorted_output_df_path}"
 
     try:
-        subprocess.run(bed_sort, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(bed_sort, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     except subprocess.CalledProcessError as e:
-        print(f"bedtools sort error\n{e.stderr}")
+        print(f"\nbedtools sort error\n{e.stderr}")
+        print(f"\n{e.stdout}")
+        print(f"\n{e.stderr}\n")
 
     if not debug:
         delete_file(output_df_path)
@@ -329,8 +331,9 @@ def get_complement_region(bed_file, genome_length):
             f.write(result.stdout)
 
     except subprocess.CalledProcessError as e:
-        print("bedtools complement error:\n")
-        print(e.stderr)
+        print("\nbedtools complement error:\n")
+        print(f"\n{e.stdout}")
+        print(f"\n{e.stderr}\n")
 
     return bed_complement_path
 
@@ -400,10 +403,11 @@ def bed_merge(bed_file, genome_length, debug=False):
 
     for command in combined_command_merge:
         try:
-            subprocess.run(command, shell=True, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            subprocess.run(command, shell=True, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
         except subprocess.CalledProcessError as e:
-            print(f"bedtools merge error for command {command}\n"
-                  f"{e.stderr}\n")
+            print(f"\nbedtools merge error for command {command}")
+            print(f"\n{e.stdout}")
+            print(f"\n{e.stderr}\n")
             raise Exception
 
     # Separate overlapped elements
@@ -420,10 +424,11 @@ def bed_merge(bed_file, genome_length, debug=False):
 
     for command in combined_command_combine:
         try:
-            subprocess.run(command, shell=True, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            subprocess.run(command, shell=True, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
         except subprocess.CalledProcessError as e:
-            print(f"bedtools merge error for command {command}\n"
-                  f"{e.stderr}\n")
+            print(f"\nbedtools merge error for command {command}")
+            print(f"\n{e.stdout}")
+            print(f"\n{e.stderr}\n")
             raise Exception
     if not debug:
         delete_file(output_path_no_overlap, output_path_overlap, output_path_overlap_solved, output_path_combined)
@@ -443,10 +448,11 @@ def bed_intersect(bed1, bed2, strand=False):
         bed_intersect = f"bedtools intersect -a {bed1} -b {bed2} -wao > {bed_intersect_out_path}"
 
     try:
-        subprocess.run(bed_intersect, shell=True, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        subprocess.run(bed_intersect, shell=True, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
     except subprocess.CalledProcessError as e:
-        print(f"bedtools intersect error. Check if you have installed Bedtools\n"
-              f"{e.stderr}\n")
+        print(f"\nbedtools intersect error. Check if you have installed Bedtools")
+        print(f"\n{e.stdout}")
+        print(f"\n{e.stderr}\n")
     return bed_intersect_out_path
 
 
