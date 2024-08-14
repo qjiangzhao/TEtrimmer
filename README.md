@@ -39,10 +39,10 @@ achieving manual curation-level TE consensus libraries easily.
 For detailed instructions, including installation steps, usage options, example outputs, and more, 
 please refer to [TEtrimmerv1.4.0Manual.pdf](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerv1.4.0Manual.pdf) 
 
-## Installation
+## Installation 
 TEtrimmer can be installed by 1. Conda, 2. Singularity, or 3. Docker. 
 
-### 1. Conda 
+### 1. Conda (Many thanks to [HangXue](https://github.com/hangxue-wustl))
 You have to install [miniconda](https://docs.anaconda.com/free/miniconda/) on your computer in advance. 
 We highly recommend installation with `mamba`, as it is much faster. 
 
@@ -252,6 +252,8 @@ More options are available:
 You can use the TEtrimmerGUI tool to inspect and improve TEtrimmer generated TE consensus library. 
 This step is optional! TEtrimmer output can be used for genome-wide TE annotation directly. 
 But if you want to get a traditional manual-curation level TE consensus library, you have to perform this step. 
+
+### Currently, TETrimmerGUI might not work under Ubuntu system properly.
 
 ### Run TEtrimmerGUI by executable file
 

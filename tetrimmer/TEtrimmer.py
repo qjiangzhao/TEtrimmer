@@ -61,18 +61,19 @@ with open(config_path, "r") as config_file:
 
                 ##########################################################################################              
 
-                python ./path_to_TEtrimmer_bin/TEtrimmer.py -i <TE_consensus_file> -g <genome_file>
+                python ./path_to_TEtrimmer_folder/TEtrimmer.py -i <TE_consensus_file> -g <genome_file>
 
-                TEtrimmer is designed to automate manual curation of transposable elements (TEs). 
+                TEtrimmer is designed to automate the manual curation of transposable elements (TEs). 
 
                 Two mandatory arguments are required, including 
                 <genome file>, the genome FASTA file, and 
                 <TE consensus file> from TE discovery software like RepeatModeler, EDTA, or REPET. 
-                TEtrimmer can do BLAST, sequence extension, multiple sequence alignment, and defining TE boundaries.
+                TEtrimmer can do BLAST, sequence extension, multiple sequence alignment (MSA), MSA clustering, 
+                MSA cleaning, TE boundaries definition, and MSA visualization.
 
 """)
 @click.option('--input_file', '-i', required=True, type=str,
-              help='Path to TE consensus file (FASTA format). Use the output from RepeatModeler, EDTA, REPET, et al.')
+              help='Path to TE consensus library file (FASTA format). Use the output from RepeatModeler, EDTA, REPET, et al.')
 @click.option('--genome_file', '-g', required=True, type=str,
               help='Path to genome FASTA file (FASTA format).')
 @click.option('--output_dir', '-o', default=os.getcwd(), type=str,
@@ -92,7 +93,11 @@ with open(config_path, "r") as config_file:
 @click.option('--continue_analysis', '-ca', default=False, is_flag=True,
               help='Continue from previous unfinished TEtrimmer run and would use the same output directory.')
 @click.option('--dedup', default=False, is_flag=True,
-              help='Remove duplicate sequences in input file.')
+              help='Remove duplicate sequences in the input file.')
+#@click.option('--curatedlib', default=False, is_flag=True,
+#              help='Path to manually curated high-quality TE consensus library file. TEtrimmer eliminates TE consensus '
+#                   'sequence from "--input_file" if the sequence shares more than 90% identity with sequences from '
+#                   '"--curatedlib".')
 @click.option('--genome_anno', '-ga', default=False, is_flag=True,
               help='Perform genome TE annotation using RepeatMasker with the TEtrimmer curated TE libraries.')
 @click.option('--hmm', default=False, is_flag=True,
@@ -106,11 +111,13 @@ with open(config_path, "r") as config_file:
 #@click.option('--plot_skip', default=False, is_flag=True,
 #              help='Generate TE_Aid plot for skipped elements.')
 @click.option('--pfam_dir', '-pd', default=None, type=str,
-              help='Pfam database directory. TE Trimmer will download the database automatically. ' 
-                    'Only turn on this option if you want to use a local PFAM database or the automatic download fails.')
+              help='Pfam database directory. TEtrimmer checks the existence of Pfam database in the provided path and '
+                   'downloads it automatically when it is not found. By default, Pfam will be downloaded to TEtrimmer source code folder. '
+                   'For "singularity" user, please use this option to define a local path, TEtrimmer will download the '
+                   'database to the provided path if Pfam database is not found. If the automatic download fails, you can'
+                   'download Pfam database by yourself.')
 @click.option('--cons_thr', type=float,
-              help='The minimum level of agreement required at a given position in the alignment ' 
-                    'for a consensus character to be called. Default: 0.8')
+              help='Threshold used to generate final consensus sequences from MSAs. Default: 0.8')
 @click.option('--mini_orf', type=int,
               help='Define the minimum ORF length to be predicted by TEtrimmer. Default: 200')
 @click.option('--max_msa_lines', type=int,
@@ -558,7 +565,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
         # Run RepeatMasker
         if genome_anno:
-            click.echo("\nTEtrimmer is performing whole-genome TE annotation by RepeatMasker. This could take "
+            click.echo("\nTEtrimmer is performing whole-genome TE annotation by RepeatMasker. This could take a "
                        "long time. \nThe final TE consensus library has been completed. You can use it now.\n")
 
             if final_merge_success and os.path.exists(cd_hit_est_final_merged):
