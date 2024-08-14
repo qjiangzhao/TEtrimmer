@@ -304,8 +304,8 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
     return seq_list, single_fasta_n
 
 
-def repeatmasker_classification(final_unknown_con_file, final_classified_con_file, classification_dir, num_threads, progress_file, \
-                                final_con_file, proof_curation_dir, perfect_proof, good_proof, intermediate_proof, \
+def repeatmasker_classification(final_unknown_con_file, final_classified_con_file, classification_dir, num_threads, progress_file,
+                                final_con_file, proof_curation_dir, perfect_proof, good_proof, intermediate_proof,
                                 need_check_proof, low_copy_dir, hmm, hmm_dir):
     if os.path.exists(final_unknown_con_file) and os.path.exists(final_classified_con_file):
         temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmasker_classification")
