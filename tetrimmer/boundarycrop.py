@@ -449,7 +449,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 f.write('\n' + tb_content + '\n\n')
                 prcyan(f"\nMSA extension failed for {seq_name} with error:\n{e}")
                 prcyan('\n' + tb_content + '\n')
-                raise Exception
+            raise Exception
 
         try:
             # Update BED file for final MSA
@@ -483,7 +483,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 f.write('\n' + tb_content + '\n\n')
                 prcyan(f"\nBoundary definition failed for {seq_name} with error:\n{e}")
                 prcyan('\n' + tb_content + '\n')
-                raise Exception
+            raise Exception
 
         #####################################################################################################
         # Code block: Check the consistency of the final MSA
@@ -523,7 +523,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                 f.write('\n' + tb_content + '\n\n')
                 prcyan(f"\nBoundary definition clustering failed for {seq_name} with error:\n{e}")
                 prcyan('\n' + tb_content + '\n')
-                raise Exception
+            raise Exception
 
         msa_loop_n += 1
 
@@ -644,7 +644,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             f.write('\n' + tb_content + '\n\n')
             prcyan(f"\nConcatenate MSA for manual inspection plot failed for {seq_name} with error:\n{e}")
             prcyan('\n' + tb_content + '\n')
-            raise Exception
+        raise Exception
 
     #####################################################################################################
     # Code block: Predict ORFs and PFAM domains, determine sequence direction
@@ -742,7 +742,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             f.write('\n' + tb_content + '\n\n')
             prcyan(f"\nORF or PFAM prediction failed for {seq_name} with error:\n{e}")
             prcyan('\n' + tb_content + '\n')
-            raise Exception
+        raise Exception
 
     #####################################################################################################
     # Code block: Plot multiple sequence alignment. 
@@ -818,7 +818,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             f.write('\n' + tb_content + '\n\n')
             prcyan(f"\nTE-Aid plot failed for {seq_name} with error:\n{e}")
             prcyan('\n' + tb_content + '\n')
-            raise Exception
+        raise Exception
 
     #####################################################################################################
     # Code block: Generate dotplot
@@ -867,7 +867,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             f.write('\n' + tb_content + '\n\n')
             prcyan(f"\nPlot merging to PDF failed for {seq_name} with error:\n{e}")
             prcyan('\n' + tb_content + '\n')
-            raise Exception
+        raise Exception
 
     #####################################################################################################
     # Code block: Update sequence object (seq_obj)
@@ -945,7 +945,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             f.write('\n' + tb_content + '\n\n')
             prcyan(f"\nUpdate sequence object failed for {seq_name} with error:\n{e}")
             prcyan('\n' + tb_content + '\n')
-            raise Exception
+        raise Exception
 
     #####################################################################################################
     # Code block: Run RepeatClassifier in RepeatModeler to classify TEtrimmer consensus sequences
@@ -1105,7 +1105,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             f.write('\n' + tb_content + '\n\n')
             prcyan(f"\nMoving of files failed for {seq_name} with error:\n{e}")
             prcyan('\n' + tb_content + '\n')
-            raise Exception
+        raise Exception
 
 
 
