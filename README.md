@@ -263,9 +263,8 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py --help
 # Open your Linux, macOS, or Windows terminal and type
 python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -i <TEtrimmer_for_proof_curation_folder> -g <genome_file.fa>
 ```
-You can easily check and improve TEtrimmer outputs and get manual curation level TE consensus library.
-
-TEtrimmer GUI tool can extend MSA, generate interactive plots, and clean MSA.
+TEtrimmerGUI doesn't need any dependencies. You can copy the "tetrimmerGUI" folder to any place and execute it directly.
+![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space.png)
 
 ## Example report plots for each output TE consensus sequence
 For each TEtrimmer output TE consensus sequence. You will get a report plot file like this:
