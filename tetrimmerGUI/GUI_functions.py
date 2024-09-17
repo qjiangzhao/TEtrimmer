@@ -213,7 +213,7 @@ def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=Fa
     # Define blast out with header
     blast_out_file_header = os.path.join(blast_out_dir, f"{os.path.basename(input_file)}_blast.txt")
 
-    if os_type == "linux":
+    if os_type == "Linux":
         blastn = os.path.join(blast_dir, "blastn_linux")
     elif os_type == "Darwin":
         blastn = os.path.join(blast_dir, "blastn_mac")
