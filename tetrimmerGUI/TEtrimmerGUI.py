@@ -680,7 +680,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                         return
 
                     # Check genome blast database availability
-                    blast_database = check_database(genome_f)
+                    blast_database = check_database(genome_f, os_type=os_type)
 
                     # Check if makeblastdb is correctly installed
                     if blast_database == "makeblastdb_not_found":
@@ -698,7 +698,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
                     # Perform the blast operation if the sequence count is exactly one
                     other_cons_bed, other_cons_blast = blast(input_fasta_file, blast_database, output_dir_g, e_value=e_value,
-                                                             bed_file=True)
+                                                             bed_file=True, os_type=os_type)
 
                     if other_cons_bed == "blastn_not_found":
                         messagebox.showerror("Error",
@@ -806,7 +806,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                         return
 
                     # Check genome blast database availability
-                    blast_database = check_database(genome_f)
+                    blast_database = check_database(genome_f, os_type=os_type)
 
                     # Check if makeblastdb is correctly installed
                     if blast_database == "makeblastdb_not_found":
@@ -824,7 +824,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
                     # Perform the blast operation if the sequence count is exactly one
                     other_cons_bed, other_cons_blast = blast(input_fasta_file, blast_database, output_dir_g, e_value=e_value,
-                                                             bed_file=True)
+                                                             bed_file=True, os_type=os_type)
 
                     if other_cons_bed == "blastn_not_found":
                         messagebox.showerror("Error",

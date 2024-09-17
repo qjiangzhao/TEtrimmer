@@ -34,7 +34,6 @@ def get_original_file_path():
         original_file_path = os.path.dirname(os.path.abspath(__file__))
     return original_file_path
 
-script_dir = get_original_file_path()
 
 def sanitize_name(name):
 
@@ -131,6 +130,7 @@ def check_and_download(directory, filename, url):
 
 def rpstblastn(input_file, rpsblast_database, rpsblast_out_dir, e_value=1):
 
+    script_dir = get_original_file_path()
     # Define blast out with header
     rpsblast_out_file = os.path.join(rpsblast_out_dir, f"{os.path.basename(input_file)}_domain.txt")
 
@@ -160,8 +160,12 @@ def rpstblastn(input_file, rpsblast_database, rpsblast_out_dir, e_value=1):
         click.echo(e.stderr)
         return "rpstblastn_got_error", False
 
-def check_database(genome_file, output_dir=None):
 
+def check_database(genome_file, output_dir=None, os_type="Darwin"):
+
+    script_dir = get_original_file_path()
+
+    blast_dir = os.path.join(script_dir, "blast")
     # Define database path
     genome_n = os.path.basename(genome_file)
     if output_dir is None:
@@ -174,7 +178,13 @@ def check_database(genome_file, output_dir=None):
     if not os.path.isfile(database_file):
 
         try:
-            makeblastdb_cmd = f"{os.path.join(script_dir, 'makeblastdb')} -in {genome_file} -dbtype nucl -out {database_path} "
+            if os_type == "Linux":
+                makeblastdb_cmd = f"{os.path.join(blast_dir, 'makeblastdb_linux')} -in {genome_file} -dbtype nucl -out {database_path}"
+            elif os_type == "Darwin":
+                makeblastdb_cmd = f"{os.path.join(blast_dir, 'makeblastdb_mac')} -in {genome_file} -dbtype nucl -out {database_path}"
+            else:
+                makeblastdb_cmd = f"{os.path.join(blast_dir, 'makeblastdb.exe')} -in {genome_file} -dbtype nucl -out {database_path}"
+
             subprocess.run(makeblastdb_cmd, shell=True, check=True, stdout=subprocess.PIPE,
                            stderr=subprocess.PIPE, text=True)
             return database_path
@@ -193,16 +203,26 @@ def check_database(genome_file, output_dir=None):
         return database_path
 
 
-def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=False, self_blast=False):
+def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=False, self_blast=False, os_type="Darwin"):
+
+    script_dir = get_original_file_path()
+    blast_dir = os.path.join(script_dir, "blast")
 
     # Define blast out without header
     blast_out_file = os.path.join(blast_out_dir, f"{os.path.basename(input_file)}_no_header.b")
     # Define blast out with header
     blast_out_file_header = os.path.join(blast_out_dir, f"{os.path.basename(input_file)}_blast.txt")
 
+    if os_type == "linux":
+        blastn = os.path.join(blast_dir, "blastn_linux")
+    elif os_type == "Darwin":
+        blastn = os.path.join(blast_dir, "blastn_mac")
+    else:
+        blastn = os.path.join(blast_dir, "blastn.exe")
+
     # -outfmt 6 use "\t" as deliminator. -outfmt 10 use "," as deliminator
     blast_cmd = [
-        f"{os.path.join(script_dir, 'blastn')}",
+        str(blastn),
         "-query", input_file,
         "-db", blast_database,
         "-max_target_seqs", str(10000),

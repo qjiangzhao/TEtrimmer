@@ -3,6 +3,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
+import platform
 import subprocess
 import click
 from Bio import AlignIO, SeqIO
@@ -20,6 +21,7 @@ warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
 The plot codes are derived from TE-Aid. https://github.com/clemgoub/TE-Aid.git
 """
 
+os_type = platform.system()
 
 def con_generater(input_file, output_dir, threshold=0.8, ambiguous="N"):
     # Read input file
@@ -61,13 +63,13 @@ def self_blast(input_file, output_dir):
     con_seq, cons_len = con_generater(input_file, output_dir_self_blast, threshold=0.5)
 
     # Build blast database
-    blast_database = check_database(con_seq, output_dir_self_blast)
+    blast_database = check_database(con_seq, output_dir_self_blast, os_type=os_type)
 
     # Run blast. Use bigger e_value for self blast
     if blast_database != "makeblastdb_not_found" and blast_database != "makeblastdb_got_error":
 
         blast_file_teaid, blast_file = blast(con_seq, blast_database, output_dir_self_blast, e_value=0.05,
-                                             self_blast=True)
+                                             self_blast=True, os_type=os_type)
 
         if blast_file_teaid not in ["blastn_not_found", "blastn_got_error", "blast_n_zero"] and blast_file_teaid:
             return blast_file_teaid
@@ -287,7 +289,7 @@ def GUI_plotter(input_file, output_dir, genome_file, current_win, e_value=1e-40)
     con_seq, cons_len = con_generater(input_file, output_dir, threshold=0.5)
 
     # Check genome blast database availability
-    blast_database = check_database(genome_file)
+    blast_database = check_database(genome_file, os_type=os_type)
 
     # Check if makeblastdb is correctly installed
     if blast_database == "makeblastdb_not_found":
@@ -305,7 +307,7 @@ def GUI_plotter(input_file, output_dir, genome_file, current_win, e_value=1e-40)
         run_succeed = False
         return run_succeed
 
-    genome_blast_out, _ = blast(con_seq, blast_database, output_dir, e_value=e_value)
+    genome_blast_out, _ = blast(con_seq, blast_database, output_dir, e_value=e_value, os_type=os_type)
 
     if genome_blast_out == "blastn_not_found":
         messagebox.showerror("Error",
