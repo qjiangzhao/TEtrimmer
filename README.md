@@ -239,8 +239,6 @@ More options are available:
   - 📁**Clustered_proof_curation** - *This folder contains all the output files from folder "Annotation_perfect", "Annotation_good", "Annotation_check_recommended", and "Annotation_check_required". The difference is TEtrimmer group similar output TEs into one "Cluster", which can make it easier to compare similar outputs.*
   - 📁**TE_low_copy** - *This folder contains low copy TEs.*
   - 📁**TE_skipped** - *Contains TE_Aid plots for all skipped TEs.*
-  - 📁**TEtrimmer_proof_anno_GUI** - *The folder contains graphical user interface tools for manual proof curation.*
-    - 📄**annoGUI.py** - *Use <python ./annoGUI.py -g <genome.fa>> to start manual proof curation GUI.*
 - 📁**HMM** - *This folder is used to store Hidden Markov Model file. Only visible when < --hmm > is enabled.*
 - 📄**Sequence_name_mapping.txt** - *This file connects the input sequence names with the modified names from TEtrimmer.*
 - 📄**summary.txt** - *Summary file.* 
@@ -251,46 +249,23 @@ More options are available:
 ## Optional! Manual inspection of TEtrimmer outputs by provided TEtrimmerGUI. 
 You can use the TEtrimmerGUI tool to inspect and improve TEtrimmer generated TE consensus library. 
 This step is optional! TEtrimmer output can be used for genome-wide TE annotation directly. 
-But if you want to get a traditional manual-curation level TE consensus library, you have to perform this step. 
+But if you want to get a traditional manual-curation level TE consensus library, you have to perform this step.
 
-### Currently, TETrimmerGUI might not work under Ubuntu system properly.
-
-### Run TEtrimmerGUI by executable file
-
-TEtrimmerGUI executable file can be downloaded:
-
-Linux x64: [TEtrimmerGUI_Linux](https://ln5.sync.com/dl/3c71f2630/5maxp5vh-fyg72mgc-yre5wi6t-m8rbv66p)
-
-Windows x64: [TEtrimmerGUI_Windows.exe](https://ln5.sync.com/dl/4ac3d7210/u33kcizf-gs7kejbb-vis9qzfs-bw9kyqfs)
-
-macOS ARM: [TEtrimmerGUI_macOS](https://ln5.sync.com/dl/1cd1ef970/6ji8ibcj-4qzd65mx-my5abe7u-qsi4pmx7) (x86_64 has not been tested.)
-
-For macOS, please run the following command first after decompression:
-```commandline
-xattr -d com.apple.quarantine <your_path>/TEtrimmerGUI.app
-# We are trying to notarize the app. 
-```
-Installation is not required, unpack and double-click the executable file to start TEtrimmerGUI. It may take 
-around 30s for initialization after double-clicking "TEtrimmerGUI", please be patient for the first time. You can put 
-the executable file on your desktop or launchpad to make it easier to start it.
+TEtrimmerGUI executable file isn't supported anymore. Please use the source code to run it.
 
 ### Run TEtrimmerGUI by the source code
 
-**If you don't want to** download executable files, you can clone the source code and run: 
 ```commandline
 # Use --help to see all options
-python <your_path>/tetrimmer/TEtrimmer_proof_anno_GUI/annoGUI.py --help
+python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py --help
 
 # To start the manual inspection GUI tool
 # Open your Linux, macOS, or Windows terminal and type
-python <your_path>/tetrimmer/TEtrimmer_proof_anno_GUI/annoGUI.py
-# Note: You have to make BLAST available. 
+python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -i <TEtrimmer_for_proof_curation_folder> -g <genome_file.fa>
 ```
 You can easily check and improve TEtrimmer outputs and get manual curation level TE consensus library.
 
-TEtrimmer GUI tool can extend MSA, generate interactive plots, and clean MSA. A demo video is provided.
-[![Proof curation GUI](docs/TEtrimmerGUI_video.png)](https://youtu.be/u1WxPmS9eBk)
-![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space.png)
+TEtrimmer GUI tool can extend MSA, generate interactive plots, and clean MSA.
 
 ## Example report plots for each output TE consensus sequence
 For each TEtrimmer output TE consensus sequence. You will get a report plot file like this:
@@ -446,17 +421,21 @@ The TEtrimmer GUI can also be used to check other TE consensus libraries like th
 RepeatModeler2, REPET, and other tools. 
 ```commandline
 # Use --help to see all options
-python <path_to_GUI_folder>/annoGUI.py --help
+python <path_to_folder_tetrimmerGUI>/annoGUI.py --help
 
 # Open your Linux, macOS, or Windows terminal and type
-python <path_to_GUI_folder>/annoGUI.py -g <genome.fa> -clib <TE_consensus_library.fa>
-# Note: The GUI doesn't perfectly support Windows for "TEAid" plotting function.
-# To run the GUI tool, you only need to install BLAST. You do not need to install other packages required by TEtrimmer.
+python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <TE_consensus_library.fa>
+
+# To run the TEtrimmerGUI tool, you only need to install Python.
 ```
 ![Proof curation GUI_check_other_consensus_lib](docs/TEtrimmer_GUI_check_consensus_lib.png)
 
 
 ## Update history
+**TEtrimmer v1.4.1 Released September.17.2024**
+
+Updated TEtrimmerGUI, solved GUI TIR detection problem.
+TEtrimmerGUI won't be copied into output folder.
 
 **TEtrimmer v1.4.0 Released June.27.2024**
 

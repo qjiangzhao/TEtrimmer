@@ -1710,7 +1710,7 @@ def check_terminal_repeat(input_file, output_dir, teaid_blast_out=None, TIR_adj=
 
         blast_cmd = f"blastn -query {input_file} -db {database_file} " \
                     f"-outfmt \"6 qseqid qstart qend sstart send \" " \
-                    f"-evalue 0.05"  # Set more stringent e-value for self-BLAST
+                    f"-evalue 0.05 -word_size 11 -gapopen 5 -gapextend 2 -reward 2 -penalty -3"  # Set less stringent e-value for self-BLAST
 
         try:
             result = subprocess.run(blast_cmd, shell=True, check=True, text=True, stdout=subprocess.PIPE,

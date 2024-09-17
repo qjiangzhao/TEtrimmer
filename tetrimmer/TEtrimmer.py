@@ -46,7 +46,7 @@ with open(config_path, "r") as config_file:
                    \\__|   \\________| \\____/ \\__|      \\__|\\__| \\__| \\__|\\__| \\__| \\__| \\_______|\\__|
         
                   
-                Version: v1.4.0 (27/June/2024) 
+                Version: v1.4.1 (27/June/2024) 
 
                 Github: https://github.com/qjiangzhao/TEtrimmer
 
@@ -331,6 +331,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     #####################################################################################################
     # Code block: Copy TEtrimmer_proof_anno_GUI to proof_curation_dir
     #####################################################################################################
+    """
     proof_anno_GUI_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TEtrimmer_proof_anno_GUI")
 
     # Create the full path for the new directory inside the destination
@@ -343,6 +344,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     # Copy the entire directory
     shutil.copytree(proof_anno_GUI_dir, proof_anno_GUI_destination_dir)
+    """
 
     #####################################################################################################
     # Code block: Remove duplications in input file if required, generate single FASTA file and check BLAST database

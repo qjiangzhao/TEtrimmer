@@ -105,7 +105,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     """
     This GUI is designed to inspect and improve TEtrimmer outputs and any TE consensus libraries.
 
-    python ./TEtrimmerGUI.py -i <TEtrimmer_output_folder> -g <genome_file>
+    python ./TEtrimmerGUI.py -i <TEtrimmer_for_proof_curation_folder> -g <genome_file.fa>
     """
 
     # Make directory for temporary files
