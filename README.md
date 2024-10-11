@@ -431,6 +431,11 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 
 
 ## Update history
+
+** October.11.2024
+
+Update CIAilgn (whole MSA) plot
+
 **TEtrimmer v1.4.1 Released September.17.2024**
 
 Updated TEtrimmerGUI, solved GUI TIR detection problem.

@@ -759,11 +759,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         # Define MSA plot output file
         cropped_boundary_manual_MSA_concatenate_plot = f"{cropped_boundary_manual_MSA_concatenate}_plot.pdf"
 
-        # Convert MSA to array
-        cropped_boundary_manual_MSA_concatenate_array, nams = cialign.FastaToArray(cropped_boundary_manual_MSA_concatenate)
-
         # Draw the entire MSA
-        cialign.drawMiniAlignment(cropped_boundary_manual_MSA_concatenate_array, nams,
+        cialign.drawMiniAlignment(cropped_boundary_manual_MSA_concatenate,
                                   cropped_boundary_manual_MSA_concatenate_plot, concat_start_man, concat_end_man)
     except Exception as e:
         with open(error_files, "a") as f:
