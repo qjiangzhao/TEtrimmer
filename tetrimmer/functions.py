@@ -14,6 +14,7 @@ import numpy as np
 from PyPDF2 import PdfMerger, PdfFileReader, PdfFileWriter
 import warnings
 from Bio import BiopythonDeprecationWarning
+import traceback
 
 # Suppress all deprecation warnings
 warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
@@ -1437,6 +1438,146 @@ def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, m
     progress_df.to_csv(progress_file, index=False, na_rep='NaN')
 
     return reclassified_dict
+
+
+def eliminate_curatedlib_by_repeatmasker(curatedlib, input_seq, curatedlib_dir, min_iden=95,
+                                         min_cov=95, num_threads=10):
+
+    # For the repeatmasker_out --input_seq as genome, --curatedlib serves as repeat database
+    # Define the directory
+    repeatmasker_succeed = repeatmasker(input_seq, curatedlib, curatedlib_dir, thread=num_threads, classify=True)
+
+    if repeatmasker_succeed:
+        repeatmasker_out = os.path.join(curatedlib_dir, f"{os.path.basename(input_seq)}.out")
+    else:
+        return False
+
+    # Read RepeatMasker output file (.out) into a DataFrame
+    # The regex '\s+' matches one or more whitespace characters
+    # error_bad_lines=False to skip errors
+    try:
+        df = pd.read_csv(repeatmasker_out, sep=r'\s+', header=None, skiprows=3, usecols=range(15))
+    except pandas.errors.EmptyDataError:
+        return False
+    except pd.errors.ParserError:
+        df = pd.read_csv(repeatmasker_out, sep=r'\s+', header=None, skiprows=3, error_bad_lines=False, usecols=range(15))
+
+    # Rename columns for easier referencing
+    df.columns = [
+        'score', 'perc_div', 'perc_del', 'perc_ins', 'query_name',
+        'query_start', 'query_end', 'query_left', 'strand',
+        'repeat_name', 'repeat_class', 'repeat_start',
+        'repeat_end', 'repeat_left', 'ID'
+    ]
+
+    """
+    This is how RepeatMasker output looks like 
+     1306 15.6  6.2  0.0 HSU08988  6563  6781  (22462) C  MER7A    DNA/MER2_type    (0)   336   103 1
+    12204 10.0  2.4  1.8 HSU08988  6782  7714  (21529) C  TIGGER1  DNA/MER2_type    (0)  2418  1493 1
+      279  3.0  0.0  0.0 HSU08988  7719  7751  (21492) +  (TTTTA)n Simple_repeat      1    33   (0) 2
+     1765 13.4  6.5  1.8 HSU08988  7752  8022  (21221) C  AluSx    SINE/Alu        (23)   289     1 3
+    """
+    try:  # Error could happen when the dataframe become empty after filtering
+        # Filter rows based on query identity
+        df = df[df['perc_div'] <= (100 - min_iden)]  # % substitutions in matching region compared to the consensus
+        df = df[df['perc_del'] <= 3]  # % of bases opposite a gap in the query sequence (deleted bp)
+        df = df[df['perc_ins'] <= 3]  # % of bases opposite a gap in the repeat consensus (inserted bp)
+
+    except Exception as e:
+        prgre("No sequences are found in --input_file that are identical to the sequences in --curatedlib")
+        return False
+
+    try:
+        # Define function to remove parentheses
+        def remove_parentheses(value):
+            if isinstance(value, str):
+                return int(value.replace('(', '').replace(')', ''))
+            return int(value)
+
+        df['query_left'] = df['query_left'].apply(remove_parentheses)
+        df['repeat_start'] = df['repeat_start'].apply(remove_parentheses)
+        df['repeat_end'] = df['repeat_end'].apply(remove_parentheses)
+        df['repeat_left'] = df['repeat_left'].apply(remove_parentheses)
+
+        # Calculate coverage length and add to a new column cov_len
+        df['cov_query_len'] = abs(df['query_start'] - df['query_end'])
+
+        # Calculate the sequence length of the query sequence
+        df['query_len'] = df['query_end'] + df['query_left']
+
+        # Calculate the cov_query_len percentage of the length of the corresponding query sequence
+        df['cov_query_perc'] = df['cov_query_len'] / df['query_len'] * 100
+
+        # Calculate coverage length of the curatedlib (repeat) sequence and add to a new column
+        def calc_repeat_cov_len(row):
+            if row['strand'] == 'C':
+                return abs(row['repeat_end'] - row['repeat_left'])  # Strand C: repeat_end - repeat_left
+            return abs(row['repeat_end'] - row['repeat_start'])  # Strand +: repeat_end - repeat_start
+
+        def calc_repeat_len(row):
+            if row['strand'] == 'C':
+                return abs(row['repeat_start']) + row['repeat_end']  # Strand C: repeat_start + repeat_end
+            return row['repeat_end'] + row['repeat_left']  # Strand +: repeat_end + repeat_left
+
+        df['cov_repeat_len'] = df.apply(calc_repeat_cov_len, axis=1)
+        df['repeat_len'] = df.apply(calc_repeat_len, axis=1)
+
+        # Calculate percentages of repeat coverage
+        df['cov_repeat_perc'] = df['cov_repeat_len'] / df['repeat_len'] * 100
+
+    except Exception as e:
+        prcyan(f"An error occurred while eliminate sequences in --input_file that are identical to the sequences "
+               f"in --curatedlib.: {e}")
+        prgre("TEtrimmer will continue analyze with all the TE sequences in --input_file.")
+        return False
+
+    try:
+        # Filter dataframe according to the percentage of coverage
+        df = df[df['cov_query_perc'] >= min_cov]
+        df = df[df['cov_repeat_perc'] >= min_cov]
+
+    except Exception as e:
+        prgre("No sequences are found in --input_file that are identical to the sequences in --curatedlib")
+        return False
+
+    try:
+        if df.empty:
+            prgre("No sequences are found in --input_file that are identical to the sequences in --curatedlib")
+            return False
+        else:
+            # Save current dataframe
+            # Define CSV file name
+            df_file = os.path.join(curatedlib_dir, f"{os.path.basename(input_seq)}_curatedlib_filtered_RepeatMasker.txt")
+            df.to_csv(df_file, sep="\t", index=False)
+
+            # Group dataframe by 'query_name' and extract unique query names
+            unique_query_names = df['query_name'].unique().tolist()
+            #print(unique_query_names)
+
+            print(f"{len(unique_query_names)} sequences are eliminated from --input_file that are identical to the "
+                  f"sequences in --curatedlib. For more detail, please refer to file \n {df_file}.")
+
+            # Remove sequences from --input_file according to the list
+            filtered_sequences = []
+
+            # Parse the input sequence file
+            for record in SeqIO.parse(input_seq, 'fasta'):
+                # If the sequence ID is not in the unique_query_names, keep it
+                if record.id not in unique_query_names:
+                    filtered_sequences.append(record)
+
+            # Define the filtered fasta file name
+            filtered_fasta = os.path.join(curatedlib_dir, f"{os.path.basename(input_seq)}_curatedlib_filtered.fa")
+            # Write the remaining sequences to a new output file
+            SeqIO.write(filtered_sequences, filtered_fasta, 'fasta')
+
+            return filtered_fasta
+
+    except Exception as e:
+        prcyan(f"An error occurred while extracting unique query names: {e}")
+        prgre("TEtrimmer will continue analyze with all the TE sequences in --input_file.")
+        prcyan(traceback.format_exc())
+        return False
 
 
 def rename_cons_file(consensus_file, reclassified_dict):

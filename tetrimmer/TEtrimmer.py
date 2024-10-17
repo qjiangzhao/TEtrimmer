@@ -9,7 +9,7 @@ import json
 
 # Local imports
 import analyze
-from functions import repeatmasker, prcyan, prgre, cd_hit_est
+from functions import repeatmasker, prcyan, prgre, cd_hit_est, eliminate_curatedlib_by_repeatmasker
 
 import warnings
 from Bio import BiopythonDeprecationWarning
@@ -94,10 +94,10 @@ with open(config_path, "r") as config_file:
               help='Continue from previous unfinished TEtrimmer run and would use the same output directory.')
 @click.option('--dedup', default=False, is_flag=True,
               help='Remove duplicate sequences in the input file.')
-#@click.option('--curatedlib', default=False, is_flag=True,
-#              help='Path to manually curated high-quality TE consensus library file. TEtrimmer eliminates TE consensus '
-#                   'sequence from "--input_file" if the sequence shares more than 90% identity with sequences from '
-#                   '"--curatedlib".')
+@click.option('--curatedlib', default=None, type=str,
+              help='Path to manually curated high-quality TE consensus library file. TEtrimmer eliminates TE consensus '
+                   'sequence from "--input_file" if the sequence shares more than 95% identity with sequences from '
+                   '"--curatedlib".')
 @click.option('--genome_anno', '-ga', default=False, is_flag=True,
               help='Perform genome TE annotation using RepeatMasker with the TEtrimmer curated TE libraries.')
 @click.option('--hmm', default=False, is_flag=True,
@@ -196,7 +196,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
          top_msa_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ext_step,
          max_ext, gap_thr, gap_nul_thr, crop_end_div_thr, crop_end_div_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, mini_orf, preset, ext_check_win, dedup, genome_anno, hmm,
-         debug, fast_mode, classify_unknown, classify_all):
+         debug, fast_mode, classify_unknown, classify_all, curatedlib):
 
     # Add this to click options if mmseq2 has been fully tested
     engine = "blast"
@@ -352,6 +352,21 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
     # Generate single files when continue_analysis is false
     if not continue_analysis:
+
+        # When --curatedlib is not None, check is the provided file exist.
+        if curatedlib is not None:
+            if os.path.isfile(curatedlib):
+                # Define path to store curatedlib analysis. Store it to classification_dir
+                curatedlib_dir = os.path.join(classification_dir, "Filter_input_file_based_on_curatedlib")
+                os.makedirs(curatedlib_dir, exist_ok=True)
+                curatedlib_check = eliminate_curatedlib_by_repeatmasker(curatedlib, input_file, curatedlib_dir)
+
+                if curatedlib_check:
+                    input_file = curatedlib_check
+
+            else:
+                prgre("\nThe provided manually curated TE consensus library is not a file. Please re-check it.")
+
         # Do CD-HIT-EST merge if merge is true and continue_analysis is false
         if dedup:
             click.echo("\nTEtrimmer is removing input sequences duplications, this might take some time.\n")

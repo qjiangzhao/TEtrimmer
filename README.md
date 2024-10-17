@@ -431,6 +431,8 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 
 
 ## Update history
+** October.17.2024
+Add --curatedlib option
 
 ** October.11.2024
 

@@ -912,9 +912,6 @@ def create_dir(continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_
         prgre(f"\nThe given output directory is not empty. Results will be stored into folder: \n"
               f"{output_dir}\n")
 
-        # Stop the whole program if the output directory is not empty and
-        # raise Exception
-
     # Create a new folder for single FASTA sequences
     single_file_dir = os.path.join(output_dir, "Single_fasta_files")
     os.makedirs(single_file_dir, exist_ok=True)

@@ -1646,7 +1646,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                                                      temp_folder, current_win, chrom_size, frame,
                                                                      canvas, genome_file_g))
 
-            # Define "Plotter" button
+            # Define "TEAid" button
             plot_button = Button(button_frame, text="TEAid", bg=teaid_button_bg, fg=teaid_button_fg)
             plot_button.grid(row=0, column=2, padx=1)
             # Bind "Plotter" button with plotter_function
@@ -1859,7 +1859,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                                                      file_start=start, file_end=end,
                                                                      save_path=save_path))
 
-            # Define "Plotter" button
+            # Define "TEAid" button
             plot_button = Button(button_frame, text="TEAid", bg=teaid_button_bg, fg=teaid_button_fg)
             plot_button.grid(row=0, column=3, padx=1)
             # Bind "Plotter" button with plotter_function
