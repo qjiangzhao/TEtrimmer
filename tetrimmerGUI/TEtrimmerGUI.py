@@ -41,7 +41,7 @@ from crop_end_divergence import crop_end_div
 from crop_end_gap import crop_end_gap
 from remove_gap import remove_gaps_with_similarity_check
 from GUI_functions import separate_sequences, blast, fasta_header_to_bed, extend_bed_regions, \
-    extract_fasta_from_bed, check_database, rpstblastn
+    extract_fasta_from_bed, check_database, rpstblastn, process_bed_lines
 from cialign_plot import drawMiniAlignment
 
 #####################################################################################################
@@ -101,7 +101,18 @@ if os_type == "Windows":
               help='TE consensus library FASTA file. You can check and improve other TE consensus '
                    'library e.g. The TE library directly from EDTA2, RepeatModeler2, and other tools. If you want to '
                    'check the same TE library as last time, you do not need to use this option again.')
-def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, consensus_lib):
+@click.option('--pcc_dir', '-pcc', default=None, type=str,
+              help='NCBI PCC database path.')
+@click.option('--max_msa_lines', type=int, default=100,
+              help='Set the maximum number of sequences to be included in a multiple sequence alignment. Default: 100')
+@click.option('--top_msa_lines', type=int, default=100,
+              help='If the sequence number of multiple sequence alignment (MSA) is greater than <max_msa_lines>, ' 
+                    'TEtrimmer will first sort sequences by length and choose <top_msa_lines> number of sequences. ' 
+                    'Then, TEtrimmer will randomly select sequences from all remaining BLAST hits until <max_msa_lines>' 
+                    'sequences are found for the multiple sequence alignment. Default: 100')
+
+def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, consensus_lib, pcc_dir,
+                   max_msa_lines, top_msa_lines):
     """
     This GUI is designed to inspect and improve TEtrimmer outputs and any TE consensus libraries.
 
@@ -724,6 +735,10 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                              parent=current_win)
                         return
 
+                    # Filter bed files to select top long hits
+                    other_cons_bed = process_bed_lines(other_cons_bed, output_dir_g, max_lines=max_msa_lines,
+                                                       top_longest_lines_count=top_msa_lines)
+
                     if other_cons_bed and other_cons_blast:
 
                         # Allow to cover the old blast file
@@ -733,6 +748,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
                         # Move other_cons_blast to source_dir
                         shutil.move(other_cons_blast, source_dir)
+
                         # Define check other consensus library fasta file derived from the bed file
                         other_cons_fasta = os.path.join(source_dir, f"{os.path.basename(other_cons_blast)}.fa")
                         extract_fasta_from_bed(genome_f, other_cons_bed, other_cons_fasta)

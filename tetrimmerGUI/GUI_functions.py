@@ -10,6 +10,7 @@ import requests
 import urllib.request
 import gzip
 import shutil
+import random
 
 special_character = {
         '/': '__',
@@ -98,11 +99,11 @@ def check_and_download(directory, filename, url):
             response = requests.get(url, stream=True)
             response.raise_for_status()  # Raise an exception if the GET request was unsuccessful
         except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
-            click.echo(f"\nFailed to reach the server at {url} for downloading cdd database.\n")
+            click.echo(f"\nFailed to reach the server at {url} for downloading cdd database. {e}\n")
             return False
 
         try:
-            gz_file_path = file_path + ".gz"  # Provide a defined name for the file that will be downloaded
+            gz_file_path = file_path + ".tar.gz"  # Provide a defined name for the file that will be downloaded
             urllib.request.urlretrieve(url, gz_file_path)
 
             # Unzipping
@@ -112,10 +113,10 @@ def check_and_download(directory, filename, url):
 
             # Delete gz file after extraction
             os.remove(gz_file_path)
-            click.echo(f"\n{filename} is downloaded and unzipped. Pfam database was stored in \n"
+            click.echo(f"\n{filename} is downloaded and unzipped. PCC database was stored in \n"
                        f"{directory}\n")
         except Exception:
-            click.echo("TEtrimmer failed to properly unpack the downloaded PFAM file.")
+            click.echo("TEtrimmer failed to unpack the downloaded PCC database.")
             return False
 
     # Check if download was successful
@@ -128,24 +129,96 @@ def check_and_download(directory, filename, url):
         return False
 
 
-def rpstblastn(input_file, rpsblast_database, rpsblast_out_dir, e_value=1):
+def check_pfam_index_files(directory):
+    """
+    Check if the PFAM index files exist in the provided directory.
+    :param directory: str, the directory to search for the PFAM index files.
+    :return: boolean, 'True' if all PFAM index files exist, 'False' otherwise.
+    """
+    # Define the list of PFAM index files
+    pfam_files = ["Pfam-A.hmm.h3f", "Pfam-A.hmm.h3m", "Pfam-A.hmm.h3i", "Pfam-A.hmm.h3p"]
+
+    # Check if all PFAM index files exist
+    if all(os.path.isfile(os.path.join(directory, file)) for file in pfam_files):
+        return True
+    else:
+        # If one or more files are missing, delete all files
+        for file in pfam_files:
+            try:
+                os.remove(os.path.join(directory, file))
+            except FileNotFoundError:
+                pass
+        return False
+
+
+def prepare_pfam_database(pcc_database_dir):
+
+    pcc_url = "https://ftp.ncbi.nlm.nih.gov/pub/mmdb/cdd/cdd.tar.gz"
+
+    try:
+        # Check and download the PFAM database files
+        if check_and_download(pcc_database_dir, r"cdd_database_tetrimmer", pcc_url):
+
+            if not check_pfam_index_files(pfam_database_dir):
+
+                # Create binary files that allow for faster access by other HMMER programs
+                hmmpress_pfam_command = ["hmmpress", os.path.join(pfam_database_dir, "Pfam-A.hmm")]
+                try:
+                    subprocess.run(hmmpress_pfam_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   text=True)
+
+                except FileNotFoundError:
+                    print("'hmmpress' command not found. Please ensure 'hmmpress' is installed correctly.")
+                    return False
+
+                except subprocess.CalledProcessError as e:
+                    print(f"\nhmmpress index file generation failed with error code {e.returncode}")
+                    print(f"\n{e.stdout}")
+                    print(f"\n{e.stderr}")
+                    print("\nPlease check if 'hmmpress' has been installed correctly in your system.\n"
+                          "Try running hmmpress <your_downloaded_pfam_file> Pfam-A.hmm\n")
+                    return False
+        else:
+            return False
+
+    except Exception:
+        return False
+
+    try:
+        if check_and_download(pfam_database_dir, r"Pfam-A.hmm.dat", pfam_dat_url):
+            return True
+        else:
+            return False
+
+    except Exception:
+        return False
+
+
+def rpstblastn(input_file, rpsblast_database, rpsblast_out_dir, e_value=1, os_type="Darwin"):
 
     script_dir = get_original_file_path()
     # Define blast out with header
-    rpsblast_out_file = os.path.join(rpsblast_out_dir, f"{os.path.basename(input_file)}_domain.txt")
+    rpsblast_out_file = os.path.join(rpsblast_out_dir, f"{os.path.basename(input_file)}_pcc.txt")
+
+    if os_type == "Linux":
+        rpstblastn = os.path.join(script_dir, "rpstblastn_linux")
+    elif os_type == "Darwin":
+        rpstblastn = os.path.join(script_dir, "rpstblastn_mac")
+    else:
+        rpstblastn = os.path.join(script_dir, "rpstblastn.exe")
 
     # -outfmt 6 use "\t" as deliminator. -outfmt 10 use "," as deliminator
     rpsblast_cmd = [
-        f"{os.path.join(script_dir, 'rpstblastn')}",
+        str(rpstblastn),
         "-query", input_file,
         "-db", rpsblast_database,
-        "-outfmt", "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore stitle",
+        "-outfmt", "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue stitle",
         "-evalue", str(e_value),
         "-out", rpsblast_out_file
     ]
 
     try:
-        # Run the BLAST command
+        # Run the rpstblastn command
         subprocess.run(rpsblast_cmd, check=True, capture_output=True, text=True)
 
     except FileNotFoundError:
@@ -325,6 +398,58 @@ def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=Fa
             return False, False
 
 
+def select_top_longest_lines(lines, n):
+    return sorted(lines, key=lambda line: int(line[2]) - int(line[1]), reverse=True)[:n]
+
+
+def select_random_lines(n, remaining_lines):
+    random.shuffle(remaining_lines)
+    return remaining_lines[:n]
+
+
+def process_bed_lines(input_file, output_dir, max_lines=100, top_longest_lines_count=70):
+    """
+    Select desired line numbers from bed file.
+
+    :param output_dir: str, the absolute path of output folder directory.
+    :param max_lines: num default=100, the maximum line number for bed file to keep.
+    :param top_longest_lines_count: num default=100 smaller or equal to max_lines.
+    When the bed file line number is excess than the max_lines, sort bed file by sequence length and choose
+    "top_longest_lines_count" lines. When this number is smaller than the max_lines, randomly choose the rest
+    number of lines from the bed file.
+
+    :return: the absolute selected bed file path.
+    """
+    # check if top_longest_lines_count is equal or smaller than max_lines.
+    if top_longest_lines_count > max_lines:
+        top_longest_lines_count = max_lines
+
+    with open(input_file, 'r') as file:
+        lines = [line.strip().split('\t') for line in file]
+
+    bed_out_filter_file = os.path.join(output_dir, f"{os.path.basename(input_file)}f.bed")
+
+    if len(lines) > max_lines:
+        top_longest_lines = select_top_longest_lines(lines, top_longest_lines_count)
+
+        # Eliminate selected lines
+        remaining_lines = [line for line in lines if line not in top_longest_lines]
+
+        # Randomly choose lines
+        random_lines = select_random_lines(max_lines - top_longest_lines_count, remaining_lines)
+        selected_lines = top_longest_lines + random_lines
+
+        # Write the selected lines to the output file.
+        with open(bed_out_filter_file, 'w') as file:
+            for line in selected_lines:
+                file.write("\t".join(line) + "\n")
+    else:
+        # Copy the original file to the output directory with the new name to keep the file name consistency.
+        shutil.copy(input_file, bed_out_filter_file)
+
+    return bed_out_filter_file
+
+
 # Generate bed file based on fasta header
 # The fasta header could look like
 """
@@ -408,3 +533,5 @@ def extract_fasta_from_bed(genome_fasta, bed_file, output_fasta):
                 seq_record = SeqRecord(sequence, id=f"{chrom}:{start}-{end}({strand})", description="")
                 SeqIO.write(seq_record, out_fasta, 'fasta')
     return output_fasta
+
+

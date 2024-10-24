@@ -592,7 +592,7 @@ def analyze_sequence_helper(params):
 
 
 def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, max_msa_lines,
-                     top_mas_lines, max_cluster_num, cons_thr, ext_thr, ex_step, classification_dir,
+                     top_msa_lines, max_cluster_num, cons_thr, ext_thr, ex_step, classification_dir,
                      max_extension, gap_thr, gap_nul_thr, crop_end_thr, crop_end_win, crop_end_gap_thr,
                      crop_end_gap_win, start_patterns, end_patterns, output_dir, pfam_dir, mini_orf,
                      single_fasta_n, hmm, hmm_dir, check_extension_win, debug, progress_file,
@@ -741,9 +741,9 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
         # top_longest_lines_count means the number of sequences with top length.
         # For example, if threshold = 100, top_longest_lines_count = 50, then 50 sequences will be
         # randomly selected from the remaining sequences.
-        # top_mas_lines has to be equal to or smaller than max_mas_lines.
+        # top_msa_lines has to be equal to or smaller than max_msa_lines.
         bed_out_filter_file = process_lines(bed_out_file, MSA_dir, threshold=max_msa_lines,
-                                            top_longest_lines_count=top_mas_lines)
+                                            top_longest_lines_count=top_msa_lines)
 
         # Extract FASTA from bed_out_filter_file
         # Return fasta_out_flank_file absolute path of FASTA file
