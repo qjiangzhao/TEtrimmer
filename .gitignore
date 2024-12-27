@@ -14,3 +14,4 @@ tetrimmer/__pycache__
 
 # Ignore database
 pfam_database/
+tetrimmerGUI/cdd_database

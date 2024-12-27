@@ -9,8 +9,11 @@ import sys
 import requests
 import urllib.request
 import gzip
+import tarfile
 import shutil
 import random
+import threading
+
 
 special_character = {
         '/': '__',
@@ -76,162 +79,6 @@ def separate_sequences(input_file, output_dir):
             # the record.id is now same as sanitized_id
             with open(output_filename, 'w') as output_file:
                 SeqIO.write(record, output_file, 'fasta')
-
-
-def check_and_download(directory, filename, url):
-    """
-    Function to check if file exists, otherwise download and unzip it
-    :param directory: str, directory the file to be checked should be in
-    :param filename: str, file name
-    :param url: str, url address used to download file if the file cannot be found in the given folder
-    :return: boolean, 'True' means file was not found but was successfully downloaded. 'False' if file was found
-    """
-
-    file_path = os.path.join(directory, filename)
-
-    # If cdd database was not found, download it
-    if not os.path.isfile(file_path):
-
-        click.echo("\n cdd database not found. Downloading... This might take some time. Please be patient.\n")
-
-        # Check if the URL is valid
-        try:
-            response = requests.get(url, stream=True)
-            response.raise_for_status()  # Raise an exception if the GET request was unsuccessful
-        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
-            click.echo(f"\nFailed to reach the server at {url} for downloading cdd database. {e}\n")
-            return False
-
-        try:
-            gz_file_path = file_path + ".tar.gz"  # Provide a defined name for the file that will be downloaded
-            urllib.request.urlretrieve(url, gz_file_path)
-
-            # Unzipping
-            with gzip.open(gz_file_path, 'rb') as f_in:
-                with open(file_path, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-
-            # Delete gz file after extraction
-            os.remove(gz_file_path)
-            click.echo(f"\n{filename} is downloaded and unzipped. PCC database was stored in \n"
-                       f"{directory}\n")
-        except Exception:
-            click.echo("TEtrimmer failed to unpack the downloaded PCC database.")
-            return False
-
-    # Check if download was successful
-    if os.path.isfile(file_path):
-        return True
-    else:
-        click.echo(
-            f"{filename} not found. The PFAM database cannot be downloaded by TEtrimmer. Please check your internet connection "
-            f"or download PFAM database manually. Or use '--pfam_dir' to indicate your Pfam database path.")
-        return False
-
-
-def check_pfam_index_files(directory):
-    """
-    Check if the PFAM index files exist in the provided directory.
-    :param directory: str, the directory to search for the PFAM index files.
-    :return: boolean, 'True' if all PFAM index files exist, 'False' otherwise.
-    """
-    # Define the list of PFAM index files
-    pfam_files = ["Pfam-A.hmm.h3f", "Pfam-A.hmm.h3m", "Pfam-A.hmm.h3i", "Pfam-A.hmm.h3p"]
-
-    # Check if all PFAM index files exist
-    if all(os.path.isfile(os.path.join(directory, file)) for file in pfam_files):
-        return True
-    else:
-        # If one or more files are missing, delete all files
-        for file in pfam_files:
-            try:
-                os.remove(os.path.join(directory, file))
-            except FileNotFoundError:
-                pass
-        return False
-
-
-def prepare_pfam_database(pcc_database_dir):
-
-    pcc_url = "https://ftp.ncbi.nlm.nih.gov/pub/mmdb/cdd/cdd.tar.gz"
-
-    try:
-        # Check and download the PFAM database files
-        if check_and_download(pcc_database_dir, r"cdd_database_tetrimmer", pcc_url):
-
-            if not check_pfam_index_files(pfam_database_dir):
-
-                # Create binary files that allow for faster access by other HMMER programs
-                hmmpress_pfam_command = ["hmmpress", os.path.join(pfam_database_dir, "Pfam-A.hmm")]
-                try:
-                    subprocess.run(hmmpress_pfam_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                   text=True)
-
-                except FileNotFoundError:
-                    print("'hmmpress' command not found. Please ensure 'hmmpress' is installed correctly.")
-                    return False
-
-                except subprocess.CalledProcessError as e:
-                    print(f"\nhmmpress index file generation failed with error code {e.returncode}")
-                    print(f"\n{e.stdout}")
-                    print(f"\n{e.stderr}")
-                    print("\nPlease check if 'hmmpress' has been installed correctly in your system.\n"
-                          "Try running hmmpress <your_downloaded_pfam_file> Pfam-A.hmm\n")
-                    return False
-        else:
-            return False
-
-    except Exception:
-        return False
-
-    try:
-        if check_and_download(pfam_database_dir, r"Pfam-A.hmm.dat", pfam_dat_url):
-            return True
-        else:
-            return False
-
-    except Exception:
-        return False
-
-
-def rpstblastn(input_file, rpsblast_database, rpsblast_out_dir, e_value=1, os_type="Darwin"):
-
-    script_dir = get_original_file_path()
-    # Define blast out with header
-    rpsblast_out_file = os.path.join(rpsblast_out_dir, f"{os.path.basename(input_file)}_pcc.txt")
-
-    if os_type == "Linux":
-        rpstblastn = os.path.join(script_dir, "rpstblastn_linux")
-    elif os_type == "Darwin":
-        rpstblastn = os.path.join(script_dir, "rpstblastn_mac")
-    else:
-        rpstblastn = os.path.join(script_dir, "rpstblastn.exe")
-
-    # -outfmt 6 use "\t" as deliminator. -outfmt 10 use "," as deliminator
-    rpsblast_cmd = [
-        str(rpstblastn),
-        "-query", input_file,
-        "-db", rpsblast_database,
-        "-outfmt", "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue stitle",
-        "-evalue", str(e_value),
-        "-out", rpsblast_out_file
-    ]
-
-    try:
-        # Run the rpstblastn command
-        subprocess.run(rpsblast_cmd, check=True, capture_output=True, text=True)
-
-    except FileNotFoundError:
-        click.echo(f"'rpsblastn' command not found. Please ensure 'blastn' is installed correctly.\n"
-                   f"{traceback.format_exc()}")
-        return "rpstblastn_not_found", False
-
-    except subprocess.CalledProcessError as e:
-        click.echo(f"An error occurred during rpstblastn: \n {traceback.format_exc()}")
-        click.echo(f"\nBLAST failed with error code {e.returncode}")
-        # Print the error generated from the BLAST itself
-        click.echo(e.stderr)
-        return "rpstblastn_got_error", False
 
 
 def check_database(genome_file, output_dir=None, os_type="Darwin"):
@@ -427,7 +274,7 @@ def process_bed_lines(input_file, output_dir, max_lines=100, top_longest_lines_c
     with open(input_file, 'r') as file:
         lines = [line.strip().split('\t') for line in file]
 
-    bed_out_filter_file = os.path.join(output_dir, f"{os.path.basename(input_file)}f.bed")
+    bed_out_filter_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_f.bed")
 
     if len(lines) > max_lines:
         top_longest_lines = select_top_longest_lines(lines, top_longest_lines_count)
@@ -450,7 +297,7 @@ def process_bed_lines(input_file, output_dir, max_lines=100, top_longest_lines_c
     return bed_out_filter_file
 
 
-# Generate bed file based on fasta header
+# Generate bed file based on fasta header，this is used for the extend function
 # The fasta header could look like
 """
 > scaffold_1:343622-349068(+)
@@ -533,5 +380,248 @@ def extract_fasta_from_bed(genome_fasta, bed_file, output_fasta):
                 seq_record = SeqRecord(sequence, id=f"{chrom}:{start}-{end}({strand})", description="")
                 SeqIO.write(seq_record, out_fasta, 'fasta')
     return output_fasta
+
+
+def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=50, fill='█', final=False):
+    """
+    Custom terminal progress bar with MB display
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    if not final:
+        percent = min(float(percent), 100)
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+
+    # Convert bytes to MB for display
+    iteration_mb = iteration / (1024 * 1024)
+    total_mb = total / (1024 * 1024)
+
+    print(f'\r{prefix} |{bar}| {iteration_mb:.2f}/{total_mb:.2f} MB = {percent}% {suffix}', end='', flush=True)
+
+    # Print a new line on completion
+    if iteration == total:
+        print()
+
+
+def show_progress(block_num, block_size, total_size):
+    if total_size > 0:
+        iteration = block_num * block_size
+        # Ensure we don't exceed total size
+        iteration = min(iteration, total_size)
+        printProgressBar(iteration, total_size, prefix='Downloading CDD:', suffix='Complete', length=50)
+    else:
+        print("Total size unknown. Downloading without progress bar.")
+
+
+def check_and_download(directory, check_pattern, filename, url):
+    """
+    Function to check if file exists, otherwise download and unzip it
+    :param directory: str, directory the file to be checked should be in
+    :param filename: str, file name used to store downloaded file
+    :param url: str, url address used to download file if the file cannot be found in the given folder
+    :return: boolean, 'True' means file was not found but was successfully downloaded. 'False' if file was found
+    """
+
+    check_pattern_file_path = os.path.join(directory, check_pattern)
+
+    # If cdd database was not found, download it
+    if not os.path.isfile(check_pattern_file_path):
+
+        click.echo("\n CDD database not found. Downloading... This might take some time. Please be patient.\n")
+
+        # Check if the URL is valid
+        try:
+            response = requests.get(url, stream=True)
+            response.raise_for_status()  # Raise an exception if the GET request was unsuccessful
+
+        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
+            click.echo(f"\nFailed to reach the server at {url} for downloading cdd database. {e}\n")
+            return False
+
+        try:
+            gz_file_path = os.path.join(directory, filename)  # Provide a defined name for the file that will be downloaded
+            urllib.request.urlretrieve(url, gz_file_path, show_progress)
+
+            click.echo("\n CDD database is downloaded. Unzipping......")
+
+            # Unzipping using tarfile
+            with tarfile.open(gz_file_path, 'r:gz') as tar:
+                tar.extractall(path=directory)
+
+            # Delete gz file after extraction
+            #os.remove(gz_file_path)
+
+            click.echo(f"\n{filename} is downloaded and unzipped. CDD database was stored in \n"
+                       f"{directory}\n")
+
+        except Exception:
+            click.echo("TEtrimmer failed to unpack the downloaded cdd database.")
+            return False
+
+    # Check if download was successful
+    if os.path.isfile(check_pattern_file_path):
+        click.echo("CDD database is found.")
+
+        return True
+
+    else:
+        click.echo(
+            f"The CDD database cannot be downloaded by TEtrimmerGUI. Please check your internet connection "
+            f"or download CDD database manually and use '--cdd_dir' to indicate your cdd database path. "
+            f"After downloading, you have to unzip it by yourself. "
+            f"\n CDD database is only used to detect TE protein domains and doesn't affect other functions.")
+        return False
+
+
+def check_cdd_index_files(directory):
+    """
+    Check if the cdd index files exist in the provided directory.
+    :param directory: str, the directory to search for the PFAM index files.
+    :return: boolean, 'True' if all PFAM index files exist, 'False' otherwise.
+    """
+    # Define the list of cdd index files
+    cdd_files = ["cdd_profile.24.freq", "cdd_profile.24.aux", "cdd_profile.24.rps", "cdd_profile.24.loo",
+                 "cdd_profile.24.ptf", "cdd_profile.24.pot", "cdd_profile.24.pdb", "cdd_profile.24.pos"]
+
+    # Check if all index files exist
+    if all(os.path.isfile(os.path.join(directory, file)) for file in cdd_files):
+        return True
+    else:
+        return False
+
+
+def prepare_cdd_database(cdd_database_dir, os_type="Darwin"):
+
+    # The downloaded database zipped name is cdd_tetrimmer.tar.gz
+    # The name of cdd_database_dir is cdd_database, it is stored under TEtrimmerGUI path
+    # Inside cdd_tetrimmer there should have a file called Cdd.cn, generate index file based that.
+    # The index file is called Cdd_profile
+
+    # cdd_database_dir is TEtrimmerGUI/cdd_database
+
+    global prepared_cdd_g
+
+    cdd_url = "https://ftp.ncbi.nlm.nih.gov/pub/mmdb/cdd/cdd.tar.gz"
+    cdd_pn_path = os.path.join(cdd_database_dir, "Cdd.pn")
+
+    try:
+        # Check and download the Cdd database files
+        if check_and_download(cdd_database_dir, r"Cdd.pn", r"Cdd.tar.gz", cdd_url):
+            # Create index file for cdd database
+            script_dir = get_original_file_path()
+            blast_dir = os.path.join(script_dir, "blast")
+
+            if os_type == "Linux":
+                makeprofiledb = os.path.join(blast_dir, "makeprofiledb_linux")
+            elif os_type == "Darwin":
+                makeprofiledb = os.path.join(blast_dir, "makeprofiledb_mac")
+            else:
+                makeprofiledb = os.path.join(blast_dir, "makeprofiledb.exe")
+
+            makeprofiledb_cmd = [
+                str(makeprofiledb),
+                "-in", cdd_pn_path,
+                "-out", os.path.join(cdd_database_dir, "cdd_profile"),
+                "-threshold", str(9.82),
+                "-scale", str(100.0),
+                "-dbtype", "rps"]
+
+            try:
+                print("CDD database index file not found. Making it ...... This can take around 10 mins.")
+                subprocess.run(makeprofiledb_cmd, check=True, cwd=cdd_database_dir, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True)
+
+                print("CDD database index file generated.")
+
+                # Change global variable prepared_cdd_g when it is generated successfully
+                prepared_cdd_g = os.path.join(cdd_database_dir, "cdd_profile")
+                return os.path.join(cdd_database_dir, "cdd_profile")
+
+            except FileNotFoundError:
+                print("'makeprofiledb' command not found.")
+                return False
+
+            except subprocess.CalledProcessError as e:
+                print(f"\nCDD index file generation failed with error code {e.returncode}")
+                print(f"\n{e.stdout}")
+                print(f"\n{e.stderr}")
+                return False
+        else:
+            return False
+
+    except Exception as e:
+        print(f"\nDownloading CDD database failed with error {e}")
+        return False
+
+
+def rpstblastn(input_file, rpsblast_database, rpsblast_out_dir, e_value=0.01, os_type="Darwin", num_threads=20):
+
+    script_dir = get_original_file_path()
+    blast_dir = os.path.join(script_dir, "blast")
+
+    # Define output file
+    rpstblastn_out_file = os.path.join(rpsblast_out_dir, f"{os.path.basename(input_file)}_pcc.txt")
+
+    if os_type == "Linux":
+        rpstblastn = os.path.join(blast_dir, "rpstblastn_linux")
+    elif os_type == "Darwin":
+        rpstblastn = os.path.join(blast_dir, "rpstblastn_mac")
+    else:
+        rpstblastn = os.path.join(blast_dir, "rpstblastn.exe")
+
+    # -outfmt 6 use "\t" as deliminator.
+    rpsblast_cmd = [
+        str(rpstblastn),
+        "-query", input_file,
+        "-db", rpsblast_database,
+        "-outfmt", "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue score stitle",
+        "-evalue", str(e_value),
+        "-out", rpstblastn_out_file,
+        "-num_threads", str(num_threads)
+    ]
+
+    try:
+        click.echo("rpstblastn is running......")
+        # Run the rpstblastn command
+        subprocess.run(rpsblast_cmd, check=True, capture_output=True, text=True)
+        click.echo("rpstblastn is finished.")
+
+        # Check if the blast hit number is 0
+        if os.path.isfile(rpstblastn_out_file) and os.path.getsize(rpstblastn_out_file) == 0:
+            click.echo("rpstblastn hit number is 0.")
+            return "rpstblastn_n_zero"
+
+        return rpstblastn_out_file
+
+    except FileNotFoundError:
+        click.echo(f"'rpsblastn' command not found.\n"
+                   f"{traceback.format_exc()}")
+        return False
+
+    except subprocess.CalledProcessError as e:
+        click.echo(f"An error occurred during rpstblastn: \n {traceback.format_exc()}")
+        click.echo(f"\nrpstblastn failed with error code {e.returncode}")
+        # Print the error generated from the BLAST itself
+        click.echo(e.stderr)
+        return False
+
+
+def run_func_in_thread(func, *args, **kwargs):
+    """
+    Runs a given function in a new thread with the provided arguments.
+
+    Parameters:
+        func (callable): The function to run in a thread.
+        *args: Positional arguments to pass to the function.
+        **kwargs: Keyword arguments to pass to the function.
+
+    Returns:
+        threading.Thread: The thread object running the function.
+    """
+    # Create and start a new thread for the function
+    thread = threading.Thread(target=func, args=args, kwargs=kwargs)
+    thread.start()
+    return thread  # Optionally return the thread for monitoring
+
 
 

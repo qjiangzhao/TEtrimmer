@@ -4,6 +4,7 @@ import sys
 import os
 import re
 import shutil
+import time
 
 
 def install_and_import(required_packages_dict):
@@ -41,7 +42,8 @@ from crop_end_divergence import crop_end_div
 from crop_end_gap import crop_end_gap
 from remove_gap import remove_gaps_with_similarity_check
 from GUI_functions import separate_sequences, blast, fasta_header_to_bed, extend_bed_regions, \
-    extract_fasta_from_bed, check_database, rpstblastn, process_bed_lines
+    extract_fasta_from_bed, check_database, process_bed_lines, prepare_cdd_database, rpstblastn, \
+    run_func_in_thread, check_cdd_index_files
 from cialign_plot import drawMiniAlignment
 
 #####################################################################################################
@@ -101,17 +103,17 @@ if os_type == "Windows":
               help='TE consensus library FASTA file. You can check and improve other TE consensus '
                    'library e.g. The TE library directly from EDTA2, RepeatModeler2, and other tools. If you want to '
                    'check the same TE library as last time, you do not need to use this option again.')
-@click.option('--pcc_dir', '-pcc', default=None, type=str,
-              help='NCBI PCC database path.')
+@click.option('--cdd_dir', '-cdd', default=None, type=str,
+              help='NCBI cdd database path.')
 @click.option('--max_msa_lines', type=int, default=100,
-              help='Set the maximum number of sequences to be included in a multiple sequence alignment. Default: 100')
-@click.option('--top_msa_lines', type=int, default=100,
-              help='If the sequence number of multiple sequence alignment (MSA) is greater than <max_msa_lines>, ' 
-                    'TEtrimmer will first sort sequences by length and choose <top_msa_lines> number of sequences. ' 
-                    'Then, TEtrimmer will randomly select sequences from all remaining BLAST hits until <max_msa_lines>' 
-                    'sequences are found for the multiple sequence alignment. Default: 100')
+              help='Set the maximum number of sequences to be included when click "Blast" button. Default: 100')
+@click.option('--top_msa_lines', type=int, default=70,
+              help='If the sequence number after "Blast" is greater than <max_msa_lines>, ' 
+                    'TEtrimmerGUI will first sort sequences by length and choose <top_msa_lines> number of sequences. ' 
+                    'Then, TEtrimmerGUI will randomly select sequences from all remaining BLAST hits until <max_msa_lines>' 
+                    'sequences are found. Default: 100')
 
-def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, consensus_lib, pcc_dir,
+def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, consensus_lib, cdd_dir,
                    max_msa_lines, top_msa_lines):
     """
     This GUI is designed to inspect and improve TEtrimmer outputs and any TE consensus libraries.
@@ -125,10 +127,23 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
     # Define directories for other consensus library checking
     other_cons_lib_folder = os.path.join(bin_py_path, "temp_consensus_lib_check")
+
     # Create other_cons_lib_folder
     os.makedirs(other_cons_lib_folder, exist_ok=True)
 
     other_cons_lib_single_file_folder = os.path.join(other_cons_lib_folder, "Single_files")
+
+    # Create cdd database directory when it is not given
+    # /TEtrimmerGUI/cdd_database/cdd_unzipped/cdd_profile*
+    # cdd_dir_default is the path to store cdd database when the database is not provided
+    cdd_dir_default = os.path.join(bin_py_path, "cdd_database")
+    if cdd_dir is None:
+       cdd_dir = cdd_dir_default
+
+    os.makedirs(cdd_dir, exist_ok=True)
+    # Define prepared cdd global variable
+    global prepared_cdd_g
+    prepared_cdd_g = None
 
     # Define empty list to store copy history, which enable undo button
     copy_history = []
@@ -146,7 +161,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
     # Define cleaning module, blast, and consensus generation global parameters
     global crop_div_thr_g, crop_div_win_g, crop_gap_thr_g, crop_gap_win_g, column_gap_thr_g, simi_check_gap_thr_g, \
-        similarity_thr_g, min_nucleotide_g, cons_thre_g, blast_e_value_g
+        similarity_thr_g, min_nucleotide_g, cons_thre_g, blast_e_value_g, max_msa_lines_g, top_msa_lines_g
 
     crop_div_thr_g = 0.65
     crop_div_win_g = 40
@@ -158,6 +173,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     min_nucleotide_g = 5
     cons_thre_g = 0.8
     blast_e_value_g = 1e-40
+    max_msa_lines_g = max_msa_lines
+    top_msa_lines_g = top_msa_lines
 
     # Define global variable to determine the current canvas content
     global current_canvas_content
@@ -399,8 +416,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 if right_ex is None:  # If the user clicks cancel, stop the function
                     return
 
-                progress = show_progress_bar(child_canvas)  # Show progress bar
-
                 input_fasta_f = os.path.join(source_dir, input_fasta_n)
                 base_name = os.path.splitext(input_fasta_n)[0]
                 output_fasta = os.path.join(source_dir, f"{input_fasta_n}_{left_ex}_{right_ex}.fa")
@@ -433,10 +448,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     click.echo(f"An error occurred during extension: \n {traceback.format_exc()}")
                     messagebox.showerror("Error", f"An error occurred during extension: {str(e)}. "
                                                   f"Refer to terminal for more information.", parent=current_win)
-                # finally will make sure the following code will be executed no matter if error happens
-                finally:
-                    progress.stop()
-                    progress.pack_forget()  # Hide the progress bar
             else:
                 messagebox.showerror("Error",
                                      f"You can only apply Extension for FASTA file (file name end with .fa or .fasta)",
@@ -448,33 +459,40 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     #####################################################################################################
     # Code block: set plotter function
     #####################################################################################################
-    def plotter_function(input_fasta_n, button, source_dir, output_dir_g, genome_f, child_canvas, current_win):
+    def plotter_function(input_fasta_n, button, source_dir, output_dir_g, genome_f, child_canvas, current_win,
+                         prepared_cdd):
         def _plotter_function(event):
 
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
-                progress = show_progress_bar(child_canvas)  # Show progress bar
+
                 input_file = os.path.join(source_dir, input_fasta_n)
 
                 try:
-                    if genome_f is None:
-                        messagebox.showerror("Error",
-                                             "Genome file not found. TE-Aid plotting can not be performed. "
-                                             "Please provide genome file by 'Setting' menu.",
-                                             parent=current_win)
-                        return
 
-                    # Check if provided genome file exist
-                    elif not os.path.isfile(genome_f):
-                        messagebox.showerror("Error",
-                                             "Your provided genome file not exist. TEAid can not be performed.",
-                                             parent=current_win)
-                        return
-                    click.echo("TEAid is running ......")
-                    GUI_plotter_succeed = GUI_plotter(input_file, output_dir_g, genome_f, current_win, e_value=blast_e_value_g)
+                    click.echo("\nTEAid is running ......")
+                    #GUI_plotter_succeed = GUI_plotter(input_file, output_dir_g, genome_f, current_win, e_value=blast_e_value_g)
+
+                    thread_TEAid = run_func_in_thread(GUI_plotter, input_file, output_dir_g, genome_f, current_win,
+                                                      prepared_cdd=prepared_cdd, e_value=blast_e_value_g,
+                                                      num_threads=5)
+
+                    ################## Check rpstblastn ###################
+                    """
+                    # rpstblastn(input_fasta_file, prepared_cdd_database, output_dir_g, os_type=os_type)
+                    if prepared_cdd is not None:
+                        thread_rpstblastn = run_func_in_thread(
+                            rpstblastn, input_file, prepared_cdd, output_dir_g, e_value=0.01,
+                            os_type=os_type, num_threads=5
+                        )
+                    else:
+                        print("CDD not detected.")
+                    """
+                    ######################################################
+                    GUI_plotter_succeed = True
 
                     # Only change button background or text color when GUI_plotter is successfull
                     if GUI_plotter_succeed:
-                        click.echo("TEAid is finished.")
+                        click.echo("\nTEAid is finished.")
                         # if os_type == "Darwin":
                         #     button.config(fg='red')  # Change button text color under macOS system
                         #     button.update_idletasks()  # Update UI immediately
@@ -488,9 +506,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     click.echo(f"An error occurred during TEAid plotting: \n {traceback.format_exc()}")
                     messagebox.showerror("Error", f"TEAid plotting failed, please align sequences first: {str(e)}",
                                          parent=current_win)
-                finally:
-                    progress.stop()
-                    progress.pack_forget()  # Hide the progress bar
             else:
                 messagebox.showerror("Error", f"You can only apply TEAid for FASTA file (file name end with .fa or .fasta)",
                                      parent=current_win)
@@ -506,15 +521,14 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                          update_child_canvas=True, file_start=0, file_end=500, save_path=None):
         def _crop_end_div_gui(event):
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
-                progress = show_progress_bar(child_canvas)  # Show progress bar
 
                 try:
                     input_file = os.path.join(source_dir, input_fasta_n)
                     output_file = os.path.join(output_dir_g, f"{input_fasta_n}_CDiv.fa")
 
-                    click.echo("CropDiv is running ......")
+                    click.echo("\nCropDiv is running ......")
                     crop_end_div(input_file, output_file, threshold=crop_div_thr_g, window_size=crop_div_win_g)
-                    click.echo("CropDiv is finished.")
+                    click.echo("\nCropDiv is finished.")
 
                     # if os_type == "Darwin":
                     #     button.config(fg='red')  # Change button text color under macOS system
@@ -535,9 +549,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     messagebox.showerror("Error", f"MSA cleaning crop end by divergence failed, please align sequences first: {str(e)}",
                                          parent=current_win)
 
-                finally:
-                    progress.stop()
-                    progress.pack_forget()  # Hide the progress bar
             else:
                 messagebox.showerror("Error",
                                      f"You can only perform MSA cleaning for FASTA file (file name end with .fa or .fasta)",
@@ -549,14 +560,13 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                          update_child_canvas=True, file_start=0, file_end=500, save_path=None):
         def _crop_end_gap_gui(event):
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
-                progress = show_progress_bar(child_canvas)  # Show progress bar
                 try:
                     input_file = os.path.join(source_dir, input_fasta_n)
                     output_file = os.path.join(output_dir_g, f"{input_fasta_n}_CGap.fa")
 
-                    click.echo("CropGap is running ......")
+                    click.echo("\nCropGap is running ......")
                     crop_end_gap(input_file, output_file, gap_threshold=crop_gap_thr_g, window_size=crop_gap_win_g)
-                    click.echo("CropGap is finished.")
+                    click.echo("\nCropGap is finished.")
 
                     # if os_type == "Darwin":
                     #     button.config(fg='red')  # Change button text color under macOS system
@@ -576,9 +586,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     click.echo(f"An error occurred for crop end by gap: \n {traceback.format_exc()}")
                     messagebox.showerror("Error", f"MSA cleaning crop end by gap failed, please align sequences first: {str(e)}",
                                          parent=current_win)
-                finally:
-                    progress.stop()
-                    progress.pack_forget()  # Hide the progress bar
+
             else:
                 messagebox.showerror("Error",
                                      f"You can only perform MSA cleaning for FASTA file (file name end with .fa or .fasta)",
@@ -592,17 +600,16 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
         def _remove_gaps_with_similarity_check_gui(event):
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
-                progress = show_progress_bar(child_canvas)  # Show progress bar
                 try:
                     input_file = os.path.join(source_dir, input_fasta_n)
                     output_file = os.path.join(output_dir_g, f"{input_fasta_n}_CCol.fa")
 
-                    click.echo("CleanCol is running ......")
+                    click.echo("\nCleanCol is running ......")
                     remove_gaps_with_similarity_check(input_file, output_file, gap_threshold=column_gap_thr_g,
                                                       simi_check_gap_thr=simi_check_gap_thr_g,
                                                       similarity_thr=similarity_thr_g,
                                                       min_nucleotide=min_nucleotide_g)
-                    click.echo("CleanCol is finished.")
+                    click.echo("\nCleanCol is finished.")
                     
                     # if os_type == "Darwin":
                     #     button.config(fg='red')  # Change button text color under macOS system
@@ -622,9 +629,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     click.echo(f"An error occurred for cleaning gap columns: \n {traceback.format_exc()}")
                     messagebox.showerror("Error", f"Remove gappy column failed, please align sequences first, : {str(e)}",
                                          parent=current_win)
-                finally:
-                    progress.stop()
-                    progress.pack_forget()  # Hide the progress bar
             else:
                 messagebox.showerror("Error",
                                      f"You can only perform MSA cleaning for FASTA file (file name end with .fa or .fasta)",
@@ -651,8 +655,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 separate_sequences(consensus_lib_file, other_cons_lib_single_file_folder)
 
             except Exception as e:
-                click.echo(f"An error occurred during separating Other Consensus Library: \n {traceback.format_exc()}")
-                messagebox.showerror("Error", f"Make sure Other Consensus Library file is a FASTA file: {str(e)}")
+                click.echo(f"An error occurred during separating Consensus Library: \n {traceback.format_exc()}")
+                messagebox.showerror("Error", f"Make sure Consensus Library file is a FASTA file: {str(e)}")
 
 
     check_other_cons_lib(consensus_lib_g)
@@ -696,7 +700,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     # Check if makeblastdb is correctly installed
                     if blast_database == "makeblastdb_not_found":
                         messagebox.showerror("Error",
-                                             "makeblastdb command not found. Please make sure BLAST is correctly installed.",
+                                             "makeblastdb command not found.",
                                              parent=current_win)
                         return
 
@@ -713,7 +717,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
                     if other_cons_bed == "blastn_not_found":
                         messagebox.showerror("Error",
-                                             "BLAST command not found. Please make sure BLAST is correctly installed.",
+                                             "BLAST command not found.",
                                              parent=current_win)
                         return
 
@@ -736,8 +740,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                         return
 
                     # Filter bed files to select top long hits
-                    other_cons_bed = process_bed_lines(other_cons_bed, output_dir_g, max_lines=max_msa_lines,
-                                                       top_longest_lines_count=top_msa_lines)
+                    other_cons_bed = process_bed_lines(other_cons_bed, output_dir_g, max_lines=max_msa_lines_g,
+                                                       top_longest_lines_count=top_msa_lines_g)
 
                     if other_cons_bed and other_cons_blast:
 
@@ -778,17 +782,43 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         return _check_other_cons_lib_blast
 
 
-    def rpsblast(input_fasta_n, rpsblast_button, source_dir, output_dir_g, current_win,
-                 child_frame, child_canvas, cdd_database, e_value=1, update_child_canvas=True,
-                 file_start=0, file_end=500, save_path=None):
+    """
+    def gui_rpstblastn(input_fasta_n, rpsblast_button, source_dir, output_dir_g, current_win,
+                       child_frame, child_canvas, e_value=0.01, update_child_canvas=True,
+                       file_start=0, file_end=500, save_path=None):
+        # Global variables are "cdd_dir", "cdd_dir_default"
 
-        def _rpsblast(event):
+        def _gui_rpstblastn(event):
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
 
                 input_fasta_file = os.path.join(source_dir, input_fasta_n)
 
+                if cdd_dir == cdd_dir_default:  # means the user don't provide cdd database
+
+                    # Define directory that used to store unzipped cdd database
+                    cdd_dir_unzipped = os.path.join(cdd_dir, "cdd_unzipped")
+
+                    check_cdd_index_files()
+
+
+                else:  # means the user provided cdd database
+
+
+                # User provide cdd database
+                    # Check if unzipped if not unzip it
+                        # Generate index file
+                    # If unzipped
+                        # Check existence of index file if not create it
+
+                # User doesn't provide it
+                # Check the existance of index file in the default path
+                    # if not exist
+
+
+                #
+
                 try:
-                    if cdd_database is None:
+                    if cdd_dir is None:
                         messagebox.showerror("Error",
                                              "cdd database not found. Protein domain search can not be performed. "
                                              "Please provide cdd database by 'Setting' menu. "
@@ -901,8 +931,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                      parent=current_win)
                 return
 
-        return _rpsblast
-
+        return _gui_rpstblastn
+        """
 
     #####################################################################################################
     # Code block: define consensus sequence generation function
@@ -930,7 +960,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 except Exception as e:
                     click.echo(f"An error for consensus sequence genration: \n {traceback.format_exc()}")
                     messagebox.showerror("Error",
-                                         f"Consensus sequence generation failed. Refer to terminal for more information: {str(e)}",
+                                         f"Consensus sequence generation failed. Sequences must all be the same length. "
+                                         f"Refer to terminal for more information: {str(e)}",
                                          parent=current_win)
                     return
 
@@ -1113,6 +1144,43 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     else:
         logo_font = ('Courier', 10)
 
+    def check_cdd_database():
+
+        global prepared_cdd_g
+        # check_cdd_index_files returns true if cdd index files are found
+        if not check_cdd_index_files(cdd_dir):
+            if cdd_dir == cdd_dir_default:
+                if messagebox.askyesnocancel("Confirmation", f"Conserved Domains Database (CDD) database is not "
+                                                             f"detected, do you want to download it? "
+                                                             f"\n CDD database is only used to detect TE protein "
+                                                             f"domains and doesn't affect other functions."):
+                    # prepared_cdd_database = prepare_cdd_database(cdd_database_dir=cdd_dir, os_type=os_type)
+
+                    run_func_in_thread(
+                        prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type)
+
+                    messagebox.showinfo("Information", "CDD database is around 5GB, it could take around 15 mins to "
+                                                       "prepare it. Please be patient. You can do other operations "
+                                                       "when it is downloading...... Refer to the terminal for more "
+                                                       "information.")
+
+
+            else:
+                if messagebox.askokcancel("Confirmation", f"Conserved Domains Database (CDD) database is not detected "
+                                                          f"from provided --cdd_dir path. You have to unzip your "
+                                                          f"downloaded CDD database."
+                                                          f"Do you want to download the CDD database by TEtrimmerGUI"
+                                                          f" again?"):
+                    run_func_in_thread(
+                        prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type)
+
+                    messagebox.showinfo("Information", "CDD database is around 5GB, it could take around 15 mins to "
+                                                       "prepare it. Please be patient. You can do other operations "
+                                                       "when it is downloading...... Refer to the terminal for more "
+                                                       "information.")
+        else:
+            prepared_cdd_g = os.path.join(cdd_dir, "cdd_profile")
+
     def clear_frame():
         for widget in frame.winfo_children():
             widget.destroy()
@@ -1124,6 +1192,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         # Display the explanatory text with 'Arial' font
         text_label = Label(frame, text=initial_text, bg='white', font=('Arial', 15), justify='left', wraplength=1100)
         text_label.pack(pady=10)
+
+        frame.after(100, check_cdd_database)
 
     open_start_page()
 
@@ -1161,7 +1231,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         settings_window = Toplevel(root)
         settings_window.title("Modify Parameters")
         if os_type == "Darwin":
-            settings_window.geometry('550x400')
+            settings_window.geometry('550x450')
         else:
             settings_window.geometry('600x450')
 
@@ -1182,61 +1252,76 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         e_value_entry.insert(0, str(blast_e_value_g))
         e_value_entry.grid(row=1, column=1, sticky='w', pady=2)
 
-        Label(frame, text="CropDiv: Crop End Divergence Threshold (0-1):", anchor='w', bg='white').grid(row=2, column=0,
+        # Define MSA sequence numbers
+        Label(frame, text="Blast: Max hit number for Blast", anchor='w', bg='white').grid(row=2, column=0, sticky='w',
+                                                                                          pady=2)
+        max_msa_lines_entry = Entry(frame, bg='white')
+        max_msa_lines_entry.insert(0, str(max_msa_lines_g))
+        max_msa_lines_entry.grid(row=2, column=1, sticky='w', pady=2)
+
+        Label(frame, text="Blast: Top long hit number for Blast", anchor='w', bg='white').grid(row=3, column=0,
+                                                                                               sticky='w',
+                                                                                               pady=2)
+        top_msa_lines_entry = Entry(frame, bg='white')
+        top_msa_lines_entry.insert(0, str(top_msa_lines_g))
+        top_msa_lines_entry.grid(row=3, column=1, sticky='w', pady=2)
+
+        # Define msa cleaning parameters
+        Label(frame, text="CropDiv: Crop End Divergence Threshold (0-1):", anchor='w', bg='white').grid(row=4, column=0,
                                                                                                         sticky='w',
                                                                                                         pady=2)
         crop_div_thr_entry = Entry(frame, bg='white')
         crop_div_thr_entry.insert(0, str(crop_div_thr_g))
-        crop_div_thr_entry.grid(row=2, column=1, sticky='w', pady=2)
+        crop_div_thr_entry.grid(row=4, column=1, sticky='w', pady=2)
 
-        Label(frame, text="CropDiv: Crop End Divergence Window Size:", anchor='w', bg='white').grid(row=3, column=0,
+        Label(frame, text="CropDiv: Crop End Divergence Window Size:", anchor='w', bg='white').grid(row=5, column=0,
                                                                                                     sticky='w', pady=2)
         crop_div_win_entry = Entry(frame, bg='white')
         crop_div_win_entry.insert(0, str(crop_div_win_g))
-        crop_div_win_entry.grid(row=3, column=1, sticky='w', pady=2)
+        crop_div_win_entry.grid(row=5, column=1, sticky='w', pady=2)
 
-        Label(frame, text="CropGap: Crop End Gap Threshold (0-1):", anchor='w', bg='white').grid(row=4, column=0,
+        Label(frame, text="CropGap: Crop End Gap Threshold (0-1):", anchor='w', bg='white').grid(row=6, column=0,
                                                                                                  sticky='w', pady=2)
         crop_gap_thr_entry = Entry(frame, bg='white')
         crop_gap_thr_entry.insert(0, str(crop_gap_thr_g))
-        crop_gap_thr_entry.grid(row=4, column=1, sticky='w', pady=2)
+        crop_gap_thr_entry.grid(row=6, column=1, sticky='w', pady=2)
 
-        Label(frame, text="CropGap: Crop End Gap Window Size:", anchor='w', bg='white').grid(row=5, column=0,
+        Label(frame, text="CropGap: Crop End Gap Window Size:", anchor='w', bg='white').grid(row=7, column=0,
                                                                                              sticky='w', pady=2)
         crop_gap_win_entry = Entry(frame, bg='white')
         crop_gap_win_entry.insert(0, str(crop_gap_win_g))
-        crop_gap_win_entry.grid(row=5, column=1, sticky='w', pady=2)
+        crop_gap_win_entry.grid(row=7, column=1, sticky='w', pady=2)
 
-        Label(frame, text="CleanCol: Clean Column Threshold (0-1):", anchor='w', bg='white').grid(row=6, column=0,
+        Label(frame, text="CleanCol: Clean Column Threshold (0-1):", anchor='w', bg='white').grid(row=8, column=0,
                                                                                                   sticky='w', pady=2)
         column_gap_thr_entry = Entry(frame, bg='white')
         column_gap_thr_entry.insert(0, str(column_gap_thr_g))
-        column_gap_thr_entry.grid(row=6, column=1, sticky='w', pady=2)
+        column_gap_thr_entry.grid(row=8, column=1, sticky='w', pady=2)
 
-        Label(frame, text="CleanCol: Similarity Check Gap Threshold (0-1):", anchor='w', bg='white').grid(row=7,
+        Label(frame, text="CleanCol: Similarity Check Gap Threshold (0-1):", anchor='w', bg='white').grid(row=9,
                                                                                                           column=0,
                                                                                                           sticky='w',
                                                                                                           pady=2)
         simi_check_gap_thr_entry = Entry(frame, bg='white')
         simi_check_gap_thr_entry.insert(0, str(simi_check_gap_thr_g))
-        simi_check_gap_thr_entry.grid(row=7, column=1, sticky='w', pady=2)
+        simi_check_gap_thr_entry.grid(row=9, column=1, sticky='w', pady=2)
 
-        Label(frame, text="CleanCol: Similarity Threshold (0-1):", anchor='w', bg='white').grid(row=8, column=0,
+        Label(frame, text="CleanCol: Similarity Threshold (0-1):", anchor='w', bg='white').grid(row=10, column=0,
                                                                                                 sticky='w', pady=2)
         similarity_thr_entry = Entry(frame, bg='white')
         similarity_thr_entry.insert(0, str(similarity_thr_g))
-        similarity_thr_entry.grid(row=8, column=1, sticky='w', pady=2)
+        similarity_thr_entry.grid(row=10, column=1, sticky='w', pady=2)
 
-        Label(frame, text="CleanCol: Min Nucleotide number:", anchor='w', bg='white').grid(row=9, column=0, sticky='w',
+        Label(frame, text="CleanCol: Min Nucleotide number:", anchor='w', bg='white').grid(row=11, column=0, sticky='w',
                                                                                            pady=2)
         min_nucleotide_entry = Entry(frame, bg='white')
         min_nucleotide_entry.insert(0, str(min_nucleotide_g))
-        min_nucleotide_entry.grid(row=9, column=1, sticky='w', pady=2)
+        min_nucleotide_entry.grid(row=11, column=1, sticky='w', pady=2)
 
         def save_settings():
             global crop_div_thr_g, crop_div_win_g, crop_gap_thr_g, crop_gap_win_g
             global column_gap_thr_g, simi_check_gap_thr_g, similarity_thr_g, min_nucleotide_g
-            global cons_thre_g, blast_e_value_g
+            global cons_thre_g, blast_e_value_g, max_msa_lines_g, top_msa_lines_g
 
             try:
                 crop_div_thr_g = float(crop_div_thr_entry.get())
@@ -1249,13 +1334,15 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 min_nucleotide_g = int(min_nucleotide_entry.get())
                 cons_thre_g = float(cons_thres_entry.get())
                 blast_e_value_g = float(e_value_entry.get())
+                max_msa_lines_g = int(max_msa_lines_entry.get())
+                top_msa_lines_g = int(top_msa_lines_entry.get())
 
                 settings_window.destroy()
 
             except ValueError as e:
                 messagebox.showerror("Invalid input", f"Please enter valid values. Error: {str(e)}")
 
-        Button(frame, text="Save", command=save_settings).grid(row=10, columnspan=2, pady=10)
+        Button(frame, text="Save", command=save_settings).grid(row=12, columnspan=2, pady=10)
 
     def browse_directory(entry):
         directory = filedialog.askdirectory()
@@ -1303,7 +1390,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                                                                             pady=5)
         Label(paths_window, text="Path to the genome FASTA file.", fg="gray").grid(row=5, column=1, sticky='w', padx=10)
 
-        Label(paths_window, text="Other Consensus Library:").grid(row=6, column=0, sticky='w', padx=10, pady=5)
+        Label(paths_window, text="Consensus Library:").grid(row=6, column=0, sticky='w', padx=10, pady=5)
         consensus_entry = Entry(paths_window, width=50)
         consensus_entry.grid(row=6, column=1, padx=10, pady=5, sticky='ew')
         Button(paths_window, text="Browse", command=lambda: browse_file(consensus_entry)).grid(row=6, column=2, padx=5,
@@ -1668,7 +1755,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             # Bind "Plotter" button with plotter_function
             plot_button.bind('<Button-1>',
                              plotter_function(filename, plot_button, source_dir, temp_folder, genome_file_g,
-                                              canvas, current_win))
+                                              canvas, current_win, prepared_cdd_g))
 
             # Define "Crop end by divergence" button
             crop_end_by_div_button = Button(button_frame, text="CropDiv", bg=crop_end_by_div_button_bg, fg=crop_end_by_div_button_fg)
@@ -1881,7 +1968,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             # Bind "Plotter" button with plotter_function
             plot_button.bind('<Button-1>',
                              plotter_function(filename, plot_button, source_dir, temp_folder, genome_file_g,
-                                              canvas, current_win))
+                                              canvas, current_win, prepared_cdd_g))
 
             # Define "Crop end by divergence" button
             crop_end_by_div_button = Button(button_frame, text="CropDiv", bg=crop_end_by_div_button_bg,
@@ -2002,7 +2089,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         # Show menu on the window
         root.configure(menu=menubar)
 
-        annotation_folders = ["Clustered_proof_curation", "TE_low_copy", "TE_skipped", "Other_consensus_lib"]
+        annotation_folders = ["Clustered_proof_curation", "TE_low_copy", "TE_skipped", "Consensus_lib"]
 
         # Create sub-menu
         for i, annotation in enumerate(annotation_folders):
@@ -2020,7 +2107,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             # Check which menu button is selected
             if i <= 2 and te_trimmer_proof_curation_dir_g is not None:  # Means "TE_clustered", "TE_low_copy", "TE_skipped"
                 annotation_path = os.path.join(te_trimmer_proof_curation_dir_g, annotation)
-            elif i == 3:  # Means "Other_consensus_lib"
+            elif i == 3:  # Means "Consensus_lib"
                 annotation_path = other_cons_lib_single_file_folder
 
             # Give hits when folder isn't found
@@ -2038,7 +2125,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 elif i == 2:
                     annotationMenu.add_command(label="No skipped TEs")
 
-                elif annotation == "Other_consensus_lib":
+                elif annotation == "Consensus_lib":
                     annotationMenu.add_command(label="TE consensus sequences not found. Define by 'Setting' menu",
                                                command=partial(messagebox.showerror,
                                                                "Error", "Please use 'Setting' to define the "
@@ -2076,7 +2163,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                                                        j, end, frame, canvas, annotation_path,
                                                                        canvas,
                                                                        save_path=consensus_folder))
-                elif i == 3:  # Means "Other_consensus_lib"
+                elif i == 3:  # Means "Consensus_lib"
 
                     for j in range(0, len(sorted_files_annotation), 100):
                         end = min(j + 100, len(sorted_files_annotation))
