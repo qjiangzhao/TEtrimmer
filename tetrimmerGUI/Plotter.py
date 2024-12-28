@@ -518,6 +518,7 @@ def plot_rpsblast_hits(input_file, cons_len):
     fig = go.Figure()
 
     # Add figure legend
+    """
     for sr in score_ranges:
         fig.add_trace(go.Scatter(
             x=[None],
@@ -531,7 +532,7 @@ def plot_rpsblast_hits(input_file, cons_len):
             name=sr['label'],
             showlegend=True
         ))
-
+    """
     #########################################################
     # Code block: Start to loop each line of dataframe
     #########################################################
@@ -660,10 +661,10 @@ def plot_rpsblast_hits(input_file, cons_len):
             linewidth=2
         ),
         plot_bgcolor='white',
-        width=1350,
+        width=1600,
         #height=600,
-        height=max(60, num_tracks * 60),  # Adjusted figure height
-        margin=dict(l=60, r=60, t=30, b=60),  # Increased top margin for legend
+        height=(165 + (num_tracks - 1) * 40),  # Adjusted figure height
+        margin=dict(l=60, r=60, t=60, b=60),  # Increased top margin for legend
 
         # Customize hover label appearance at the layout level
         hoverlabel=dict(
@@ -765,21 +766,64 @@ def GUI_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd =
         fig_rpstblastn = empty_plot(cons_len, width_n=1350, height_n=60, custom_text="CDD database not found.")
         num_tracks = 1
 
-    # Create a 1x3 subplot layout
-    fig = make_subplots(rows=1, cols=3, subplot_titles=(blast_plot_title, "BLAST coverage Plot", "Self Dot Plot"))
+    # only_plot_total_height don't include margin and the distance between two rows
+    only_plot_total_height = 350 + 5 + num_tracks * 40
+
+    gap_between_row = 150  # pixel
+
+    top_margin = 80  # pixel
+
+    bottom_margin = 60  # pixel
+
+    total_fig_height = only_plot_total_height + gap_between_row + top_margin + bottom_margin
+
+    # Create a subplot layout with the rpstblastn plot spanning all columns in the second row
+    fig = make_subplots(
+        rows=2,
+        cols=3,
+        subplot_titles=(
+            blast_plot_title,
+            "BLAST Coverage Plot",
+            "Self Dot Plot",
+            "TE Protein Domain Plot"
+        ),
+        specs=[
+            [{}, {}, {}],
+            [{"colspan": 3}, None, None]
+        ],
+        vertical_spacing=gap_between_row/total_fig_height,
+
+        row_heights=[350/only_plot_total_height,
+                     (5 + num_tracks * 40)/only_plot_total_height]  # Adjust heights as needed
+    )
 
     # Merge plots into the combined subplot layout
-    for i, subplot in enumerate([fig_blast, fig_coverage, fig_dot], start=1):
-        for trace in subplot.data:
-            fig.add_trace(trace, row=1, col=i)
+    for trace in fig_blast.data:
+        fig.add_trace(trace, row=1, col=1)
+    for trace in fig_coverage.data:
+        fig.add_trace(trace, row=1, col=2)
+    for trace in fig_dot.data:
+        fig.add_trace(trace, row=1, col=3)
+    for trace in fig_rpstblastn.data:
+        fig.add_trace(trace, row=2, col=1)
 
     # Update the font size of subplot titles
     for annotation in fig['layout']['annotations']:
         annotation['font'] = dict(size=13, family="Arial, sans-serif", color="black")
 
-        # Configuring subplot 1
+    # Copy annotations from fig_rpstblastn to the combined figure and adjust references
+    if 'annotations' in fig_rpstblastn.layout:
+        rpstblastn_annotations = fig_rpstblastn.layout.annotations
+        for ann in rpstblastn_annotations:
+            # Adjust the annotation references to correspond with the subplot
+            ann['xref'] = 'x4'  # Adjust based on the subplot's x-axis reference
+            ann['yref'] = 'y4'  # Adjust based on the subplot's y-axis reference
+            fig.add_annotation(ann)
+
+    # Configuring subplot 1
     fig.update_xaxes(title_text="TE consensus (bp)",
                      showgrid=False,
+                     showticklabels=True,
                      title_font=dict(size=16, family="Arial, sans-serif", color="black"),
                      range=[0, cons_len + 10],
                      linewidth=1,
@@ -788,6 +832,7 @@ def GUI_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd =
                      row=1, col=1)
     fig.update_yaxes(title_text="Divergence to consensus (%)",
                      showgrid=False,
+                     showticklabels=True,
                      title_font=dict(size=16, family="Arial, sans-serif", color="black"),
                      range=[-(divergence_max / 30), divergence_max + (divergence_max / 30)],
                      linewidth=1,
@@ -798,6 +843,7 @@ def GUI_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd =
     # Configuring subplot 2
     fig.update_xaxes(title_text="TE consensus (bp)",
                      showgrid=False,
+                     showticklabels=True,
                      title_font=dict(size=16, family="Arial, sans-serif", color="black"),
                      range=[0, cons_len + 10],
                      linewidth=1,
@@ -806,6 +852,7 @@ def GUI_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd =
                      row=1, col=2)
     fig.update_yaxes(title_text="Coverage (bp)",
                      showgrid=False,
+                     showticklabels=True,
                      title_font=dict(size=16, family="Arial, sans-serif", color="black"),
                      range=[-(coverage_max / 30), coverage_max + (coverage_max / 30)],
                      linewidth=1,
@@ -816,6 +863,7 @@ def GUI_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd =
     # Configuring subplot 3
     fig.update_xaxes(title_text="TE consensus (bp)",
                      showgrid=False,
+                     showticklabels=True,
                      title_font=dict(size=16, family="Arial, sans-serif", color="black"),
                      range=[0, cons_len + 10],
                      linewidth=1,
@@ -824,6 +872,7 @@ def GUI_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd =
                      row=1, col=3)
     fig.update_yaxes(title_text="TE consensus (bp)",
                      showgrid=False,
+                     showticklabels=True,
                      title_font=dict(size=16, family="Arial, sans-serif", color="black"),
                      range=[0, cons_len + 10],
                      linewidth=1,
@@ -831,11 +880,41 @@ def GUI_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd =
                      mirror=True,
                      row=1, col=3)
 
-    # Update layout if needed
-    fig.update_layout(height=600, width=1800,
-                      title_text=f"{os.path.basename(input_file)}",
-                      title_font=dict(size=18, family="Arial, sans-serif", color="black"),
-                      plot_bgcolor='white', paper_bgcolor='white')
+    # Configuring subplot 4 (rpstblastn plot)
+    fig.update_xaxes(
+        title_text="TE consensus (bp)",
+        showgrid=False,
+        showticklabels=True,
+        title_font=dict(size=16, family="Arial, sans-serif", color="black"),
+        range=[0, cons_len + 10],
+        linewidth=1,
+        linecolor='black',
+        mirror=True,
+        row=2,
+        col=1
+    )
+    fig.update_yaxes(
+        showgrid=False,
+        showticklabels=False,
+        autorange=True,
+        linecolor='black',
+        mirror=True,
+        linewidth=1,
+        row=2,
+        col=1
+    )
+
+    # Calculate the total height based on the number of tracks in the rpstblastn plot
+    fig.update_layout(
+        height=total_fig_height,
+        width=1600,
+        title_text=plot_main_title,
+        title_font=dict(size=26, family="Arial, sans-serif", color="black"),
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        margin=dict(t=top_margin, b=bottom_margin, l=60, r=60)
+    )
     fig.show()
 
     return run_succeed
+
