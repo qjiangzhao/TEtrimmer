@@ -755,7 +755,7 @@ def GUI_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd =
                 click.echo("rpstblastn_n_zero")
             else:
                 fig_rpstblastn, num_tracks = plot_rpsblast_hits(rpstblastn_out, cons_len)
-                fig_rpstblastn.show()
+                #fig_rpstblastn.show()
         else:
             fig_rpstblastn = empty_plot(cons_len, width_n=1350, height_n=60,
                                         custom_text="An error occurred. Please check the terminal for details.")
