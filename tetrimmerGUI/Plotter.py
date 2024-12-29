@@ -3,9 +3,9 @@ import numpy as np
 import traceback
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import plotly.io as pio
 import os
 import platform
-import subprocess
 import click
 from Bio import AlignIO, SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -13,6 +13,7 @@ from Bio.Align import AlignInfo
 import warnings
 from Bio import BiopythonDeprecationWarning
 from tkinter import messagebox
+
 from GUI_functions import blast, check_database, rpstblastn
 
 # Suppress all deprecation warnings
@@ -20,6 +21,8 @@ warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
 
 """
 The plot codes are derived from TE-Aid. https://github.com/clemgoub/TE-Aid.git
+
+Developer: Jiangzhao Qian
 """
 
 os_type = platform.system()
@@ -679,12 +682,12 @@ def plot_rpsblast_hits(input_file, cons_len):
 
     return fig, num_tracks
 
+
 #####################################################################################################
 # Code block: TEtrimmer GUI plotter, integrate all plots
 #####################################################################################################
-
-def GUI_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd = None, e_value=1e-40,
-                num_threads=5):
+def teaid_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd = None, e_value=1e-40,
+                  num_threads=5):
     # Used global variable: os_type
 
     run_succeed = True
@@ -770,11 +773,8 @@ def GUI_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd =
     only_plot_total_height = 350 + 5 + num_tracks * 40
 
     gap_between_row = 150  # pixel
-
     top_margin = 80  # pixel
-
     bottom_margin = 60  # pixel
-
     total_fig_height = only_plot_total_height + gap_between_row + top_margin + bottom_margin
 
     # Create a subplot layout with the rpstblastn plot spanning all columns in the second row
@@ -914,7 +914,10 @@ def GUI_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd =
         paper_bgcolor='white',
         margin=dict(t=top_margin, b=bottom_margin, l=60, r=60)
     )
-    fig.show()
+    # Save the figure as an HTML file
+    #output_html_path = f"{input_file}_TEAid.html"
+    #pio.write_html(fig, file=output_html_path, auto_open=False)
 
+    fig.show()
     return run_succeed
 

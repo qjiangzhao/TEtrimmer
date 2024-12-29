@@ -4,7 +4,6 @@ import sys
 import os
 import re
 import shutil
-import time
 
 
 def install_and_import(required_packages_dict):
@@ -36,15 +35,16 @@ import traceback
 from functools import partial
 import platform
 from Bio import SeqIO
-from Plotter import GUI_plotter, con_generater
+from Plotter import teaid_plotter, con_generater
 # Import cleaning module
 from crop_end_divergence import crop_end_div
 from crop_end_gap import crop_end_gap
 from remove_gap import remove_gaps_with_similarity_check
 from GUI_functions import separate_sequences, blast, fasta_header_to_bed, extend_bed_regions, \
-    extract_fasta_from_bed, check_database, process_bed_lines, prepare_cdd_database, rpstblastn, \
+    extract_fasta_from_bed, check_database, process_bed_lines, prepare_cdd_database, \
     run_func_in_thread, check_cdd_index_files
 from cialign_plot import drawMiniAlignment
+
 
 #####################################################################################################
 # Code block: make Aliveiw available to be used
@@ -85,10 +85,10 @@ aliview_path = os.path.join(bin_py_path, "aliview/aliview")
 if os_type == "Windows":
     aliview_path = os.path.join(bin_py_path, r"aliview\aliview.jar")
 
+
 #####################################################################################################
 # Code block: set click command
 #####################################################################################################
-
 @click.command()
 @click.option('--te_trimmer_proof_curation_dir', '-i', default=None, type=str,
               help='TEtrimmer proof curation output path.'
@@ -181,8 +181,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     current_canvas_content = "tetrimmer_out"
 
     # Define global genome length file variable
-    global chrom_size
-    chrom_size = None
+    global chrom_size_g
+    chrom_size_g = None
 
     # If the -i option is None define the default input directory
     # if te_trimmer_proof_curation_dir is None:
@@ -205,7 +205,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             local_consensus_folder = os.path.abspath(os.path.join(local_output_dir, "TEtrimmer_saved"))
             local_others_dir = os.path.abspath(os.path.join(local_output_dir, "TEtrimmer_discard"))
 
-            local_other_cons_lib_result_folder = os.path.join(local_output_dir, "Other_consensus_lib_saved")
+            local_other_cons_lib_result_folder = os.path.join(local_output_dir, "Consensus_lib_saved")
 
 
             for dir_path in [local_consensus_folder, local_others_dir, local_other_cons_lib_result_folder]:
@@ -237,7 +237,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     canvas.pack(side='left', fill='both', expand=True)
 
     #####################################################################################################
-    # Code block: get genome length file
+    # Code block: Get genome length file
     #####################################################################################################
     # Check if genome length file available, otherwise create it
     def calculate_genome_length(genome_file_local, genome_length_output_local):
@@ -304,7 +304,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             return None
 
     #####################################################################################################
-    # Code block: extension module
+    # Code block: Fresh window (canvas), which can help to show newly added files
     #####################################################################################################
     # current_win contains child_canvas
     # child_canvas contains child_frame
@@ -364,16 +364,19 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                   save_path=fresh_save_path,
                                   scroll_position=scroll_position, button_states=button_states)
 
+    #####################################################################################################
+    # Code block: Define extension function
+    #####################################################################################################
     # Combined extension module
     # source_dir is the folder path contains all loaded files, like the Cluster folder path
     # output_dir is the path to store all intermediate files like temp_folder
     # child_canvas contain child_frame
     # current_win contains child_frame and child_canvas
-    def extension_function(input_fasta_n, ext_button, source_dir, output_dir_g, current_win, chrom_s, child_frame,
+    def extension_function(input_fasta_n, ext_button, source_dir, output_dir_g, current_win, chrom_size, child_frame,
                            child_canvas, genome_f, update_child_canvas=True, file_start=0, file_end=500, save_path=None):
-        def _extension_function(event, chrom_s=chrom_s):
+        def _extension_function(event, chrom_size=chrom_size):
 
-            global chrom_size
+            global chrom_size_g
 
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
                 # Check if genome file is provided
@@ -391,11 +394,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     return
 
                 try:
-                    if chrom_s is None:
+                    if chrom_size is None:
                         # When genome file is provided calculate genome length when it is not available
-                        chrom_s = do_genome_length_calculation(genome_f)
-                        # Assign genome length file path to global variable chrom_size
-                        chrom_size = chrom_s
+                        chrom_size = do_genome_length_calculation(genome_f)
+                        # Assign genome length file path to global variable chrom_size_g
+                        chrom_size_g = chrom_size
 
                 except Exception as e:
                     # Error could happen during genome length calculation, for example when the provided genome
@@ -425,7 +428,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     input_fasta_bed = fasta_header_to_bed(input_fasta_f, os.path.join(output_dir_g, f"{base_name}.bed"))
 
                     # Do bed file extension
-                    input_fasta_after_ex_bed = extend_bed_regions(input_fasta_bed, left_ex, right_ex, chrom_s,
+                    input_fasta_after_ex_bed = extend_bed_regions(input_fasta_bed, left_ex, right_ex, chrom_size,
                                                                   os.path.join(output_dir_g,
                                                                                f"{base_name}_{left_ex}_{right_ex}.bed"))
 
@@ -457,37 +460,22 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         return _extension_function
 
     #####################################################################################################
-    # Code block: set plotter function
+    # Code block: Define TEAid plotter function
     #####################################################################################################
-    def plotter_function(input_fasta_n, button, source_dir, output_dir_g, genome_f, child_canvas, current_win,
-                         prepared_cdd):
-        def _plotter_function(event):
+    def teaid_plotter_gui(input_fasta_n, button, source_dir, output_dir, genome_f, child_canvas, current_win,
+                          prepared_cdd):
+        def _teaid_plotter_gui(event):
 
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
 
                 input_file = os.path.join(source_dir, input_fasta_n)
 
                 try:
-
                     click.echo("\nTEAid is running ......")
-                    #GUI_plotter_succeed = GUI_plotter(input_file, output_dir_g, genome_f, current_win, e_value=blast_e_value_g)
 
-                    thread_TEAid = run_func_in_thread(GUI_plotter, input_file, output_dir_g, genome_f, current_win,
+                    thread_TEAid = run_func_in_thread(teaid_plotter, input_file, output_dir, genome_f, current_win,
                                                       prepared_cdd=prepared_cdd, e_value=blast_e_value_g,
                                                       num_threads=5)
-
-                    ################## Check rpstblastn ###################
-                    """
-                    # rpstblastn(input_fasta_file, prepared_cdd_database, output_dir_g, os_type=os_type)
-                    if prepared_cdd is not None:
-                        thread_rpstblastn = run_func_in_thread(
-                            rpstblastn, input_file, prepared_cdd, output_dir_g, e_value=0.01,
-                            os_type=os_type, num_threads=5
-                        )
-                    else:
-                        print("CDD not detected.")
-                    """
-                    ######################################################
                     GUI_plotter_succeed = True
 
                     # Only change button background or text color when GUI_plotter is successfull
@@ -510,10 +498,10 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 messagebox.showerror("Error", f"You can only apply TEAid for FASTA file (file name end with .fa or .fasta)",
                                      parent=current_win)
                 return
-        return _plotter_function
+        return _teaid_plotter_gui
 
     #####################################################################################################
-    # Code block: define cleaning functions
+    # Code block: Define MSA cleaning functions
     #####################################################################################################
 
     # Define cleaning functions using global parameters
@@ -637,16 +625,15 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         return _remove_gaps_with_similarity_check_gui
 
     #####################################################################################################
-    # Code block: functions related with checking TE consensus library, this is also used to check low_copy and skipped TEs
+    # Code block:
     #####################################################################################################
-    def check_other_cons_lib(consensus_lib_file):
+    def prepare_other_cons_lib(consensus_lib_file):
 
         # Check cons_lib_folder exist, if so remove it when new consensus file is given
         if os.path.isdir(other_cons_lib_folder) and consensus_lib_file is not None:
             shutil.rmtree(other_cons_lib_folder)
 
         if consensus_lib_file is not None:
-
             # Create folder to store separated single files
             os.makedirs(other_cons_lib_single_file_folder, exist_ok=True)
 
@@ -658,14 +645,13 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 click.echo(f"An error occurred during separating Consensus Library: \n {traceback.format_exc()}")
                 messagebox.showerror("Error", f"Make sure Consensus Library file is a FASTA file: {str(e)}")
 
+    prepare_other_cons_lib(consensus_lib_g)
 
-    check_other_cons_lib(consensus_lib_g)
+    def blast_gui(input_fasta_n, blast_button, source_dir, output_dir_g, current_win,
+                  child_frame, child_canvas, genome_f, e_value=1e-40, update_child_canvas=True,
+                  file_start=0, file_end=500, save_path=None):
 
-    def check_other_cons_lib_blast(input_fasta_n, blast_button, source_dir, output_dir_g, current_win,
-                                   child_frame, child_canvas, genome_f, e_value=1e-40, update_child_canvas=True,
-                                   file_start=0, file_end=500, save_path=None):
-
-        def _check_other_cons_lib_blast(event):
+        def _blast_gui(event):
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
 
                 input_fasta_file = os.path.join(source_dir, input_fasta_n)
@@ -779,163 +765,10 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                      parent=current_win)
                 return
 
-        return _check_other_cons_lib_blast
-
-
-    """
-    def gui_rpstblastn(input_fasta_n, rpsblast_button, source_dir, output_dir_g, current_win,
-                       child_frame, child_canvas, e_value=0.01, update_child_canvas=True,
-                       file_start=0, file_end=500, save_path=None):
-        # Global variables are "cdd_dir", "cdd_dir_default"
-
-        def _gui_rpstblastn(event):
-            if input_fasta_n.lower().endswith(('.fa', '.fasta')):
-
-                input_fasta_file = os.path.join(source_dir, input_fasta_n)
-
-                if cdd_dir == cdd_dir_default:  # means the user don't provide cdd database
-
-                    # Define directory that used to store unzipped cdd database
-                    cdd_dir_unzipped = os.path.join(cdd_dir, "cdd_unzipped")
-
-                    check_cdd_index_files()
-
-
-                else:  # means the user provided cdd database
-
-
-                # User provide cdd database
-                    # Check if unzipped if not unzip it
-                        # Generate index file
-                    # If unzipped
-                        # Check existence of index file if not create it
-
-                # User doesn't provide it
-                # Check the existance of index file in the default path
-                    # if not exist
-
-
-                #
-
-                try:
-                    if cdd_dir is None:
-                        messagebox.showerror("Error",
-                                             "cdd database not found. Protein domain search can not be performed. "
-                                             "Please provide cdd database by 'Setting' menu. "
-                                             "You can download cdd database from "
-                                             "'https://ftp.ncbi.nih.gov/pub/mmdb/cdd/little_endian/'",
-                                             parent=current_win)
-                        return
-
-                    # Check if end with tar.gz. Unzip it and use it
-
-
-                    #
-
-                    #
-
-
-                    # Check if provided genome file exist
-                    elif not os.path.isfile(genome_f):
-                        messagebox.showerror("Error",
-                                             "Your provided genome file not exist. BLAST can not be performed.",
-                                             parent=current_win)
-                        return
-
-                    # Count the number of sequences in the input file
-                    sequence_count = sum(1 for _ in SeqIO.parse(input_fasta_file, "fasta"))
-
-                    if sequence_count != 1:
-                        messagebox.showerror("Error",
-                                             "BLAST can only be performed on FASTA file containing only one sequence.",
-                                             parent=current_win)
-                        return
-
-                    # Check genome blast database availability
-                    blast_database = check_database(genome_f, os_type=os_type)
-
-                    # Check if makeblastdb is correctly installed
-                    if blast_database == "makeblastdb_not_found":
-                        messagebox.showerror("Error",
-                                             "makeblastdb command not found. Please make sure BLAST is correctly installed.",
-                                             parent=current_win)
-                        return
-
-                    # Check if error happened
-                    elif blast_database == "makeblastdb_got_error":
-                        messagebox.showerror("Error",
-                                             "BLAST database can't be established. Refer to terminal for more information.",
-                                             parent=current_win)
-                        return
-
-                    # Perform the blast operation if the sequence count is exactly one
-                    other_cons_bed, other_cons_blast = blast(input_fasta_file, blast_database, output_dir_g, e_value=e_value,
-                                                             bed_file=True, os_type=os_type)
-
-                    if other_cons_bed == "blastn_not_found":
-                        messagebox.showerror("Error",
-                                             "BLAST command not found. Please make sure BLAST is correctly installed.",
-                                             parent=current_win)
-                        return
-
-                    elif other_cons_bed == "blastn_got_error":
-                        messagebox.showerror("Error",
-                                             "BLAST can't be conducted. Refer to terminal for more information.",
-                                             parent=current_win)
-                        return
-
-                    elif other_cons_bed == "blast_n_zero":
-                        messagebox.showerror("Warning",
-                                             "BLAST hit number is 0 for this sequence.",
-                                             parent=current_win)
-                        return
-
-                    elif not other_cons_bed:
-                        messagebox.showerror("Warning",
-                                             "BLAST can't be conducted. Refer to terminal for more information.",
-                                             parent=current_win)
-                        return
-
-                    if other_cons_bed and other_cons_blast:
-
-                        # Allow to cover the old blast file
-                        destination_other_cons_blast_file = os.path.join(source_dir, os.path.basename(other_cons_blast))
-                        if os.path.exists(destination_other_cons_blast_file):
-                            os.remove(destination_other_cons_blast_file)
-
-                        # Move other_cons_blast to source_dir
-                        shutil.move(other_cons_blast, source_dir)
-                        # Define check other consensus library fasta file derived from the bed file
-                        other_cons_fasta = os.path.join(source_dir, f"{os.path.basename(other_cons_blast)}.fa")
-                        extract_fasta_from_bed(genome_f, other_cons_bed, other_cons_fasta)
-
-                        # if os_type == "Darwin":
-                        #     blast_button.config(fg='red')  # Change button text color under macOS system
-                        # else:
-                        #     blast_button.config(bg='light green')  # Change button color
-                        rpsblast_button.config(fg='red')
-                        rpsblast_button.update_idletasks()
-
-                        # Fresh child canvas
-                        fresh_canvas(child_frame, child_canvas, source_dir, current_win,
-                                     update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end,
-                                     fresh_save_path=save_path)
-
-                except Exception as e:
-                    click.echo(f"An error occurred during blast: \n {traceback.format_exc()}")
-                    messagebox.showerror("Error", f"Blast failed. Refer to terminal for more information: {str(e)}",
-                                         parent=current_win)
-            else:
-                messagebox.showerror("Error",
-                                     f"You can only perform BLAST for FASTA file (file name end with .fa or .fasta)",
-                                     parent=current_win)
-                return
-
-        return _gui_rpstblastn
-        """
+        return _blast_gui
 
     #####################################################################################################
-    # Code block: define consensus sequence generation function
+    # Code block: Define consensus sequence generation function
     #####################################################################################################
     def generate_cons(input_fasta_n, cons_button, source_dir, current_win, child_frame, child_canvas,
                       cons_thre=0.8, ambiguous="N", update_child_canvas=True, file_start=0, file_end=500,
@@ -982,6 +815,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 fresh_canvas(child_frame, child_canvas, source_dir, current_win,
                              update_child_canvas=update_child_canvas, file_start=file_start, file_end=file_end,
                              fresh_save_path=save_path)
+
             else:
                 messagebox.showerror("Error",
                                      f"You can only generate consensus sequence for FASTA file "
@@ -991,7 +825,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         return _generate_cons
 
     #####################################################################################################
-    # Code block: define consensus sequence generation function
+    # Code block: File search function
     #####################################################################################################
     # Define search function
     def search_files_with_pattern(filename_pattern, dirs, current_canvas_status_local="tetrimmer_out"):
@@ -1042,7 +876,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         return found_paths
 
     #####################################################################################################
-    # Code block: set a vertical scroll bar
+    # Code block: Set a vertical scroll bar
     #####################################################################################################
     # Set scrollbar. command=canvas.yview links the scrollbar to the vertical view of the canvas.
     # This means that scrolling the scrollbar will move the canvas vertically.
@@ -1171,8 +1005,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                                           f"downloaded CDD database."
                                                           f"Do you want to download the CDD database by TEtrimmerGUI"
                                                           f" again?"):
-                    run_func_in_thread(
-                        prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type)
+                    run_func_in_thread(prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type)
 
                     messagebox.showinfo("Information", "CDD database is around 5GB, it could take around 15 mins to "
                                                        "prepare it. Please be patient. You can do other operations "
@@ -1184,6 +1017,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     def clear_frame():
         for widget in frame.winfo_children():
             widget.destroy()
+
     def open_start_page():
         clear_frame()
         logo_label = Label(frame, text=log_text, bg='white', font=logo_font, justify='left', wraplength=1100)
@@ -1201,11 +1035,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     # Code block: Define GUI functions
     #####################################################################################################
 
+    show_confirmation = BooleanVar(value=True)
+
     def numerical_sort_key(filename):
         numbers = re.findall(r'\d+', filename)
         return [int(num) for num in numbers]
-
-    show_confirmation = BooleanVar(value=True)
 
     def show_progress_bar(parent, height=5, speed=1000):
         # Create a custom style
@@ -1226,8 +1060,14 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
         return progress
 
+    #####################################################################################################
+    # Code block: Define parameter setting canvas
+    #####################################################################################################
+
     # Set function to allow to modify MSA cleaning parameters
     def show_settings_dialog():
+        # Used global variables: cons_thre_g, blast_e_value_g, blast_e_value_g, max_msa_lines_g, top_msa_lines_g
+        # top_msa_lines_g, crop_div_thr_g, crop_div_win_g......
         settings_window = Toplevel(root)
         settings_window.title("Modify Parameters")
         if os_type == "Darwin":
@@ -1344,6 +1184,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
         Button(frame, text="Save", command=save_settings).grid(row=12, columnspan=2, pady=10)
 
+    #####################################################################################################
+    # Code block: Define directory setting window
+    #####################################################################################################
     def browse_directory(entry):
         directory = filedialog.askdirectory()
         if directory:
@@ -1435,7 +1278,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             # Only separate other TE consensus library into single files when consensus_lib_g is modified
             # This can save time.
             if consensus_lib_old != consensus_lib_g:
-                check_other_cons_lib(consensus_lib_g)
+                prepare_other_cons_lib(consensus_lib_g)
             create_mean_bar()
             paths_window.destroy()
 
@@ -1443,6 +1286,10 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
         # Configure grid columns to expand with window
         paths_window.grid_columnconfigure(1, weight=1)
+
+    #####################################################################################################
+    # Code block: Define undo copy; copy and open file functions
+    #####################################################################################################
 
     # Define function to allow retrieve copy operation
     def undo_last_copy():
@@ -1501,49 +1348,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                     messagebox.showerror("Error", f"An error occurred while copying the file: {str(e)}",
                                          parent=parent_win)
         return _copy_file
-
-    def load_files(start, end, frame, canvas, source_dir=te_trimmer_proof_curation_dir_g):
-        clear_frame()
-        canvas.yview_moveto(0)  # Reset scrollbar to top
-        if not os.path.exists(source_dir) or not os.listdir(source_dir):
-            label = Label(frame, text="No files found here, try another folder.", bg='white')
-            label.pack(pady=20)
-            return
-        # Sort files
-        sorted_files = sorted(os.listdir(source_dir), key=numerical_sort_key)
-        for i, filename in enumerate(sorted_files[start:end], start=start):
-            # Add line number into canvas frame
-            line_number = Label(frame, text=str(i + 1), bg='white')
-            line_number.grid(row=i - start, column=0)
-
-            # Add file name button into canvas frame
-            file_button = Button(frame, text=filename, anchor='w', bg='white')
-            file_button.grid(row=i - start, column=1, sticky='ew')
-            # Bind with open_file function to open file
-            file_button.bind('<Double-Button-1>', open_file(filename, file_button, source_dir))
-
-            # Build a child button_frame inside frame
-            button_frame = Frame(frame, bg='white')
-            button_frame.grid(row=i - start, column=2, sticky='e')
-
-            # If it's a folder in "TE_clustered", add a label with the file count
-            if source_dir.endswith("TE_clustered") and os.path.isdir(os.path.join(source_dir, filename)):
-                file_count = len(os.listdir(os.path.join(source_dir, filename)))
-                file_count_label = Label(frame, text=f"({file_count} files)", bg='white')
-                file_count_label.grid(row=i - start, column=3)
-
-            button_frame.grid_columnconfigure(0, weight=1)
-            button_frame.grid_rowconfigure(0, weight=1)
-            frame.grid_columnconfigure(1, weight=1)
-            frame.grid_columnconfigure(2, weight=0)
-
-    def load_files_with_destroy(start, end, frame, canvas, path):
-
-        # update current_canvas_content to help search function
-        global current_canvas_content
-        current_canvas_content = "tetrimmer_out"
-
-        load_files(start, end, frame, canvas, source_dir=path)
 
     # Set nested function to enable this function containing parameters to be used by button
     def open_file(filename, button, source_dir):
@@ -1612,7 +1416,55 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         help_window.update_idletasks()  # Ensure that all widget sizes are calculated
 
     #####################################################################################################
-    # Code block: Define child canvas
+    # Code block: Define child canvas, which show files in each cluster
+    #####################################################################################################
+    # Load all clusters
+    def load_cluster_files(start, end, frame, canvas, source_dir=te_trimmer_proof_curation_dir_g):
+        clear_frame()
+        canvas.yview_moveto(0)  # Reset scrollbar to top
+        if not os.path.exists(source_dir) or not os.listdir(source_dir):
+            label = Label(frame, text="No files found here, try another folder.", bg='white')
+            label.pack(pady=20)
+            return
+        # Sort files
+        sorted_files = sorted(os.listdir(source_dir), key=numerical_sort_key)
+        for i, filename in enumerate(sorted_files[start:end], start=start):
+            # Add line number into canvas frame
+            line_number = Label(frame, text=str(i + 1), bg='white')
+            line_number.grid(row=i - start, column=0)
+
+            # Add file name button into canvas frame
+            file_button = Button(frame, text=filename, anchor='w', bg='white')
+            file_button.grid(row=i - start, column=1, sticky='ew')
+
+            # Bind with open_file function to open file
+            file_button.bind('<Double-Button-1>', open_file(filename, file_button, source_dir))
+
+            # Build a child button_frame inside frame
+            button_frame = Frame(frame, bg='white')
+            button_frame.grid(row=i - start, column=2, sticky='e')
+
+            # If it's a folder in "TE_clustered", add a label with the file count
+            if source_dir.endswith("TE_clustered") and os.path.isdir(os.path.join(source_dir, filename)):
+                file_count = len(os.listdir(os.path.join(source_dir, filename)))
+                file_count_label = Label(frame, text=f"({file_count} files)", bg='white')
+                file_count_label.grid(row=i - start, column=3)
+
+            button_frame.grid_columnconfigure(0, weight=1)
+            button_frame.grid_rowconfigure(0, weight=1)
+            frame.grid_columnconfigure(1, weight=1)
+            frame.grid_columnconfigure(2, weight=0)
+
+    def load_cluster_files_with_destroy(start, end, frame, canvas, path):
+
+        # update current_canvas_content to help search function
+        global current_canvas_content
+        current_canvas_content = "tetrimmer_out"
+
+        load_cluster_files(start, end, frame, canvas, source_dir=path)
+
+    #####################################################################################################
+    # Code block: Define child canvas, which show files in each cluster
     #####################################################################################################
 
     # source_dir is the folder path contains all files need to be loaded
@@ -1620,10 +1472,11 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     # frame is inside canvas
     # frame contains child-frames and buttons
 
+    # child_load_files can only load 1000 files maximum
     def child_load_files(start, end, frame, canvas, source_dir, current_win, scroll_position=None, button_states=None):
 
         # Used global variables
-        # chrom_size
+        # chrom_size_g
         # consensus_folder
         # temp_folder
         # genome_file
@@ -1728,6 +1581,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             # Add file name button into canvas frame
             file_button = Button(frame, text=filename, anchor='w', bg=file_button_bg, fg=file_button_fg)
             file_button.grid(row=i - start, column=1, sticky='ew')
+
             # Bind with open_file function to open file
             file_button.bind('<Double-Button-1>', open_file(filename, file_button, source_dir))
 
@@ -1746,15 +1600,15 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             more_extend_button.grid(row=0, column=1, padx=1)
             # Bind "Extension" button with extension function
             more_extend_button.bind('<Button-1>', extension_function(filename, more_extend_button, source_dir,
-                                                                     temp_folder, current_win, chrom_size, frame,
+                                                                     temp_folder, current_win, chrom_size_g, frame,
                                                                      canvas, genome_file_g))
 
             # Define "TEAid" button
             plot_button = Button(button_frame, text="TEAid", bg=teaid_button_bg, fg=teaid_button_fg)
             plot_button.grid(row=0, column=2, padx=1)
-            # Bind "Plotter" button with plotter_function
+            # Bind "TEAid" button with teaid_plotter_gui
             plot_button.bind('<Button-1>',
-                             plotter_function(filename, plot_button, source_dir, temp_folder, genome_file_g,
+                             teaid_plotter_gui(filename, plot_button, source_dir, temp_folder, genome_file_g,
                                               canvas, current_win, prepared_cdd_g))
 
             # Define "Crop end by divergence" button
@@ -1798,7 +1652,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             frame.grid_columnconfigure(1, weight=1)
             frame.grid_columnconfigure(2, weight=0)
 
-    # Build child canvas window
+    # Build child canvas window and load the files in each cluster
     def open_cluster_folder(folder_n, source_dir):
         # Create a new top-level window
         folder_window = Toplevel()
@@ -1833,20 +1687,18 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         folder_window.mainloop()
 
     #####################################################################################################
-    # Code block: Define Low_copy_TE, Skipped_TE and other TE consensus library check canvas
+    # Code block: Define function to load sequences from consensus library
     #####################################################################################################
-    # load_files(start, end, frame, canvas, source_dir=te_trimmer_proof_curation_dir)
-    # load_files(start, end, frame, canvas, source_dir=path)
     # source_dir is the folder path contains all files need to be loaded
     # canvas is inside current_win
     # frame is inside canvas
     # frame contains child-frames and buttons
     def other_cons_load_files(start, end, frame, canvas, source_dir, current_win, save_path=None,
-                              scroll_position=None, button_states=None):
+                              scroll_position=None, button_states=None, current_canvas="cons_lib"):
 
         # Update global current_canvas_content variable to enable search function
         global current_canvas_content
-        current_canvas_content = "cons_lib"
+        current_canvas_content = current_canvas
 
         clear_frame()
         if scroll_position is not None:
@@ -1945,19 +1797,19 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             blast_button = Button(button_frame, text="Blast", bg=blast_button_bg, fg=blast_button_fg)
             blast_button.grid(row=0, column=1, padx=1)
             # Bind blast button with blast functions
-            blast_button.bind('<Button-1>', check_other_cons_lib_blast(filename, blast_button, source_dir,
-                                                                       other_cons_lib_folder, current_win, frame,
-                                                                       canvas, genome_file_g, e_value=blast_e_value_g,
-                                                                       update_child_canvas=False,
-                                                                       file_start=start, file_end=end,
-                                                                       save_path=save_path))
+            blast_button.bind('<Button-1>', blast_gui(filename, blast_button, source_dir,
+                                                      other_cons_lib_folder, current_win, frame,
+                                                      canvas, genome_file_g, e_value=blast_e_value_g,
+                                                      update_child_canvas=False,
+                                                      file_start=start, file_end=end,
+                                                      save_path=save_path))
 
             # Define "Extension" button
             more_extend_button = Button(button_frame, text="Extend", bg=extension_button_bg, fg=extension_button_fg)
             more_extend_button.grid(row=0, column=2, padx=1)
             # Bind "Extension" button with extension function
             more_extend_button.bind('<Button-1>', extension_function(filename, more_extend_button, source_dir,
-                                                                     temp_folder, current_win, chrom_size, frame,
+                                                                     temp_folder, current_win, chrom_size_g, frame,
                                                                      canvas, genome_file_g, update_child_canvas=False,
                                                                      file_start=start, file_end=end,
                                                                      save_path=save_path))
@@ -1965,9 +1817,9 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             # Define "TEAid" button
             plot_button = Button(button_frame, text="TEAid", bg=teaid_button_bg, fg=teaid_button_fg)
             plot_button.grid(row=0, column=3, padx=1)
-            # Bind "Plotter" button with plotter_function
+            # Bind "TEAid" button with teaid_plotter_gui
             plot_button.bind('<Button-1>',
-                             plotter_function(filename, plot_button, source_dir, temp_folder, genome_file_g,
+                             teaid_plotter_gui(filename, plot_button, source_dir, temp_folder, genome_file_g,
                                               canvas, current_win, prepared_cdd_g))
 
             # Define "Crop end by divergence" button
@@ -2011,7 +1863,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             frame.grid_columnconfigure(2, weight=0)
 
     #####################################################################################################
-    # Code block: Define search window
+    # Code block: Define search function and canvas
     #####################################################################################################
     def open_search_window():
         search_window = Toplevel(root)
@@ -2077,7 +1929,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             file_label.grid(row=i, column=1, sticky='ew')
 
     #####################################################################################################
-    # Code block: Add menu bar for mother window
+    # Code block: Add menu bar for the mather canvas
     #####################################################################################################
     def create_mean_bar():
         # The used global variables include: "root", "te_trimmer_proof_curation_dir",
@@ -2145,24 +1997,28 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                         end = min(j + 150, len(sorted_files_annotation))
 
                         annotationMenu.add_command(label=f"{j + 1}-{end}",
-                                                   command=partial(load_files_with_destroy,
+                                                   command=partial(load_cluster_files_with_destroy,
                                                                    j, end, frame, canvas, annotation_path))
                 elif i == 1 or i == 2:  # Means "TE_low_copy", "TE_skipped"
                     for j in range(0, len(sorted_files_annotation), 100):
                         end = min(j + 100, len(sorted_files_annotation))
 
                         # Add 1000 to the end when checking the last page to enable to show added files by fresh canvas
+                        # Use other_cons_load_file for "TE_low_copy" and "TE_skipped". Because they have the same file
+                        # structure.
+                        # current_canvas could be "cons_lib" (default) or "tetrimmer_out".
                         if end == len(sorted_files_annotation):
                             annotationMenu.add_command(label=f"{j + 1}-{end}",
                                                        command=partial(other_cons_load_files,
-                                                                       j, end+1000, frame, canvas, annotation_path, canvas,
-                                                                       save_path=consensus_folder))
+                                                                       j, end+1000, frame, canvas, annotation_path,
+                                                                       canvas, save_path=consensus_folder,
+                                                                       current_canvas="tetrimmer_out"))
                         else:
                             annotationMenu.add_command(label=f"{j + 1}-{end}",
                                                        command=partial(other_cons_load_files,
                                                                        j, end, frame, canvas, annotation_path,
-                                                                       canvas,
-                                                                       save_path=consensus_folder))
+                                                                       canvas, save_path=consensus_folder,
+                                                                       current_canvas="tetrimmer_out"))
                 elif i == 3:  # Means "Consensus_lib"
 
                     for j in range(0, len(sorted_files_annotation), 100):
@@ -2194,7 +2050,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         # Add Undo button
         undo_menu = Menu(menubar, tearoff=0)
         # Add Undo child menu
-        undo_menu.add_command(label="undo last copy", command=undo_last_copy)
+        undo_menu.add_command(label="undo last save action", command=undo_last_copy)
         menubar.add_cascade(label="Undo", menu=undo_menu)
 
         # Add the Search button to the menu
