@@ -122,7 +122,8 @@ def check_database(genome_file, output_dir=None, os_type="Darwin"):
         return database_path
 
 
-def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=False, self_blast=False, os_type="Darwin"):
+def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=False, self_blast=False,
+          os_type="Darwin", num_threads=1):
 
     script_dir = get_original_file_path()
     blast_dir = os.path.join(script_dir, "blast")
@@ -147,7 +148,8 @@ def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=Fa
         "-max_target_seqs", str(10000),
         "-outfmt", "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send sstrand evalue bitscore",
         "-evalue", str(e_value),
-        "-out", blast_out_file
+        "-out", blast_out_file,
+        "-num_threads", str(num_threads)
     ]
 
     if self_blast:
@@ -580,10 +582,10 @@ def rpstblastn(input_file, rpsblast_database, rpsblast_out_dir, e_value=0.01, os
     ]
 
     try:
-        click.echo("rpstblastn is running......")
+        #click.echo("rpstblastn is running......")
         # Run the rpstblastn command
         subprocess.run(rpsblast_cmd, check=True, capture_output=True, text=True)
-        click.echo("rpstblastn is finished.")
+        #click.echo("rpstblastn is finished.")
 
         # Check if the blast hit number is 0
         if os.path.isfile(rpstblastn_out_file) and os.path.getsize(rpstblastn_out_file) == 0:

@@ -55,7 +55,7 @@ def con_generater(input_file, output_dir, threshold=0.8, ambiguous="N"):
 #####################################################################################################
 # Code block: genome blast
 #####################################################################################################
-def genome_blast(input_file, genome_file, output_dir, e_value):
+def teaid_genome_blast(input_file, genome_file, output_dir, e_value, num_threads=1):
     # input_file: fasta file contain only one sequence
     # Used global variable: os_type
 
@@ -82,7 +82,8 @@ def genome_blast(input_file, genome_file, output_dir, e_value):
         return False
 
     # Run blast command
-    genome_blast_out, _ = blast(input_file, blast_database, output_dir, e_value=e_value, os_type=os_type)
+    genome_blast_out, _ = blast(input_file, blast_database, output_dir, e_value=e_value, os_type=os_type,
+                                num_threads=num_threads)
 
     if genome_blast_out == "blastn_not_found":
         click.echo("Error: BLAST command not found. TEAid can't perform genome blast.")
@@ -106,7 +107,6 @@ def genome_blast(input_file, genome_file, output_dir, e_value):
 #####################################################################################################
 # Code block: self blast
 #####################################################################################################
-
 def self_blast(input_file, output_dir):
     # input_file: fasta file contain only one sequence
     # Used global variable: os_type
@@ -210,6 +210,7 @@ def empty_plot(seq_len, width_n=600, height_n=600, custom_text=None):
     )
 
     return fig
+
 
 #####################################################################################################
 # Code block: genome blast plot
@@ -403,10 +404,10 @@ def dot_plot(df):
     #fig.show()
     return fig
 
+
 #####################################################################################################
 # Code block: rpstblasn plot
 #####################################################################################################
-
 def plot_rpsblast_hits(input_file, cons_len):
     """
     Create a TE consensus hit map plot from RPS-BLAST results with score-based coloring and hit directions.
@@ -690,11 +691,15 @@ def teaid_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd
                   num_threads=5):
     # Used global variable: os_type
 
+    # output_dir refers to the temp folders
+
     run_succeed = True
+
+    click.echo(f"\nTEAid running:{os.path.basename(input_file)}")
 
     try:
         # Generate consensus sequence
-        con_seq, cons_len = con_generater(input_file, output_dir, threshold=0.5)
+        con_seq, cons_len = con_generater(input_file, output_dir, threshold=0.3)
 
     except Exception as e:
         click.echo(f"An error for consensus sequence generation: \n {traceback.format_exc()}")
@@ -709,7 +714,7 @@ def teaid_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd
     plot_main_title = f"TE: {os.path.basename(input_file)} | {cons_len} bp"
 
     # Perform genome blast
-    genome_blast_out = genome_blast(con_seq, genome_file, output_dir, e_value)
+    genome_blast_out = teaid_genome_blast(con_seq, genome_file, output_dir, e_value, num_threads=num_threads)
 
     if genome_blast_out:
         # Check if blast hit number is zero
@@ -915,9 +920,10 @@ def teaid_plotter(input_file, output_dir, genome_file, current_win, prepared_cdd
         margin=dict(t=top_margin, b=bottom_margin, l=60, r=60)
     )
     # Save the figure as an HTML file
-    #output_html_path = f"{input_file}_TEAid.html"
-    #pio.write_html(fig, file=output_html_path, auto_open=False)
+    output_html_path = os.path.join(output_dir, f"{os.path.basename(input_file)}_TEAid.html")
+    pio.write_html(fig, file=output_html_path, auto_open=True)
 
-    fig.show()
+    click.echo(f"\nTEAid finished: {os.path.basename(input_file)}.")
+    #fig.show()
     return run_succeed
 

@@ -35,7 +35,7 @@ import traceback
 from functools import partial
 import platform
 from Bio import SeqIO
-from Plotter import teaid_plotter, con_generater
+from TEAid_plotter import teaid_plotter, con_generater
 # Import cleaning module
 from crop_end_divergence import crop_end_div
 from crop_end_gap import crop_end_gap
@@ -109,9 +109,9 @@ if os_type == "Windows":
               help='Set the maximum number of sequences to be included when click "Blast" button. Default: 100')
 @click.option('--top_msa_lines', type=int, default=70,
               help='If the sequence number after "Blast" is greater than <max_msa_lines>, ' 
-                    'TEtrimmerGUI will first sort sequences by length and choose <top_msa_lines> number of sequences. ' 
-                    'Then, TEtrimmerGUI will randomly select sequences from all remaining BLAST hits until <max_msa_lines>' 
-                    'sequences are found. Default: 100')
+                   'TEtrimmerGUI will first sort sequences by length and choose <top_msa_lines> number of sequences. ' 
+                   'Then, TEtrimmerGUI will randomly select sequences from all remaining BLAST hits until <max_msa_lines>' 
+                   'sequences are found. Default: 100')
 
 def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, consensus_lib, cdd_dir,
                    max_msa_lines, top_msa_lines):
@@ -120,25 +120,25 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
     python ./TEtrimmerGUI.py -i <TEtrimmer_for_proof_curation_folder> -g <genome_file.fa>
     """
-
+    # other consensus library means any TE consensus library. It could be the TE consensus library from TEtrimmer,
+    # or any other TE annotation software.
     # Make directory for temporary files
-    temp_folder = os.path.join(bin_py_path, "temp_folder")
+    temp_folder = os.path.join(bin_py_path, "temp_TEtrimmer_clustered")
     os.makedirs(temp_folder, exist_ok=True)
 
     # Define directories for other consensus library checking
-    other_cons_lib_folder = os.path.join(bin_py_path, "temp_consensus_lib_check")
-
-    # Create other_cons_lib_folder
+    other_cons_lib_folder = os.path.join(bin_py_path, "temp_consensus_lib")
     os.makedirs(other_cons_lib_folder, exist_ok=True)
 
-    other_cons_lib_single_file_folder = os.path.join(other_cons_lib_folder, "Single_files")
+    # TEtrimmerGUI separates each sequence in "--consensus_lib" into a single file.
+    other_cons_lib_single_file_folder = os.path.join(other_cons_lib_folder, "Single_fasta_files")
 
     # Create cdd database directory when it is not given
     # /TEtrimmerGUI/cdd_database/cdd_unzipped/cdd_profile*
     # cdd_dir_default is the path to store cdd database when the database is not provided
     cdd_dir_default = os.path.join(bin_py_path, "cdd_database")
     if cdd_dir is None:
-       cdd_dir = cdd_dir_default
+        cdd_dir = cdd_dir_default
 
     os.makedirs(cdd_dir, exist_ok=True)
     # Define prepared cdd global variable
@@ -177,6 +177,10 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     top_msa_lines_g = top_msa_lines
 
     # Define global variable to determine the current canvas content
+    # current_canvas_content can be "tetrimmer_out" or "cons_lib"
+    # "tetrimmer_out" means the current canvas are TEtrimmer_clustered, TEtrimmer_low_copy, or TEtrimmer_skipped
+    # "cons_lib" represents consensus_lib canvas
+    # The global variable current_canvas_content will be modified when change canvas.
     global current_canvas_content
     current_canvas_content = "tetrimmer_out"
 
@@ -189,6 +193,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
     #     te_trimmer_proof_curation_dir = os.path.abspath(os.path.join(bin_py_path, os.pardir))
 
     def define_output_path(local_output_dir=None):
+        # Used global variable: te_trimmer_proof_curation_dir_g
 
         local_consensus_folder = None
         local_others_dir = None
@@ -196,8 +201,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
         # If the -o option is not given
         if local_output_dir is None:
-            # Store output to input path when the output path is not supplied
-            if te_trimmer_proof_curation_dir_g is not None:
+            # Store output to te_trimmer_proof_curation_dir_g path when the output path is not provided
+            if te_trimmer_proof_curation_dir_g is not None and os.path.isdir(te_trimmer_proof_curation_dir_g):
                 local_output_dir = os.path.join(te_trimmer_proof_curation_dir_g, "TEtrimmerGUI_output")
 
         if local_output_dir is not None:
@@ -206,7 +211,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             local_others_dir = os.path.abspath(os.path.join(local_output_dir, "TEtrimmer_discard"))
 
             local_other_cons_lib_result_folder = os.path.join(local_output_dir, "Consensus_lib_saved")
-
 
             for dir_path in [local_consensus_folder, local_others_dir, local_other_cons_lib_result_folder]:
                 os.makedirs(dir_path, exist_ok=True)
@@ -221,7 +225,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
     # Initialize Tk window
     root = Tk()
-    root.title("TEtrimmer Proof Curation Tool v1.4.0")
+    root.title("TEtrimmer Proof Curation Tool v1.4.1")
     # width * height
     if os_type == "Windows":
         root.geometry('1000x800')
@@ -365,7 +369,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                                   scroll_position=scroll_position, button_states=button_states)
 
     #####################################################################################################
-    # Code block: Define extension function
+    # Code block: Define extension function combined with Extend button
     #####################################################################################################
     # Combined extension module
     # source_dir is the folder path contains all loaded files, like the Cluster folder path
@@ -460,7 +464,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         return _extension_function
 
     #####################################################################################################
-    # Code block: Define TEAid plotter function
+    # Code block: Define TEAid plotter function combined with TEAid button
     #####################################################################################################
     def teaid_plotter_gui(input_fasta_n, button, source_dir, output_dir, genome_f, child_canvas, current_win,
                           prepared_cdd):
@@ -471,7 +475,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 input_file = os.path.join(source_dir, input_fasta_n)
 
                 try:
-                    click.echo("\nTEAid is running ......")
 
                     thread_TEAid = run_func_in_thread(teaid_plotter, input_file, output_dir, genome_f, current_win,
                                                       prepared_cdd=prepared_cdd, e_value=blast_e_value_g,
@@ -480,7 +483,6 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
                     # Only change button background or text color when GUI_plotter is successfull
                     if GUI_plotter_succeed:
-                        click.echo("\nTEAid is finished.")
                         # if os_type == "Darwin":
                         #     button.config(fg='red')  # Change button text color under macOS system
                         #     button.update_idletasks()  # Update UI immediately
@@ -501,7 +503,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         return _teaid_plotter_gui
 
     #####################################################################################################
-    # Code block: Define MSA cleaning functions
+    # Code block: Define MSA cleaning functions combined with CropDiv, CropGap, and CleanCol buttons
     #####################################################################################################
 
     # Define cleaning functions using global parameters
@@ -625,7 +627,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         return _remove_gaps_with_similarity_check_gui
 
     #####################################################################################################
-    # Code block:
+    # Code block: Define BLAST function combined with Blast button
     #####################################################################################################
     def prepare_other_cons_lib(consensus_lib_file):
 
@@ -698,8 +700,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                         return
 
                     # Perform the blast operation if the sequence count is exactly one
-                    other_cons_bed, other_cons_blast = blast(input_fasta_file, blast_database, output_dir_g, e_value=e_value,
-                                                             bed_file=True, os_type=os_type)
+                    other_cons_bed, other_cons_blast = blast(input_fasta_file, blast_database, output_dir_g,
+                                                             e_value=e_value, bed_file=True, os_type=os_type)
 
                     if other_cons_bed == "blastn_not_found":
                         messagebox.showerror("Error",
@@ -768,7 +770,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
         return _blast_gui
 
     #####################################################################################################
-    # Code block: Define consensus sequence generation function
+    # Code block: Define consensus sequence generation function combined with Cons button
     #####################################################################################################
     def generate_cons(input_fasta_n, cons_button, source_dir, current_win, child_frame, child_canvas,
                       cons_thre=0.8, ambiguous="N", update_child_canvas=True, file_start=0, file_end=500,
@@ -1263,7 +1265,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             genome_file_g = genome_entry.get()
             consensus_lib_g = consensus_entry.get()
 
-            # Set path to None it they are not defined.
+            # Set path to None when they are not defined.
             if not te_trimmer_proof_curation_dir_g:
                 te_trimmer_proof_curation_dir_g = None
             if not output_dir_g:
