@@ -289,7 +289,7 @@ def process_lines(input_file, output_dir, threshold=100, top_longest_lines_count
     :return: the absolute selected bed file path.
     """
     # check if top_longest_lines_count is equal or smaller than threshold.
-    if top_longest_lines_count >= threshold:
+    if top_longest_lines_count > threshold:
         raise ValueError("top_longest_lines must be equal to or smaller than threshold.")
     lines = read_bed_file(input_file)
     lines = remove_duplicates(lines)

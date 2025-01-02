@@ -171,7 +171,7 @@ def arrNumeric(arr):
 
 
 def drawMiniAlignment(input_file, outfile, start_point, end_point,
-                      dpi=500, title=None, width=20, height=20, orig_nams=[],
+                      dpi=100, title=None, width=20, height=20, orig_nams=[],
                       keep_numbers=False, force_numbers=False):
     '''
     Draws a "mini alignment" image showing a small representation of the
@@ -261,6 +261,7 @@ def drawMiniAlignment(input_file, outfile, start_point, end_point,
     else:
         a.set_yticklabels(np.arange(0, ali_height, tickint), fontsize=fontsize)
 
+    # Save as PNG first and convert to pdf later, plot not show when save to pdf formate directly
     # Save the plot to a temporary PNG file
     with tempfile.NamedTemporaryFile(suffix='.png', delete=True) as tmp_file:
         temp_png = tmp_file.name
