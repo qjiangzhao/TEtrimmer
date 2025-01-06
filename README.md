@@ -106,6 +106,25 @@ TEtrimmer \
 -o /output \
 --pfam_dir /pfam \
 -t 20 --classify_all
+
+# The Singularity image includes the TEtrimmer source code, but the version inside may be outdated.
+# If you want to run the latest version of TEtrimmer via the singularity image
+# Clone the new version of TEtrimmer from Github
+
+singularity exec --writable-tmpfs \
+--bine <your_path_to_cloned_TEtrimmer_folder_which_contain_TEtrimmer.py>:/TEtrimmer_cloned
+--bind <your_path_contain_genome_file>:/genome \
+--bind <your_path_contain_input_TE_library_file>:/input \
+--bind <your_output_path>:/output \
+--bind <your_path_to_store_PFAM_database>:/pfam \  
+<your_path_contain_sif_file>/tetrimmer_1.4.0--hdfd78af_0.sif \
+python TEtrimmer_cloned/TEtrimmer.py \
+-i /input/<TE_library_name.fasta> \
+-g /genome/<genome_file_name.fasta> \
+-o /output \
+--pfam_dir /pfam \
+-t 20 --classify_all
+
 ```
 ### 3. Docker 
 ```commandline

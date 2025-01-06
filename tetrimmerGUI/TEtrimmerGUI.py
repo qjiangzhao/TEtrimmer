@@ -938,7 +938,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                    "Please use 'Setting' menu to define file paths.\n\n" \
                    "##################################################################################\n\n" \
                    "For TEtrimmer outputs:\n\n" \
-                   "1, Click the <TE_clustered> button in the menu bar.\n" \
+                   "1, Click the <TEtrimmer_clustered> button in the menu bar.\n" \
                    "   TEs with more than 90% identity are grouped into one cluster.\n\n" \
                    "2, Click each <Cluster> button.\n" \
                    "   For each TE, you can find four files:\n" \
@@ -948,7 +948,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                    "     <seq_name.pdf>                    report plots file for evaluating annotation quality\n\n" \
                    "3, Double click <seq_name.pdf>, seven plots will be shown.\n\n" \
                    "4, If satisfied, click <Cons> button next to <seq_name.fa> to generate consensus sequence.\n" \
-                   "   Use <Save> button to copy files to <Proof_curation_consensus_folder>.\n\n" \
+                   "   Use <Save> button to copy files to <Output Directory>.\n\n" \
                    "5, If not satisfied, check and modify <seq_name.fa> or <seq_name.raw.fa> MSA files.\n\n" \
                    "6, For more sequence extension, click <Extend> button next to the fasta file.\n" \
                    "   Align sequences in AliView.\n" \
@@ -958,8 +958,8 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                    "   Select the sequences you want to use and click <Extend> to find the TE boundaries.\n\n" \
                    "8, For skipped and low copy elements, evaluating follow the similar procedure.\n\n" \
                    "##################################################################################\n\n" \
-                   "For TE consensus library from other tools like EDTA and RepeatModeler:\n\n" \
-                   "1, Use 'Setting' menu or <-clib> option to define the TE library path.\n\n" \
+                   "For TE consensus library from other tools like EDTA or RepeatModeler:\n\n" \
+                   "1, Use 'Setting' menu or <-clib> option to define the TE consensus library path.\n\n" \
                    "2, Click <TEAid> button to evaluate consensus sequence.\n\n" \
                    "3, For improving consensus sequence, click <Blast> button to perform BLASTN.\n" \
                    "   Two files <seq_name_blast.txt> and <seq_name_blast.txt.fa> will appear.\n\n" \
@@ -1611,7 +1611,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             # Bind "TEAid" button with teaid_plotter_gui
             plot_button.bind('<Button-1>',
                              teaid_plotter_gui(filename, plot_button, source_dir, temp_folder, genome_file_g,
-                                              canvas, current_win, prepared_cdd_g))
+                                               canvas, current_win, prepared_cdd_g))
 
             # Define "Crop end by divergence" button
             crop_end_by_div_button = Button(button_frame, text="CropDiv", bg=crop_end_by_div_button_bg, fg=crop_end_by_div_button_fg)
@@ -1822,7 +1822,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             # Bind "TEAid" button with teaid_plotter_gui
             plot_button.bind('<Button-1>',
                              teaid_plotter_gui(filename, plot_button, source_dir, temp_folder, genome_file_g,
-                                              canvas, current_win, prepared_cdd_g))
+                                               canvas, current_win, prepared_cdd_g))
 
             # Define "Crop end by divergence" button
             crop_end_by_div_button = Button(button_frame, text="CropDiv", bg=crop_end_by_div_button_bg,

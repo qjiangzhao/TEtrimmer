@@ -20,7 +20,7 @@ from GUI_functions import blast, check_database, rpstblastn
 warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
 
 """
-The plot codes are derived from TE-Aid. https://github.com/clemgoub/TE-Aid.git
+The BLAST, coverate, and self-dot plot codes are derived from TE-Aid. https://github.com/clemgoub/TE-Aid.git
 
 Developer: Jiangzhao Qian
 """
