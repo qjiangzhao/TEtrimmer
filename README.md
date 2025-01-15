@@ -67,6 +67,20 @@ TEtrimmer --help
 ClobberError: This transaction has incompatible packages due to a shared path.
   packages: bioconda/osx-64::blast-2.5.0-boost1.64_2, bioconda/osx-64::rmblast-2.14.1-hd94f91d_0
   path: 'bin/blastx'
+  
+
+# The bioconda::tetrimmer package includes the TEtrimmer source code, but the version inside may be outdated.
+# If you want to run the latest version of TEtrimmer via the bioconda::tetrimmer environment
+# Clone the new version of TEtrimmer from Github
+
+git clone https://github.com/qjiangzhao/TEtrimmer.git
+
+# Run the cloned TEtrimmer inside the bioconda::tetrimmer environment
+conda activate TEtrimmer
+
+python <your_path_to_cloned_TEtrimmer_folder_which_contain_TEtrimmer.py>/TEtrimmer.py --help
+
+
 
 ```
 **or** See required dependencies [TEtrimmer_dependencies](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies).
@@ -110,6 +124,8 @@ TEtrimmer \
 # The Singularity image includes the TEtrimmer source code, but the version inside may be outdated.
 # If you want to run the latest version of TEtrimmer via the singularity image
 # Clone the new version of TEtrimmer from Github
+
+git clone https://github.com/qjiangzhao/TEtrimmer.git
 
 singularity exec --writable-tmpfs \
 --bine <your_path_to_cloned_TEtrimmer_folder_which_contain_TEtrimmer.py>:/TEtrimmer_cloned
