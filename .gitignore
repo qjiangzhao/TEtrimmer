@@ -10,6 +10,7 @@
 
 # Ignore all __pycache__ files
 tetrimmer/__pycache__
+tetrimmerGUI/__pycache__
 *.pyc
 
 # Ignore database
