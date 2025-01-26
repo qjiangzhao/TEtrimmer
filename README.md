@@ -26,13 +26,13 @@ which is time-consuming and needs experts with an in-depth understanding of TE b
 
 
 TEtrimmer is a powerful software designed to automate the manual curation of TEs. The input can be a TE library from 
-*de novo* TE discovery tools, such as EDTA2 and RepeatModeler2, or a TE library from closely related species. 
-For each input consensus sequence, TEtrimmer automatically performs BLAST,  sequence extraction, extension, 
+*de novo* TE discovery tools, such as EDTA and RepeatModeler2, or a TE library from closely related species. 
+For each input consensus sequence, TEtrimmer automatically performs BLASTN search,  sequence extraction, extension, 
 multiple sequence alignment (MSA), MSA clustering, MSA cleaning, TE boundary definition, and TE classification. 
 TEtrimmer also provides a graphical user interface (GUI) to inspect and improve predicted TEs, which can assist 
 achieving manual curation-level TE consensus libraries easily. 
 
-![TEtrimmerFlowchart](docs/TEtrimmerFlowchart.jpg)
+[![TEtrimmerFlowchart](docs/TEtrimmerFlowchart_video.png)](https://www.youtube.com/watch?v=PgKw76gmzl8&t=17s&ab_channel=ZhaoJiang)
 
 
 ## Manual
@@ -286,9 +286,7 @@ You can use the TEtrimmerGUI tool to inspect and improve TEtrimmer generated TE 
 This step is optional! TEtrimmer output can be used for genome-wide TE annotation directly. 
 But if you want to get a traditional manual-curation level TE consensus library, you have to perform this step.
 
-TEtrimmerGUI executable file isn't supported anymore. Please use the source code to run it.
-
-### Run TEtrimmerGUI by the source code
+### Start TEtrimmerGUI 
 
 ```commandline
 # Use --help to see all options
@@ -299,7 +297,8 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py --help
 python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -i <TEtrimmer_for_proof_curation_folder> -g <genome_file.fa>
 ```
 TEtrimmerGUI doesn't need any dependencies. You can copy the "tetrimmerGUI" folder to any place and execute it directly.
-![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space.png)
+[![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space_video.png)](https://www.youtube.com/watch?v=52GYZUQyzSE&t=1608s&ab_channel=ZhaoJiang)
+
 
 ## Example report plots for each output TE consensus sequence
 For each TEtrimmer output TE consensus sequence. You will get a report plot file like this:
@@ -451,7 +450,7 @@ Options:
 
   --help                          Show this message and exit.
 ```
-The TEtrimmer GUI can also be used to check other TE consensus libraries like the TE library directly from EDTA2,
+The TEtrimmer GUI can also be used to check other TE consensus libraries like the TE library directly from EDTA,
 RepeatModeler2, REPET, and other tools. 
 ```commandline
 # Use --help to see all options
@@ -462,8 +461,6 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 
 # To run the TEtrimmerGUI tool, you only need to install Python.
 ```
-![Proof curation GUI_check_other_consensus_lib](docs/TEtrimmer_GUI_check_consensus_lib.png)
-
 
 ## Update history
 ** October.17.2024
