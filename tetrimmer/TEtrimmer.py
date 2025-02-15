@@ -251,9 +251,9 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
     # Change permissions of the directory and all its content to 755
     # 755 in octal corresponds to rwxr-xr-x
-    change_permission = analyze.change_permissions_recursive(TE_aid_path, 0o755)
+    change_permission = analyze.change_permissions_recursive(TE_aid_path, 0o555)
     if not change_permission:
-        return
+        pass
 
     #####################################################################################################
     # Code block: Define the default options according to the given species
