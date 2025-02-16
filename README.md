@@ -128,7 +128,7 @@ TEtrimmer \
 git clone https://github.com/qjiangzhao/TEtrimmer.git
 
 singularity exec --writable-tmpfs \
---bine <your_path_to_cloned_TEtrimmer_folder_which_contain_TEtrimmer.py>:/TEtrimmer_cloned
+--bind <your_path_to_cloned_TEtrimmer_folder_which_contain_TEtrimmer.py>:/TEtrimmer_cloned \
 --bind <your_path_contain_genome_file>:/genome \
 --bind <your_path_contain_input_TE_library_file>:/input \
 --bind <your_output_path>:/output \
