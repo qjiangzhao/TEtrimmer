@@ -1,0 +1,41 @@
+name: TEtrimmer
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python 3.10
+  - perl 
+  - r-base
+  - blast #arm64 null
+  - bedtools >=2.31.1
+  - cd-hit
+  - emboss #arm64 null
+  - hmmer
+  - iqtree
+  - mafft
+  - pfam_scan #arm64 null
+  - repeatmodeler #arm64 null 
+  - repeatmasker #arm64 null
+  - samtools
+  - nseg
+  - recon #arm64 null
+  - trf
+  - pip
+  - pip:
+    - numpy
+    - biopython
+    - dataclasses
+    - matplotlib # Should include matplotlib-base
+    - multiprocess
+    - pandas
+    - plotly
+    - pypdf2
+    - regex
+    - requests
+    - scikit-learn
+    - tk
+    - urllib3
+    - click
+    - dill
+    - joblib
+    - ghostscript
