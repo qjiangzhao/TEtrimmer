@@ -4,29 +4,35 @@ channels:
   - bioconda
 dependencies:
   - python 3.10
-  - perl 
-  - r-base
-  - blast #arm64 null
   - bedtools >=2.31.1
+  - bioconductor-biostrings
+  - blast #arm64 null # Note: Ignore clobber warnings. blast and rmblast contain some duplicate binaries.
   - cd-hit
   - emboss #arm64 null
   - hmmer
   - iqtree
   - mafft
-  - pfam_scan #arm64 null
-  - repeatmodeler #arm64 null 
-  - repeatmasker #arm64 null
-  - samtools
   - nseg
+  - perl 
+  - pfam_scan #arm64 null
+  - r-base
+  - r-rcpp
   - recon #arm64 null
+  - repeatmasker #arm64 null
+  - repeatmodeler #arm64 null 
+  - samtools
   - trf
   - pip
   - pip:
-    - numpy
     - biopython
+    - click
     - dataclasses
-    - matplotlib # Should include matplotlib-base
+    - dill
+    - ghostscript
+    - joblib
+    - matplotlib
     - multiprocess
+    - numpy
     - pandas
     - plotly
     - pypdf2
@@ -35,7 +41,3 @@ dependencies:
     - scikit-learn
     - tk
     - urllib3
-    - click
-    - dill
-    - joblib
-    - ghostscript
