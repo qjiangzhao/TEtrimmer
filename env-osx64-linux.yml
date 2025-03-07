@@ -9,6 +9,7 @@ dependencies:
   - blast #arm64 null # Note: Ignore clobber warnings. blast and rmblast contain some duplicate binaries.
   - cd-hit
   - emboss #arm64 null
+  - ghostscript
   - hmmer
   - iqtree
   - mafft
@@ -28,7 +29,6 @@ dependencies:
     - click
     - dataclasses
     - dill
-    - ghostscript
     - joblib
     - matplotlib
     - multiprocess
