@@ -1,4 +1,4 @@
-[![Anaconda Version](https://img.shields.io/conda/vn/Bioconda/tetrimmer.svg)](https://anaconda.org/bioconda/tetrimmer)
+[![Bioconda Version](https://img.shields.io/conda/vn/Bioconda/tetrimmer.svg)](https://anaconda.org/bioconda/tetrimmer)
 [![Singularity Badge](https://img.shields.io/badge/Singularity-available-brightgreen.svg)](https://quay.io/repository/biocontainers/tetrimmer?tab=tags&tag=1.4.0--hdfd78af_0)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
 [![Manual Available](https://img.shields.io/badge/Manual-available-brightgreen.svg)](./docs/TEtrimmerv1.4.0Manual.pdf)
@@ -19,20 +19,24 @@
 - [Citation](#Citation)
 
 ## Introduction
+
 Many tools have been developed for the discovery and annotation of transposable elements (TEs). 
+
 However, the high-quality TE consensus library construction still requires manual curation of TEs, 
 which is time-consuming and needs experts with an in-depth understanding of TE biology. 
 
 
-
 TEtrimmer is a powerful software designed to automate the manual curation of TEs. The input can be a TE library from 
 *de novo* TE discovery tools, such as EDTA and RepeatModeler2, or a TE library from closely related species. 
+
 For each input consensus sequence, TEtrimmer automatically performs BLASTN search,  sequence extraction, extension, 
 multiple sequence alignment (MSA), MSA clustering, MSA cleaning, TE boundary definition, and TE classification. 
 TEtrimmer also provides a graphical user interface (GUI) to inspect and improve predicted TEs, which can assist 
 achieving manual curation-level TE consensus libraries easily. 
 
-[![TEtrimmerFlowchart](docs/TEtrimmerFlowchart_video.png)](https://www.youtube.com/watch?v=PgKw76gmzl8&t=17s&ab_channel=ZhaoJiang)
+<a href="https://www.youtube.com/watch?v=PgKw76gmzl8&t=17s&ab_channel=ZhaoJiang">
+  <img src="docs/TEtrimmerFlowchart_video.png" alt="TEtrimmerFlowchart" style="width: 800px;">
+</a>
 
 
 ## Manual
@@ -40,46 +44,51 @@ For detailed instructions, including installation steps, usage options, example 
 please refer to [TEtrimmerv1.4.0Manual.pdf](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerv1.4.0Manual.pdf) 
 
 ## Installation 
-TEtrimmer can be installed by 1. Conda, 2. Singularity, or 3. Docker. 
+TEtrimmer can be installed locally with Conda, or run from a Container with Singularity or Docker. 
 
-### 1. Conda (Many thanks to [HangXue](https://github.com/hangxue-wustl))
+### 1. Conda 
 
 Create a Conda environment with all requirements for running TEtrimmer.
 
-You will need to install a conda distribution, such as [miniforge3](https://conda-forge.org/download/).
+Install notes: 
 
-Use the [`environment.yml`](https://github.com/qjiangzhao/TE-Trimmer/blob/main/environment.yml) file to create a new env called "TEtrimmer":
+- You will need to install a conda distribution, such as [miniforge3](https://conda-forge.org/download/).
 
-```bash
-# Create new conda environment
-# Note: Some dependencies are not available for windows or M-series Macs (arm64 processors)
+- Some dependencies are not available for Windows or M-series Macs (arm64 processors)*
 
-conda create -f environment.yml
+- Ignore `ClobberError` or `ClobberWarning` messages during install. BLAST and rmBLAST contain some duplicate tools.
 
-```
+#### 1A. Install from Bioconda
 
-Note: Ignore `ClobberError` or `ClobberWarning` messages during install. BLAST and rmBLAST contain some duplicate tools.
-
-Now you can activate the env and install TEtrimmer either from bioconda: 
+Install TEtrimmer and dependencies directly from Bioconda. (Many thanks to [HangXue](https://github.com/hangxue-wustl))
 
 ```bash
-# Activate TEtrimmer env
+# Create a new conda env + bioconda::TEtrimmer
+conda create --name TEtrimmer -c bioconda -c conda-forge TEtrimmer
+
+# Activate the env
 conda activate TEtrimmer
 
-# Install TEtrimmer from Bioconda
-conda install bioconda::tetrimmer
-
-# Display options of TETrimmer 
+# Test
 TEtrimmer --help
 ```
 
-OR you can install the latest development version from this repository:
+#### 1B. Install latest version into local Conda env
+
+Use the [`environment.yml`](https://github.com/qjiangzhao/TE-Trimmer/blob/main/environment.yml) file to create a new env called "TEtrimmer" with dependencies only.
+
+```bash
+# Create new conda environment
+conda env create -f environment.yml
+```
+
+Now you can activate the env and install TEtrimmer from this github repo: 
 
 ```bash
 # Activate TEtrimmer env
 conda activate TEtrimmer
 
-# Clone the new version of TEtrimmer from Github
+# Clone the latest version of TEtrimmer from Github
 git clone https://github.com/qjiangzhao/TEtrimmer.git
 
 # Using the full path to TEtrimmer.py
@@ -87,7 +96,8 @@ python TEtrimmer/tetrimmer/TEtrimmer.py --help
 ```
 
 ### 2. Singularity
-```commandline
+
+```bash
 # Download and generate TEtrimmer "sif" file
 singularity pull docker://quay.io/biocontainers/tetrimmer:1.4.0--hdfd78af_0
 
@@ -129,8 +139,10 @@ python TEtrimmer_cloned/TEtrimmer.py \
 -t 20 --classify_all
 
 ```
+
 ### 3. Docker 
-```commandline
+
+```bash
 # Download TEtrimmer docker image
 docker pull quay.io/biocontainers/tetrimmer:1.4.0--hdfd78af_0
 docker run -it --name TEtrimmer -v <bind_your_path>:/data quay.io/biocontainers/tetrimmer:1.4.0--hdfd78af_0
@@ -160,12 +172,14 @@ RAM:
 - We have not tested it on the WLS of Windows, but it should be feasible to run TEtrimmer on it as well given sufficient resources. 
 
 ## Test
-```commandline
+
+```bash
 # To see all options 
 TEtrimmer --help
 ```
 **or**
-```commandline
+
+```bash
 # To see all options 
 python <path to TEtrimmer>/TEtrimmer.py --help
 ```
@@ -178,12 +192,14 @@ TEtrimmer --input_file <path to test_input.fa> \
           --num_threads 20
           --classify_all                                          
 ```
+
 ## Inputs
+
 - **Genome file**: The genome sequence in FASTA format (.fa or .fasta).
 - **TE consensus library**: TEtrimmer uses the TE consensus library from *de novo* TE annotation tools, like `RepeatModeler` or `EDTA`, as input. 
 For this reason, you have to run `RepeatModeler` or other TE annotation software first.
 
-```commandline
+```bash
 # TEtrimmer package already includes RepeatModeler. Below is an exmpale command of running RepeatModeler.
 # Build genome database index files
 BuildDatabase -name <genome_file_database_name> <genome_file.fa>
@@ -197,14 +213,16 @@ RepeatModeler -database <genome_file_database_name> \
 
 Example:
 
-```commandline
+```code
 TEtrimmer --input_file <TE_consensus_library.fa> \
           --genome_file <genome_file.fa> \
           --output_dir <output_directory> \
           --num_threads 20 \
           --classify_all                       
 ```
+
 If you want to **continue the analysis based on previous unfinished results in the same directory:**:
+
 ```commandline
 TEtrimmer --input_file <TE_consensus_library.fa> \
           --genome_file <genome_file.fa> \
@@ -213,10 +231,12 @@ TEtrimmer --input_file <TE_consensus_library.fa> \
           --classify_all \
           --continue_analysis
 ```
+
 If you want to **combine files from different sources for the input file, we recommend removing duplicate sequences 
 before processing. This step can potentially save overall run time in the input file** (TEtrimmer only accepts single file
 input, you have to combine files in advance):
-```commandline
+
+```code
 TEtrimmer --input_file <TE_consensus_library.fa> \
           --genome_file <genome_file.fa> \
           --output_dir <output_directory> \
@@ -224,8 +244,10 @@ TEtrimmer --input_file <TE_consensus_library.fa> \
           --classify_all
           --dedup    
 ```
+
 More options are available:
-```commandline
+
+```code
   --classify_unknown              Use RepeatClassifier to classify the consensus sequence if the input
                                   sequence is not classified or is unknown or the processed sequence
                                   length by TEtrimmer is 2000 bp longer or shorter than the query
@@ -244,6 +266,7 @@ More options are available:
                                   curated TE libraries.
 
 ```
+
 ## Outputs
 - 📁**Classification** - *This folder is used for TE classifications.*  
 - 📁**Multiple_sequence_alignment** - *All raw files will be stored in this folder if < --debug > is enabled.*
@@ -275,7 +298,7 @@ But if you want to get a traditional manual-curation level TE consensus library,
 
 ### Start TEtrimmerGUI 
 
-```commandline
+```bash
 # Use --help to see all options
 python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py --help
 
@@ -283,11 +306,14 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py --help
 # Open your Linux, macOS, or Windows terminal and type
 python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -i <TEtrimmer_for_proof_curation_folder> -g <genome_file.fa>
 ```
+
+
 TEtrimmerGUI doesn't need any dependencies. You can copy the "tetrimmerGUI" folder to any place and execute it directly.
 [![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space_video.png)](https://www.youtube.com/watch?v=52GYZUQyzSE&t=1608s&ab_channel=ZhaoJiang)
 
 
 ## Example report plots for each output TE consensus sequence
+
 For each TEtrimmer output TE consensus sequence. You will get a report plot file like this:
 ![Reportplots](docs/TEtrimmer_report_plots_for_each_output.jpg)
 
@@ -437,40 +463,19 @@ Options:
 
   --help                          Show this message and exit.
 ```
+
 The TEtrimmer GUI can also be used to check other TE consensus libraries like the TE library directly from EDTA,
 RepeatModeler2, REPET, and other tools. 
-```commandline
+
+```bash
 # Use --help to see all options
-python <path_to_folder_tetrimmerGUI>/annoGUI.py --help
+python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py --help
 
 # Open your Linux, macOS, or Windows terminal and type
 python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <TE_consensus_library.fa>
 
 # To run the TEtrimmerGUI tool, you only need to install Python.
 ```
-
-## Update history
-** October.17.2024
-Add --curatedlib option
-
-** October.11.2024
-
-Update CIAilgn (whole MSA) plot
-
-**TEtrimmer v1.4.1 Released September.17.2024**
-
-Updated TEtrimmerGUI, solved GUI TIR detection problem.
-TEtrimmerGUI won't be copied into output folder.
-
-**TEtrimmer v1.4.0 Released June.27.2024**
-
-TEtrimmer GUI can be used to inspect and improve any TE consensus library.
-Modified DBSCAN parameter to improve MSA clustering result. 
-
-**TEtrimmer v1.3.0 Released May.28.2024**
-
-Integrated "Extend", "TEAid", and MSA cleaning buttons into TEtrimmer GUI. "TEAid" can generate interactive plots, which
-can help identifying TE boundaries.
 
 ## Citation
 Qian, J., Xue, H., Ou, S., Storer, J., Fürtauer, L., Wildermuth, M. C., Kusch, S., & Panstruga, R. bioRxiv (2024) https://doi.org/10.1101/2024.06.27.600963
