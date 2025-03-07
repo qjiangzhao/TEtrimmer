@@ -1341,8 +1341,9 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
                    "-xm",  # Creates an additional output file in cross_match format (for parsing)
                    "-a",  # Writes alignments in .align output file
                    ]
+
     try:
-        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
         return True
 
     except FileNotFoundError:
