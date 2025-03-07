@@ -1,10 +1,29 @@
-print("Initializing .......")
 import subprocess
 import sys
 import os
 import re
 import shutil
 
+import click
+import traceback
+from functools import partial
+import platform
+from Bio import SeqIO
+from .TEAid_plotter import teaid_plotter, con_generater
+# Import cleaning module
+from .crop_end_divergence import crop_end_div
+from .crop_end_gap import crop_end_gap
+from .remove_gap import remove_gaps_with_similarity_check
+from .GUI_functions import separate_sequences, blast, fasta_header_to_bed, extend_bed_regions, \
+    extract_fasta_from_bed, check_database, process_bed_lines, prepare_cdd_database, \
+    run_func_in_thread, check_cdd_index_files
+from .cialign_plot import drawMiniAlignment
+
+try:
+    from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, \
+        Toplevel, simpledialog, Text, Entry, filedialog, END, ttk
+except ImportError:
+    print("tkinter (TK) is not available in your Python installation.")
 
 def install_and_import(required_packages_dict):
     for package in required_packages_dict:
@@ -24,26 +43,6 @@ def install_and_import(required_packages_dict):
 required_packages = {'click': 'click', 'Bio': 'biopython', 'numpy': 'numpy', 'pandas': 'pandas', 'plotly': 'plotly', 'matplotlib': 'matplotlib',
                      'requests': 'requests'}
 install_and_import(required_packages)
-
-try:
-    from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, \
-        Toplevel, simpledialog, Text, Entry, filedialog, END, ttk
-except ImportError:
-    print("tkinter (TK) is not available in your Python installation.")
-import click
-import traceback
-from functools import partial
-import platform
-from Bio import SeqIO
-from TEAid_plotter import teaid_plotter, con_generater
-# Import cleaning module
-from crop_end_divergence import crop_end_div
-from crop_end_gap import crop_end_gap
-from remove_gap import remove_gaps_with_similarity_check
-from GUI_functions import separate_sequences, blast, fasta_header_to_bed, extend_bed_regions, \
-    extract_fasta_from_bed, check_database, process_bed_lines, prepare_cdd_database, \
-    run_func_in_thread, check_cdd_index_files
-from cialign_plot import drawMiniAlignment
 
 
 #####################################################################################################

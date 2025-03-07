@@ -10,7 +10,7 @@ import requests
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from Bio import SeqIO
-from functions import prcyan, prgre
+from .functions import prcyan, prgre
 
 
 def check_and_download(directory, filename, url):

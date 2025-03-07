@@ -1,7 +1,7 @@
 import subprocess
 import os
 import pandas as pd
-from functions import blast, check_terminal_repeat, file_exists_and_not_empty
+from .functions import blast, check_terminal_repeat, file_exists_and_not_empty
 
 
 def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=True):

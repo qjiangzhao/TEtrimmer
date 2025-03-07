@@ -1,6 +1,13 @@
 import subprocess
 import sys
-
+import click
+import os
+import numpy as np
+from Bio import AlignIO
+from Bio.Seq import Seq
+import pandas as pd
+from Bio.SeqRecord import SeqRecord
+from Bio.Align import MultipleSeqAlignment
 
 def install_and_import(required_packages_dict):
 
@@ -20,16 +27,6 @@ def install_and_import(required_packages_dict):
 
 required_packages = {'click': 'click', 'Bio': 'biopython', 'numpy': 'numpy', 'pandas': 'pandas'}
 #install_and_import(required_packages)
-
-
-import click
-import os
-import numpy as np
-from Bio import AlignIO
-from Bio.Seq import Seq
-import pandas as pd
-from Bio.SeqRecord import SeqRecord
-from Bio.Align import MultipleSeqAlignment
 
 
 class CropEnd:

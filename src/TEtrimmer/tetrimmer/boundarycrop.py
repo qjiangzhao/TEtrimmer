@@ -9,16 +9,16 @@ from Bio import AlignIO
 
 
 # Local imports
-from functions import generate_hmm_from_msa, extract_fasta, remove_gaps_with_similarity_check, align_sequences, \
+from .functions import generate_hmm_from_msa, extract_fasta, remove_gaps_with_similarity_check, align_sequences, \
     con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, \
     con_generater, reverse_complement_seq_file, classify_single, check_terminal_repeat, select_star_to_end, \
     define_crop_end_simi_thr, prcyan, prgre, merge_pdfs, dotplot, scale_single_page_pdf, \
     remove_files_with_start_pattern, find_poly_a_end_position, is_LTR, check_and_update, modify_fasta_headers
-from boundaryclass import CropEnd, CropEndByGap, DefineBoundary
-from TEaid import TEAid
-from orfdomain import PlotPfam, determine_sequence_direction
-from MSAcluster import CleanAndSelectColumn, process_msa, clean_and_cluster_MSA
-import cialign
+from .boundaryclass import CropEnd, CropEndByGap, DefineBoundary
+from .TEaid import TEAid
+from .orfdomain import PlotPfam, determine_sequence_direction
+from .MSAcluster import CleanAndSelectColumn, process_msa, clean_and_cluster_MSA
+from . import cialign
 
 
 def long_bed(input_file, output_dir):

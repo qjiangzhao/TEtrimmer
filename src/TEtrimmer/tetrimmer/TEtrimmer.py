@@ -8,8 +8,8 @@ import concurrent.futures
 import json
 
 # Local imports
-import analyze
-from functions import repeatmasker, prcyan, prgre, cd_hit_est, eliminate_curatedlib_by_repeatmasker
+from . import analyze
+from .functions import repeatmasker, prcyan, prgre, cd_hit_est, eliminate_curatedlib_by_repeatmasker
 
 import warnings
 from Bio import BiopythonDeprecationWarning

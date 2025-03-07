@@ -1,6 +1,11 @@
 import subprocess
 import sys
-
+import click
+import os
+from Bio import AlignIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio.Align import MultipleSeqAlignment
 
 def install_and_import(required_packages_dict):
     for package in required_packages_dict:
@@ -20,14 +25,6 @@ def install_and_import(required_packages_dict):
 
 required_packages = {'click': 'click', 'Bio': 'biopython'}
 #install_and_import(required_packages)
-
-
-import click
-import os
-from Bio import AlignIO
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
-from Bio.Align import MultipleSeqAlignment
 
 
 class CropEndByGap:

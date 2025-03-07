@@ -14,7 +14,7 @@ import warnings
 from Bio import BiopythonDeprecationWarning
 from tkinter import messagebox
 
-from GUI_functions import blast, check_database, rpstblastn
+from .GUI_functions import blast, check_database, rpstblastn
 
 # Suppress all deprecation warnings
 warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
