@@ -1,18 +1,18 @@
-import pandas as pd
-import numpy as np
-import traceback
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import plotly.io as pio
 import os
 import platform
-import click
-from Bio import AlignIO, SeqIO
-from Bio.SeqRecord import SeqRecord
-from Bio.Align import AlignInfo
+import traceback
 import warnings
-from Bio import BiopythonDeprecationWarning
 from tkinter import messagebox
+
+import click
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.io as pio
+from Bio import AlignIO, BiopythonDeprecationWarning, SeqIO
+from Bio.Align import AlignInfo
+from Bio.SeqRecord import SeqRecord
+from plotly.subplots import make_subplots
 
 from .GUI_functions import blast, check_database, rpstblastn
 

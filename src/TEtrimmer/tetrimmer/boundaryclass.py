@@ -1,12 +1,12 @@
-from Bio.Align import AlignInfo, MultipleSeqAlignment
-from Bio import AlignIO
-import numpy as np
-import pandas as pd
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
 import os
 import warnings
-from Bio import BiopythonDeprecationWarning
+
+import numpy as np
+import pandas as pd
+from Bio import AlignIO, BiopythonDeprecationWarning
+from Bio.Align import AlignInfo, MultipleSeqAlignment
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
 # Suppress all deprecation warnings
 warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)

@@ -1,18 +1,18 @@
+import os
+import random
+import shutil
+import subprocess
+import sys
+import tarfile
+import threading
+import traceback
+import urllib.request
+
+import click
+import pandas as pd
+import requests
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
-import os
-import subprocess
-import pandas as pd
-import click
-import traceback
-import sys
-import requests
-import urllib.request
-import tarfile
-import shutil
-import random
-import threading
-
 
 special_character = {
         '/': '__',

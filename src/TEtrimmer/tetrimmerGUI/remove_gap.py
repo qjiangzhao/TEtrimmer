@@ -1,8 +1,10 @@
+import os
 import subprocess
 import sys
+
 import click
-import os
 from Bio import AlignIO
+
 
 def install_and_import(required_packages_dict):
     for package in required_packages_dict:

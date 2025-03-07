@@ -1,15 +1,17 @@
+import csv
+import gzip
 import os
 import os.path
-import click
-import csv
+import shutil
 import subprocess
 import urllib.request
-import gzip
-import shutil
-import requests
-import matplotlib.pyplot as plt
+
+import click
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import requests
 from Bio import SeqIO
+
 from .functions import prcyan, prgre
 
 

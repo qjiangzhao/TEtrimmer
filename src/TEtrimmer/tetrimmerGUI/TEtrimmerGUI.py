@@ -1,27 +1,31 @@
-import subprocess
-import sys
 import os
+import platform
 import re
 import shutil
-
-import click
+import subprocess
+import sys
 import traceback
 from functools import partial
-import platform
+
+import click
 from Bio import SeqIO
-from .TEAid_plotter import teaid_plotter, con_generater
+
+from .cialign_plot import drawMiniAlignment
 # Import cleaning module
 from .crop_end_divergence import crop_end_div
 from .crop_end_gap import crop_end_gap
+from .GUI_functions import (blast, check_cdd_index_files, check_database,
+                            extend_bed_regions, extract_fasta_from_bed,
+                            fasta_header_to_bed, prepare_cdd_database,
+                            process_bed_lines, run_func_in_thread,
+                            separate_sequences)
 from .remove_gap import remove_gaps_with_similarity_check
-from .GUI_functions import separate_sequences, blast, fasta_header_to_bed, extend_bed_regions, \
-    extract_fasta_from_bed, check_database, process_bed_lines, prepare_cdd_database, \
-    run_func_in_thread, check_cdd_index_files
-from .cialign_plot import drawMiniAlignment
+from .TEAid_plotter import con_generater, teaid_plotter
 
 try:
-    from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, \
-        Toplevel, simpledialog, Text, Entry, filedialog, END, ttk
+    from tkinter import (END, BooleanVar, Button, Canvas, Entry, Frame, Label,
+                         Menu, Scrollbar, Text, Tk, Toplevel, filedialog,
+                         messagebox, simpledialog, ttk)
 except ImportError:
     print("tkinter (TK) is not available in your Python installation.")
 

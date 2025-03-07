@@ -1,13 +1,15 @@
+import os
 import subprocess
 import sys
+
 import click
-import os
 import numpy as np
-from Bio import AlignIO
-from Bio.Seq import Seq
 import pandas as pd
-from Bio.SeqRecord import SeqRecord
+from Bio import AlignIO
 from Bio.Align import MultipleSeqAlignment
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+
 
 def install_and_import(required_packages_dict):
 

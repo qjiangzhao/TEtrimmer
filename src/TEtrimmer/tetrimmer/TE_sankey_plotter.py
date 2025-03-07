@@ -1,5 +1,6 @@
 import sys
 
+
 def install_and_import(required_packages_dict):
 
     for package in required_packages_dict:
@@ -19,16 +20,16 @@ def install_and_import(required_packages_dict):
 required_packages = {'click': 'click', 'Bio': 'biopython', 'numpy': 'numpy', 'pandas': 'pandas', 'seaborn': 'seaborn'}
 install_and_import(required_packages)
 
-import pandas as pd
 import os
-import numpy as np
 import subprocess
-import click
-import plotly.graph_objects as go
-import matplotlib.pyplot as plt
-import seaborn as sns
 from math import pi
 
+import click
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import seaborn as sns
 
 current_path = __file__
 current_dir = os.path.dirname(os.path.abspath(current_path))

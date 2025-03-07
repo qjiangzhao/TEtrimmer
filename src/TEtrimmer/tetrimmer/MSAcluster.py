@@ -1,20 +1,21 @@
+import os
 import os.path
-from Bio import AlignIO
-from Bio import Phylo
-import pandas as pd
-import numpy as np
+import re
 import subprocess
+from collections import Counter
+
 import click
 import matplotlib.pyplot as plt
-from collections import Counter
+import numpy as np
+import pandas as pd
+from Bio import AlignIO, Phylo
 from matplotlib.colors import ListedColormap
-import os
 from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
-import re
 
-from .functions import prcyan, prgre, muscle_align, align_sequences, remove_gaps_with_similarity_check, \
-    filter_out_big_gap_seq, select_gaps_block_with_similarity_check
+from .functions import (align_sequences, filter_out_big_gap_seq, muscle_align,
+                        prcyan, prgre, remove_gaps_with_similarity_check,
+                        select_gaps_block_with_similarity_check)
 
 try:
     pd.set_option('future.no_silent_downcasting', True)

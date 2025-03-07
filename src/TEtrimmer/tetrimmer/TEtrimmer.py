@@ -1,18 +1,19 @@
 # Standard library imports
+import concurrent.futures
+import json
 import os
 import shutil
 import traceback
-from datetime import timedelta, datetime
+import warnings
+from datetime import datetime, timedelta
+
 import click
-import concurrent.futures
-import json
+from Bio import BiopythonDeprecationWarning
 
 # Local imports
 from . import analyze
-from .functions import repeatmasker, prcyan, prgre, cd_hit_est, eliminate_curatedlib_by_repeatmasker
-
-import warnings
-from Bio import BiopythonDeprecationWarning
+from .functions import (cd_hit_est, eliminate_curatedlib_by_repeatmasker,
+                        prcyan, prgre, repeatmasker)
 
 # Suppress all deprecation warnings
 warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)

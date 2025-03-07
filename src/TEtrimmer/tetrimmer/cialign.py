@@ -1,10 +1,11 @@
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-from PIL import Image
 import os
 import tempfile
+
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
 from Bio import SeqIO
+from PIL import Image
 
 matplotlib.use('Agg')
 

@@ -1,20 +1,20 @@
-import subprocess
 import os
 import os.path
-import click
-import shutil
 import random
-from Bio import AlignIO, SeqIO
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
-from Bio.Align import MultipleSeqAlignment, AlignInfo
+import shutil
+import subprocess
+import traceback
+import warnings
+
+import click
+import numpy as np
 import pandas as pd
 import pandas.errors
-import numpy as np
-from PyPDF2 import PdfMerger, PdfFileReader, PdfFileWriter
-import warnings
-from Bio import BiopythonDeprecationWarning
-import traceback
+from Bio import AlignIO, BiopythonDeprecationWarning, SeqIO
+from Bio.Align import AlignInfo, MultipleSeqAlignment
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from PyPDF2 import PdfFileReader, PdfFileWriter, PdfMerger
 
 # Suppress all deprecation warnings
 warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)

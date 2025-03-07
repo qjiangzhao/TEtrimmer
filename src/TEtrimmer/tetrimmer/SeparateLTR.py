@@ -1,5 +1,6 @@
 import sys
 
+
 def install_and_import(required_packages_dict):
 
     for package in required_packages_dict:
@@ -20,13 +21,14 @@ required_packages = {'click': 'click', 'Bio': 'biopython'}
 install_and_import(required_packages)
 
 
-import click
 import os
 import subprocess
+
+import click
 import pandas as pd
 from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
 
 @click.command()

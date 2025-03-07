@@ -4,24 +4,27 @@ import shutil
 import subprocess
 import time
 import traceback
+
 import click
 import pandas as pd
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
-
-# Local imports
-from .functions import blast, remove_files_with_start_pattern, check_bed_uniqueness, extract_fasta, \
-    handle_sequence_low_copy, handle_sequence_skipped, update_low_copy_cons_file, prcyan, prgre, \
-    repeatmasker, repeatmasker_output_classify, rename_cons_file, rename_files_based_on_dict, \
-    cd_hit_est, parse_cd_hit_est_result, copy_files_with_start_pattern, multi_seq_dotplot, \
-    fasta_file_to_dict, process_lines, modify_fasta_headers
-
-from .seqclass import SeqObject
 from .boundarycrop import find_boundary_and_crop
-from .TEaid import check_self_alignment
+# Local imports
+from .functions import (blast, cd_hit_est, check_bed_uniqueness,
+                        copy_files_with_start_pattern, extract_fasta,
+                        fasta_file_to_dict, handle_sequence_low_copy,
+                        handle_sequence_skipped, modify_fasta_headers,
+                        multi_seq_dotplot, parse_cd_hit_est_result, prcyan,
+                        prgre, process_lines, remove_files_with_start_pattern,
+                        rename_cons_file, rename_files_based_on_dict,
+                        repeatmasker, repeatmasker_output_classify,
+                        update_low_copy_cons_file)
 from .MSAcluster import clean_and_cluster_MSA
-from .orfdomain import prepare_pfam_database, PlotPfam
+from .orfdomain import PlotPfam, prepare_pfam_database
+from .seqclass import SeqObject
+from .TEaid import check_self_alignment
 
 
 # Define a function to check the progress file, which will be used to continue analysis if program exited prematurely
