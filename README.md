@@ -80,19 +80,22 @@ Use the [`environment.yml`](https://github.com/qjiangzhao/TE-Trimmer/blob/main/e
 ```bash
 # Create new conda environment
 conda env create -f environment.yml
-```
 
-Now you can activate the env and install TEtrimmer from this github repo:
-
-```bash
 # Activate TEtrimmer env
 conda activate TEtrimmer
+```
 
+Now you can install TEtrimmer from this github repo:
+
+```bash
 # Clone the latest version of TEtrimmer from Github
-git clone https://github.com/qjiangzhao/TEtrimmer.git
+git clone https://github.com/qjiangzhao/TEtrimmer.git && cd TEtrimmer
 
-# Using the full path to TEtrimmer.py
-python TEtrimmer/tetrimmer/TEtrimmer.py --help
+# pip install package
+pip install -e '.[tests]'
+
+# Call TEtrimmer
+TEtrimmer --help
 ```
 
 ### 2. Singularity
@@ -131,7 +134,7 @@ singularity exec --writable-tmpfs \
 --bind <your_output_path>:/output \
 --bind <your_path_to_store_PFAM_database>:/pfam \
 <your_path_contain_sif_file>/tetrimmer_1.4.0--hdfd78af_0.sif \
-python TEtrimmer_cloned/TEtrimmer.py \
+python -m TEtrimmer_cloned_dir.src.TEtrimmer.tetrimmer.TEtrimmer \
 -i /input/<TE_library_name.fasta> \
 -g /genome/<genome_file_name.fasta> \
 -o /output \
@@ -177,12 +180,7 @@ RAM:
 # To see all options
 TEtrimmer --help
 ```
-**or**
 
-```bash
-# To see all options
-python <path to TEtrimmer>/TEtrimmer.py --help
-```
 - Download the test files [test_input.fa](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_input.fa) and [test_genome.fasta](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_genome.fasta).
 
 ```commandline
@@ -300,15 +298,16 @@ But if you want to get a traditional manual-curation level TE consensus library,
 
 ```bash
 # Use --help to see all options
-python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py --help
+TEtrimmerGUI --help
 
 # To start the manual inspection GUI tool
 # Open your Linux, macOS, or Windows terminal and type
-python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -i <TEtrimmer_for_proof_curation_folder> -g <genome_file.fa>
+TEtrimmerGUI -i <TEtrimmer_for_proof_curation_folder> -g <genome_file.fa>
 ```
 
 
 TEtrimmerGUI doesn't need any dependencies. You can copy the "tetrimmerGUI" folder to any place and execute it directly.
+
 [![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space_video.png)](https://www.youtube.com/watch?v=52GYZUQyzSE&t=1608s&ab_channel=ZhaoJiang)
 
 
@@ -469,10 +468,10 @@ RepeatModeler2, REPET, and other tools.
 
 ```bash
 # Use --help to see all options
-python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py --help
+TEtrimmerGUI --help
 
 # Open your Linux, macOS, or Windows terminal and type
-python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <TE_consensus_library.fa>
+TEtrimmerGUI -g <genome_file.fa> -clib <TE_consensus_library.fa>
 
 # To run the TEtrimmerGUI tool, you only need to install Python.
 ```
