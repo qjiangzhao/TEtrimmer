@@ -1,0 +1,70 @@
+# Build system configuration
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+# Project metadata
+[project]
+name = "TEtrimmer"
+description = "TETrimmer is designed to replace and assist TE manual curation."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "GPL3" }
+authors = [
+    { name = "Jiangzhao Qian" }
+]
+
+# Classifiers for project categorization
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "License :: OSI Approved :: MIT License",
+]
+
+# Project dependencies
+dependencies = ["biopython>=1.70", "click", "dataclasses", "dill", "ghostscript", "joblib",
+"matplotlib", "multiprocess", "numpy", "pandas", "plotly", "pypdf2", "regex", "requests", "scikit-learn", "tk", "urllib3"
+]
+
+# Dynamic versioning
+dynamic = ["version"]
+
+# Project URLs
+[project.urls]
+homepage = "https://github.com/qjiangzhao/TEtrimmer"
+documentation = "https://github.com/qjiangzhao/TEtrimmer"
+repository = "https://github.com/qjiangzhao/TEtrimmer"
+
+# Command-line script entry point
+[project.scripts]
+TEtrimmer="TEtrimmer.tetrimmer.TEtrimmer:main"
+TEtrimmerGUI="TEtrimmer.tetrimmerGUI.TEtrimmerGUI:proof_curation"
+
+# Hatch build configuration
+[tool.hatch.build]
+source = "src"
+
+# Exclude files and directories from the build
+exclude = [
+    "environment.yml",
+    ".github",
+    ".vscode",
+]
+
+# Hatch versioning configuration
+[tool.hatch.version]
+source = "vcs"
+
+# Version control system (VCS) versioning
+[tool.hatch.version.vcs]
+tag-pattern = "v*"  # Git tags starting with 'v' will be used for versioning
+fallback-version = "0.0.0"
+
+# Version file location for VCS
+[tool.hatch.build.hooks.vcs]
+version-file = "src/TEtrimmer/_version.py"
+
+# Optional dependencies for testing
+[project.optional-dependencies]
+tests = ["pytest"]
