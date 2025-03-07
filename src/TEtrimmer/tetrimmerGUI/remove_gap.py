@@ -12,18 +12,27 @@ def install_and_import(required_packages_dict):
             __import__(package)
         except ImportError:
             try:
-                print(f"{package} was not found. Installing it automatically.")
-                subprocess.check_call([sys.executable, "-m", "pip", "install", required_packages_dict[package]])
-                print(f"{package} was successfully installed.")
+                print(f'{package} was not found. Installing it automatically.')
+                subprocess.check_call(
+                    [
+                        sys.executable,
+                        '-m',
+                        'pip',
+                        'install',
+                        required_packages_dict[package],
+                    ]
+                )
+                print(f'{package} was successfully installed.')
             except subprocess.CalledProcessError as e:
                 print(
-                    f"\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}"
-                    "\nPlease install 'click' and 'biopython' using 'pip install'.\n")
+                    f'\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}'
+                    "\nPlease install 'click' and 'biopython' using 'pip install'.\n"
+                )
                 return
 
 
 required_packages = {'click': 'click', 'Bio': 'biopython'}
-#install_and_import(required_packages)
+# install_and_import(required_packages)
 
 
 def calc_conservation(col):
@@ -46,8 +55,14 @@ def calc_conservation(col):
     return max_count / total_nucleotides
 
 
-def remove_gaps_with_similarity_check(input_file, output_file, gap_threshold,
-                                      simi_check_gap_thr, similarity_thr, min_nucleotide):
+def remove_gaps_with_similarity_check(
+    input_file,
+    output_file,
+    gap_threshold,
+    simi_check_gap_thr,
+    similarity_thr,
+    min_nucleotide,
+):
     """
     Remove columns directly when gap percentage is larger than --gap_threshold. Remove columns when nucleotide number
     is less than --min_nucleotide.
@@ -57,12 +72,12 @@ def remove_gaps_with_similarity_check(input_file, output_file, gap_threshold,
     """
     if os.path.isfile(input_file):
         keep_list = []
-        MSA_mafft = AlignIO.read(input_file, "fasta")
+        MSA_mafft = AlignIO.read(input_file, 'fasta')
 
         column_mapping = {}  # Stores the mapping of column indices from filtered MSA to original MSA
 
         if len(MSA_mafft) < 5:
-            raise ValueError("Number of sequences is less than 5. Cannot remove gaps.")
+            raise ValueError('Number of sequences is less than 5. Cannot remove gaps.')
 
         for col_idx in range(MSA_mafft.get_alignment_length()):
             col = MSA_mafft[:, col_idx]
@@ -97,9 +112,9 @@ def remove_gaps_with_similarity_check(input_file, output_file, gap_threshold,
         column_mapping[len(keep_list)] = column_mapping[len(keep_list) - 1] + 1
 
         # Keep the columns
-        MSA_mafft_filtered = MSA_mafft[:, keep_list[0]:keep_list[0] + 1]
+        MSA_mafft_filtered = MSA_mafft[:, keep_list[0] : keep_list[0] + 1]
         for i in keep_list[1:]:
-            MSA_mafft_filtered += MSA_mafft[:, i:i + 1]
+            MSA_mafft_filtered += MSA_mafft[:, i : i + 1]
 
         # Write the filtered MSA to the output file
         with open(output_file, 'w') as f:
@@ -111,24 +126,56 @@ def remove_gaps_with_similarity_check(input_file, output_file, gap_threshold,
 
 
 @click.command()
-@click.option("--input_file", "-i", required="True", type=str,
-              help="Multiple sequence alignment FASTA file path")
-@click.option("--output_file", "-o", required="True", type=str,
-              help="Output file")
-@click.option("--gap_threshold", default=0.8, type=float,
-              help="Columns with gap percentage greater than and not equal to threshold will be removed directly")
-@click.option("--simi_check_gap_thr", default=0.4, type=float,
-              help="Columns with gap percentage between --simi_check_gap_thr and --gap_threshold will be deleted "
-                   "when the most abundant nucleotide proportion is smaller than --similarity_thr")
-@click.option("--similarity_thr", default=0.7, type=float,
-              help="If the most abundant nucleotide proportion is smaller than --similarity_thr and gap proportion is "
-                   "greater than --simi_check_gap_thr, this colum will be removed")
-@click.option("--min_nucleotide", default=5, type=int,
-              help="Columns with less than --min_nucleotide nucleotides will be removed")
-def remove_gaps_with_similarity_check_click(input_file, output_file, gap_threshold, simi_check_gap_thr, similarity_thr,
-                                            min_nucleotide):
-    remove_gaps_with_similarity_check(input_file, output_file, gap_threshold, simi_check_gap_thr, similarity_thr,
-                                      min_nucleotide)
+@click.option(
+    '--input_file',
+    '-i',
+    required='True',
+    type=str,
+    help='Multiple sequence alignment FASTA file path',
+)
+@click.option('--output_file', '-o', required='True', type=str, help='Output file')
+@click.option(
+    '--gap_threshold',
+    default=0.8,
+    type=float,
+    help='Columns with gap percentage greater than and not equal to threshold will be removed directly',
+)
+@click.option(
+    '--simi_check_gap_thr',
+    default=0.4,
+    type=float,
+    help='Columns with gap percentage between --simi_check_gap_thr and --gap_threshold will be deleted '
+    'when the most abundant nucleotide proportion is smaller than --similarity_thr',
+)
+@click.option(
+    '--similarity_thr',
+    default=0.7,
+    type=float,
+    help='If the most abundant nucleotide proportion is smaller than --similarity_thr and gap proportion is '
+    'greater than --simi_check_gap_thr, this colum will be removed',
+)
+@click.option(
+    '--min_nucleotide',
+    default=5,
+    type=int,
+    help='Columns with less than --min_nucleotide nucleotides will be removed',
+)
+def remove_gaps_with_similarity_check_click(
+    input_file,
+    output_file,
+    gap_threshold,
+    simi_check_gap_thr,
+    similarity_thr,
+    min_nucleotide,
+):
+    remove_gaps_with_similarity_check(
+        input_file,
+        output_file,
+        gap_threshold,
+        simi_check_gap_thr,
+        similarity_thr,
+        min_nucleotide,
+    )
 
 
 if __name__ == '__main__':

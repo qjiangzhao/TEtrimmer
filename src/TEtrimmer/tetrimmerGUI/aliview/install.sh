@@ -19,7 +19,7 @@ install -v -m755 install.sh /usr/share/aliview/
 # and program launcher
 if [ -d ~/.local/share/applications ]; then
   install -v -m755 AliView.desktop ~/.local/share/applications/
-else 
+else
   if [ -d /usr/share/applications ]; then
     install -v -m755 AliView.desktop /usr/share/applications/
   fi

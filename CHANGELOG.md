@@ -14,7 +14,7 @@ TEtrimmerGUI won't be copied into output folder.
 **TEtrimmer v1.4.0 Released June.27.2024**
 
 TEtrimmer GUI can be used to inspect and improve any TE consensus library.
-Modified DBSCAN parameter to improve MSA clustering result. 
+Modified DBSCAN parameter to improve MSA clustering result.
 
 **TEtrimmer v1.3.0 Released May.28.2024**
 

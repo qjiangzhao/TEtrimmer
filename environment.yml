@@ -14,13 +14,13 @@ dependencies:
   - iqtree
   - mafft
   - nseg
-  - perl 
+  - perl
   - pfam_scan #arm64 null
   - r-base
   - r-rcpp
   - recon #arm64 null
   - repeatmasker #arm64 null
-  - repeatmodeler #arm64 null 
+  - repeatmodeler #arm64 null
   - samtools
   - trf
   - pip

@@ -6,13 +6,30 @@ import pandas as pd
 from .functions import blast, check_terminal_repeat, file_exists_and_not_empty
 
 
-def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=True):
+def check_self_alignment(
+    seq_obj,
+    seq_file,
+    output_dir,
+    genome_file,
+    blast_hits_count,
+    blast_out_file,
+    plot_skip=True,
+):
     """
     "plot_skip" uses TE-Aid to plot the skipped query sequences.
     """
-    blast_full_length_n = check_blast_full_length(seq_obj, blast_out_file, identity=85, coverage=0.8,
-                                                  min_hit_length=100, te_aid_blast=False, if_low_copy=True)
-    TE_aid_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TE-Aid-master")
+    blast_full_length_n = check_blast_full_length(
+        seq_obj,
+        blast_out_file,
+        identity=85,
+        coverage=0.8,
+        min_hit_length=100,
+        te_aid_blast=False,
+        if_low_copy=True,
+    )
+    TE_aid_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), 'TE-Aid-master'
+    )
 
     # At least 2 lines need to meet the requirement
     if blast_full_length_n >= 1:
@@ -26,7 +43,7 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
 
         # Convert found_match to True when LTR or TIR is found
         # Require at least 2 full length blast hits for LTR and 1 for TIR
-        if (found_match == "LTR" and blast_full_length_n >= 2) or found_match == "TIR":
+        if (found_match == 'LTR' and blast_full_length_n >= 2) or found_match == 'TIR':
             found_match_boolean = True
         else:
             found_match_boolean = False
@@ -37,7 +54,9 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
     else:
         if plot_skip:
             # Plot skipped elements if required
-            TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
+            TE_aid_object = TEAid(
+                seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path
+            )
             TE_aid_plot, found_match = TE_aid_object.run(low_copy=True, label=False)
         else:
             TE_aid_plot = None
@@ -47,17 +66,23 @@ def check_self_alignment(seq_obj, seq_file, output_dir, genome_file, blast_hits_
     return check_low_copy, blast_full_length_n, found_match, TE_aid_plot
 
 
-def check_blast_full_length(seq_obj, blast_out_file, identity=80, coverage=0.9, min_hit_length=100, te_aid_blast=False,
-                            if_low_copy=False):
-
+def check_blast_full_length(
+    seq_obj,
+    blast_out_file,
+    identity=80,
+    coverage=0.9,
+    min_hit_length=100,
+    te_aid_blast=False,
+    if_low_copy=False,
+):
     if not file_exists_and_not_empty(blast_out_file):
         return 0
 
     # The TE-Aid BLAST output file has a header
     if te_aid_blast:
-        df = pd.read_csv(blast_out_file, sep=r"\s+", skiprows=1, header=None)
+        df = pd.read_csv(blast_out_file, sep=r'\s+', skiprows=1, header=None)
     else:
-        df = pd.read_csv(blast_out_file, sep=r"\s+", header=None)
+        df = pd.read_csv(blast_out_file, sep=r'\s+', header=None)
 
     # Extract sequence length
     if if_low_copy:
@@ -78,9 +103,16 @@ def check_blast_full_length(seq_obj, blast_out_file, identity=80, coverage=0.9, 
 
 
 class TEAid:
-
-    def __init__(self, input_file, output_dir, genome_file, TE_aid_dir, error_file=None,
-                 min_orf=200, full_length_threshold=0.9):
+    def __init__(
+        self,
+        input_file,
+        output_dir,
+        genome_file,
+        TE_aid_dir,
+        error_file=None,
+        min_orf=200,
+        full_length_threshold=0.9,
+    ):
         """
         :param input_file: str, absolute path of input file
         :param output_dir: str, absolute directory of output file
@@ -99,18 +131,24 @@ class TEAid:
 
     def run(self, low_copy=False, label=True):
         # Define TE-Aid software executable path
-        TE_aid = os.path.join(self.TE_aid_dir, "TE-Aid")
+        TE_aid = os.path.join(self.TE_aid_dir, 'TE-Aid')
 
         # Check if TE-Aid exists
         if not os.path.exists(TE_aid):
-            raise FileNotFoundError(f"The TE-Aid executable at {TE_aid} does not exist.")
+            raise FileNotFoundError(
+                f'The TE-Aid executable at {TE_aid} does not exist.'
+            )
 
         # Make a folder to store TE-Aid result.
-        TE_aid_output_dir = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_TEaid")
+        TE_aid_output_dir = os.path.join(
+            self.output_dir, f'{os.path.basename(self.input_file)}_TEaid'
+        )
         os.makedirs(TE_aid_output_dir, exist_ok=True)
 
         # TE-Aid will create plot with end name c2g.pdf
-        final_pdf_file = os.path.join(TE_aid_output_dir, f"{os.path.basename(self.input_file)}.c2g.pdf")
+        final_pdf_file = os.path.join(
+            TE_aid_output_dir, f'{os.path.basename(self.input_file)}.c2g.pdf'
+        )
         found_match = False
 
         # Check if the PDF c2g.pdf exists. If so, skip the downstream analysis, if low_copy is 'False'.
@@ -121,78 +159,100 @@ class TEAid:
 
         command = [
             TE_aid,
-            "-q", self.input_file,
-            "-g", self.genome_file,
-            "-o", TE_aid_output_dir,
-            "-m", str(self.min_orf),
-            "-f", str(self.full_length_threshold)
-            ]
+            '-q',
+            self.input_file,
+            '-g',
+            self.genome_file,
+            '-o',
+            TE_aid_output_dir,
+            '-m',
+            str(self.min_orf),
+            '-f',
+            str(self.full_length_threshold),
+        ]
 
         # If it is low copy element, add '-t' option to keep self-BLAST file from TE-Aid file
         if low_copy:
-            command.extend(["-T"])
+            command.extend(['-T'])
         if label:
-            command.extend(["-TM"])
+            command.extend(['-TM'])
 
         try:
-            subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            subprocess.run(
+                command,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
         except subprocess.CalledProcessError as e:
             if self.error_file is not None:
                 with open(self.error_file, 'a') as f:
-                    f.write(f"\nTE Aid error for {os.path.basename(self.input_file)} with error code {e.returncode}")
-                    f.write(f"\n{e.stdout}")
-                    f.write(f"\n{e.stderr}\n")
+                    f.write(
+                        f'\nTE Aid error for {os.path.basename(self.input_file)} with error code {e.returncode}'
+                    )
+                    f.write(f'\n{e.stdout}')
+                    f.write(f'\n{e.stderr}\n')
 
         if low_copy:
-
             #####################################################################################################
             # Code block: Check terminal repeat
             #####################################################################################################
             # Check the presence of self-alignment of terminal repeats in self-blast.pairs.txt
-            self_blast_txt = os.path.join(TE_aid_output_dir, f"{os.path.basename(self.input_file)}.self-blast.pairs.txt")
+            self_blast_txt = os.path.join(
+                TE_aid_output_dir,
+                f'{os.path.basename(self.input_file)}.self-blast.pairs.txt',
+            )
 
             if not os.path.exists(self_blast_txt):
                 blast_out = None
             else:
                 blast_out = self_blast_txt
 
-            LTR_boundary, TIR_boundary, found_match = check_terminal_repeat(self.input_file, TE_aid_output_dir,
-                                                                            teaid_blast_out=blast_out, TIR_adj=30,
-                                                                            LTR_adj=50)
+            LTR_boundary, TIR_boundary, found_match = check_terminal_repeat(
+                self.input_file,
+                TE_aid_output_dir,
+                teaid_blast_out=blast_out,
+                TIR_adj=30,
+                LTR_adj=50,
+            )
 
         return final_pdf_file, found_match
 
     #####################################################################################################
     # Code block: Check number of BLAST full-length hits
     #####################################################################################################
-    def check_blast_full_n(self, seq_obj, engine="blast"):
-
+    def check_blast_full_n(self, seq_obj, engine='blast'):
         # Make a folder to store TE-Aid result.
-        TE_aid_output_dir = os.path.join(self.output_dir, f"{os.path.basename(self.input_file)}_TEaid")
+        TE_aid_output_dir = os.path.join(
+            self.output_dir, f'{os.path.basename(self.input_file)}_TEaid'
+        )
         if not os.path.isdir(TE_aid_output_dir):
             os.makedirs(TE_aid_output_dir)
 
-        te_aid_blast_file = os.path.join(TE_aid_output_dir, "blastn.txt")
+        te_aid_blast_file = os.path.join(TE_aid_output_dir, 'blastn.txt')
 
         # If blast.txt file was found, use the TE-Aid output directly. Otherwise, do BLAST search. This may save resources.
         if os.path.exists(te_aid_blast_file):
-            full_length_n = check_blast_full_length(seq_obj, te_aid_blast_file, identity=85, coverage=0.9,
-                                                    min_hit_length=100, te_aid_blast=True)
+            full_length_n = check_blast_full_length(
+                seq_obj,
+                te_aid_blast_file,
+                identity=85,
+                coverage=0.9,
+                min_hit_length=100,
+                te_aid_blast=True,
+            )
         else:
-            bed_out_file, blast_hits_count, blast_out_file = blast(self.input_file, self.genome_file,
-                                                                   self.output_dir, search_type=engine)
-            full_length_n = check_blast_full_length(seq_obj, blast_out_file, identity=85, coverage=0.9,
-                                                    min_hit_length=100, te_aid_blast=False)
+            bed_out_file, blast_hits_count, blast_out_file = blast(
+                self.input_file, self.genome_file, self.output_dir, search_type=engine
+            )
+            full_length_n = check_blast_full_length(
+                seq_obj,
+                blast_out_file,
+                identity=85,
+                coverage=0.9,
+                min_hit_length=100,
+                te_aid_blast=False,
+            )
 
         return full_length_n
-
-
-
-
-
-
-
-
-
-
-

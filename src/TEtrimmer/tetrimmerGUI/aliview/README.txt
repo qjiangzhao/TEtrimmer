@@ -11,4 +11,4 @@ aliview [alignment-file]
 java -Xmx1024M -Xms512M -jar $DIRECTORY_OF_PROGRAM/aliview.jar $@
 
 #the self extracting installer were created with following command:
-makeself aliview-linux/ aliview.install.run "Installer for AliView" ./install.sh 
+makeself aliview-linux/ aliview.install.run "Installer for AliView" ./install.sh
