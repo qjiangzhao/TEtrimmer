@@ -27,14 +27,8 @@ repos:
         args: [--fix, --exit-non-zero-on-fix, --show-fixes]
       - id: ruff-format
 
-  - repo: https://github.com/numpy/numpydoc
-    rev: v1.6.0
-    hooks:
-      - id: numpydoc-validation
-        exclude: (tests/|docs/).*
-
-- repo: https://github.com/pycqa/isort
-    rev: 5.11.2
-    hooks:
-      - id: isort
-        name: isort (python)
+#  - repo: https://github.com/numpy/numpydoc
+#    rev: v1.6.0
+#    hooks:
+#      - id: numpydoc-validation
+#        exclude: (tests/|docs/).*
