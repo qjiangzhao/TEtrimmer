@@ -43,61 +43,48 @@ please refer to [TEtrimmerv1.4.0Manual.pdf](https://github.com/qjiangzhao/TEtrim
 TEtrimmer can be installed by 1. Conda, 2. Singularity, or 3. Docker. 
 
 ### 1. Conda (Many thanks to [HangXue](https://github.com/hangxue-wustl))
-You have to install [miniconda](https://docs.anaconda.com/free/miniconda/) on your computer in advance. 
-We highly recommend installation with `mamba`, as it is much faster. 
 
-```commandline
+Create a Conda environment with all requirements for running TEtrimmer.
+
+You will need to install a conda distribution, such as [miniforge3](https://conda-forge.org/download/).
+
+Use the [`environment.yml`](https://github.com/qjiangzhao/TE-Trimmer/blob/main/environment.yml) file to create a new env called "TEtrimmer":
+
+```bash
 # Create new conda environment
-conda create --name TEtrimmer
+# Note: Some dependencies are not available for windows or M-series Macs (arm64 processors)
 
-# Install mamba 
-conda install -c conda-forge mamba 
+conda create -f environment.yml
 
-# Activate new environment
+```
+
+Note: Ignore `ClobberError` or `ClobberWarning` messages during install. BLAST and rmBLAST contain some duplicate tools.
+
+Now you can activate the env and install TEtrimmer either from bioconda: 
+
+```bash
+# Activate TEtrimmer env
 conda activate TEtrimmer
 
-# Install TEtrimmer
-mamba install bioconda::tetrimmer
+# Install TEtrimmer from Bioconda
+conda install bioconda::tetrimmer
 
 # Display options of TETrimmer 
 TEtrimmer --help
+```
 
-# If you encounter "ClobberError" or "ClobberWarning", don't worry! wait until it is finished!
-# The Error or Warning could be like this:
-ClobberError: This transaction has incompatible packages due to a shared path.
-  packages: bioconda/osx-64::blast-2.5.0-boost1.64_2, bioconda/osx-64::rmblast-2.14.1-hd94f91d_0
-  path: 'bin/blastx'
-  
+OR you can install the latest development version from this repository:
 
-# The bioconda::tetrimmer package includes the TEtrimmer source code, but the version inside may be outdated.
-# If you want to run the latest version of TEtrimmer via the bioconda::tetrimmer environment
-# Clone the new version of TEtrimmer from Github
-
-git clone https://github.com/qjiangzhao/TEtrimmer.git
-
-# Run the cloned TEtrimmer inside the bioconda::tetrimmer environment
+```bash
+# Activate TEtrimmer env
 conda activate TEtrimmer
 
-python <your_path_to_cloned_TEtrimmer_folder_which_contain_TEtrimmer.py>/TEtrimmer.py --help
-
-
-
-```
-**or** See required dependencies [TEtrimmer_dependencies](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmer_dependencies).
-
-**or** conda installation via .yml
-
-```commandline
-# Clone the github repository for TEtrimmer.
+# Clone the new version of TEtrimmer from Github
 git clone https://github.com/qjiangzhao/TEtrimmer.git
 
-# Install mamba 
-conda install -c conda-forge mamba
-
-# Install TEtrimmer by the "yml" file
-mamba env create -f <path to/TEtrimmer_env_for_linux.yml>
+# Using the full path to TEtrimmer.py
+python TEtrimmer/tetrimmer/TEtrimmer.py --help
 ```
-Here is the provided [TEtrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TEtrimmer_env_for_linux.yml)
 
 ### 2. Singularity
 ```commandline
