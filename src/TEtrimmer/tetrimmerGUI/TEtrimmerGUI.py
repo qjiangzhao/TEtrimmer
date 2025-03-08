@@ -11,83 +11,60 @@ import click
 from Bio import SeqIO
 
 from .cialign_plot import drawMiniAlignment
-
 # Import cleaning module
 from .crop_end_divergence import crop_end_div
 from .crop_end_gap import crop_end_gap
-from .GUI_functions import (
-    blast,
-    check_cdd_index_files,
-    check_database,
-    extend_bed_regions,
-    extract_fasta_from_bed,
-    fasta_header_to_bed,
-    prepare_cdd_database,
-    process_bed_lines,
-    run_func_in_thread,
-    separate_sequences,
-)
+from .GUI_functions import (blast, check_cdd_index_files, check_database,
+                            extend_bed_regions, extract_fasta_from_bed,
+                            fasta_header_to_bed, prepare_cdd_database,
+                            process_bed_lines, run_func_in_thread,
+                            separate_sequences)
 from .remove_gap import remove_gaps_with_similarity_check
 from .TEAid_plotter import con_generater, teaid_plotter
 
 try:
-    from tkinter import (
-        END,
-        BooleanVar,
-        Button,
-        Canvas,
-        Entry,
-        Frame,
-        Label,
-        Menu,
-        Scrollbar,
-        Text,
-        Tk,
-        Toplevel,
-        filedialog,
-        messagebox,
-        simpledialog,
-        ttk,
-    )
+    from tkinter import (END, BooleanVar, Button, Canvas, Entry, Frame, Label,
+                         Menu, Scrollbar, Text, Tk, Toplevel, filedialog,
+                         messagebox, simpledialog, ttk)
 except ImportError:
     print('tkinter (TK) is not available in your Python installation.')
 
 
-def install_and_import(required_packages_dict):
-    for package in required_packages_dict:
-        try:
-            __import__(package)
-        except ImportError:
-            try:
-                print(f'{package} was not found. Installing it automatically.')
-                subprocess.check_call(
-                    [
-                        sys.executable,
-                        '-m',
-                        'pip',
-                        'install',
-                        required_packages_dict[package],
-                    ]
-                )
-                print(f'{package} was successfully installed.')
-            except subprocess.CalledProcessError as e:
-                print(
-                    f'\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}'
-                    "\nPlease install 'click' and 'biopython' using 'pip install'.\n"
-                )
-                return
-
-
-required_packages = {
-    'click': 'click',
-    'Bio': 'biopython',
-    'numpy': 'numpy',
-    'pandas': 'pandas',
-    'plotly': 'plotly',
-    'matplotlib': 'matplotlib',
-    'requests': 'requests',
-}
-install_and_import(required_packages)
+#def install_and_import(required_packages_dict):
+#    for package in required_packages_dict:
+#        try:
+#            __import__(package)
+#        except ImportError:
+#            try:
+#                print(f'{package} was not found. Installing it automatically.')
+#                subprocess.check_call(
+#                    [
+#                        sys.executable,
+#                        '-m',
+#                        'pip',
+#                        'install',
+#                        required_packages_dict[package],
+#                    ]
+#                )
+#                print(f'{package} was successfully installed.')
+#            except subprocess.CalledProcessError as e:
+#                print(
+#                    f'\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}'
+#                    "\nPlease install 'click' and 'biopython' using 'pip install'.\n"
+#                )
+#                return
+#
+#
+#required_packages = {
+#    'click': 'click',
+#    'Bio': 'biopython',
+#    'numpy': 'numpy',
+#    'pandas': 'pandas',
+#    'plotly': 'plotly',
+#    'matplotlib': 'matplotlib',
+#    'requests': 'requests',
+#}
+#install_and_import(required_packages)
 
 
 #####################################################################################################
@@ -102,7 +79,7 @@ def change_permissions_recursive(input_dir, mode):
                 os.chmod(os.path.join(dirpath, filename), mode)
     except PermissionError:
         click.echo(
-            "TEtrimmer don't have right to change permissions. Pleas use sudo to run TEtrimmer"
+            "TEtrimmer does not have rights to change permissions. Pleas use sudo to run TEtrimmer"
         )
         return False
     return True
