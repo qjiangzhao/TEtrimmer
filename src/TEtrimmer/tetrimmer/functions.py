@@ -1,3 +1,4 @@
+import gzip
 import os
 import os.path
 import random
@@ -14,11 +15,17 @@ from Bio import AlignIO, BiopythonDeprecationWarning, SeqIO
 from Bio.Align import AlignInfo, MultipleSeqAlignment
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from PyPDF2 import PdfFileReader, PdfFileWriter, PdfMerger
+from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 
 # Suppress all deprecation warnings
 warnings.filterwarnings('ignore', category=BiopythonDeprecationWarning)
 
+
+def decompress_gzip(file_path):
+    decompressed_file = file_path.rstrip('.gz')
+    with gzip.open(file_path, 'rt') as f_in, open(decompressed_file, 'w') as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    return decompressed_file
 
 # Check if file name contains the string LTR
 def is_LTR(input_file):
@@ -1628,6 +1635,9 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
             '-a',  # Writes alignments in .align output file
         ]
 
+    # Set env variable for RepeatMasker
+    env = os.environ.copy()
+
     try:
         subprocess.run(
             command,
@@ -2662,8 +2672,8 @@ def multi_seq_dotplot(input_file, output_dir, title):
 
 
 def scale_single_page_pdf(input_pdf_path, output_pdf_path, scale_ratio):
-    pdf_reader = PdfFileReader(input_pdf_path)
-    pdf_writer = PdfFileWriter()
+    pdf_reader = PdfReader(input_pdf_path)
+    pdf_writer = PdfWriter()
 
     page = pdf_reader.getPage(0)  # Get the first (and only) page
     page.scale_by(scale_ratio)  # Scale the page
