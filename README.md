@@ -154,7 +154,7 @@ docker run -it --name TEtrimmer -v <bind_your_path>:/data quay.io/biocontainers/
 ```
 
 ## Hardware requirements
-System: Linux, macOS, Windows WSL
+System: Linux, macOS, Windows WSL (untested)
 
 RAM:
 - For HPC Linux user, enough RAM needs to be assigned. We highly recommend running TEtrimmer on HPC with at least 40 threads and assigning at least 5 GB RAM to each thread.
@@ -172,7 +172,7 @@ RAM:
 | 1700                  | Macbook Pro M1 | 20      | 16 GB + Virtual Memory | 50 hours     |
 | 1700                  | HPC            | 40      | 150 GB                 | 5 hours      |
 
-- We have not tested it on the WLS of Windows, but it should be feasible to run TEtrimmer on it as well given sufficient resources.
+
 
 ## Test
 
@@ -181,24 +181,25 @@ RAM:
 TEtrimmer --help
 ```
 
-- Download the test files [test_input.fa](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_input.fa) and [test_genome.fasta](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_genome.fasta).
+- Download the test files [test_input.fa.gz](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/data/test_input.fa.gz) and [test_genome.fa.gz](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/data/test_genome.fa.gz).
 
-```commandline
-TEtrimmer --input_file <path to test_input.fa> \
-          --genome_file <path to test_genome.fasta> \
-          --output_dir <output directory> \
+```bash
+TEtrimmer --input_file test_input.fa.gz \
+          --genome_file test_genome.fa.gz \
+          --output_dir output_directory \
           --num_threads 20
           --classify_all
 ```
 
 ## Inputs
 
-- **Genome file**: The genome sequence in FASTA format (.fa or .fasta).
+- **Genome file**: The genome sequence in FASTA format (.fa or .fasta). May be GZIP compressed (.fa.gz or .fasta.gz)
 - **TE consensus library**: TEtrimmer uses the TE consensus library from *de novo* TE annotation tools, like `RepeatModeler` or `EDTA`, as input.
 For this reason, you have to run `RepeatModeler` or other TE annotation software first.
 
 ```bash
-# TEtrimmer package already includes RepeatModeler. Below is an exmpale command of running RepeatModeler.
+# RepeatModeler is installed in the TEtrimmer conda environment. Below is an exmpale command of running RepeatModeler.
+
 # Build genome database index files
 BuildDatabase -name <genome_file_database_name> <genome_file.fa>
 
@@ -206,25 +207,25 @@ BuildDatabase -name <genome_file_database_name> <genome_file.fa>
 RepeatModeler -database <genome_file_database_name> \
               -threads 20 \
               -LTRStruct
-# Then you will get the TE_consensus_library.fa file
+# Output: TE_consensus_library.fa
 ```
 
 Example:
 
-```code
-TEtrimmer --input_file <TE_consensus_library.fa> \
-          --genome_file <genome_file.fa> \
-          --output_dir <output_directory> \
+```bash
+TEtrimmer --input_file TE_consensus_library.fa \
+          --genome_file genome_file.fa \
+          --output_dir output_directory \
           --num_threads 20 \
           --classify_all
 ```
 
 If you want to **continue the analysis based on previous unfinished results in the same directory:**:
 
-```commandline
-TEtrimmer --input_file <TE_consensus_library.fa> \
-          --genome_file <genome_file.fa> \
-          --output_dir <directory_contains_previous_unfinished_results> \
+```bash
+TEtrimmer --input_file TE_consensus_library.fa \
+          --genome_file genome_file.fa \
+          --output_dir directory_contains_previous_unfinished_results \
           --num_threads 20 \
           --classify_all \
           --continue_analysis
@@ -234,10 +235,10 @@ If you want to **combine files from different sources for the input file, we rec
 before processing. This step can potentially save overall run time in the input file** (TEtrimmer only accepts single file
 input, you have to combine files in advance):
 
-```code
-TEtrimmer --input_file <TE_consensus_library.fa> \
-          --genome_file <genome_file.fa> \
-          --output_dir <output_directory> \
+```bash
+TEtrimmer --input_file TE_consensus_library.fa \
+          --genome_file genome_file.fa \
+          --output_dir output_directory \
           --num_threads 20 \
           --classify_all
           --dedup
@@ -289,10 +290,11 @@ More options are available:
 - 📄**TEtrimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
 
 
-## Optional! Manual inspection of TEtrimmer outputs by provided TEtrimmerGUI.
+## Manual inspection of TEtrimmer outputs with TEtrimmerGUI
+
 You can use the TEtrimmerGUI tool to inspect and improve TEtrimmer generated TE consensus library.
 This step is optional! TEtrimmer output can be used for genome-wide TE annotation directly.
-But if you want to get a traditional manual-curation level TE consensus library, you have to perform this step.
+But if you want to get a traditional manual-curation level TE consensus library, you should perform this step.
 
 ### Start TEtrimmerGUI
 
@@ -302,22 +304,17 @@ TEtrimmerGUI --help
 
 # To start the manual inspection GUI tool
 # Open your Linux, macOS, or Windows terminal and type
-TEtrimmerGUI -i <TEtrimmer_for_proof_curation_folder> -g <genome_file.fa>
+TEtrimmerGUI -i TEtrimmer_for_proof_curation_folder -g genome_file.fa
 ```
 
-
-TEtrimmerGUI doesn't need any dependencies. You can copy the "tetrimmerGUI" folder to any place and execute it directly.
-
-[![Proof_curation_GUI_work_page](docs/TEtrimmer_GUI_work_space_video.png)](https://www.youtube.com/watch?v=52GYZUQyzSE&t=1608s&ab_channel=ZhaoJiang)
-
+<a href="https://www.youtube.com/watch?v=52GYZUQyzSE&t=1608s&ab_channel=ZhaoJiang">
+  <img src="docs/TEtrimmer_GUI_work_space_video.png" alt="Proof_curation_GUI_work_page" style="width: 800px;">
+</a>
 
 ## Example report plots for each output TE consensus sequence
 
 For each TEtrimmer output TE consensus sequence. You will get a report plot file like this:
 ![Reportplots](docs/TEtrimmer_report_plots_for_each_output.jpg)
-
-## Acknowledgements
-Many thanks to all the people who contributed to the TEtrimmer development.
 
 ## All available options
 ```commandline
@@ -472,8 +469,6 @@ TEtrimmerGUI --help
 
 # Open your Linux, macOS, or Windows terminal and type
 TEtrimmerGUI -g <genome_file.fa> -clib <TE_consensus_library.fa>
-
-# To run the TEtrimmerGUI tool, you only need to install Python.
 ```
 
 ## Citation
