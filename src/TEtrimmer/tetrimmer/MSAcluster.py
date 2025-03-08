@@ -12,14 +12,9 @@ from matplotlib.colors import ListedColormap
 from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
 
-from .functions import (
-    align_sequences,
-    filter_out_big_gap_seq,
-    muscle_align,
-    prcyan,
-    remove_gaps_with_similarity_check,
-    select_gaps_block_with_similarity_check,
-)
+from .functions import (align_sequences, filter_out_big_gap_seq, muscle_align,
+                        prcyan, remove_gaps_with_similarity_check,
+                        select_gaps_block_with_similarity_check)
 
 try:
     pd.set_option('future.no_silent_downcasting', True)

@@ -26,6 +26,8 @@ def check_and_download(directory, filename, url):
 
     file_path = os.path.join(directory, filename)
 
+    print(f'Checking for {filename} in {directory}')
+
     # If PFAM database was not found, download it
     if not os.path.isfile(file_path):
         click.echo(

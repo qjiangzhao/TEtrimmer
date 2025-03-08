@@ -12,13 +12,9 @@ from Bio import BiopythonDeprecationWarning
 
 # Local imports
 from . import analyze
-from .functions import (
-    cd_hit_est,
-    eliminate_curatedlib_by_repeatmasker,
-    prcyan,
-    prgre,
-    repeatmasker,
-)
+from .functions import (cd_hit_est, decompress_gzip,
+                        eliminate_curatedlib_by_repeatmasker, prcyan, prgre,
+                        repeatmasker)
 
 # Suppress all deprecation warnings
 warnings.filterwarnings('ignore', category=BiopythonDeprecationWarning)
@@ -525,6 +521,15 @@ def main(
     except Exception:
         return
 
+    # If genome_file is gzipped make a copy of the genome file and unzip it
+    # Check if the genome file is gzipped
+    is_gzipped = genome_file.endswith('.gz')
+
+    if is_gzipped:
+        decompressed_genome_file = decompress_gzip(genome_file)
+    else:
+        decompressed_genome_file = genome_file
+
     #####################################################################################################
     # Code block: Copy TEtrimmer_proof_anno_GUI to proof_curation_dir
     #####################################################################################################
@@ -612,7 +617,7 @@ def main(
 
         # Check if BLAST database and genome length files are available, otherwise create these in the
         # same directory of genome file
-        database_result = analyze.check_database(genome_file, search_type=engine)
+        database_result = analyze.check_database(decompressed_genome_file, search_type=engine)
 
         # If database returns errors, stop the whole analysis
         if not database_result:
@@ -656,10 +661,11 @@ def main(
     # Code block: Enable multiple threads
     #####################################################################################################
 
+
     analyze_sequence_params = [
         (
             seq,
-            genome_file,
+            decompressed_genome_file,
             MSA_dir,
             min_blast_len,
             min_seq_num,
@@ -922,7 +928,7 @@ def main(
             if not os.path.exists(repeatmasker_dir):
                 os.mkdir(repeatmasker_dir)
             genome_anno_result = repeatmasker(
-                genome_file, repeatmakser_lib, repeatmasker_dir, thread=num_threads
+                decompressed_genome_file, repeatmakser_lib, repeatmasker_dir, thread=num_threads
             )
             if genome_anno_result:
                 click.echo('\nFinished whole genome TE annotation by RepeatMasker\n')
@@ -937,6 +943,11 @@ def main(
     #####################################################################################################
     # Code block: End
     #####################################################################################################
+
+    # Remove the decompressed genome file if it was created
+    if is_gzipped and os.path.isfile(decompressed_genome_file):
+        os.remove(decompressed_genome_file)
+
     end_time = datetime.now()
     duration = end_time - start_time
 
