@@ -1,4 +1,5 @@
 import gzip
+import logging
 import os
 import os.path
 import random
@@ -2671,17 +2672,36 @@ def multi_seq_dotplot(input_file, output_dir, title):
     return pdf_out
 
 
-def scale_single_page_pdf(input_pdf_path, output_pdf_path, scale_ratio):
+def scale_single_page_pdf(input_pdf_path: str, output_pdf_path: str, scale_ratio: float) -> str:
+    """
+    Scales the first page of a single-page PDF by a given ratio and saves the result to a new file.
+
+    Args:
+        input_pdf_path (str): The path to the input PDF file.
+        output_pdf_path (str): The path to the output PDF file.
+        scale_ratio (float): The ratio by which to scale the page.
+
+    Returns:
+        str: The path to the output PDF file.
+    """
+    logging.info(f"Reading input PDF file: {input_pdf_path}")
     pdf_reader = PdfReader(input_pdf_path)
     pdf_writer = PdfWriter()
 
-    page = pdf_reader.getPage(0)  # Get the first (and only) page
+    # Get the first (and only) page
+    page = pdf_reader.pages[0]
+    logging.info(f"Scaling the page by a ratio of {scale_ratio}")
     page.scale_by(scale_ratio)  # Scale the page
-    pdf_writer.addPage(page)
 
+    # Add the scaled page to the PDF writer
+    pdf_writer.add_page(page)
+
+    # Write the scaled page to the output PDF file
+    logging.info(f"Writing the scaled page to the output PDF file: {output_pdf_path}")
     with open(output_pdf_path, 'wb') as out_file:
         pdf_writer.write(out_file)
 
+    logging.info(f"PDF scaling complete. Output saved to: {output_pdf_path}")
     return output_pdf_path
 
 
