@@ -1420,18 +1420,13 @@ def proof_curation(
     def check_cdd_database():
         global prepared_cdd_g
         # check_cdd_index_files returns true if cdd index files are found
-
-        # cdd.tar.gz
-        # unziped cdd.tar.gz
-        # profile index
-        # if not index, then check for cdd.pn, if not found then check for cdd.tar.gz, if non then prompt for download
-        # TODO: this should actually check if cdd database is present in the cdd_dir NOT if it has been indexed.
+        # if cdd not indexed, then check for unzipped cdd.pn, if not found then check for cdd.tar.gz, if non found then prompt for download.
         if not check_cdd_index_files(cdd_dir):
             # Check if cdd.tar.gz or unzipped content inc Cdd.pn is present
             if os.path.isfile(os.path.join(cdd_dir, 'Cdd.pn')) or os.path.isfile(os.path.join(cdd_dir, 'cdd.tar.gz')):
                 if messagebox.askyesnocancel(
                         'Confirmation',
-                        'Conserved Domains Database (CDD) database but not '
+                        'Conserved Domains Database (CDD) database found but not '
                         'indexed. Do you want to index it? '
                         '\n Skip if you do not want to detect TE protein '
                         "domains.",
@@ -1486,13 +1481,18 @@ def proof_curation(
                         )
         else:
             prepared_cdd_g = os.path.join(cdd_dir, 'cdd_profile')
+            print(f'CDD database is prepared at {prepared_cdd_g}')
+            messagebox.showinfo("Information", "CDD database is prepared.")
 
     def clear_frame():
         for widget in frame.winfo_children():
             widget.destroy()
 
     def open_start_page():
-        clear_frame()
+        print("Open start page")
+        clear_frame()  # Clear any existing widgets in the frame
+
+        # Create and pack the logo label
         logo_label = Label(
             frame,
             text=log_text,
@@ -1503,7 +1503,7 @@ def proof_curation(
         )
         logo_label.pack(pady=10)
 
-        # Display the explanatory text with 'Arial' font
+        # Create and pack the explanatory text label
         text_label = Label(
             frame,
             text=initial_text,
