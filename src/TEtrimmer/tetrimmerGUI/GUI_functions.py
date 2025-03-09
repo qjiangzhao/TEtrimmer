@@ -529,8 +529,25 @@ def check_and_download(directory, check_pattern, filename, url):
 
     check_pattern_file_path = os.path.join(directory, check_pattern)
 
+    # Check if the cdd database is already downloaded but not unzipped
+    if os.path.isfile(os.path.join(directory, filename)) and not os.path.isfile(check_pattern_file_path):
+        click.echo(
+            '\n CDD database is found but not unzipped. Unzipping......'
+        )
+
+        # Unzipping using tarfile
+        with tarfile.open(os.path.join(directory, filename), 'r:gz') as tar:
+            tar.extractall(path=directory)
+
+        click.echo(
+            f'\n{filename} is unzipped. CDD database was stored in \n'
+            f'{directory}\n'
+        )
+        # Return True to indicate that the cdd database is found
+        return True
+
     # If cdd database was not found, download it
-    if not os.path.isfile(check_pattern_file_path):
+    if not os.path.isfile(check_pattern_file_path) and not os.path.isfile(os.path.join(directory, filename)):
         click.echo(
             '\n CDD database not found. Downloading... This might take some time. Please be patient.\n'
         )
@@ -607,10 +624,19 @@ def check_cdd_index_files(directory):
         'cdd_profile.24.pos',
     ]
 
+    # Check if all index files exist, store missing files in a list
+    missing_files = []
+    for file in cdd_files:
+        if not os.path.isfile(os.path.join(directory, file)):
+            missing_files.append(file)
+
     # Check if all index files exist
     if all(os.path.isfile(os.path.join(directory, file)) for file in cdd_files):
         return True
     else:
+        click.echo(
+            f'CDD index files are missing in the provided directory. The following files are missing: {missing_files}'
+        )
         return False
 
 
