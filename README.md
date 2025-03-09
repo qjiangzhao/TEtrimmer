@@ -303,7 +303,7 @@ But if you want to get a traditional manual-curation level TE consensus library,
 TEtrimmerGUI --help
 
 # To start the manual inspection GUI tool
-TEtrimmerGUI -i output_directory/TEtrimmer_for_proof_curation_folder -g test_genome_file.fa.gz
+TEtrimmerGUI -i output_directory/TEtrimmer_for_proof_curation -g test_genome_file.fa.gz
 ```
 
 <a href="https://www.youtube.com/watch?v=52GYZUQyzSE&t=1608s&ab_channel=ZhaoJiang">
