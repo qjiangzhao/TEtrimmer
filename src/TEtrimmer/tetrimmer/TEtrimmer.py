@@ -1,6 +1,7 @@
 # Standard library imports
 import concurrent.futures
 import json
+import logging
 import os
 import shutil
 import traceback
@@ -10,7 +11,8 @@ from datetime import datetime, timedelta
 import click
 from Bio import BiopythonDeprecationWarning
 
-# Local imports
+from .._version import __version__
+from ..utils.logs import init_logging
 from . import analyze
 from .functions import (cd_hit_est, decompress_gzip,
                         eliminate_curatedlib_by_repeatmasker, prcyan, prgre,
@@ -36,7 +38,7 @@ with open(config_path, 'r') as config_file:
 
 @click.command(
     context_settings=dict(max_content_width=120),
-    help="""\b
+    help=f"""\b
                ##########################################################################################
                \b
                 ████████\\ ████████\\ ██\\               ██\\
@@ -49,13 +51,16 @@ with open(config_path, 'r') as config_file:
                    \\__|   \\________| \\____/ \\__|      \\__|\\__| \\__| \\__|\\__| \\__| \\__| \\_______|\\__|
 
 
-                Version: v1.4.1 (27/June/2024)
+                Version: {__version__}
 
                 Github: https://github.com/qjiangzhao/TEtrimmer
 
                 Developers:
+
                 Jiangzhao Qian;      RWTH Aachen University;                Email: jqian@bio1.rwth-aachen.de
+
                 Hang Xue;            University of California, Berkeley;    Email: hang_xue@berkeley.edu
+
                 Stefan Kusch;        Research Center Juelich;               Email: s.kusch@fz-juelich.de
 
                 Funding source:
@@ -322,6 +327,15 @@ with open(config_path, 'r') as config_file:
     'comma-separated list, like: CA,TA,GA (no spaces; the order of patterns determines '
     'the priority for the search). Default: CA',
 )
+@click.option('--logfile', '-l', default=None, type=str, help='Path to log file.')
+@click.option(
+    '--loglevel',
+    '-ll',
+    default='INFO',
+    type=str,
+    help='Log level. [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
+)
+@click.version_option(__version__, prog_name="TEtrimmer")
 def main(
     input_file,
     genome_file,
@@ -357,7 +371,17 @@ def main(
     classify_unknown,
     classify_all,
     curatedlib,
+    logfile,
+    loglevel,
+    version,
 ):
+    if version:
+        click.echo(f'TEtrimmer {__version__}')
+        exit()
+
+    # Initialize the logging system
+    init_logging(loglevel=loglevel, logfile=logfile)
+
     # Add this to click options if mmseq2 has been fully tested
     engine = 'blast'
 
@@ -617,7 +641,9 @@ def main(
 
         # Check if BLAST database and genome length files are available, otherwise create these in the
         # same directory of genome file
-        database_result = analyze.check_database(decompressed_genome_file, search_type=engine)
+        database_result = analyze.check_database(
+            decompressed_genome_file, search_type=engine
+        )
 
         # If database returns errors, stop the whole analysis
         if not database_result:
@@ -660,7 +686,6 @@ def main(
     #####################################################################################################
     # Code block: Enable multiple threads
     #####################################################################################################
-
 
     analyze_sequence_params = [
         (
@@ -928,7 +953,10 @@ def main(
             if not os.path.exists(repeatmasker_dir):
                 os.mkdir(repeatmasker_dir)
             genome_anno_result = repeatmasker(
-                decompressed_genome_file, repeatmakser_lib, repeatmasker_dir, thread=num_threads
+                decompressed_genome_file,
+                repeatmakser_lib,
+                repeatmasker_dir,
+                thread=num_threads,
             )
             if genome_anno_result:
                 click.echo('\nFinished whole genome TE annotation by RepeatMasker\n')
