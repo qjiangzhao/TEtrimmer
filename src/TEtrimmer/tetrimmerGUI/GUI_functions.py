@@ -27,6 +27,15 @@ special_character = {
     '?': '_',
 }
 
+def check_cmd_in_path(cmd, os_type):
+    cmd_path = shutil.which(cmd)
+    if cmd_path:
+        print(f"{cmd} is available at: {cmd_path}")
+    else:
+        print(f"{cmd} is not available in the system's PATH")
+        # Raise error if tool is not available
+        raise FileNotFoundError
+
 def decompress_gzip(file_path):
     decompressed_file = file_path.rstrip('.gz')
     with gzip.open(file_path, 'rt') as f_in, open(decompressed_file, 'w') as f_out:
@@ -98,15 +107,11 @@ def check_database(genome_file, output_dir=None, os_type='Darwin'):
 
     if not os.path.isfile(database_file):
         try:
-            if os_type == 'Linux':
-                makeblastdb_cmd = f'{os.path.join(blast_dir, "makeblastdb_linux")} -in {genome_file} -dbtype nucl -out {database_path}'
-            elif os_type == 'Darwin':
-                makeblastdb_cmd = f'{os.path.join(blast_dir, "makeblastdb_mac")} -in {genome_file} -dbtype nucl -out {database_path}'
-            else:
-                makeblastdb_cmd = f'{os.path.join(blast_dir, "makeblastdb.exe")} -in {genome_file} -dbtype nucl -out {database_path}'
+            # Check if the makeblastdb command is available in PATH
+            check_cmd_in_path('makeblastdb')
 
             subprocess.run(
-                makeblastdb_cmd,
+                'makeblastdb',
                 shell=True,
                 check=True,
                 stdout=subprocess.PIPE,
@@ -155,16 +160,12 @@ def blast(
         blast_out_dir, f'{os.path.basename(input_file)}_blast.txt'
     )
 
-    if os_type == 'Linux':
-        blastn = os.path.join(blast_dir, 'blastn_linux')
-    elif os_type == 'Darwin':
-        blastn = os.path.join(blast_dir, 'blastn_mac')
-    else:
-        blastn = os.path.join(blast_dir, 'blastn.exe')
+    # Check if the blastn command is available in PATH
+    check_cmd_in_path('blastn')
 
     # -outfmt 6 use "\t" as deliminator. -outfmt 10 use "," as deliminator
     blast_cmd = [
-        str(blastn),
+        'blastn',
         '-query',
         input_file,
         '-db',
@@ -630,8 +631,8 @@ def check_cdd_index_files(directory):
         if not os.path.isfile(os.path.join(directory, file)):
             missing_files.append(file)
 
-    # Check if all index files exist
-    if all(os.path.isfile(os.path.join(directory, file)) for file in cdd_files):
+    # Return True if all files exist, False otherwise
+    if not missing_files:
         return True
     else:
         click.echo(
@@ -651,28 +652,23 @@ def prepare_cdd_database(cdd_database_dir, os_type='Darwin'):
     global prepared_cdd_g
 
     cdd_url = 'https://ftp.ncbi.nlm.nih.gov/pub/mmdb/cdd/cdd.tar.gz'
-    cdd_pn_path = os.path.join(cdd_database_dir, 'Cdd.pn')
+    #cdd_pn_path = os.path.join(cdd_database_dir, 'Cdd.pn')
 
     try:
-        # Check and download the Cdd database files
+        # Check if CDD database downloads and unzipped in target dir
         if check_and_download(cdd_database_dir, r'Cdd.pn', r'Cdd.tar.gz', cdd_url):
             # Create index file for cdd database
             script_dir = get_original_file_path()
-            blast_dir = os.path.join(script_dir, 'blast')
 
-            if os_type == 'Linux':
-                makeprofiledb = os.path.join(blast_dir, 'makeprofiledb_linux')
-            elif os_type == 'Darwin':
-                makeprofiledb = os.path.join(blast_dir, 'makeprofiledb_mac')
-            else:
-                makeprofiledb = os.path.join(blast_dir, 'makeprofiledb.exe')
+            # Check if the makeprofiledb command is available in PATH
+            check_cmd_in_path('makeprofiledb')
 
             makeprofiledb_cmd = [
-                str(makeprofiledb),
+                'makeprofiledb',
                 '-in',
-                cdd_pn_path,
+                'Cdd.pn',
                 '-out',
-                os.path.join(cdd_database_dir, 'cdd_profile'),
+                'cdd_profile',
                 '-threshold',
                 str(9.82),
                 '-scale',
@@ -685,6 +681,10 @@ def prepare_cdd_database(cdd_database_dir, os_type='Darwin'):
                 print(
                     'CDD database index file not found. Making it ...... This can take around 10 mins.'
                 )
+
+                print(' '.join(makeprofiledb_cmd))
+
+                # Run the makeprofiledb command from the cdd_database_dir (with cwd).
                 subprocess.run(
                     makeprofiledb_cmd,
                     check=True,
@@ -694,7 +694,11 @@ def prepare_cdd_database(cdd_database_dir, os_type='Darwin'):
                     text=True,
                 )
 
-                print('CDD database index file generated.')
+                if check_cdd_index_files(cdd_database_dir):
+                    print('CDD profile database index file generated.')
+                else:
+                    print('CDD profile database index file generation failed.')
+                    raise FileNotFoundError
 
                 # Change global variable prepared_cdd_g when it is generated successfully
                 prepared_cdd_g = os.path.join(cdd_database_dir, 'cdd_profile')
@@ -735,16 +739,12 @@ def rpstblastn(
         rpsblast_out_dir, f'{os.path.basename(input_file)}_pcc.txt'
     )
 
-    if os_type == 'Linux':
-        rpstblastn = os.path.join(blast_dir, 'rpstblastn_linux')
-    elif os_type == 'Darwin':
-        rpstblastn = os.path.join(blast_dir, 'rpstblastn_mac')
-    else:
-        rpstblastn = os.path.join(blast_dir, 'rpstblastn.exe')
+    # Check if the rpstblastn command is available in PATH
+    check_cmd_in_path('rpstblastn')
 
     # -outfmt 6 use "\t" as deliminator.
     rpsblast_cmd = [
-        str(rpstblastn),
+        'rpstblastn',
         '-query',
         input_file,
         '-db',
