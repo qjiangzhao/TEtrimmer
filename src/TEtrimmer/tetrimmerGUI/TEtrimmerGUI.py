@@ -217,13 +217,21 @@ def proof_curation(
 
     # Create cdd database directory when it is not given
     # /TEtrimmerGUI/cdd_database/cdd_unzipped/cdd_profile*
+
     # cdd_dir_default is the path to store cdd database when the database is not provided
     cdd_dir_default = os.path.join(bin_py_path, 'cdd_database')
-    print(f"Checking for CDD in: {cdd_dir_default}")
+
     if cdd_dir is None:
         cdd_dir = cdd_dir_default
+        print(f"Checking for CDD in default location: {cdd_dir_default}")
+    else:
+        print(f"Checking for CDD user provided path: {cdd_dir}")
 
-    os.makedirs(cdd_dir, exist_ok=True)
+    # Check if cdd_dir is a valid directory
+    if not os.path.isdir(cdd_dir):
+        print(f"Directory {cdd_dir} does not exist. Creating it.")
+        os.makedirs(cdd_dir, exist_ok=True)
+
     # Define prepared cdd global variable
     global prepared_cdd_g
     prepared_cdd_g = None
@@ -1412,6 +1420,7 @@ def proof_curation(
     def check_cdd_database():
         global prepared_cdd_g
         # check_cdd_index_files returns true if cdd index files are found
+        # TODO: this should actually check if cdd database is present in the cdd_dir NOT if it has been indexed.
         if not check_cdd_index_files(cdd_dir):
             if cdd_dir == cdd_dir_default:
                 if messagebox.askyesnocancel(
@@ -2972,6 +2981,12 @@ def proof_curation(
                 click.echo('TEtrimmer is cleaning temporary files')
                 shutil.rmtree(temp_folder)
                 click.echo('All temporary files are cleaned')
+
+                if is_gzipped and genome_file.endswith('.gz'):
+                    click.echo(f'Removing the decompressed genome file: {decompressed_genome_file}')
+                    # Remove the unzipped copy of the genome_file if it exists
+                    os.remove(decompressed_genome_file)
+
             except Exception:
                 pass
             root.destroy()
