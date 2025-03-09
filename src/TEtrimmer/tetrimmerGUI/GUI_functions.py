@@ -27,7 +27,7 @@ special_character = {
     '?': '_',
 }
 
-def check_cmd_in_path(cmd, os_type):
+def check_cmd_in_path(cmd):
     cmd_path = shutil.which(cmd)
     if cmd_path:
         print(f"{cmd} is available at: {cmd_path}")
