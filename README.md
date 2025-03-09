@@ -290,33 +290,83 @@ More options are available:
 - 📄**TEtrimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
 
 
-## Manual inspection of TEtrimmer outputs with TEtrimmerGUI
+## TEtrimmerGUI
 
 You can use the TEtrimmerGUI tool to inspect and improve TEtrimmer generated TE consensus library.
 This step is optional! TEtrimmer output can be used for genome-wide TE annotation directly.
 But if you want to get a traditional manual-curation level TE consensus library, you should perform this step.
 
-### Start TEtrimmerGUI
+### Manual inspection of TEtrimmer outputs with TEtrimmerGUI
 
 ```bash
 # Use --help to see all options
 TEtrimmerGUI --help
 
 # To start the manual inspection GUI tool
-# Open your Linux, macOS, or Windows terminal and type
-TEtrimmerGUI -i TEtrimmer_for_proof_curation_folder -g genome_file.fa
+TEtrimmerGUI -i output_directory/TEtrimmer_for_proof_curation_folder -g test_genome_file.fa.gz
 ```
 
 <a href="https://www.youtube.com/watch?v=52GYZUQyzSE&t=1608s&ab_channel=ZhaoJiang">
   <img src="docs/TEtrimmer_GUI_work_space_video.png" alt="Proof_curation_GUI_work_page" style="width: 800px;">
 </a>
 
+### Curate existing TE libraries
+
+The TEtrimmer GUI can also be used to check other TE consensus libraries like the TE library directly from EDTA,
+RepeatModeler2, REPET, and other tools.
+
+```bash
+# Use --help to see all options
+TEtrimmerGUI --help
+
+# Open other consensus lib of TE predictions
+TEtrimmerGUI -g <genome_file.fa> -clib <TE_consensus_library.fa>
+```
+
+#### Other TEtrimmerGUI Options
+
+```code
+
+Options:
+  -i, --te_trimmer_proof_curation_dir TEXT
+                                  TEtrimmer proof curation output path.Like <T
+                                  Etrimmer_output_path>/TEtrimmer_for_proof_cu
+                                  ration. Three folders should exist in the
+                                  given path including "TE_clustered",
+                                  "TE_low_copy", and "TE_skipped". If you
+                                  start the "annoGUI.py" from TETrimmer output
+                                  directory, you do not need to use this
+                                  option
+  -o, --output_dir TEXT           Output directory. Default: input directory
+  -g, --genome_file TEXT          Genome fasta file path.
+  -clib, --consensus_lib TEXT     TE consensus library FASTA file. You can
+                                  check and improve other TE consensus library
+                                  e.g. The TE library directly from EDTA2,
+                                  RepeatModeler2, and other tools. If you want
+                                  to check the same TE library as last time,
+                                  you do not need to use this option again.
+  -cdd, --cdd_dir TEXT            NCBI cdd database path.
+  --max_msa_lines INTEGER         Set the maximum number of sequences to be
+                                  included when click "Blast" button. Default:
+                                  100
+  --top_msa_lines INTEGER         If the sequence number after "Blast" is
+                                  greater than <max_msa_lines>, TEtrimmerGUI
+                                  will first sort sequences by length and
+                                  choose <top_msa_lines> number of sequences.
+                                  Then, TEtrimmerGUI will randomly select
+                                  sequences from all remaining BLAST hits
+                                  until <max_msa_lines>sequences are found.
+                                  Default: 100
+  --help                          Show this message and exit.
+
+  ```
+
 ## Example report plots for each output TE consensus sequence
 
 For each TEtrimmer output TE consensus sequence. You will get a report plot file like this:
 ![Reportplots](docs/TEtrimmer_report_plots_for_each_output.jpg)
 
-## All available options
+## All TEtrimmer available options
 ```commandline
 Options:
   -i, --input_file TEXT           Path to TE consensus file (FASTA format). Use the output from
@@ -458,17 +508,6 @@ Options:
                                   CA
 
   --help                          Show this message and exit.
-```
-
-The TEtrimmer GUI can also be used to check other TE consensus libraries like the TE library directly from EDTA,
-RepeatModeler2, REPET, and other tools.
-
-```bash
-# Use --help to see all options
-TEtrimmerGUI --help
-
-# Open your Linux, macOS, or Windows terminal and type
-TEtrimmerGUI -g <genome_file.fa> -clib <TE_consensus_library.fa>
 ```
 
 ## Citation
