@@ -1,3 +1,4 @@
+import gzip
 import os
 import random
 import shutil
@@ -26,6 +27,11 @@ special_character = {
     '?': '_',
 }
 
+def decompress_gzip(file_path):
+    decompressed_file = file_path.rstrip('.gz')
+    with gzip.open(file_path, 'rt') as f_in, open(decompressed_file, 'w') as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    return decompressed_file
 
 def get_original_file_path():
     """Get the path of the original script file, whether running in development or as a PyInstaller bundle."""

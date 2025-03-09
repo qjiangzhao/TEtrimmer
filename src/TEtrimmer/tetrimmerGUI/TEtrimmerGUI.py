@@ -1,3 +1,4 @@
+import gzip
 import os
 import platform
 import re
@@ -11,26 +12,50 @@ import click
 from Bio import SeqIO
 
 from .cialign_plot import drawMiniAlignment
+
 # Import cleaning module
 from .crop_end_divergence import crop_end_div
 from .crop_end_gap import crop_end_gap
-from .GUI_functions import (blast, check_cdd_index_files, check_database,
-                            extend_bed_regions, extract_fasta_from_bed,
-                            fasta_header_to_bed, prepare_cdd_database,
-                            process_bed_lines, run_func_in_thread,
-                            separate_sequences)
+from .GUI_functions import (
+    blast,
+    check_cdd_index_files,
+    check_database,
+    decompress_gzip,
+    extend_bed_regions,
+    extract_fasta_from_bed,
+    fasta_header_to_bed,
+    prepare_cdd_database,
+    process_bed_lines,
+    run_func_in_thread,
+    separate_sequences,
+)
 from .remove_gap import remove_gaps_with_similarity_check
 from .TEAid_plotter import con_generater, teaid_plotter
 
 try:
-    from tkinter import (END, BooleanVar, Button, Canvas, Entry, Frame, Label,
-                         Menu, Scrollbar, Text, Tk, Toplevel, filedialog,
-                         messagebox, simpledialog, ttk)
+    from tkinter import (
+        END,
+        BooleanVar,
+        Button,
+        Canvas,
+        Entry,
+        Frame,
+        Label,
+        Menu,
+        Scrollbar,
+        Text,
+        Tk,
+        Toplevel,
+        filedialog,
+        messagebox,
+        simpledialog,
+        ttk,
+    )
 except ImportError:
     print('tkinter (TK) is not available in your Python installation.')
 
 
-#def install_and_import(required_packages_dict):
+# def install_and_import(required_packages_dict):
 #    for package in required_packages_dict:
 #        try:
 #            __import__(package)
@@ -55,7 +80,7 @@ except ImportError:
 #                return
 #
 #
-#required_packages = {
+# required_packages = {
 #    'click': 'click',
 #    'Bio': 'biopython',
 #    'numpy': 'numpy',
@@ -63,8 +88,8 @@ except ImportError:
 #    'plotly': 'plotly',
 #    'matplotlib': 'matplotlib',
 #    'requests': 'requests',
-#}
-#install_and_import(required_packages)
+# }
+# install_and_import(required_packages)
 
 
 #####################################################################################################
@@ -79,7 +104,7 @@ def change_permissions_recursive(input_dir, mode):
                 os.chmod(os.path.join(dirpath, filename), mode)
     except PermissionError:
         click.echo(
-            "TEtrimmer does not have rights to change permissions. Pleas use sudo to run TEtrimmer"
+            'TEtrimmer does not have rights to change permissions. Pleas use sudo to run TEtrimmer'
         )
         return False
     return True
@@ -194,6 +219,7 @@ def proof_curation(
     # /TEtrimmerGUI/cdd_database/cdd_unzipped/cdd_profile*
     # cdd_dir_default is the path to store cdd database when the database is not provided
     cdd_dir_default = os.path.join(bin_py_path, 'cdd_database')
+    print(f"Checking for CDD in: {cdd_dir_default}")
     if cdd_dir is None:
         cdd_dir = cdd_dir_default
 
@@ -204,6 +230,16 @@ def proof_curation(
 
     # Define empty list to store copy history, which enable undo button
     copy_history = []
+
+    #
+    # If genome_file is gzipped make a copy of the genome file and unzip it
+    # Check if the genome file is gzipped
+    is_gzipped = genome_file.endswith('.gz')
+
+    if is_gzipped:
+        decompressed_genome_file = decompress_gzip(genome_file)
+    else:
+        decompressed_genome_file = genome_file
 
     # Declare global variables for paths
     # consensus_lib_g is the file contain other consensus sequences
@@ -219,7 +255,7 @@ def proof_curation(
 
     te_trimmer_proof_curation_dir_g = te_trimmer_proof_curation_dir
     output_dir_g = output_dir
-    genome_file_g = genome_file
+    genome_file_g = decompressed_genome_file
     consensus_lib_g = consensus_lib
 
     # Define cleaning module, blast, and consensus generation global parameters
