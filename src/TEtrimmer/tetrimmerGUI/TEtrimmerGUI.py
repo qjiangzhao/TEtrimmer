@@ -1420,50 +1420,70 @@ def proof_curation(
     def check_cdd_database():
         global prepared_cdd_g
         # check_cdd_index_files returns true if cdd index files are found
+
+        # cdd.tar.gz
+        # unziped cdd.tar.gz
+        # profile index
+        # if not index, then check for cdd.pn, if not found then check for cdd.tar.gz, if non then prompt for download
         # TODO: this should actually check if cdd database is present in the cdd_dir NOT if it has been indexed.
         if not check_cdd_index_files(cdd_dir):
-            if cdd_dir == cdd_dir_default:
+            # Check if cdd.tar.gz or unzipped content inc Cdd.pn is present
+            if os.path.isfile(os.path.join(cdd_dir, 'Cdd.pn')) or os.path.isfile(os.path.join(cdd_dir, 'cdd.tar.gz')):
                 if messagebox.askyesnocancel(
-                    'Confirmation',
-                    'Conserved Domains Database (CDD) database is not '
-                    'detected, do you want to download it? '
-                    '\n CDD database is only used to detect TE protein '
-                    "domains and doesn't affect other functions.",
-                ):
-                    # prepared_cdd_database = prepare_cdd_database(cdd_database_dir=cdd_dir, os_type=os_type)
+                        'Confirmation',
+                        'Conserved Domains Database (CDD) database but not '
+                        'indexed. Do you want to index it? '
+                        '\n Skip if you do not want to detect TE protein '
+                        "domains.",
+                    ):
+                        run_func_in_thread(
+                            prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type
+                        )
 
-                    run_func_in_thread(
-                        prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type
-                    )
-
-                    messagebox.showinfo(
-                        'Information',
-                        'CDD database is around 5GB, it could take around 15 mins to '
-                        'prepare it. Please be patient. You can do other operations '
-                        'when it is downloading...... Refer to the terminal for more '
-                        'information.',
-                    )
-
+                        messagebox.showinfo(
+                            'Information',
+                            'Building CDD profile index. This may take a few minutes.',
+                        )
             else:
-                if messagebox.askokcancel(
-                    'Confirmation',
-                    'Conserved Domains Database (CDD) database is not detected '
-                    'from provided --cdd_dir path. You have to unzip your '
-                    'downloaded CDD database.'
-                    'Do you want to download the CDD database by TEtrimmerGUI'
-                    ' again?',
-                ):
-                    run_func_in_thread(
-                        prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type
-                    )
+                if cdd_dir == cdd_dir_default:
+                    if messagebox.askyesnocancel(
+                        'Confirmation',
+                        'Conserved Domains Database (CDD) database is not '
+                        'detected, do you want to download it? '
+                        '\n\n CDD database is only used to detect TE protein '
+                        "domains and doesn't affect other functions.",
+                    ):
+                        run_func_in_thread(
+                            prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type
+                        )
 
-                    messagebox.showinfo(
-                        'Information',
-                        'CDD database is around 5GB, it could take around 15 mins to '
-                        'prepare it. Please be patient. You can do other operations '
-                        'when it is downloading...... Refer to the terminal for more '
-                        'information.',
-                    )
+                        messagebox.showinfo(
+                            'Information',
+                            'CDD database is around 5GB, it could take around 15 mins to '
+                            'prepare it. Please be patient. You can do other operations '
+                            'when it is downloading...... Refer to the terminal for more '
+                            'information.',
+                        )
+
+                else:
+                    if messagebox.askokcancel(
+                        'Confirmation',
+                        'Conserved Domains Database (CDD) database is not detected '
+                        'from provided --cdd_dir path.'
+                        'Do you want to download the CDD database by TEtrimmerGUI'
+                        ' again?',
+                    ):
+                        run_func_in_thread(
+                            prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type
+                        )
+
+                        messagebox.showinfo(
+                            'Information',
+                            'CDD database is around 5GB, it could take around 15 mins to '
+                            'prepare it. Please be patient. You can do other operations '
+                            'when it is downloading...... Refer to the terminal for more '
+                            'information.',
+                        )
         else:
             prepared_cdd_g = os.path.join(cdd_dir, 'cdd_profile')
 
