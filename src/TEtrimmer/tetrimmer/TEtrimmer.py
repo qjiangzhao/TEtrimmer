@@ -12,6 +12,7 @@ import click
 from Bio import BiopythonDeprecationWarning
 
 from .._version import __version__
+from ..utils.checks import check_tools
 from ..utils.logs import init_logging
 from . import analyze
 from .functions import (cd_hit_est, decompress_gzip,
@@ -335,7 +336,7 @@ with open(config_path, 'r') as config_file:
     type=str,
     help='Log level. [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
 )
-@click.version_option(__version__, prog_name="TEtrimmer")
+@click.version_option(__version__, prog_name='TEtrimmer')
 def main(
     input_file,
     genome_file,
@@ -375,21 +376,37 @@ def main(
     loglevel,
     version,
 ):
+    # Print the version and exit
     if version:
         click.echo(f'TEtrimmer {__version__}')
         exit()
 
-    # Initialize the logging system
-    init_logging(loglevel=loglevel, logfile=logfile)
-
     # Add this to click options if mmseq2 has been fully tested
     engine = 'blast'
+
+    # Check for required programs.
+    required_tools = ['samtools', 'cd-hit-est']
+    optional_tools = ['blastn', 'makeblastdb', 'mmseqs']
+
+    if engine == 'blast':
+        required_tools.append('blastn')
+        required_tools.append('mmseqs')
+        optional_tools = ['mmseqs']
+
+    check_tools(required_tools=required_tools, optional_tools=optional_tools)
+
+    # Set the log file path
+    if not logfile:
+        logfile = os.path.join(output_dir, 'TEtrimmer.log')
+
+    # Initialize the logging system
+    init_logging(loglevel=loglevel, logfile=logfile)
 
     # Set plot_query and plot_skip to true
     plot_query = True
     plot_skip = True
     start_time = datetime.now()
-    print(
+    logging.info(
         f'\nTEtrimmer started at {start_time.strftime("%Y-%m-%d %H:%M:%S")}.\n',
         flush=True,
     )
@@ -448,62 +465,121 @@ def main(
     # Code block: Define the default options according to the given species
     #####################################################################################################
 
+    # Define the default values for the parameters
     default_values = preset_config.get(preset, {})
+
+    default_report = ''
+
+    # Log the preset being loaded
+    logging.info(f'Loading default values for mode: {preset}')
+    logging.info('Preset values:')
+    for key, value in default_values.items():
+        default_report += f'{key}: {value}'
+
+    # Log the default values
+    logging.info(default_report)
+
+    # String to collect user-updated variables
+    updated_vars = ''
+
+    # Update the given parameters with default values where user input is None
     if cons_thr is None:
         cons_thr = default_values.get('cons_thr')
+    else:
+        updated_vars += f'cons_thr updated to {cons_thr}\n'
 
     if max_msa_lines is None:
         max_msa_lines = default_values.get('max_msa_lines')
+    else:
+        updated_vars += f'max_msa_lines updated to {max_msa_lines}\n'
 
     if top_msa_lines is None:
         top_msa_lines = default_values.get('top_msa_lines')
+    else:
+        updated_vars += f'top_msa_lines updated to {top_msa_lines}\n'
 
     if min_seq_num is None:
         min_seq_num = default_values.get('min_seq_num')
         if min_seq_num < 10:
             min_seq_num = 10
+    else:
+        updated_vars += f'min_seq_num updated to {min_seq_num}\n'
 
     if min_blast_len is None:
         min_blast_len = default_values.get('min_blast_len')
+    else:
+        updated_vars += f'min_blast_len updated to {min_blast_len}\n'
 
     if ext_thr is None:
         ext_thr = default_values.get('ext_thr')
+    else:
+        updated_vars += f'ext_thr updated to {ext_thr}\n'
 
     if ext_step is None:
         ext_step = default_values.get('ext_step')
+    else:
+        updated_vars += f'ext_step updated to {ext_step}\n'
 
     if max_ext is None:
         max_ext = default_values.get('max_ext')
+    else:
+        updated_vars += f'max_ext updated to {max_ext}\n'
 
     if gap_thr is None:
         gap_thr = default_values.get('gap_thr')
+    else:
+        updated_vars += f'gap_thr updated to {gap_thr}\n'
 
     if gap_nul_thr is None:
         gap_nul_thr = default_values.get('gap_nul_thr')
+    else:
+        updated_vars += f'gap_nul_thr updated to {gap_nul_thr}\n'
 
     if crop_end_div_thr is None:
         crop_end_div_thr = default_values.get('crop_end_div_thr')
+    else:
+        updated_vars += f'crop_end_div_thr updated to {crop_end_div_thr}\n'
 
     if crop_end_div_win is None:
         crop_end_div_win = default_values.get('crop_end_div_win')
+    else:
+        updated_vars += f'crop_end_div_win updated to {crop_end_div_win}\n'
 
     if crop_end_gap_thr is None:
         crop_end_gap_thr = default_values.get('crop_end_gap_thr')
+    else:
+        updated_vars += f'crop_end_gap_thr updated to {crop_end_gap_thr}\n'
 
     if crop_end_gap_win is None:
         crop_end_gap_win = default_values.get('crop_end_gap_win')
+    else:
+        updated_vars += f'crop_end_gap_win updated to {crop_end_gap_win}\n'
 
     if start_patterns is None:
         start_patterns = default_values.get('start_patterns')
+    else:
+        updated_vars += f'start_patterns updated to {start_patterns}\n'
 
     if end_patterns is None:
         end_patterns = default_values.get('end_patterns')
+    else:
+        updated_vars += f'end_patterns updated to {end_patterns}\n'
 
     if mini_orf is None:
         mini_orf = default_values.get('mini_orf')
+    else:
+        updated_vars += f'mini_orf updated to {mini_orf}\n'
 
     if ext_check_win is None:
         ext_check_win = default_values.get('ext_check_win')
+    else:
+        updated_vars += f'ext_check_win updated to {ext_check_win}\n'
+
+    # Log all user-updated variables
+    if updated_vars:
+        logging.info('User-updated variables:\n' + updated_vars)
+    else:
+        logging.info('No user-updated variables.')
 
     #####################################################################################################
     # Code block: Define input file, output directory, genome
@@ -555,24 +631,6 @@ def main(
         decompressed_genome_file = genome_file
 
     #####################################################################################################
-    # Code block: Copy TEtrimmer_proof_anno_GUI to proof_curation_dir
-    #####################################################################################################
-    """
-    proof_anno_GUI_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TEtrimmer_proof_anno_GUI")
-
-    # Create the full path for the new directory inside the destination
-    proof_anno_GUI_destination_dir = os.path.join(proof_curation_dir, os.path.basename(proof_anno_GUI_dir))
-
-    # Check if the destination directory exists
-    if os.path.exists(proof_anno_GUI_destination_dir):
-        # If it exists, remove it first
-        shutil.rmtree(proof_anno_GUI_destination_dir)
-
-    # Copy the entire directory
-    shutil.copytree(proof_anno_GUI_dir, proof_anno_GUI_destination_dir)
-    """
-
-    #####################################################################################################
     # Code block: Remove duplications in input file if required, generate single FASTA file and check BLAST database
     #####################################################################################################
 
@@ -581,6 +639,10 @@ def main(
         # When --curatedlib is not None, check is the provided file exist.
         if curatedlib is not None:
             if os.path.isfile(curatedlib):
+                logging.info(
+                    f'User specified curated TE consensus library found: {curatedlib}'
+                )
+
                 # Define path to store curatedlib analysis. Store it to classification_dir
                 curatedlib_dir = os.path.join(
                     classification_dir, 'Filter_input_file_based_on_curatedlib'
@@ -594,15 +656,20 @@ def main(
                     input_file = curatedlib_check
 
             else:
-                prgre(
-                    '\nThe provided manually curated TE consensus library is not a file. Please re-check it.'
+                logging.error(
+                    f'User specified curated TE consensus library not found: {curatedlib}'
+                )
+                raise FileNotFoundError(
+                    f'User specified curated TE consensus library not found: {curatedlib}'
                 )
 
         # Do CD-HIT-EST merge if merge is true and continue_analysis is false
         if dedup:
-            click.echo(
-                '\nTEtrimmer is removing input sequences duplications, this might take some time.\n'
+            logging.info(
+                'TEtrimmer is removing input sequences duplications with CD-HIT-EST, this might take some time.'
             )
+
+            # Define the output file
             merge_output = os.path.join(output_dir, f'{input_file}_cd_hit.fa')
 
             # Remove duplicates
@@ -618,14 +685,20 @@ def main(
                 )
                 # Convert input_file to merged input_file
                 input_file = merge_output
-                click.echo('Merge finished.\n')
-            except Exception:
-                prcyan(
+                logging.info(
+                    f'Finished merging input sequences with CD-HIT-EST. Output file: {merge_output}'
+                )
+
+            except Exception as e:
+                # Log the error
+                logging.error(f'An error occurred: {e}')
+                logging.warning(
                     'TEtrimmer cannot perform the de-duplication step by CD-HIT-EST and will use the '
                     'input sequences directly. This may cause a significantly longer running time but '
                     'will not affect the final result.'
                 )
-                prgre(
+
+                logging.warning(
                     'You can also run CD-HIT-EST separately to remove redundant sequences:\n'
                     'cd-hit-est -i <input_file> -o <output_file> -T <thread number> -c 0.9 '
                     '-aL 0.9 -aS 0.9 -s 0.9 -l 30'
@@ -637,17 +710,20 @@ def main(
             input_file, single_file_dir, continue_analysis=False
         )
 
-        click.echo(f'{single_fasta_n} sequences are detected from the input file')
+        logging.info(f'{single_fasta_n} TE sequences are detected from the input file')
 
         # Check if BLAST database and genome length files are available, otherwise create these in the
-        # same directory of genome file
-        database_result = analyze.check_database(
-            decompressed_genome_file, search_type=engine
+        # same dir as the genome or the output directory specified by the user
+        (
+            mmseqs_database_dir,
+            output_database_path,
+            length_file,
+            fai_file,
+            symlinked_decompressed_genome_file,
+        ) = analyze.check_database(
+            decompressed_genome_file, idx_dir=output_dir, search_type=engine
         )
 
-        # If database returns errors, stop the whole analysis
-        if not database_result:
-            return
         # Initial call to print 0% progress
         analyze.printProgressBar(
             0, single_fasta_n, prefix='Progress:', suffix='Complete', length=50
@@ -656,16 +732,14 @@ def main(
     else:
         # Check if it can perform continue analysis
         if not os.listdir(single_file_dir):
-            prgre(
-                '\nWARNING: TEtrimmer cannot continue analysis. Please make sure the output directory is '
-                'the same as in the previous interrupted run.\n'
+            logging.error(
+                'TEtrimmer cannot continue analysis. Please make sure the output directory is '
+                'the same as in the previous interrupted run.'
             )
-            return
+            exit(1)
 
         else:
-            click.echo(
-                '\nTEtrimmer will continue analysis based on previous results.\n'
-            )
+            logging.info('TEtrimmer will continue analysis based on previous results.')
 
             # Create seq_list, which contains sequence objects using the single FASTA files.
             seq_list, single_fasta_n = analyze.separate_sequences(
@@ -679,8 +753,8 @@ def main(
 
             # Filter out already complete sequences
             seq_list = [seq for seq in seq_list if seq.name not in complete_sequences]
-            click.echo(
-                f'\n{single_fasta_n - len(seq_list)} sequences has been processed previously.\n'
+            logging.warning(
+                f'{single_fasta_n - len(seq_list)} sequences have been processed previously.'
             )
 
     #####################################################################################################
@@ -690,7 +764,7 @@ def main(
     analyze_sequence_params = [
         (
             seq,
-            decompressed_genome_file,
+            symlinked_decompressed_genome_file,
             MSA_dir,
             min_blast_len,
             min_seq_num,
@@ -740,9 +814,6 @@ def main(
     # Using a ProcessPoolExecutor to run the function in parallel
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_threads) as executor:
         executor.map(analyze.analyze_sequence_helper, analyze_sequence_params)
-    # multiprocessing
-    # with mp.Pool(processes=10) as p:
-    # p.starmap(analyze_sequence, analyze_sequence_params)
 
     #####################################################################################################
     # Code block: Check if all sequences are finished
@@ -757,7 +828,7 @@ def main(
     processed_count = len(completed_sequence)
 
     if processed_count == single_fasta_n:
-        click.echo(
+        logging.info(
             f'\n\nAll sequences have been analysed!\n'
             f'In the analysed sequences {skipped_count} are skipped. Note: not all skipped sequences can have '
             f"TE Aid plot in the 'TEtrimmer_for_proof_curation' folder.\n"
@@ -766,13 +837,13 @@ def main(
 
     else:
         remaining = single_fasta_n - processed_count
-        click.echo(
+        logging.warning(
             f'\n\n{remaining} sequences have not been analysed.\n'
             f'In the analysed sequences {skipped_count} are skipped. Note: not all skipped sequences can have '
             f"TE Aid plot in the 'TEtrimmer_for_proof_curation' folder.\n"
             f'In the analysed sequences {low_copy_count} are identified as low copy TE.\n'
         )
-        prgre(
+        logging.warning(
             "You might find the reasons why some sequences were not analysed from the 'error_file.txt' in the "
             "'Multiple_sequence_alignment' directory."
         )
@@ -784,7 +855,7 @@ def main(
     # Final RepeatMasker classification is not necessary, skip in case of errors
     try:
         if 0.3 <= classified_pro < 0.99:
-            click.echo(
+            logging.info(
                 '\nTEtrimmer is doing the final classification. It uses the classified TE to classify '
                 'Unknown elements.'
             )
@@ -805,11 +876,11 @@ def main(
                 hmm_dir,
             )
         elif classified_pro >= 0.99:
-            click.echo(
+            logging.warning(
                 "\nMore than 99% TE are classified, TEtrimmer won't classify 'Unknown' TE by classified TE."
             )
         elif classified_pro < 0.3:
-            click.echo(
+            logging.warning(
                 "\nLess than 30% TE are classified, TEtrimmer won't classify 'Unknown' TE by classified TE."
             )
 
@@ -819,9 +890,9 @@ def main(
             tb_content = traceback.format_exc()
             f.write('\nFinal RepeatMasker classification is wrong.\n')
             f.write(tb_content + '\n\n')
-        prcyan(f'\nThe final classification module failed with error {e}')
-        prgre(
-            '\nThis does not affect the final TE consensus sequences '
+        logging.error(f'The final classification module failed with error {e}')
+        logging.warning(
+            'This does not affect the final TE consensus sequences '
             "You can choose to ignore this error. For traceback content, please refer to 'error_file.txt' "
             "in the 'Multiple_sequence_alignment' directory.\n"
         )
@@ -856,8 +927,8 @@ def main(
     )
 
     try:
-        click.echo(
-            '\nTEtrimmer is removing sequence duplications. This might take long time when many sequences'
+        logging.info(
+            'TEtrimmer is removing sequence duplications. This might take long time when many sequences'
             'are included into the final consensus library. Please be patient!'
         )
         sequence_info = analyze.merge_cons(
@@ -868,19 +939,19 @@ def main(
             num_threads,
         )  # Do first round of CD-HIT-EST
 
-    except Exception:
+    except Exception as e:
         final_merge_success = False
         with open(error_files, 'a') as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
             f.write('\nFinal CD-HIT-EST deduplication error.\n')
             f.write(tb_content + '\n')
-        prcyan(
-            '\nThe final CD-HIT-EST merge step cannot be performed. Final TE consensus library redundancy can '
-            'be higher but the sensitivity is not affected. You can remove duplicated sequence by yourself.'
+        logging.error(
+            'The final CD-HIT-EST merge step cannot be performed. Final TE consensus library redundancy can '
+            f'be higher but the sensitivity is not affected. You can remove duplicated sequence by yourself.\n Error: {e}'
         )
-        prgre(
-            "\nYou can choose to ignore CD-HIT-EST error. For traceback output, please refer to 'error_file.txt' "
+        logging.warning(
+            "You can choose to ignore CD-HIT-EST error. For traceback output, please refer to 'error_file.txt' "
             "in the 'Multiple_sequence_alignment' directory.\n"
         )
 
@@ -889,9 +960,9 @@ def main(
     #####################################################################################################
 
     try:
-        click.echo(
+        logging.info(
             'TEtrimmer is clustering TE consensus library. This can potentially take long time when many '
-            'sequences exist in the consensus library. Please be patient!\n'
+            'sequences exist in the consensus library. Please be patient!'
         )
         multi_dotplot_dir = os.path.join(
             classification_dir, 'Multiple_sequence_dotplot'
@@ -920,10 +991,10 @@ def main(
             tb_content = traceback.format_exc()
             f.write('\nFinal clustering of proof curation files failed.\n')
             f.write(tb_content + '\n\n')
-        prcyan(f'\nFinal clustering of proof curation files failed with error {e}')
-        prcyan('\n' + tb_content + '')
-        prgre(
-            '\nThis does not affect the final TE consensus sequences. But this can heavily complicate the '
+        logging.error(f'Final clustering of proof curation files failed with error {e}')
+        logging.error('\n' + tb_content + '')
+        logging.warning(
+            'This does not affect the final TE consensus sequences. But this can heavily complicate the '
             "TE proof curation. If you don't plan to do proof curation, you can choose to ignore "
             'this error.\n'
         )
@@ -938,9 +1009,9 @@ def main(
 
         # Run RepeatMasker
         if genome_anno:
-            click.echo(
-                '\nTEtrimmer is performing whole-genome TE annotation by RepeatMasker. This could take a '
-                'long time. \nThe final TE consensus library has been completed. You can use it now.\n'
+            logging.info(
+                'TEtrimmer is performing whole-genome TE annotation by RepeatMasker. This could take a '
+                'long time. \nThe final TE consensus library has been completed. You can use it now.'
             )
 
             if final_merge_success and os.path.exists(cd_hit_est_final_merged):
@@ -961,7 +1032,10 @@ def main(
             if genome_anno_result:
                 click.echo('\nFinished whole genome TE annotation by RepeatMasker\n')
 
-    except Exception:
+    except Exception as e:
+        logging.error(
+            'Whole-genome TE annotation by RepeatMasker failed with error: {e}'
+        )
         with open(error_files, 'a') as f:
             # Get the traceback content as a string
             tb_content = traceback.format_exc()
@@ -974,6 +1048,9 @@ def main(
 
     # Remove the decompressed genome file if it was created
     if is_gzipped and os.path.isfile(decompressed_genome_file):
+        logging.info(
+            f'Removing the decompressed genome file: {decompressed_genome_file}'
+        )
         os.remove(decompressed_genome_file)
 
     end_time = datetime.now()
@@ -996,10 +1073,10 @@ def main(
         length=50,
         final=True,
     )
-    print(
+    logging.info(
         f'\nTEtrimmer analysis finished at {start_time.strftime("%Y-%m-%d %H:%M:%S")}.\n'
     )
-    print(f'TEtrimmer runtime was {duration_without_microseconds}.')
+    logging.info(f'TEtrimmer runtime was {duration_without_microseconds}.')
 
 
 # The following is necessary to make the script executable, i.e., python myscript.py.

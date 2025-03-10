@@ -1,4 +1,5 @@
 # Standard library imports
+import logging
 import gzip
 import os
 import shutil
@@ -70,7 +71,7 @@ def change_permissions_recursive(input_dir, mode):
     return True
 
 
-def calculate_genome_length(genome_file):
+def calculate_genome_length(genome_file, outfile=None):
     """
     Calculate the length of each sequence in a genome file in FASTA format
     and write the lengths to an output file.
@@ -97,7 +98,11 @@ def calculate_genome_length(genome_file):
             genome_lengths[current_seq] = current_length
 
     # Write lengths to output file
-    output_file = genome_file + '.length'
+    if not outfile:
+        output_file = genome_file + '.length'
+    else:
+        output_file = outfile
+
     with open(output_file, 'w') as out:
         for seq_name, length in genome_lengths.items():
             out.write(f'{seq_name}\t{length}\n')
@@ -105,7 +110,7 @@ def calculate_genome_length(genome_file):
     return output_file
 
 
-def check_database(genome_file, search_type='blast'):
+def check_database(genome_file, idx_dir=None, search_type='blast'):
     """
     Checks if the BLAST or MMseqs2 database and genome length file exist.
     If they do not exist, create them.
@@ -114,6 +119,10 @@ def check_database(genome_file, search_type='blast'):
     :param search_type: str, type of search tool to use ('blast' or 'mmseqs')
     """
 
+    # Check if the genome file exists
+    if not os.path.isfile(genome_file):
+        raise FileNotFoundError(f'Genome file {genome_file} not found.')
+
     # Check if the genome file is gzipped
     is_gzipped = genome_file.endswith('.gz')
     if is_gzipped:
@@ -121,16 +130,42 @@ def check_database(genome_file, search_type='blast'):
     else:
         decompressed_genome_file = genome_file
 
+    mmseqs_database_dir = None
+    symlinked_genome_file = genome_file
+
+    # If idx_dir is provided, set the database output directory to idx_dir/genome_index/genome_name
+    if idx_dir:
+        # Create the database directory if it does not exist
+        database_dir = os.path.join(idx_dir, 'genome_index')
+        # Create the database directory if it does not exist
+        os.makedirs(database_dir, exist_ok=True)
+        # Get basename and remove file extension if present
+        database_name = os.path.splitext(os.path.basename(decompressed_genome_file))[0]
+        # Create a symlink to the genome file in the database directory
+        symlinked_genome_file = os.path.join(database_dir,os.path.basename(genome_file))
+        if not os.path.exists(symlinked_genome_file):
+            os.symlink(genome_file, symlinked_genome_file)
+    else:
+        # Set the database output directory to the same directory as the genome file
+        database_dir = os.path.dirname(decompressed_genome_file)
+        database_name = os.path.splitext(os.path.basename(decompressed_genome_file))[0]
+
+    # Compose the output database file path
+    output_database_path = os.path.join(database_dir, database_name)
+
     try:
         if search_type == 'blast':
-            blast_database_file = decompressed_genome_file + '.nin'
+            blast_database_file = output_database_path + '.nin'
             if not os.path.isfile(blast_database_file):
-                print("\nBlast database doesn't exist. Running makeblastdb!")
+                logging.warning(f"Blast database doesn't exist at: {output_database_path}")
 
                 try:
                     makeblastdb_cmd = (
-                        f'makeblastdb -in {decompressed_genome_file} -dbtype nucl -out {decompressed_genome_file} '
+                        f'makeblastdb -in {decompressed_genome_file} -dbtype nucl -out {output_database_path} '
                     )
+
+                    logging.info(f'Creating BLAST database: {makeblastdb_cmd}')
+
                     subprocess.run(
                         makeblastdb_cmd,
                         shell=True,
@@ -139,19 +174,13 @@ def check_database(genome_file, search_type='blast'):
                         stderr=subprocess.PIPE,
                         text=True,
                     )
-                except FileNotFoundError:
-                    prcyan(
-                        "'makeblastdb' command not found. Please ensure 'makeblastdb' is installed correctly."
-                    )
-                    raise Exception
 
                 except subprocess.CalledProcessError as e:
-                    prcyan(f'\nmakeblastdb failed with exit code {e.returncode}')
-                    prcyan(f'\n{e.stdout}')
-                    prcyan(f'\n{e.stderr}\n')
-                    return False
+                    logging.error(f'makeblastdb failed with exit code {e.returncode}\n{e.stdout}\n{e.stderr}')
+                    exit(1)
+
         elif search_type == 'mmseqs':
-            mmseqs_database_dir = decompressed_genome_file + '_db'
+            mmseqs_database_dir = output_database_path + '_db'
             if not os.path.isdir(mmseqs_database_dir):
                 print('\nMMseqs2 database does not exist. Creating MMseqs2 database...\n')
 
@@ -169,9 +198,8 @@ def check_database(genome_file, search_type='blast'):
                     )
 
                 except subprocess.CalledProcessError as e:
-                    prcyan(f'\nmmseqs failed with exit code {e.returncode}')
-                    prcyan(f'\n{e.stdout}')
-                    prcyan(f'\n{e.stderr}\n')
+                    logging.error(f'mmseqs createdb failed with exit code {e.returncode}\n{e.stdout}\n{e.stderr}')
+                    exit(1)
 
                 # Check if MMseqs2 database files have been created
                 if os.path.exists(f'{mmseqs_database_dir}.dbtype'):
@@ -192,28 +220,30 @@ def check_database(genome_file, search_type='blast'):
                     )
                     error_output = result.stderr
                     if error_output:
-                        print(f'Error creating MMseqs2 index: {error_output}\n')
+                        logging.error(f'Error creating MMseqs2 index: {error_output}\n')
+                        exit(1)
                     else:
-                        print('MMseqs2 index created successfully.')
+                        logging.info('MMseqs2 index created successfully.')
                 else:
-                    print(
-                        f'Error: MMseqs2 database files not found for {decompressed_genome_file}, you can build it manually to'
-                        f'avoid this error'
-                    )
+                    logging.error(
+                        f'Error: MMseqs2 database files not found for {decompressed_genome_file}.')
+                    exit(1)
 
         # Check if genome length files exist, otherwise create them in the same folder with genome file
-        length_file = decompressed_genome_file + '.length'
+        length_file = output_database_path + '.length'
         if not os.path.isfile(length_file):
-            print('\nFile with genome lengths not found. Making it now!\n')
-            calculate_genome_length(decompressed_genome_file)
+            logging.info(f'File with genome lengths not found. Writing: {length_file}')
+            calculate_genome_length(decompressed_genome_file, output=length_file)
 
-        # Check if .fai index file exists, otherwise create it using SAMtools
-        fai_file = decompressed_genome_file + '.fai'
+        # Check if .fai index file exists, otherwise create it using samtools faidx
+        # Index gzip file directly if available
+        fai_file = os.path.join(database_dir,os.path.basename(genome_file)) + '.fai'
+
         if not os.path.isfile(fai_file):
-            print(
-                f'\nIndex file {fai_file} not found. Creating it using samtools faidx ...\n'
+            logging.info(
+                f'Index file {fai_file} not found. Creating it using samtools faidx ...\n'
             )
-            faidx_cmd = f'samtools faidx {decompressed_genome_file}'
+            faidx_cmd = f'samtools faidx {genome_file} -o {fai_file}'
 
             try:
                 subprocess.run(
@@ -226,26 +256,20 @@ def check_database(genome_file, search_type='blast'):
                 )
 
             except FileNotFoundError:
-                prcyan(
+                logging.error(
                     "'samtools' command not found. Please ensure 'samtools' is correctly installed."
                 )
-                return False
+                exit(1)
 
             except subprocess.CalledProcessError as e:
-                prcyan(f'\nsamtool faidx failed with error code {e.returncode}')
-                prcyan(f'\n{e.stdout}')
-                prcyan(f'\n{e.stderr}\n')
-                prgre(
-                    'Please check if samtools was installed correctly \n'
-                    'or try running samtools faidx <your_genome> to build the genome index file manually.'
-                )
-                return False
+                logging.error(f'\nsamtools faidx failed with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
+                exit(1)
     finally:
         # Remove the decompressed file if it was created
         if is_gzipped and os.path.isfile(decompressed_genome_file):
             os.remove(decompressed_genome_file)
 
-    return True
+    return (mmseqs_database_dir, output_database_path, length_file, fai_file, symlinked_genome_file)
 
 # Print iterations progress
 def printProgressBar(
@@ -258,7 +282,7 @@ def printProgressBar(
     fill='█',
     printEnd='\r',
     final=False,
-):
+    ):
     """
     Call in a loop to create terminal progress bar
     @params:
