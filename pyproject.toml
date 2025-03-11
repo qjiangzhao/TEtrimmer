@@ -69,6 +69,11 @@ version-file = "src/TEtrimmer/_version.py"
 [project.optional-dependencies]
 tests = ["pytest", "pre-commit", "hatch", "ruff", "isort", "numpydoc-validation"]
 
+[tool.pytest.ini_options]
+addopts = "-v"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
 [tool.ruff]
 line-length = 88
 lint.select = [
