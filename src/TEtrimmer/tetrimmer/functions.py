@@ -1651,29 +1651,23 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
         return True
 
     except FileNotFoundError:
-        prcyan(
+        logging.error(
             "'RepeatMasker' command not found. Please ensure 'RepeatMasker' is installed correctly."
         )
         raise Exception
 
     except subprocess.CalledProcessError as e:
         if classify:
-            prcyan(
-                f'\nRepeatMasker failed during final classification step with error code {e.returncode}'
-            )
-            prcyan(f'\n{e.stdout}')
-            prcyan(f'\n{e.stderr}\n')
-            prgre(
+            logging.error(
+                f'\nRepeatMasker failed during final classification step with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
+            logging.warning(
                 'This will not affect the final result. Only the classification of TE may not be correct.'
             )
             raise Exception
         else:
-            prcyan(
-                f'\nRepeatMasker failed during final whole-genome TE annotation with error code {e.returncode}'
-            )
-            prcyan(f'\n{e.stdout}')
-            prcyan(f'\n{e.stderr}\n')
-            prgre(
+            logging.error(
+                f'\nRepeatMasker failed during final whole-genome TE annotation with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
+            logging.warning(
                 'This does not affect the final TE consensus library. You can perform the final genome-wide TE'
                 ' annotation by yourself with RepeatMasker.'
             )
