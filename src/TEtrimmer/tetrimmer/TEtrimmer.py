@@ -382,7 +382,7 @@ def main(
     engine = 'blast'
 
     # Check for required programs.
-    required_tools = ['samtools', 'cd-hit-est']
+    required_tools = ['bedtools','samtools', 'cd-hit-est', 'ps2pdf', 'polydot', 'mafft', 'iqtree', 'getorf', 'hmmbuild', 'hmmsearch','pfam_scan.pl']
     optional_tools = ['blastn', 'makeblastdb', 'mmseqs']
 
     if engine == 'blast':
@@ -1040,7 +1040,7 @@ def main(
                 thread=num_threads,
             )
             if genome_anno_result:
-                logging.info.echo('\nFinished whole genome TE annotation by RepeatMasker\n')
+                logging.info('\nFinished whole genome TE annotation by RepeatMasker\n')
 
     except Exception as e:
         logging.error(

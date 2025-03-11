@@ -1,35 +1,4 @@
-import sys
-
-
-def install_and_import(required_packages_dict):
-    for package in required_packages_dict:
-        try:
-            __import__(package)
-        except ImportError:
-            try:
-                print(f'{package} was not found. Installing it automatically.')
-                subprocess.check_call(
-                    [
-                        sys.executable,
-                        '-m',
-                        'pip',
-                        'install',
-                        required_packages_dict[package],
-                    ]
-                )
-                print(f'{package} was successfully installed.')
-            except subprocess.CalledProcessError as e:
-                print(
-                    f'\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}'
-                    "\nPlease install 'click' and 'biopython' using 'pip install'.\n"
-                )
-                return
-
-
-required_packages = {'click': 'click', 'Bio': 'biopython'}
-install_and_import(required_packages)
-
-
+import logging
 import os
 import subprocess
 
@@ -69,7 +38,7 @@ def process_sequences(input_file, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     sequences = list(SeqIO.parse(input_file, 'fasta'))
     processed_sequences = []
-    print('LTR separation is running ......')
+    logging.info('LTR separation is running ......')
 
     for record in sequences:
         # Process each sequence to detect LTR
@@ -101,12 +70,12 @@ def process_sequences(input_file, output_dir):
             INT_record = SeqRecord(Seq(INT_seq), id=new_id_INT, description='')
 
             processed_sequences.extend([LTR_record, INT_record])
-            print(f"{record.id} contains 'LTR' and was separated.")
+            logging.info(f"{record.id} contains 'LTR' and was separated.")
             sep_seq_n += 1
         else:
             # Keep sequence unchanged if LTR was not identified
             processed_sequences.append(record)
-    print(
+    logging.info(
         f"\n{sep_seq_n} sequences were found to contain 'LTR' and written into separate sequence file."
         f'\nSeparation is finished.'
     )
@@ -144,11 +113,8 @@ def detect_ltr_for_sequence(record, output_dir):
             text=True,
         )
     except subprocess.CalledProcessError as e:
-        print(
-            f'\nmakeblastdb encountered an error for sequence {record_name} and returned error code {e.returncode}.'
-        )
-        print(f'\n{e.stdout}')
-        print(f'\n{e.stderr}\n')
+        logging.error(
+            f'\nmakeblastdb encountered an error for sequence {record_name} and returned error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
         return None
 
     blast_cmd = (
@@ -167,11 +133,8 @@ def detect_ltr_for_sequence(record, output_dir):
             text=True,
         )
     except subprocess.CalledProcessError as e:
-        print(
-            f'\nblast encountered an error for sequence {record_name} and returned error code {e.returncode}.'
-        )
-        print(f'\n{e.stdout}')
-        print(f'\n{e.stderr}\n')
+        logging.error(
+            f'\nblast encountered an error for sequence {record_name} and returned error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
         return None
 
     blast_out = result.stdout.strip()
@@ -216,8 +179,6 @@ def detect_ltr_for_sequence(record, output_dir):
                 LTR_largest['sstart'] - 1,
                 LTR_largest['send'],
             ]
-            # print(record_len)
-            # print(LTR_boundary)
             return LTR_boundary
         else:
             return None

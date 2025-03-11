@@ -141,14 +141,6 @@ def check_and_update(consensus_seq, start, end, start_patterns, end_patterns):
     return start_matched, end_matched, start, end
 
 
-def prcyan(text):
-    click.echo(click.style(text, fg='cyan'))
-
-
-def prgre(text):
-    click.echo(click.style(text, fg='green'))
-
-
 def fasta_file_to_dict(input_file, separate_name=False):
     sequences = {}
     for record in SeqIO.parse(input_file, 'fasta'):
@@ -283,11 +275,8 @@ def blast(
             )
 
         except subprocess.CalledProcessError as e:
-            prcyan(
-                f'\nBLAST to BED file conversion failed for {input_file_n} with error code {e.returncode}'
-            )
-            prcyan(f'\n{e.stdout}')
-            prcyan(f'\n{e.stderr}\n')
+            logging.error(
+                f'\nBLAST to BED file conversion failed for {input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
             raise Exception
 
         # Append BLAST hit number to sequence object when seq_obj is provided
@@ -488,17 +477,14 @@ def extract_fasta(
         )
 
     except FileNotFoundError:
-        prcyan(
+        logging.error(
             "'bedtools slop' command not found. Please ensure 'bedtools' is installed correctly."
         )
         raise Exception
 
     except subprocess.CalledProcessError as e:
-        prcyan(
-            f'\nbedtools slop failed for {input_file_n} with error code {e.returncode}'
-        )
-        prcyan(f'\n{e.stdout}')
-        prcyan(f'\n{e.stderr}\n')
+        logging.error(
+            f'\nbedtools slop failed for {input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
         raise Exception
 
     except Exception as e:
@@ -523,17 +509,14 @@ def extract_fasta(
         )
 
     except FileNotFoundError:
-        prcyan(
+        logging.error(
             "'bedtools getfasta' command not found. Please ensure 'bedtools' is installed correctly."
         )
         raise Exception
 
     except subprocess.CalledProcessError as e:
-        prcyan(
-            f'\nbedtools getfasta failed for {input_file_n} with error code {e.returncode}'
-        )
-        prcyan(f'\n{e.stdout}')
-        prcyan(f'\n{e.stderr}\n')
+        logging.error(
+            f'\nbedtools getfasta failed for {input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
         raise Exception
 
     # Use awk to remove letters other than: A G C T a g c t
@@ -551,10 +534,8 @@ def extract_fasta(
             text=True,
         )
 
-    except subprocess.CalledProcessError as e:
-        prcyan('Fasta nucleotide clean failed by awk')
-        prcyan(f'\n{e.stdout}')
-        prcyan(f'\n{e.stderr}\n')
+    except subprocess.CalledProcessError:
+        logging.error('Fasta nucleotide clean failed by awk\n{e.stdout}\n{e.stderr}\n')
         raise Exception
 
     return fasta_out_flank_file_nucleotide_clean, bed_out_flank_file_dup
@@ -601,23 +582,21 @@ def align_sequences(input_file, output_dir):
         )
 
     except FileNotFoundError:
-        prcyan(
+        logging.error(
             "'mafft' command not found. Please ensure 'mafft' is installed correctly."
         )
         raise Exception
 
     except subprocess.CalledProcessError as e:
         error_message = e.stderr
-        prcyan(f'\nMAFFT failed for {input_file_n} with error code {e.returncode}')
-        prcyan(f'\n{e.stdout}')
-        prcyan(f'\n{e.stderr}\n')
+        logging.error(f'\nMAFFT failed for {input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
 
         if (
             'Killed' in error_message
             and 'disttbfast' in error_message
             and 'memopt' in error_message
         ):
-            prgre(
+            logging.error(
                 'It seems insufficient RAM was available for MAFFT multiple sequence alignment. Please assign more '
                 'RAM or reduce the thread number to solve this problem.\n'
             )
@@ -755,10 +734,10 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
         )
 
     except FileNotFoundError:
-        prcyan(
+        logging.error(
             "'hmmbuild' command not found. Please ensure 'hmmbuild' is installed correctly."
         )
-        prgre('This hmm error will not affect the final TE consensus library.')
+        logging.warning('This hmm error will not affect the final TE consensus library.')
 
     except subprocess.CalledProcessError as e:
         with open(error_file, 'a') as f:
@@ -767,15 +746,11 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
             )
             f.write(f'\n{e.stdout}')
             f.write(f'\n{e.stderr}\n')
-        prcyan(
-            f'\nhmm file generation failed for {os.path.basename(output_hmm_file)} with error code {e.returncode}'
-        )
-        prcyan(f'\n{e.stdout}')
-        prcyan(f'\n{e.stderr}\n')
-        prgre(
+        logging.error(
+            f'\nhmm file generation failed for {os.path.basename(output_hmm_file)} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
+        logging.warning(
             '\nThis hmm error will not affect the final TE consensus library, you can ignore it.'
-            "\nFor traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n"
-        )
+            "\nFor traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n")
 
 
 def reverse_complement_seq_file(input_file, output_file):
@@ -1551,17 +1526,14 @@ def cd_hit_est(
         )
 
     except FileNotFoundError:
-        prcyan(
-            "'\ncd-hit-est' command not found. Please ensure 'cd-hit-est' is installed correctly.\n"
+        logging.error(
+            "'cd-hit-est' command not found. Please ensure 'cd-hit-est' is installed correctly.\n"
         )
         raise Exception
 
     except subprocess.CalledProcessError as e:
-        prcyan(
-            f'\ncd-hit-est failed for {os.path.basename(input_file)} with error code {e.returncode}'
-        )
-        prcyan(f'\n{e.stdout}')
-        prcyan(f'\n{e.stderr}\n')
+        logging.error(
+            f'\ncd-hit-est failed for {os.path.basename(input_file)} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
 
         raise Exception
 
@@ -1876,7 +1848,7 @@ def eliminate_curatedlib_by_repeatmasker(
         ]  # % of bases opposite a gap in the repeat consensus (inserted bp)
 
     except Exception:
-        prgre(
+        logging.error(
             'No sequences are found in --input_file that are identical to the sequences in --curatedlib'
         )
         return False
@@ -1928,12 +1900,12 @@ def eliminate_curatedlib_by_repeatmasker(
         df['cov_repeat_perc'] = df['cov_repeat_len'] / df['repeat_len'] * 100
 
     except Exception as e:
-        prcyan(
+        logging.error(
             f'An error occurred while eliminate sequences in --input_file that are identical to the sequences '
             f'in --curatedlib.: {e}'
         )
-        prgre(
-            'TEtrimmer will continue analyze with all the TE sequences in --input_file.'
+        logging.info(
+            'TEtrimmer will continue analysis with all the TE sequences in --input_file.'
         )
         return False
 
@@ -1943,14 +1915,14 @@ def eliminate_curatedlib_by_repeatmasker(
         df = df[df['cov_repeat_perc'] >= min_cov]
 
     except Exception:
-        prgre(
+        logging.warning(
             'No sequences are found in --input_file that are identical to the sequences in --curatedlib'
         )
         return False
 
     try:
         if df.empty:
-            prgre(
+            logging.warning(
                 'No sequences are found in --input_file that are identical to the sequences in --curatedlib'
             )
             return False
@@ -1967,7 +1939,7 @@ def eliminate_curatedlib_by_repeatmasker(
             unique_query_names = df['query_name'].unique().tolist()
             # print(unique_query_names)
 
-            print(
+            logging.info(
                 f'{len(unique_query_names)} sequences are eliminated from --input_file that are identical to the '
                 f'sequences in --curatedlib. For more detail, please refer to file \n {df_file}.'
             )
@@ -1991,11 +1963,11 @@ def eliminate_curatedlib_by_repeatmasker(
             return filtered_fasta
 
     except Exception as e:
-        prcyan(f'An error occurred while extracting unique query names: {e}')
-        prgre(
-            'TEtrimmer will continue analyze with all the TE sequences in --input_file.'
+        logging.error(f'An error occurred while extracting unique query names: {e}')
+        logging.info(
+            'TEtrimmer will continue analysis with all the TE sequences in --input_file.'
         )
-        prcyan(traceback.format_exc())
+        logging.error(traceback.format_exc())
         return False
 
 
@@ -2144,7 +2116,7 @@ def handle_sequence_low_copy(
             remove_files_with_start_pattern(MSA_dir, f'{seq_name}.fasta')
             remove_files_with_start_pattern(classification_dir, f'{seq_name}.fasta')
     except Exception as e:
-        click.echo(
+        logging.error(
             f'\nAn error occurred while handling low-copy sequence {seq_name}:\n {e}\n'
         )
 
@@ -2271,18 +2243,15 @@ def classify_single(consensus_fasta):
         )
 
     except FileNotFoundError:
-        prcyan(
+        logging.error(
             "'RepeatClassifier' command not found. Please ensure 'RepeatModeler' is installed correctly."
         )
         return False
 
     except subprocess.CalledProcessError as e:
-        prcyan(
-            f'RepeatClassifier failed for {os.path.basename(consensus_fasta)} with error code {e.returncode}'
-        )
-        prcyan(f'\n{e.stdout}')
-        prcyan(f'\n{e.stderr}\n')
-        prgre(
+        logging.error(
+            f'RepeatClassifier failed for {os.path.basename(consensus_fasta)} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
+        logging.warning(
             'This only affects classification but not the consensus sequence. '
             "You can run 'RepeatClassifier -consensi <your_consensus_file>' manually."
         )
@@ -2366,11 +2335,8 @@ def check_terminal_repeat(
             if blast_out.strip() == '':
                 return None, None, False
         except subprocess.CalledProcessError as e:
-            prcyan(
-                f'\nTerminal repeat detection failed for {os.path.basename(input_file)} with error code {e.returncode}'
-            )
-            prcyan(f'\n{e.stdout}')
-            prcyan(f'\n{e.stderr}\n')
+            logging.error(
+                f'\nTerminal repeat detection failed for {os.path.basename(input_file)} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
             raise Exception
 
         # Define BLAST output file
@@ -2553,22 +2519,19 @@ def dotplot(sequence1, sequence2, output_dir):
         )
 
     except FileNotFoundError:
-        prcyan(
+        logging.error(
             "\n'dotmatcher' command not found. Please ensure 'emboss' is installed correctly."
         )
-        prgre(
+        logging.warning(
             '\ndotmatcher does not affect the final consensus sequence. You can choose to ignore this error.\n'
         )
         return None
 
     except subprocess.CalledProcessError as e:
-        prcyan(
-            f"\n'dotmatcher' failed for {n_after_tetrimmer} with error code {e.returncode}"
-        )
-        prcyan(f'\n{e.stdout}')
-        prcyan(f'\n{e.stderr}')
-        prgre(
-            '\ndotmatcher does not affect the final consensus sequence. You can choose to ignore this error.\n'
+        logging.error(
+            f"'dotmatcher' failed for {n_after_tetrimmer} with error code {e.returncode}\n{e.stdout}\n{e.stderr}")
+        logging.warning(
+            'dotmatcher does not affect the final consensus sequence. You can choose to ignore this error.\n'
         )
         return None
 
@@ -2585,22 +2548,20 @@ def dotplot(sequence1, sequence2, output_dir):
         )
 
     except FileNotFoundError:
-        prcyan(
+        logging.error(
             "\n'ps2pdf' command not found. Please install it with 'sudo apt-get install ghostscript' or"
             "'conda install conda-forge::ghostscript'"
         )
-        # prgre("ps2pdf does not affect the final consensus sequence. But you won't get dot plots in the report file. "
-        # "You can choose to ignore this error.")
+        logging.warning("ps2pdf does not affect the final consensus sequence. But you won't get dot plots in the report file. You can choose to ignore this error.")
         return None
 
     except subprocess.CalledProcessError as e:
-        prcyan(
+        logging.error(
             f"\n'ps2pdf' failed for {n_after_tetrimmer} with error code {e.returncode}"
         )
-        # prgre("\nps2pdf does not affect the final consensus sequence. But you won't get dot plots in the report file."
+        # logging.warning("\nps2pdf does not affect the final consensus sequence. But you won't get dot plots in the report file."
         # " You can choose to ignore this error.\n")
-        prcyan(f'\n{e.stdout}')
-        prcyan(f'\n{e.stderr}\n')
+        logging.error(f'\n{e.stdout}\n{e.stderr}\n')
         return None
 
     return pdf_out
@@ -2641,19 +2602,17 @@ def multi_seq_dotplot(input_file, output_dir, title):
         )
 
     except FileNotFoundError:
-        prcyan(
+        logging.error(
             "'\npolydot' command not found. Please ensure 'emboss' is correctly installed."
         )
-        prgre(
+        logging.warning(
             "\npolydot won't affect the final consensus sequence. You can choose to ignore this error\n"
         )
         raise Exception
 
     except subprocess.CalledProcessError as e:
-        prcyan(f'\npolydot failed for {input_name} with error code {e.returncode}')
-        prcyan(f'\n{e.stdout}')
-        prcyan(f'\n{e.stderr}')
-        prgre(
+        logging.error(f'\npolydot failed for {input_name} with error code {e.returncode}\n{e.stdout}\n{e.stderr}')
+        logging.warning(
             "\npolydot won't affect the final consensus sequence. You can choose to ignore this error\n"
         )
         raise Exception
@@ -2671,19 +2630,17 @@ def multi_seq_dotplot(input_file, output_dir, title):
         )
 
     except FileNotFoundError:
-        prcyan(
+        logging.error(
             "'\nps2pdf' command not found. Please install it by 'sudo apt-get install ghostscript'"
         )
-        prgre(
+        logging.warning(
             "ps2pdf won't affect the final consensus file. You can choose to ignore it."
         )
         raise Exception
 
     except subprocess.CalledProcessError as e:
-        prcyan(f'\nps2pdf failed for {input_name} with error code {e.returncode}')
-        prcyan(f'\n{e.stdout}')
-        prcyan(f'\n{e.stderr}')
-        prgre(
+        logging.error(f'\nps2pdf failed for {input_name} with error code {e.returncode}\n{e.stdout}\n{e.stderr}')
+        logging.warning(
             "\nps2pdf won't affect the final consensus sequence. You can choose to ignore this error\n"
         )
         raise Exception
@@ -2757,12 +2714,12 @@ def find_poly_a_end_position(input_file, min_length=10):
                     )
         return None  # No poly A sequence found or does not meet the minimum length requirement
     except Exception as e:
-        prcyan(
+        logging.error(
             f'\nPoly A detection failed for {os.path.basename(input_file)} with error:\n{e}'
         )
-        prcyan(
+        logging.warning(
             '\n'
-            + 'This is will not affect the result too much, you can choose ignore this error'
+            + 'This is will not affect the result too much, you can choose ignore this error.'
             + '\n'
         )
         return None

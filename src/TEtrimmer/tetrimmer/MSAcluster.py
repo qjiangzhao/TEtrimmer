@@ -1,3 +1,4 @@
+import logging
 import os
 import os.path
 import re
@@ -16,7 +17,6 @@ from .functions import (
     align_sequences,
     filter_out_big_gap_seq,
     muscle_align,
-    prcyan,
     remove_gaps_with_similarity_check,
     select_gaps_block_with_similarity_check,
 )
@@ -239,15 +239,13 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=2):
         )
 
     except FileNotFoundError:
-        prcyan(
+        logging.error(
             "'iqtree' command not found. Please ensure 'iqtree' is correctly installed."
         )
         raise Exception
 
     except subprocess.CalledProcessError as e:
-        prcyan(f'\niqtree failed with error code {e.returncode}')
-        prcyan(f'\n{e.stdout}')
-        prcyan(f'\n{e.stderr}\n')
+        logging.error(f'\niqtree failed with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
         raise Exception('iqtree error')
 
     treefile = f'{alignment}.treefile'

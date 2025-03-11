@@ -1,9 +1,8 @@
-# Standard library imports
+import logging
 import os
 import shutil
 import traceback
 
-import click
 import pandas as pd
 from Bio import AlignIO
 
@@ -27,8 +26,6 @@ from .functions import (
     is_LTR,
     merge_pdfs,
     modify_fasta_headers,
-    prcyan,
-    prgre,
     remove_files_with_start_pattern,
     remove_gaps_with_similarity_check,
     reverse_complement_seq_file,
@@ -163,7 +160,7 @@ def extend_end(
         bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
 
         if not os.path.isfile(bed_fasta_mafft_with_gap):
-            click.echo(
+            logging.error(
                 f'{input_file} encountered a problem during the MAFFT extension step.'
             )
             return False
@@ -287,7 +284,7 @@ def final_MSA(
     bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
 
     if not os.path.isfile(bed_fasta_mafft_with_gap):
-        click.echo(
+        logging.error(
             f'{bed_file} encountered a problem during the final MAFFT extension step.'
         )
         return False
@@ -620,10 +617,10 @@ def find_boundary_and_crop(
                     f'\nFind boundary bed_file reading failed for {seq_name} with error:\n{e}'
                 )
                 f.write('\n' + tb_content + '\n\n')
-            prcyan(
+            logging.error(
                 f"\nStart and end patterns like 'TGT' or 'ACA' definition failed for {seq_name} with error \n{e}"
             )
-            prgre(
+            logging.warning(
                 '\nThis error will not affect the final result significantly, you can choose to ignore it. '
                 "For traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n"
             )
@@ -666,8 +663,7 @@ def find_boundary_and_crop(
                 tb_content = traceback.format_exc()
                 f.write(f'\nMSA extension failed for {seq_name} with error:\n{e}')
                 f.write('\n' + tb_content + '\n\n')
-            prcyan(f'\nMSA extension failed for {seq_name} with error:\n{e}')
-            prcyan('\n' + tb_content + '\n')
+            logging.error(f'\nMSA extension failed for {seq_name} with error:\n{e}\n{tb_content}\n')
             raise Exception
 
         try:
@@ -718,8 +714,7 @@ def find_boundary_and_crop(
                 tb_content = traceback.format_exc()
                 f.write(f'Boundary definition error {seq_name}\n')
                 f.write('\n' + tb_content + '\n\n')
-            prcyan(f'\nBoundary definition failed for {seq_name} with error:\n{e}')
-            prcyan('\n' + tb_content + '\n')
+            logging.error(f'\nBoundary definition failed for {seq_name} with error:\n{e}\n{tb_content}\n')
             raise Exception
 
         #####################################################################################################
@@ -768,10 +763,8 @@ def find_boundary_and_crop(
                 tb_content = traceback.format_exc()
                 f.write(f'Boundary definition clustering error {seq_name}\n')
                 f.write('\n' + tb_content + '\n\n')
-            prcyan(
-                f'\nBoundary definition clustering failed for {seq_name} with error:\n{e}'
-            )
-            prcyan('\n' + tb_content + '\n')
+            logging.error(
+                f'\nBoundary definition clustering failed for {seq_name} with error:\n{e}\n{tb_content}\n')
             raise Exception
 
         msa_loop_n += 1
@@ -846,10 +839,10 @@ def find_boundary_and_crop(
                 f'\nStart and end pattern definition failed for {seq_name} with error \n{e}\n'
             )
             f.write('\n' + tb_content + '\n\n')
-        prcyan(
+        logging.error(
             f"\nStart and end patterns like 'TGT' or 'ACA' definition failed for {seq_name} with error \n{e}"
         )
-        prgre(
+        logging.warning(
             '\nThis error will not affect the final result significantly, you can choose to ignore it. '
             "For traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n"
         )
@@ -950,10 +943,8 @@ def find_boundary_and_crop(
                 f'\nConcatenate MSA for manual inspection plot failed for {seq_name} with error:\n{e}'
             )
             f.write('\n' + tb_content + '\n\n')
-        prcyan(
-            f'\nConcatenate MSA for manual inspection plot failed for {seq_name} with error:\n{e}'
-        )
-        prcyan('\n' + tb_content + '\n')
+        logging.error(
+            f'\nConcatenate MSA for manual inspection plot failed for {seq_name} with error:\n{e}\n{tb_content}\n')
         raise Exception
 
     #####################################################################################################
@@ -1088,8 +1079,7 @@ def find_boundary_and_crop(
                 f'\nConcatenate MSA for the maunual inspection plot failed for {seq_name} with error:\n{e}'
             )
             f.write('\n' + tb_content + '\n\n')
-        prcyan(f'\nORF or PFAM prediction failed for {seq_name} with error:\n{e}')
-        prcyan('\n' + tb_content + '\n')
+        logging.error(f'\nORF or PFAM prediction failed for {seq_name} with error:\n{e}\n{tb_content}\n')
         raise Exception
 
     #####################################################################################################
@@ -1128,8 +1118,8 @@ def find_boundary_and_crop(
             tb_content = traceback.format_exc()
             f.write(f'\nMSA plot failed for {seq_name} with error:\n{e}')
             f.write('\n' + tb_content + '\n\n')
-        prcyan(f'\nMSA plot failed {seq_name} with error:\n{e}')
-        prgre(
+        logging.error(f'\nMSA plot failed {seq_name} with error:\n{e}')
+        logging.warning(
             '\nMSA plots are only used to evaluate TEtrimmer and will not affect the final TE consensus library.'
             " For traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder\n"
         )
@@ -1202,8 +1192,7 @@ def find_boundary_and_crop(
             tb_content = traceback.format_exc()
             f.write(f'\nTE-Aid plot failed for {seq_name} with error:\n{e}')
             f.write('\n' + tb_content + '\n\n')
-        prcyan(f'\nTE-Aid plot failed for {seq_name} with error:\n{e}')
-        prcyan('\n' + tb_content + '\n')
+        logging.error(f'\nTE-Aid plot failed for {seq_name} with error:\n{e}\n' + tb_content + '\n')
         raise Exception
 
     #####################################################################################################
@@ -1263,8 +1252,7 @@ def find_boundary_and_crop(
             tb_content = traceback.format_exc()
             f.write(f'\nPlot merging to PDF failed for {seq_name} with error:\n{e}')
             f.write('\n' + tb_content + '\n\n')
-        prcyan(f'\nPlot merging to PDF failed for {seq_name} with error:\n{e}')
-        prcyan('\n' + tb_content + '\n')
+        logging.error(f'\nPlot merging to PDF failed for {seq_name} with error:\n{e}\n{tb_content}\n')
         raise Exception
 
     #####################################################################################################
@@ -1351,8 +1339,7 @@ def find_boundary_and_crop(
             tb_content = traceback.format_exc()
             f.write(f'\nUpdate sequence object failed for {seq_name} with error:\n{e}')
             f.write('\n' + tb_content + '\n\n')
-        prcyan(f'\nUpdate sequence object failed for {seq_name} with error:\n{e}')
-        prcyan('\n' + tb_content + '\n')
+        logging.error(f'\nUpdate sequence object failed for {seq_name} with error:\n{e}\n{tb_content}\n')
         raise Exception
 
     #####################################################################################################
@@ -1415,8 +1402,8 @@ def find_boundary_and_crop(
             tb_content = traceback.format_exc()
             f.write(f'\nRepeatClassifier classification error for {seq_name}')
             f.write('\n' + tb_content + '\n\n')
-        prcyan(f"\nNote: RepeatClassifier doesn't work for {seq_name} with error {e}")
-        prgre(
+        logging.error(f"\nNote: RepeatClassifier doesn't work for {seq_name} with error {e}")
+        logging.warning(
             "\nThis won't affect final TE consensus sequences but only the classification. You can choose to ignore this. "
             "For traceback text, please refer to 'error_file.txt' under 'Multiple_sequence_alignment' folder\n"
         )
@@ -1509,7 +1496,7 @@ def find_boundary_and_crop(
                     tb_content = traceback.format_exc()
                     f.write(f'Copy file error for {pattern}\n')
                     f.write(tb_content + '\n\n')
-                prcyan(f'Error copying {pattern} to {new_name}: {e}')
+                logging.error(f'Error copying {pattern} to {new_name}: {e}')
                 files_moved_successfully = False
 
         if hmm:  # Generate HMM files
@@ -1547,6 +1534,5 @@ def find_boundary_and_crop(
             tb_content = traceback.format_exc()
             f.write(f'\nMoving of files failed for {seq_name} with error:\n{e}')
             f.write('\n' + tb_content + '\n\n')
-        prcyan(f'\nMoving of files failed for {seq_name} with error:\n{e}')
-        prcyan('\n' + tb_content + '\n')
+        logging.error(f'\nMoving of files failed for {seq_name} with error:\n{e}\n{tb_content}\n')
         raise Exception

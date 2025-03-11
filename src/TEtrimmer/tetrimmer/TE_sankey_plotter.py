@@ -1,40 +1,4 @@
-import sys
-
-
-def install_and_import(required_packages_dict):
-    for package in required_packages_dict:
-        try:
-            __import__(package)
-        except ImportError:
-            try:
-                print(f'{package} was not found. Installing it automatically.')
-                subprocess.check_call(
-                    [
-                        sys.executable,
-                        '-m',
-                        'pip',
-                        'install',
-                        required_packages_dict[package],
-                    ]
-                )
-                print(f'{package} was successfully installed.')
-            except subprocess.CalledProcessError as e:
-                print(
-                    f'\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}'
-                    "\nPlease install 'click', 'numpy', 'pandas', seaborn, and 'biopython' using 'pip install'.\n"
-                )
-                return
-
-
-required_packages = {
-    'click': 'click',
-    'Bio': 'biopython',
-    'numpy': 'numpy',
-    'pandas': 'pandas',
-    'seaborn': 'seaborn',
-}
-install_and_import(required_packages)
-
+import logging
 import os
 import subprocess
 from math import pi
@@ -470,9 +434,7 @@ def read_rm_out(
             text=True,
         )
     except subprocess.CalledProcessError as e:
-        print(f'\nbedtools sort error\n{e.stderr}')
-        print(f'\n{e.stdout}')
-        print(f'\n{e.stderr}\n')
+        logging.error(f'\nbedtools sort error\n{e.stderr}\n{e.stdout}\n{e.stderr}\n')
 
     if not debug:
         delete_file(output_df_path)
@@ -501,10 +463,8 @@ def get_complement_region(bed_file, genome_length):
         with open(bed_complement_path, 'w') as f:
             f.write(result.stdout)
 
-    except subprocess.CalledProcessError as e:
-        print('\nbedtools complement error:\n')
-        print(f'\n{e.stdout}')
-        print(f'\n{e.stderr}\n')
+    except subprocess.CalledProcessError:
+        logging.error('\nbedtools complement error:\n{e.stdout}\n{e.stderr}\n')
 
     return bed_complement_path
 
@@ -593,9 +553,7 @@ def bed_merge(bed_file, genome_length, debug=False):
                 text=True,
             )
         except subprocess.CalledProcessError as e:
-            print(f'\nbedtools merge error for command {command}')
-            print(f'\n{e.stdout}')
-            print(f'\n{e.stderr}\n')
+            logging.error(f'\nbedtools merge error for command {command}\n{e.stdout}\n{e.stderr}\n')
             raise Exception
 
     # Separate overlapped elements
@@ -621,9 +579,7 @@ def bed_merge(bed_file, genome_length, debug=False):
                 text=True,
             )
         except subprocess.CalledProcessError as e:
-            print(f'\nbedtools merge error for command {command}')
-            print(f'\n{e.stdout}')
-            print(f'\n{e.stderr}\n')
+            logging.error(f'\nbedtools merge error for command {command}\n{e.stdout}\n{e.stderr}\n')
             raise Exception
     if not debug:
         delete_file(
@@ -662,10 +618,8 @@ def bed_intersect(bed1, bed2, strand=False):
             stdout=subprocess.PIPE,
             text=True,
         )
-    except subprocess.CalledProcessError as e:
-        print('\nbedtools intersect error. Check if you have installed Bedtools')
-        print(f'\n{e.stdout}')
-        print(f'\n{e.stderr}\n')
+    except subprocess.CalledProcessError:
+        logging.error('\nbedtools intersect error. Check if you have installed Bedtools\n{e.stdout}\n{e.stderr}\n')
     return bed_intersect_out_path
 
 
@@ -1261,7 +1215,7 @@ def calculate_overlap(
     # me: merge
     # inte: intersect
 
-    click.echo('TE sankey plotter is running......')
+    logging.info('TE sankey plotter is running......')
 
     if output_dir is None:
         output_dir = os.path.dirname(query)
@@ -1410,7 +1364,7 @@ def calculate_overlap(
     if not debug:
         delete_file(query_bed, reference_bed)
 
-    click.echo('TE sankey plotter is finished.')
+    logging.info('TE sankey plotter is finished.')
 
 
 if __name__ == '__main__':

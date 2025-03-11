@@ -1,18 +1,16 @@
 import csv
 import gzip
+import logging
 import os
 import os.path
 import shutil
 import subprocess
 import urllib.request
 
-import click
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import requests
 from Bio import SeqIO
-
-from .functions import prcyan, prgre
 
 
 def check_and_download(directory, filename, url):
@@ -26,11 +24,11 @@ def check_and_download(directory, filename, url):
 
     file_path = os.path.join(directory, filename)
 
-    print(f'Checking for {filename} in {directory}')
+    logging.info(f'Checking for {filename} in {directory}')
 
     # If PFAM database was not found, download it
     if not os.path.isfile(file_path):
-        click.echo(
+        logging.warning(
             f'\n{filename} not found. Downloading... This might take some time. Please be patient.\n'
         )
 
@@ -39,7 +37,7 @@ def check_and_download(directory, filename, url):
             response = requests.get(url, stream=True)
             response.raise_for_status()  # Raise an exception if the GET request was unsuccessful
         except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError):
-            prcyan(
+            logging.error(
                 f'\nFailed to reach the server at {url} for downloading PFAM database.\n'
             )
             return False
@@ -57,19 +55,19 @@ def check_and_download(directory, filename, url):
 
             # Delete gz file after extraction
             os.remove(gz_file_path)
-            click.echo(
+            logging.info(
                 f'\n{filename} is downloaded and unzipped. Pfam database was stored in \n'
                 f'{directory}\n'
             )
         except Exception:
-            prcyan('TEtrimmer failed to properly unpack the downloaded PFAM file.')
+            logging.error('TEtrimmer failed to properly unpack the downloaded PFAM file.')
             return False
 
     # Check if download was successful
     if os.path.isfile(file_path):
         return True
     else:
-        prcyan(
+        logging.error(
             f'{filename} not found. The PFAM database cannot be downloaded by TEtrimmer. Please check your internet connection '
             f"or download PFAM database manually. Or use '--pfam_dir' to indicate your Pfam database path."
         )
@@ -130,18 +128,15 @@ def prepare_pfam_database(pfam_database_dir):
                     )
 
                 except FileNotFoundError:
-                    prcyan(
+                    logging.error(
                         "'hmmpress' command not found. Please ensure 'hmmpress' is installed correctly."
                     )
                     return False
 
                 except subprocess.CalledProcessError as e:
-                    prcyan(
-                        f'\nhmmpress index file generation failed with error code {e.returncode}'
-                    )
-                    prcyan(f'\n{e.stdout}')
-                    prcyan(f'\n{e.stderr}')
-                    prgre(
+                    logging.error(
+                        f'\nhmmpress index file generation failed with error code {e.returncode}\n{e.stdout}\n{e.stderr}')
+                    logging.warning(
                         "\nPlease check if 'hmmpress' has been installed correctly in your system.\n"
                         'Try running hmmpress <your_downloaded_pfam_file> Pfam-A.hmm\n'
                     )
@@ -249,17 +244,14 @@ class PlotPfam:
             )
 
         except FileNotFoundError:
-            prcyan(
+            logging.error(
                 'getorf command not found. Please ensure that getorf is installed and available in your PATH.'
             )
             raise Exception
 
         except subprocess.CalledProcessError as e:
-            prcyan(
-                f'\ngetorf failed for {self.input_file_n} with error code {e.returncode}.'
-            )
-            prcyan(f'\n{e.stdout}')
-            prcyan(f'\n{e.stderr}\n')
+            logging.error(
+                f'\ngetorf failed for {self.input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
             raise Exception
 
         # Check if the output_orf_file is empty
@@ -278,11 +270,8 @@ class PlotPfam:
                 text=True,
             )
         except subprocess.CalledProcessError as e:
-            prcyan(
-                f'\nFilter ORF columns failed for {self.input_file_n} with error code {e.returncode}'
-            )
-            prcyan(f'\n{e.stdout}')
-            prcyan(f'\n{e.stderr}\n')
+            logging.error(
+                f'\nFilter ORF columns failed for {self.input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
             raise Exception
 
         # Generate orf table for orf plot
@@ -304,12 +293,8 @@ class PlotPfam:
             )
             return True
         except subprocess.CalledProcessError as e:
-            prcyan(
-                f'\nConverting ORF result to table failed for {self.input_file_n} with '
-                f'error code {e.returncode}'
-            )
-            prcyan(f'\n{e.stdout}')
-            prcyan(f'\n{e.stderr}\n')
+            logging.error(
+                f'\nConverting ORF result to table failed for {self.input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
             raise Exception
 
     def run_pfam_scan(self):
@@ -349,17 +334,14 @@ class PlotPfam:
             )
 
         except FileNotFoundError:
-            prcyan(
+            logging.error(
                 "'pfam_scan.pl' command not found. Please ensure 'pfam_scan.pl' is correctly installed."
             )
             raise Exception
 
         except subprocess.CalledProcessError as e:
-            prcyan(
-                f'\npfam_scan.pl failed for {self.input_file_n} with error code {e.returncode}'
-            )
-            prcyan(f'\n{e.stdout}')
-            prcyan(f'\n{e.stderr}\n')
+            logging.error(
+                f'\npfam_scan.pl failed for {self.input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
             raise Exception
 
         # Modify PFAM output file for plot
@@ -381,11 +363,8 @@ class PlotPfam:
                 text=True,
             )
         except subprocess.CalledProcessError as e:
-            prcyan(
-                f'\nTransform Pfam result failed for {self.input_file_n} with error code {e.returncode}'
-            )
-            prcyan(f'\n{e.stdout}')
-            prcyan(f'\n{e.stderr}\n')
+            logging.error(
+                f'\nTransform Pfam result failed for {self.input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
             raise Exception
 
         # Check if the output file has only one line, which would mean no PFAM predictions.
