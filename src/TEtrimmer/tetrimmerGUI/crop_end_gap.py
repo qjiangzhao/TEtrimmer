@@ -1,38 +1,10 @@
 import os
-import subprocess
-import sys
 
 import click
 from Bio import AlignIO
 from Bio.Align import MultipleSeqAlignment
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-
-
-def install_and_import(required_packages_dict):
-    for package in required_packages_dict:
-        try:
-            __import__(package)
-        except ImportError:
-            try:
-                print(f'{package} was not installed. Installing it automatically.')
-                subprocess.check_call(
-                    [
-                        sys.executable,
-                        '-m',
-                        'pip',
-                        'install',
-                        required_packages_dict[package],
-                    ]
-                )
-                print(f'{package} was successfully installed.')
-            except subprocess.CalledProcessError as e:
-                print(
-                    f'\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}'
-                    "\nPlease install 'click' and 'biopython' using 'pip install'.\n"
-                )
-                return
-
 
 required_packages = {'click': 'click', 'Bio': 'biopython'}
 # install_and_import(required_packages)

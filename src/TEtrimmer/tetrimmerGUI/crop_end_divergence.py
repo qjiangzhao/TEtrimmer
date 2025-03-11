@@ -1,6 +1,4 @@
 import os
-import subprocess
-import sys
 
 import click
 import numpy as np
@@ -10,39 +8,12 @@ from Bio.Align import MultipleSeqAlignment
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-
-def install_and_import(required_packages_dict):
-    for package in required_packages_dict:
-        try:
-            __import__(package)
-        except ImportError:
-            try:
-                print(f'{package} was not found. Installing it automatically.')
-                subprocess.check_call(
-                    [
-                        sys.executable,
-                        '-m',
-                        'pip',
-                        'install',
-                        required_packages_dict[package],
-                    ]
-                )
-                print(f'{package} was successfully installed.')
-            except subprocess.CalledProcessError as e:
-                print(
-                    f'\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}'
-                    "\nPlease install 'click', 'numpy', 'pandas', and 'biopython' using 'pip install'.\n"
-                )
-                return
-
-
 required_packages = {
     'click': 'click',
     'Bio': 'biopython',
     'numpy': 'numpy',
     'pandas': 'pandas',
 }
-# install_and_import(required_packages)
 
 
 class CropEnd:
