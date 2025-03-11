@@ -1,6 +1,6 @@
 # Standard library imports
-import logging
 import gzip
+import logging
 import os
 import shutil
 import subprocess
@@ -13,17 +13,30 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
 from .boundarycrop import find_boundary_and_crop
+
 # Local imports
-from .functions import (blast, cd_hit_est, check_bed_uniqueness,
-                        copy_files_with_start_pattern, decompress_gzip,
-                        extract_fasta, fasta_file_to_dict,
-                        handle_sequence_low_copy, handle_sequence_skipped,
-                        modify_fasta_headers, multi_seq_dotplot,
-                        parse_cd_hit_est_result, prcyan, prgre, process_lines,
-                        remove_files_with_start_pattern, rename_cons_file,
-                        rename_files_based_on_dict, repeatmasker,
-                        repeatmasker_output_classify,
-                        update_low_copy_cons_file)
+from .functions import (
+    blast,
+    cd_hit_est,
+    check_bed_uniqueness,
+    copy_files_with_start_pattern,
+    extract_fasta,
+    fasta_file_to_dict,
+    handle_sequence_low_copy,
+    handle_sequence_skipped,
+    modify_fasta_headers,
+    multi_seq_dotplot,
+    parse_cd_hit_est_result,
+    prcyan,
+    prgre,
+    process_lines,
+    remove_files_with_start_pattern,
+    rename_cons_file,
+    rename_files_based_on_dict,
+    repeatmasker,
+    repeatmasker_output_classify,
+    update_low_copy_cons_file,
+)
 from .MSAcluster import clean_and_cluster_MSA
 from .orfdomain import PlotPfam, prepare_pfam_database
 from .seqclass import SeqObject

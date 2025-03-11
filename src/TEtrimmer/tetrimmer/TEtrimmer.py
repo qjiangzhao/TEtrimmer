@@ -15,9 +15,12 @@ from .._version import __version__
 from ..utils.checks import check_tools
 from ..utils.logs import init_logging
 from . import analyze
-from .functions import (cd_hit_est, decompress_gzip,
-                        eliminate_curatedlib_by_repeatmasker, prcyan, prgre,
-                        repeatmasker)
+from .functions import (
+    cd_hit_est,
+    decompress_gzip,
+    eliminate_curatedlib_by_repeatmasker,
+    repeatmasker,
+)
 
 # Suppress all deprecation warnings
 warnings.filterwarnings('ignore', category=BiopythonDeprecationWarning)

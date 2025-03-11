@@ -9,20 +9,35 @@ from Bio import AlignIO
 
 from . import cialign
 from .boundaryclass import CropEnd, CropEndByGap, DefineBoundary
+
 # Local imports
-from .functions import (align_sequences, check_and_update,
-                        check_terminal_repeat, classify_single, con_generater,
-                        con_generater_no_file, concatenate_alignments,
-                        define_crop_end_simi_thr, dotplot, extract_fasta,
-                        find_poly_a_end_position, generate_hmm_from_msa,
-                        is_LTR, merge_pdfs, modify_fasta_headers, prcyan,
-                        prgre, remove_files_with_start_pattern,
-                        remove_gaps_with_similarity_check,
-                        reverse_complement_seq_file, scale_single_page_pdf,
-                        select_star_to_end, select_start_end_and_join,
-                        select_window_columns)
-from .MSAcluster import (CleanAndSelectColumn, clean_and_cluster_MSA,
-                         process_msa)
+from .functions import (
+    align_sequences,
+    check_and_update,
+    check_terminal_repeat,
+    classify_single,
+    con_generater,
+    con_generater_no_file,
+    concatenate_alignments,
+    define_crop_end_simi_thr,
+    dotplot,
+    extract_fasta,
+    find_poly_a_end_position,
+    generate_hmm_from_msa,
+    is_LTR,
+    merge_pdfs,
+    modify_fasta_headers,
+    prcyan,
+    prgre,
+    remove_files_with_start_pattern,
+    remove_gaps_with_similarity_check,
+    reverse_complement_seq_file,
+    scale_single_page_pdf,
+    select_star_to_end,
+    select_start_end_and_join,
+    select_window_columns,
+)
+from .MSAcluster import CleanAndSelectColumn, clean_and_cluster_MSA, process_msa
 from .orfdomain import PlotPfam, determine_sequence_direction
 from .TEaid import TEAid
 
