@@ -129,7 +129,6 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
         )
 
     mmseqs_database_dir = None
-    #symlinked_genome_file = genome_file
 
     # If idx_dir is provided, set the database output directory to idx_dir/genome_index/genome_name
     if idx_dir:
@@ -138,15 +137,11 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
         # Create the database directory if it does not exist
         os.makedirs(database_dir, exist_ok=True)
         # Get basename and remove file extension if present
-        database_name = os.path.splitext(os.path.basename(genome_file))[0]
-        # Create a symlink to the genome file in the database directory
-       #symlinked_genome_file = os.path.join(database_dir,os.path.basename(genome_file))
-        #if not os.path.exists(symlinked_genome_file):
-        #    os.symlink(genome_file, symlinked_genome_file)
+        database_name = os.path.basename(genome_file)
     else:
         # Set the database output directory to the same directory as the genome file
         database_dir = os.path.dirname(genome_file)
-        database_name = os.path.splitext(os.path.basename(genome_file))[0]
+        database_name = os.path.basename(genome_file)
 
     # Compose the output database file path
     output_database_path = os.path.join(database_dir, database_name)
@@ -209,6 +204,9 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
                         f'mmseqs createindex {mmseqs_database_dir} {mmseqs_database_dir}_tmp '
                         f'--search-type 3'
                     )
+
+                    logging.info(f'Creating MMseqs2 index: {mmseqs_createindex_cmd}')
+
                     result = subprocess.run(
                         mmseqs_createindex_cmd,
                         shell=True,
@@ -228,20 +226,23 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
                     exit(1)
 
         # Check if genome length files exist, otherwise create them in the same folder with genome file
-        length_file = output_database_path + '.length'
+        length_file = genome_file + '.length'
         if not os.path.isfile(length_file):
             logging.info(f'Creating genome lengths file: {length_file}')
             calculate_genome_length(genome_file, outfile=length_file)
 
         # Check if .fai index file exists, otherwise create it using samtools faidx
         # Index gzip file directly if available
-        fai_file = os.path.join(database_dir,os.path.basename(genome_file)) + '.fai'
+        #fai_file = os.path.join(database_dir,os.path.basename(genome_file)) + '.fai'
+        fai_file = genome_file + '.fai'
 
         if not os.path.isfile(fai_file):
             logging.info(
                 f'Creating genome index with samtools: {fai_file}'
             )
             faidx_cmd = f'samtools faidx {genome_file} -o {fai_file}'
+
+            logging.info(f'Creating genome index with samtools: {faidx_cmd}')
 
             try:
                 subprocess.run(
@@ -267,7 +268,7 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
         logging.error(f'Error:\n{e}')
         exit(1)
 
-    return (mmseqs_database_dir, output_database_path, length_file, fai_file)
+    return (mmseqs_database_dir, database_dir, database_name , length_file, fai_file)
 
 # Print iterations progress
 def printProgressBar(
@@ -691,7 +692,7 @@ def merge_cons(
         if hmm:
             remove_files_with_start_pattern(hmm_dir, missing_ids)
     """
-    click.echo('\nFinished to remove sequence duplications.\n')
+    logging.info('\nSequence de-duplication process complete.\n')
     return sequence_info
 
 
@@ -903,6 +904,9 @@ def analyze_sequence(
     plot_query,
     engine,
     proof_curation_dir,
+    database_dir,
+    blast_database_path,
+    mmseqs_database_dir,
 ):
     #####################################################################################################
     # Code block: Set different elongation number for different elements and do BLAST search
@@ -948,6 +952,8 @@ def analyze_sequence(
         bed_out_file_dup, blast_hits_count, blast_out_file = blast(
             seq_file,
             genome_file,
+            blast_database_path,
+            mmseqs_database_dir,
             MSA_dir,
             min_length=min_blast_len,
             task='blastn',
@@ -961,7 +967,7 @@ def analyze_sequence(
             tb_content = traceback.format_exc()
             f.write(f'Error while running blast for sequence: {seq_name}\n')
             f.write(tb_content + '\n\n')
-        prcyan(
+        logging.error(
             f'Error while running blast for sequence: {seq_name}. Main Error: {str(e)}. \n'
             f'Trace back content: {tb_content}\n'
         )
@@ -1023,6 +1029,8 @@ def analyze_sequence(
                     seq_file,
                     MSA_dir,
                     genome_file,
+                    blast_database_path,
+                    mmseqs_database_dir,
                     blast_hits_count,
                     blast_out_file,
                     plot_skip=plot_skip,
@@ -1170,6 +1178,8 @@ def analyze_sequence(
                     seq_file,
                     MSA_dir,
                     genome_file,
+                    blast_database_path,
+                    mmseqs_database_dir,
                     blast_hits_count,
                     blast_out_file,
                     plot_skip=plot_skip,
@@ -1265,6 +1275,8 @@ def analyze_sequence(
                         input_orf_pfam=input_orf_domain_plot,
                         debug=debug,
                         cluster_msa=fasta_out_flank_mafft_gap_rm_nm,
+                        blast_database_path=blast_database_path,
+                        mmseqs_database_dir=mmseqs_database_dir,
                     )
                 except Exception:
                     return
@@ -1282,6 +1294,8 @@ def analyze_sequence(
                         seq_file,
                         MSA_dir,
                         genome_file,
+                        blast_database_path,
+                        mmseqs_database_dir,
                         blast_hits_count,
                         blast_out_file,
                         plot_skip=plot_skip,

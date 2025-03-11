@@ -162,6 +162,8 @@ def fasta_file_to_dict(input_file, separate_name=False):
 def blast(
     seq_file,
     genome_file,
+    blast_database_path,
+    mmseqs_database_dir,
     output_dir,
     min_length=150,
     search_type='blast',
@@ -186,15 +188,25 @@ def blast(
     # define blast outfile
     blast_out_file = os.path.join(output_dir, f'{os.path.basename(input_file)}.b')
 
+    # Check that blast_database_path contains blast_database_path.nhr
+    if not os.path.exists(f'{blast_database_path}.nhr'):
+        logging.error(
+            f'BLAST database files not found in {blast_database_path}. Please ensure the database is correctly formatted.'
+        )
+        raise Exception
+
     if search_type == 'blast':
         # Modify the blast command to include the specified task
         blast_cmd = (
-            f'blastn -max_target_seqs 10000 -task {task} -query {input_file} -db {genome_file} '
+            f'blastn -max_target_seqs 10000 -task {task} -query {input_file} -db {blast_database_path} '
             f'-outfmt "6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand evalue qcovhsp" '
             f'-evalue 1e-40 -qcov_hsp_perc 20 | '
             f'awk -v ml={min_length} \'BEGIN{{OFS="\\t"}} $4 > ml {{print $0}}\' >> {blast_out_file}'
         )
         try:
+            logging.info(f'Running BLAST for {input_file_n}')
+            logging.info(f'BLAST command: {blast_cmd}')
+
             subprocess.run(
                 blast_cmd,
                 shell=True,
@@ -205,25 +217,23 @@ def blast(
             )
 
         except FileNotFoundError:
-            prcyan(
+            logging.error(
                 "'blastn' command not found. Please ensure 'blastn' is installed correctly."
             )
             raise Exception
 
         except subprocess.CalledProcessError as e:
-            prcyan(f'\nBLAST failed for {input_file_n} with error code {e.returncode}')
-            prcyan(f'\n{e.stdout}')
-            prcyan(f'\n{e.stderr}\n')
+            logging.error(f'\nBLAST failed for {input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
             raise Exception
 
     elif search_type == 'mmseqs':
         # MMseqs2 search
         mmseqs_cmd = (
-            f'mmseqs easy-search {seq_file} {genome_file}_db {blast_out_file} {blast_out_file}_tmp --search-type 3 '
+            f'mmseqs easy-search {seq_file} {mmseqs_database_dir} {blast_out_file} {blast_out_file}_tmp --search-type 3 '
             f'--min-seq-id 0.6 --format-output "query,target,pident,alnlen,mismatch,qstart,qend,tstart,tend,evalue,qcov" '
             f'--cov-mode 4 -c 0.5 --e-profile 1e-40 --threads 1 --min-aln-len {min_length}'
         )
-        print(
+        logging.warning(
             "Running analysis with MMseqs2. \nWARNING: MMseqs2 is less accurate than 'blastn' and may return "
             "faulty results. We strongly recommend to use 'blastn' instead."
         )
@@ -238,7 +248,7 @@ def blast(
         error_output = result.stderr
 
         if error_output:
-            print(f'Error running MMseqs2: {error_output}')
+            logging.error(f'Error running MMseqs2: {error_output}')
 
     # Check the number of BLAST hits
     with open(blast_out_file) as blast_file:
@@ -454,9 +464,20 @@ def extract_fasta(
             output_dir, f'{os.path.basename(input_file)}_{left_ex}_{right_ex}_bcln.fa'
         )
 
+    # Check that .length file exists
+    genome_length_file = f'{genome_file}.length'
+    if not os.path.exists(genome_length_file):
+        logging.error(
+            f'Genome length file not found in {genome_length_file}. Please ensure the genome is correctly formatted.'
+        )
+        raise Exception
+
+    # Construct the command to extend the BED file
     bed_cmd = f'bedtools slop -s -i {input_file} -g {genome_file}.length -l {left_ex} -r {right_ex} > {bed_out_flank_file_dup}'
 
     try:
+        logging.info(f'Running bedtools slop for {input_file_n}')
+        logging.info(f'bedtools slop command: {bed_cmd}')
         subprocess.run(
             bed_cmd,
             shell=True,
@@ -478,6 +499,10 @@ def extract_fasta(
         )
         prcyan(f'\n{e.stdout}')
         prcyan(f'\n{e.stderr}\n')
+        raise Exception
+
+    except Exception as e:
+        logging.error(f'bedtools slop failed for {input_file_n} with error code {e}')
         raise Exception
 
     bed_out_flank_file = check_bed_uniqueness(output_dir, bed_out_flank_file_dup)

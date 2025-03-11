@@ -529,6 +529,8 @@ def find_boundary_and_crop(
     input_orf_pfam=False,
     debug=False,
     cluster_msa=None,
+    blast_database_path=None,
+    mmseqs_database_dir=None,
 ):
     """
     :param bed_file: str, BED file directory
@@ -1137,6 +1139,8 @@ def find_boundary_and_crop(
                 orf_cons,
                 output_dir,
                 genome_file,
+                blast_database_path,
+                mmseqs_database_dir,
                 error_file=error_files,
                 TE_aid_dir=TE_aid_path,
             )
@@ -1147,6 +1151,8 @@ def find_boundary_and_crop(
                 orf_cons,
                 output_dir,
                 genome_file,
+                blast_database_path,
+                mmseqs_database_dir,
                 error_file=error_files,
                 TE_aid_dir=TE_aid_path,
             )
@@ -1165,6 +1171,8 @@ def find_boundary_and_crop(
                 query_file,
                 output_dir,
                 genome_file,
+                blast_database_path,
+                mmseqs_database_dir,
                 error_file=error_files,
                 TE_aid_dir=TE_aid_path,
             )

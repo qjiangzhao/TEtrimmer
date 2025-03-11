@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 
@@ -11,6 +12,8 @@ def check_self_alignment(
     seq_file,
     output_dir,
     genome_file,
+    blast_database_path,
+    mmseqs_database_dir,
     blast_hits_count,
     blast_out_file,
     plot_skip=True,
@@ -36,7 +39,8 @@ def check_self_alignment(
         check_blast = True
 
         # Check self-alignment of terminal repeats
-        TE_aid_object = TEAid(seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path)
+        TE_aid_object = TEAid(seq_file, output_dir, genome_file, blast_database_path,
+            mmseqs_database_dir, TE_aid_dir=TE_aid_path)
         TE_aid_plot, found_match = TE_aid_object.run(low_copy=True, label=False)
 
         seq_obj.update_blast_hit_n(blast_hits_count)
@@ -55,7 +59,8 @@ def check_self_alignment(
         if plot_skip:
             # Plot skipped elements if required
             TE_aid_object = TEAid(
-                seq_file, output_dir, genome_file, TE_aid_dir=TE_aid_path
+                seq_file, output_dir, genome_file, blast_database_path,
+                mmseqs_database_dir, TE_aid_dir=TE_aid_path
             )
             TE_aid_plot, found_match = TE_aid_object.run(low_copy=True, label=False)
         else:
@@ -108,6 +113,8 @@ class TEAid:
         input_file,
         output_dir,
         genome_file,
+        blast_database_path,
+        mmseqs_database_dir,
         TE_aid_dir,
         error_file=None,
         min_orf=200,
@@ -124,6 +131,8 @@ class TEAid:
         self.input_file = input_file
         self.output_dir = output_dir
         self.genome_file = genome_file
+        self.blast_database_path = blast_database_path
+        self.mmseqs_database_dir = mmseqs_database_dir
         self.TE_aid_dir = TE_aid_dir
         self.error_file = error_file
         self.min_orf = min_orf
@@ -178,6 +187,9 @@ class TEAid:
             command.extend(['-TM'])
 
         try:
+            logging.info(f'Running TE-Aid for {os.path.basename(self.input_file)}')
+            logging.debug(f'Command: {" ".join(command)}')
+
             subprocess.run(
                 command,
                 check=True,
@@ -244,7 +256,8 @@ class TEAid:
             )
         else:
             bed_out_file, blast_hits_count, blast_out_file = blast(
-                self.input_file, self.genome_file, self.output_dir, search_type=engine
+                self.input_file, self.genome_file, self.blast_database_path,
+                self.mmseqs_database_dir, self.output_dir, search_type=engine
             )
             full_length_n = check_blast_full_length(
                 seq_obj,

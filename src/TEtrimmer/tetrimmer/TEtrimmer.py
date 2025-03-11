@@ -723,12 +723,15 @@ def main(
         # same dir as the genome or the output directory specified by the user
         (
             mmseqs_database_dir,
-            output_database_path,
+            database_dir,
+            database_name,
             length_file,
             fai_file,
         ) = analyze.check_database(
-            decompressed_genome_file, idx_dir=None, search_type=engine
+            decompressed_genome_file, idx_dir=output_dir, search_type=engine
         )
+
+        blast_database_path = os.path.join(database_dir, database_name)
 
         # Initial call to print 0% progress
         analyze.printProgressBar(
@@ -813,6 +816,9 @@ def main(
             plot_query,
             engine,
             proof_curation_dir,
+            database_dir,
+            blast_database_path,
+            mmseqs_database_dir,
         )
         for seq in seq_list
     ]
@@ -960,6 +966,7 @@ def main(
             "You can choose to ignore CD-HIT-EST error. For traceback output, please refer to 'error_file.txt' "
             "in the 'Multiple_sequence_alignment' directory.\n"
         )
+        exit(1) # Note: sequence_info is not defined if the final CD-HIT-EST merge step fails
 
     #####################################################################################################
     # Code block: Cluster proof curation files
@@ -1057,7 +1064,7 @@ def main(
         logging.info(
             f'Removing the decompressed genome file: {decompressed_genome_file}'
         )
-       # os.remove(decompressed_genome_file)
+        os.remove(decompressed_genome_file)
 
     end_time = datetime.now()
     duration = end_time - start_time
