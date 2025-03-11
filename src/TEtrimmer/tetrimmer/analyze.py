@@ -123,15 +123,13 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
     if not os.path.isfile(genome_file):
         raise FileNotFoundError(f'Genome file {genome_file} not found.')
 
-    # Check if the genome file is gzipped
-    is_gzipped = genome_file.endswith('.gz')
-    if is_gzipped:
-        decompressed_genome_file = decompress_gzip(genome_file)
-    else:
-        decompressed_genome_file = genome_file
+    if genome_file.endswith('.gz'):
+        raise ValueError(
+            'Genome file should be decompressed before creating a database.'
+        )
 
     mmseqs_database_dir = None
-    symlinked_genome_file = genome_file
+    #symlinked_genome_file = genome_file
 
     # If idx_dir is provided, set the database output directory to idx_dir/genome_index/genome_name
     if idx_dir:
@@ -140,15 +138,15 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
         # Create the database directory if it does not exist
         os.makedirs(database_dir, exist_ok=True)
         # Get basename and remove file extension if present
-        database_name = os.path.splitext(os.path.basename(decompressed_genome_file))[0]
+        database_name = os.path.splitext(os.path.basename(genome_file))[0]
         # Create a symlink to the genome file in the database directory
-        symlinked_genome_file = os.path.join(database_dir,os.path.basename(genome_file))
-        if not os.path.exists(symlinked_genome_file):
-            os.symlink(genome_file, symlinked_genome_file)
+       #symlinked_genome_file = os.path.join(database_dir,os.path.basename(genome_file))
+        #if not os.path.exists(symlinked_genome_file):
+        #    os.symlink(genome_file, symlinked_genome_file)
     else:
         # Set the database output directory to the same directory as the genome file
-        database_dir = os.path.dirname(decompressed_genome_file)
-        database_name = os.path.splitext(os.path.basename(decompressed_genome_file))[0]
+        database_dir = os.path.dirname(genome_file)
+        database_name = os.path.splitext(os.path.basename(genome_file))[0]
 
     # Compose the output database file path
     output_database_path = os.path.join(database_dir, database_name)
@@ -157,11 +155,11 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
         if search_type == 'blast':
             blast_database_file = output_database_path + '.nin'
             if not os.path.isfile(blast_database_file):
-                logging.warning(f"Blast database doesn't exist at: {output_database_path}")
+                logging.info(f"Pre-built blast database not found at: {output_database_path}")
 
                 try:
                     makeblastdb_cmd = (
-                        f'makeblastdb -in {decompressed_genome_file} -dbtype nucl -out {output_database_path} '
+                        f'makeblastdb -in {genome_file} -dbtype nucl -out {output_database_path} '
                     )
 
                     logging.info(f'Creating BLAST database: {makeblastdb_cmd}')
@@ -186,7 +184,7 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
 
                 try:
                     mmseqs_createdb_cmd = (
-                        f'mmseqs createdb {decompressed_genome_file} {mmseqs_database_dir}'
+                        f'mmseqs createdb {genome_file} {mmseqs_database_dir}'
                     )
                     subprocess.run(
                         mmseqs_createdb_cmd,
@@ -226,14 +224,14 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
                         logging.info('MMseqs2 index created successfully.')
                 else:
                     logging.error(
-                        f'Error: MMseqs2 database files not found for {decompressed_genome_file}.')
+                        f'Error: MMseqs2 database files not found for {genome_file}')
                     exit(1)
 
         # Check if genome length files exist, otherwise create them in the same folder with genome file
         length_file = output_database_path + '.length'
         if not os.path.isfile(length_file):
-            logging.info(f'File with genome lengths not found. Writing: {length_file}')
-            calculate_genome_length(decompressed_genome_file, output=length_file)
+            logging.info(f'Creating genome lengths file: {length_file}')
+            calculate_genome_length(genome_file, outfile=length_file)
 
         # Check if .fai index file exists, otherwise create it using samtools faidx
         # Index gzip file directly if available
@@ -241,7 +239,7 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
 
         if not os.path.isfile(fai_file):
             logging.info(
-                f'Index file {fai_file} not found. Creating it using samtools faidx ...\n'
+                f'Creating genome index with samtools: {fai_file}'
             )
             faidx_cmd = f'samtools faidx {genome_file} -o {fai_file}'
 
@@ -264,12 +262,12 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
             except subprocess.CalledProcessError as e:
                 logging.error(f'\nsamtools faidx failed with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
                 exit(1)
-    finally:
-        # Remove the decompressed file if it was created
-        if is_gzipped and os.path.isfile(decompressed_genome_file):
-            os.remove(decompressed_genome_file)
 
-    return (mmseqs_database_dir, output_database_path, length_file, fai_file, symlinked_genome_file)
+    except Exception as e:
+        logging.error(f'Error:\n{e}')
+        exit(1)
+
+    return (mmseqs_database_dir, output_database_path, length_file, fai_file)
 
 # Print iterations progress
 def printProgressBar(
@@ -323,7 +321,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
             return open(file_path, 'r')
 
     if not continue_analysis:
-        print(
+        logging.info(
             "TE Trimmer is modifying sequence names; any occurrence of '/', '-', ':', '...', '|' and empty spaces before '#' "
             "will be converted to '_'.\n"
             "You can find the original and modified names in the 'Sequence_name_mapping.txt' file in the output directory.\n"
@@ -405,11 +403,11 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                     SeqIO.write(record, output_file, 'fasta')
 
             if detected_pound:
-                print(
+                logging.info(
                     "TEtrimmer detected instances of '#' in your input FASTA sequence headers. The string before "
                     "'#' is denoted as the seq_name, and the string after '#' is denoted as the TE type.\n"
                 )
-        print('Finish to generate single sequence files.\n')
+        logging.info('Finished generating single sequence files.\n')
 
     elif continue_analysis:
         # If continue_analysis is 'True', generate seq_list based on single FASTA files
@@ -1006,7 +1004,7 @@ def analyze_sequence(
     try:
         # Check if BLAST hit number is exactly 0. If so, skip this sequence
         if blast_hits_count == 0:
-            click.echo(f'\n{seq_name} is skipped due to blast hit number is 0\n')
+            logging.warning(f'\n{seq_name} is skipped due to blast hit number is 0\n')
             handle_sequence_skipped(
                 seq_obj,
                 progress_file,
@@ -1056,7 +1054,7 @@ def analyze_sequence(
                     TE_aid_plot,
                 )
             else:
-                click.echo(
+                logging.info(
                     f'\n{seq_name} was skipped because the BLAST hit number is smaller than {min_seq_num} '
                     f'and check_low_copy is {check_low_copy}.\n'
                 )
@@ -1093,10 +1091,10 @@ def analyze_sequence(
                 f'\nError while checking low-copy status for sequence: {seq_name}\n'
             )
             f.write(tb_content + '\n\n')
-        prcyan(
+        logging.error(
             f'\nError while checking low-copy status for sequence: {seq_name}. Error: {str(e)}\n'
         )
-        prgre(
+        logging.error(
             '\nThe low-copy TE check module is an optional additional analysis. You may ignore this error, as it '
             'will not affect the final result significantly.\n'
         )
@@ -1153,10 +1151,10 @@ def analyze_sequence(
             tb_content = traceback.format_exc()
             f.write(f'Error while grouping MSA: {seq_name}\n')
             f.write(tb_content + '\n\n')
-        prcyan(
+        logging.error(
             f'\nError while grouping MSA for sequence: {seq_name}. Error: {str(e)}\n'
         )
-        prcyan('\n' + tb_content + '\n')
+        logging.error('\n' + tb_content + '\n')
         return
 
     #####################################################################################################
@@ -1337,10 +1335,10 @@ def analyze_sequence(
                 f'\nError during boundary finding and cropping for sequence: {seq_name}\n'
             )
             f.write(tb_content + '\n\n')
-        prcyan(
+        logging.error(
             f'\nError during boundary finding and cropping for sequence: {seq_name}. Error: {str(e)}\n'
         )
-        prcyan(tb_content + '\n')
+        logging.error(tb_content + '\n')
         return
 
     # After all processing is done, change status to 'process' and write the file name to the progress file
@@ -1373,87 +1371,117 @@ def analyze_sequence(
 def create_dir(
     continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file, plot_skip
 ):
+    #####################################################
+    # Check if input TE lib file exists
+    #####################################################
     if not os.path.isfile(input_file):
-        prcyan(
-            f'The FASTA file {input_file} does not exist. Please check the input file path!'
+        logging.error(
+            f'The input TE lib FASTA file does not exist: {input_file}'
         )
         raise FileNotFoundError
-    input_file = os.path.abspath(input_file)  # get absolute path for input
+    else:
+        # Get absolute path for input file
+        input_file = os.path.abspath(input_file)
 
-    # check if genome file exist
+    #####################################################
+    # Check if genome file exists
+    #####################################################
     if not os.path.isfile(genome_file):
-        prcyan(
-            f'The genome FASTA file {genome_file} does not exist. Please check the genome file path!'
+        logging.error(
+            f'The genome FASTA file does not exist: {genome_file}'
         )
         raise FileNotFoundError
-    genome_file = os.path.abspath(genome_file)  # get absolute path for genome
+    else:
+        genome_file = os.path.abspath(genome_file)  # get absolute path for genome
 
+    ############################################################################
     # bin_py_path contains all classes and BASH code
     # so.path.abspath(__file__) will return the current executable Python file
+    ############################################################################
     bin_py_path = os.path.dirname(os.path.abspath(__file__))
 
+    #####################################################
     # Check if output path exists; otherwise create it
+    #####################################################
     os.makedirs(output_dir, exist_ok=True)
     output_dir = os.path.abspath(output_dir)  # get absolute path
 
-    # Check if output directory is empty when --continue_analysis is 'False'
-    if os.listdir(output_dir) and not continue_analysis:
-        """
-        prcyan(f"\nWARNING: The output directory {output_dir} is not empty. Please empty the output directory or "
-               f"choose another empty directory.")
-        prgre("\nNOTE: TE Trimmer can create output directory if it does not exist.")
-        """
-        # If the current folder is not empty, create a new folder with current time stamp
+    # Check if output_dir exists, and if it does check that it only contains the .log file
+    if len(os.listdir(output_dir)) == 1 and os.path.isfile(
+            os.path.join(output_dir, 'TEtrimmer.log')
+        ):
+            logging.info(f'Output directory at: {output_dir}')
+    # If the current folder is not empty, create a new sub-folder with current time stamp
+    elif len(os.listdir(output_dir)) and not continue_analysis:
+        logging.warning(f"The output directory is not empty: {output_dir}")
+        # If the current folder is not empty, and not continue analysis, create a new folder with current time stamp
         current_time = time.strftime('%Y%m%d_%H%M%S')
         new_output_dir = os.path.join(output_dir, f'TEtrimmer_output_{current_time}')
         os.makedirs(new_output_dir, exist_ok=True)
         output_dir = new_output_dir
-        prgre(
-            f'\nThe given output directory is not empty. Results will be stored into folder: \n'
-            f'{output_dir}\n'
+        logging.warning(
+            f'Results will be stored into folder: {output_dir}'
         )
 
+    #################################################
     # Create a new folder for single FASTA sequences
+    #################################################
     single_file_dir = os.path.join(output_dir, 'Single_fasta_files')
     os.makedirs(single_file_dir, exist_ok=True)
 
+    #################################################
     # Create a new folder for MSA
+    #################################################
     MSA_dir = os.path.join(output_dir, 'Multiple_sequence_alignment')
     os.makedirs(MSA_dir, exist_ok=True)
 
+    #################################################
     # Make a new folder for classification
+    #################################################
     classification_dir = os.path.join(output_dir, 'Classification_and_deduplication')
     os.makedirs(classification_dir, exist_ok=True)
 
+    ####################################
     # Create a new folder for HMM files
+    ####################################
     if hmm:
         hmm_dir = os.path.join(output_dir, 'HMM_files')
         os.makedirs(hmm_dir, exist_ok=True)
     else:
         hmm_dir = ''
 
+    ######################################
     # Define proof_curation folder path
+    ######################################
     proof_curation_dir = os.path.join(output_dir, 'TEtrimmer_for_proof_curation')
     os.makedirs(proof_curation_dir, exist_ok=True)
 
+    #####################################################################
     # Define clustered proof curation folder inside proof_curation_dir
+    #####################################################################
     cluster_proof_anno_dir = os.path.join(
         proof_curation_dir, 'Clustered_proof_curation'
     )
     os.makedirs(cluster_proof_anno_dir, exist_ok=True)
 
+    ####################################
     # Define skipped folder if required
+    ####################################
     if plot_skip:
         skipped_dir = os.path.join(proof_curation_dir, 'TE_skipped')
         os.makedirs(skipped_dir, exist_ok=True)
     else:
         skipped_dir = None
 
+    ##########################
     # Define low-copy folder
+    ##########################
     low_copy_dir = os.path.join(proof_curation_dir, 'TE_low_copy')
     os.makedirs(low_copy_dir, exist_ok=True)
 
+    ########################################
     # Define annotation evaluation folders
+    ########################################
     perfect_proof = os.path.join(proof_curation_dir, 'Annotations_perfect')
     good_proof = os.path.join(proof_curation_dir, 'Annotations_good')
     intermediate_proof = os.path.join(
@@ -1465,10 +1493,14 @@ def create_dir(
     os.makedirs(intermediate_proof, exist_ok=True)
     os.makedirs(need_check_proof, exist_ok=True)
 
+    ######################################################################
     # Define the progress_file, finished sequence IDs will be stored here
+    ######################################################################
     progress_file = os.path.join(output_dir, 'summary.txt')
 
+    ##########################################################
     # Check and create progress_file if it does not exist yet
+    ##########################################################
     if not os.path.exists(progress_file):
         with open(progress_file, 'a') as f:
             f.write(
@@ -1476,14 +1508,18 @@ def create_dir(
                 'input_TE_type,reclassified_type,terminal_repeat,low_copy,evaluation,status\n'
             )
 
+    ########################################################################################################
     # Define error files to store non-mandatory function errors including RepeatClassified classification,
     # RepeatMasker classification, PFAM scanning, MUSCLE alignment
+    ########################################################################################################
     error_files = os.path.join(MSA_dir, 'error_file.txt')
 
-    # If a PFAM database was not provided, create PFAM database in the TE Trimmer software folder, so the
-    # database can be downloaded here.
-    # If the pfam_dir was provided but the database cannot be found there, TE Trimmer will download the PFAM database
-    # into the provided directory and generate the index file.
+    ###############################################################################################
+    # If a PFAM database was not provided, create PFAM database in the TE Trimmer software folder,
+    # so the database can be downloaded here.
+    # If the pfam_dir was provided but the database cannot be found there, TE Trimmer will download
+    # the PFAM database into the provided directory and generate the index file.
+    ###############################################################################################
     if pfam_dir is None:
         pfam_dir = os.path.join(os.path.dirname(bin_py_path), 'pfam_database')
     try:
@@ -1520,7 +1556,10 @@ def create_dir(
         )
         return
 
-    # Define consensus files. Temporary (temp) files will be used for the final RepeatMasker classification.
+    ##################################################################################
+    # Define consensus files.
+    # Temporary (temp) files will be used for the final RepeatMasker classification.
+    ##################################################################################
     final_con_file = os.path.join(output_dir, 'TEtrimmer_consensus.fasta')
     final_unknown_con_file = os.path.join(
         classification_dir, 'temp_TEtrimmer_unknown_consensus.fasta'
@@ -1529,7 +1568,9 @@ def create_dir(
         classification_dir, 'temp_TEtrimmer_classified_consensus.fasta'
     )
 
+    ###########################################
     # Define consensus file without low copy
+    ###########################################
     final_con_file_no_low_copy = os.path.join(
         classification_dir, 'TEtrimmer_consensus_no_low_copy.fasta'
     )

@@ -374,7 +374,7 @@ def main(
     curatedlib,
     logfile,
     loglevel,
-    version,
+    version=None,
 ):
     # Print the version and exit
     if version:
@@ -390,13 +390,19 @@ def main(
 
     if engine == 'blast':
         required_tools.append('blastn')
-        required_tools.append('mmseqs')
+        required_tools.append('makeblastdb')
         optional_tools = ['mmseqs']
+    elif engine == 'mmseqs':
+        required_tools.append('mmseqs')
+        optional_tools = ['blastn','makeblastdb']
 
     check_tools(required_tools=required_tools, optional_tools=optional_tools)
 
     # Set the log file path
     if not logfile:
+        # Create output directory if it does not exist
+        os.makedirs(output_dir, exist_ok=True)
+        # Set the log file path
         logfile = os.path.join(output_dir, 'TEtrimmer.log')
 
     # Initialize the logging system
@@ -406,10 +412,7 @@ def main(
     plot_query = True
     plot_skip = True
     start_time = datetime.now()
-    logging.info(
-        f'\nTEtrimmer started at {start_time.strftime("%Y-%m-%d %H:%M:%S")}.\n',
-        flush=True,
-    )
+    logging.info(f'TEtrimmer started at {start_time.strftime("%Y-%m-%d %H:%M:%S")}.')
 
     #####################################################################################################
     # Code block: File ends
@@ -468,13 +471,15 @@ def main(
     # Define the default values for the parameters
     default_values = preset_config.get(preset, {})
 
-    default_report = ''
+
 
     # Log the preset being loaded
     logging.info(f'Loading default values for mode: {preset}')
-    logging.info('Preset values:')
+
+    default_report = 'Preset values:\n'
+
     for key, value in default_values.items():
-        default_report += f'{key}: {value}'
+        default_report += f'{key}: {value}\n'
 
     # Log the default values
     logging.info(default_report)
@@ -584,6 +589,15 @@ def main(
     #####################################################################################################
     # Code block: Define input file, output directory, genome
     #####################################################################################################
+    # If genome_file is gzipped make a copy of the genome file and unzip it
+    # Check if the genome file is gzipped
+    is_gzipped = genome_file.endswith('.gz')
+
+    if is_gzipped:
+        decompressed_genome_file = decompress_gzip(genome_file)
+    else:
+        decompressed_genome_file = genome_file
+
     try:
         (
             bin_py_path,
@@ -606,7 +620,7 @@ def main(
             final_classified_con_file,
             error_files,
             input_file,
-            genome_file,
+            decompressed_genome_file,
             skipped_dir,
             cluster_proof_anno_dir,
         ) = analyze.create_dir(
@@ -615,20 +629,13 @@ def main(
             pfam_dir,
             output_dir,
             input_file,
-            genome_file,
+            decompressed_genome_file,
             plot_skip,
         )
     except Exception:
         return
 
-    # If genome_file is gzipped make a copy of the genome file and unzip it
-    # Check if the genome file is gzipped
-    is_gzipped = genome_file.endswith('.gz')
 
-    if is_gzipped:
-        decompressed_genome_file = decompress_gzip(genome_file)
-    else:
-        decompressed_genome_file = genome_file
 
     #####################################################################################################
     # Code block: Remove duplications in input file if required, generate single FASTA file and check BLAST database
@@ -686,7 +693,7 @@ def main(
                 # Convert input_file to merged input_file
                 input_file = merge_output
                 logging.info(
-                    f'Finished merging input sequences with CD-HIT-EST. Output file: {merge_output}'
+                    f'Finished merging input sequences with CD-HIT-EST.\nOutput file: {merge_output}'
                 )
 
             except Exception as e:
@@ -719,9 +726,8 @@ def main(
             output_database_path,
             length_file,
             fai_file,
-            symlinked_decompressed_genome_file,
         ) = analyze.check_database(
-            decompressed_genome_file, idx_dir=output_dir, search_type=engine
+            decompressed_genome_file, idx_dir=None, search_type=engine
         )
 
         # Initial call to print 0% progress
@@ -764,7 +770,7 @@ def main(
     analyze_sequence_params = [
         (
             seq,
-            symlinked_decompressed_genome_file,
+            decompressed_genome_file,
             MSA_dir,
             min_blast_len,
             min_seq_num,
@@ -829,7 +835,7 @@ def main(
 
     if processed_count == single_fasta_n:
         logging.info(
-            f'\n\nAll sequences have been analysed!\n'
+            f'All sequences have been analysed!\n'
             f'In the analysed sequences {skipped_count} are skipped. Note: not all skipped sequences can have '
             f"TE Aid plot in the 'TEtrimmer_for_proof_curation' folder.\n"
             f'In the analysed sequences {low_copy_count} are identified as low copy TE.'
@@ -877,11 +883,11 @@ def main(
             )
         elif classified_pro >= 0.99:
             logging.warning(
-                "\nMore than 99% TE are classified, TEtrimmer won't classify 'Unknown' TE by classified TE."
+                "More than 99% TE are classified, TEtrimmer won't classify 'Unknown' TE by classified TE."
             )
         elif classified_pro < 0.3:
             logging.warning(
-                "\nLess than 30% TE are classified, TEtrimmer won't classify 'Unknown' TE by classified TE."
+                "Less than 30% TE are classified, TEtrimmer won't classify 'Unknown' TE by classified TE."
             )
 
     except Exception as e:
@@ -991,7 +997,7 @@ def main(
             tb_content = traceback.format_exc()
             f.write('\nFinal clustering of proof curation files failed.\n')
             f.write(tb_content + '\n\n')
-        logging.error(f'Final clustering of proof curation files failed with error {e}')
+        logging.error(f'Final clustering of proof curation files failed with error: \n{e}')
         logging.error('\n' + tb_content + '')
         logging.warning(
             'This does not affect the final TE consensus sequences. But this can heavily complicate the '
@@ -1034,7 +1040,7 @@ def main(
 
     except Exception as e:
         logging.error(
-            'Whole-genome TE annotation by RepeatMasker failed with error: {e}'
+            f'Whole-genome TE annotation by RepeatMasker failed with error: {e}'
         )
         with open(error_files, 'a') as f:
             # Get the traceback content as a string
@@ -1051,7 +1057,7 @@ def main(
         logging.info(
             f'Removing the decompressed genome file: {decompressed_genome_file}'
         )
-        os.remove(decompressed_genome_file)
+       # os.remove(decompressed_genome_file)
 
     end_time = datetime.now()
     duration = end_time - start_time
