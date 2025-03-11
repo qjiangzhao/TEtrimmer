@@ -429,7 +429,7 @@ def proof_curation(
 
             return chrom_s
         except Exception as e:
-            click.echo(f'\nError while generate genome length file. Error: {str(e)}\n')
+            logging.error(f'\nError while generate genome length file. Error: {str(e)}\n')
             return None
 
     #####################################################################################################
@@ -572,7 +572,7 @@ def proof_curation(
                 except Exception:
                     # Error could happen during genome length calculation, for example when the provided genome
                     # file is not a FAST format file.
-                    click.echo(
+                    logging.error(
                         f'An error occurred during genome length file generation: \n {traceback.format_exc()}'
                     )
                     messagebox.showerror(
@@ -651,7 +651,7 @@ def proof_curation(
                     )
 
                 except Exception as e:
-                    click.echo(
+                    logging.error(
                         f'An error occurred during extension: \n {traceback.format_exc()}'
                     )
                     messagebox.showerror(
@@ -712,7 +712,7 @@ def proof_curation(
                         button.update_idletasks()
 
                 except Exception as e:
-                    click.echo(
+                    logging.error(
                         f'An error occurred during TEAid plotting: \n {traceback.format_exc()}'
                     )
                     messagebox.showerror(
@@ -754,14 +754,14 @@ def proof_curation(
                     input_file = os.path.join(source_dir, input_fasta_n)
                     output_file = os.path.join(output_dir_g, f'{input_fasta_n}_CDiv.fa')
 
-                    click.echo('\nCropDiv is running ......')
+                    logging.info('\nCropDiv is running ......')
                     crop_end_div(
                         input_file,
                         output_file,
                         threshold=crop_div_thr_g,
                         window_size=crop_div_win_g,
                     )
-                    click.echo('\nCropDiv is finished.')
+                    logging.info('\nCropDiv is finished.')
 
                     # if os_type == "Darwin":
                     #     button.config(fg='red')  # Change button text color under macOS system
@@ -785,7 +785,7 @@ def proof_curation(
                     )
 
                 except Exception as e:
-                    click.echo(
+                    logging.error(
                         f'An error occurred for crop end by divergence: \n {traceback.format_exc()}'
                     )
                     messagebox.showerror(
@@ -822,14 +822,14 @@ def proof_curation(
                     input_file = os.path.join(source_dir, input_fasta_n)
                     output_file = os.path.join(output_dir_g, f'{input_fasta_n}_CGap.fa')
 
-                    click.echo('\nCropGap is running ......')
+                    logging.info('\nCropGap is running ......')
                     crop_end_gap(
                         input_file,
                         output_file,
                         gap_threshold=crop_gap_thr_g,
                         window_size=crop_gap_win_g,
                     )
-                    click.echo('\nCropGap is finished.')
+                    logging.info('\nCropGap is finished.')
 
                     # if os_type == "Darwin":
                     #     button.config(fg='red')  # Change button text color under macOS system
@@ -853,7 +853,7 @@ def proof_curation(
                     )
 
                 except Exception as e:
-                    click.echo(
+                    logging.error(
                         f'An error occurred for crop end by gap: \n {traceback.format_exc()}'
                     )
                     messagebox.showerror(
@@ -890,7 +890,7 @@ def proof_curation(
                     input_file = os.path.join(source_dir, input_fasta_n)
                     output_file = os.path.join(output_dir_g, f'{input_fasta_n}_CCol.fa')
 
-                    click.echo('\nCleanCol is running ......')
+                    logging.info('\nCleanCol is running ......')
                     remove_gaps_with_similarity_check(
                         input_file,
                         output_file,
@@ -899,7 +899,7 @@ def proof_curation(
                         similarity_thr=similarity_thr_g,
                         min_nucleotide=min_nucleotide_g,
                     )
-                    click.echo('\nCleanCol is finished.')
+                    logging.info('\nCleanCol is finished.')
 
                     # if os_type == "Darwin":
                     #     button.config(fg='red')  # Change button text color under macOS system
@@ -923,7 +923,7 @@ def proof_curation(
                     )
 
                 except Exception as e:
-                    click.echo(
+                    logging.error(
                         f'An error occurred for cleaning gap columns: \n {traceback.format_exc()}'
                     )
                     messagebox.showerror(
@@ -959,7 +959,7 @@ def proof_curation(
                 )
 
             except Exception as e:
-                click.echo(
+                logging.error(
                     f'An error occurred during separating Consensus Library: \n {traceback.format_exc()}'
                 )
                 messagebox.showerror(
@@ -1128,7 +1128,7 @@ def proof_curation(
                         )
 
                 except Exception as e:
-                    click.echo(
+                    logging.error(
                         f'An error occurred during blast: \n {traceback.format_exc()}'
                     )
                     messagebox.showerror(
@@ -1184,7 +1184,7 @@ def proof_curation(
                     cons_button.update_idletasks()
 
                 except Exception as e:
-                    click.echo(
+                    logging.error(
                         f'An error for consensus sequence genration: \n {traceback.format_exc()}'
                     )
                     messagebox.showerror(
@@ -1204,7 +1204,7 @@ def proof_curation(
                     drawMiniAlignment(input_fasta_file, cialign_plot_file, dpi=300)
 
                 except Exception as e:
-                    click.echo(
+                    logging.error(
                         f'An error for CIAlign plotting: \n {traceback.format_exc()}'
                     )
                     messagebox.showerror(
@@ -2983,12 +2983,12 @@ def proof_curation(
         if messagebox.askokcancel('Quit', 'Do you really want to quit?'):
             # Remove all files in the temp_folder
             try:
-                click.echo('TEtrimmer is cleaning temporary files')
+                logging.info('TEtrimmer is cleaning temporary files')
                 shutil.rmtree(temp_folder)
-                click.echo('All temporary files are cleaned')
+                logging.info('All temporary files are cleaned')
 
                 if is_gzipped and genome_file.endswith('.gz'):
-                    click.echo(f'Removing the decompressed genome file: {decompressed_genome_file}')
+                    logging.info(f'Removing the decompressed genome file: {decompressed_genome_file}')
                     # Remove the unzipped copy of the genome_file if it exists
                     os.remove(decompressed_genome_file)
 
