@@ -10,6 +10,8 @@ from functools import partial
 import click
 from Bio import SeqIO
 
+from .._version import __version__
+from ..utils.checks import check_tools
 from .cialign_plot import drawMiniAlignment
 
 # Import cleaning module
@@ -54,60 +56,23 @@ except ImportError:
     print('tkinter (TK) is not available in your Python installation.')
 
 
-# def install_and_import(required_packages_dict):
-#    for package in required_packages_dict:
-#        try:
-#            __import__(package)
-#        except ImportError:
-#            try:
-#                print(f'{package} was not found. Installing it automatically.')
-#                subprocess.check_call(
-#                    [
-#                        sys.executable,
-#                        '-m',
-#                        'pip',
-#                        'install',
-#                        required_packages_dict[package],
-#                    ]
-#                )
-#                print(f'{package} was successfully installed.')
-#            except subprocess.CalledProcessError as e:
-#                print(
-#                    f'\nRequired Python packages are missing and cannot be installed automatically. Installation failed with error {e.stderr}'
-#                    "\nPlease install 'click' and 'biopython' using 'pip install'.\n"
-#                )
-#                return
-#
-#
-# required_packages = {
-#    'click': 'click',
-#    'Bio': 'biopython',
-#    'numpy': 'numpy',
-#    'pandas': 'pandas',
-#    'plotly': 'plotly',
-#    'matplotlib': 'matplotlib',
-#    'requests': 'requests',
-# }
-# install_and_import(required_packages)
-
-
 #####################################################################################################
-# Code block: make Aliveiw available to be used
+# Code block: Get the variables for the script
 #####################################################################################################
-# Change Aliview permission
-def change_permissions_recursive(input_dir, mode):
-    try:
-        for dirpath, dirnames, filenames in os.walk(input_dir):
-            os.chmod(dirpath, mode)
-            for filename in filenames:
-                os.chmod(os.path.join(dirpath, filename), mode)
-    except PermissionError:
-        click.echo(
-            'TEtrimmer does not have rights to change permissions. Pleas use sudo to run TEtrimmer'
-        )
-        return False
-    return True
 
+def check_aliview(jarpath=None):
+    """
+    Check if AliView is available on the system's PATH.
+    """
+   # If jarpath is provided, check if file exists
+    if jarpath:
+        if os.path.isfile(jarpath):
+            return jarpath
+        else:
+            raise FileNotFoundError(f"AliView jar file not found at {jarpath}")
+    else:
+        # Check if aliview is available on the system's PATH
+        check_tools(required_tools=['aliview'])
 
 def get_original_file_path():
     """Get the path of the original script file, whether running in development or as a PyInstaller bundle."""
@@ -123,15 +88,8 @@ def get_original_file_path():
 # Detect system OS type
 os_type = platform.system()
 
-# Define Aliview software path and change permission
+# Get path to TEtrimmerGUI.py
 bin_py_path = get_original_file_path()
-
-aliview_folder = os.path.join(bin_py_path, 'aliview')
-# change_permissions_recursive(aliview_folder, 0o755)
-
-aliview_path = os.path.join(bin_py_path, 'aliview/aliview')
-if os_type == 'Windows':
-    aliview_path = os.path.join(bin_py_path, r'aliview\aliview.jar')
 
 
 #####################################################################################################
@@ -185,6 +143,12 @@ if os_type == 'Windows':
     'Then, TEtrimmerGUI will randomly select sequences from all remaining BLAST hits until <max_msa_lines>'
     'sequences are found. Default: 100',
 )
+@click.option(
+    '--aliview_jar',
+    type=str,
+    default=None,
+    help='Path to the AliView jar file. If not provided, search for "aliview" executable on the PATH.',
+)
 def proof_curation(
     te_trimmer_proof_curation_dir,
     output_dir,
@@ -193,13 +157,19 @@ def proof_curation(
     cdd_dir,
     max_msa_lines,
     top_msa_lines,
+    aliview_jar,
 ):
     """
     This GUI is designed to inspect and improve TEtrimmer outputs and any TE consensus libraries.
 
     python ./TEtrimmerGUI.py -i <TEtrimmer_for_proof_curation_folder> -g <genome_file.fa>
     """
-    # other consensus library means any TE consensus library. It could be the TE consensus library from TEtrimmer,
+
+    # Check that required tools are available
+    check_tools(required_tools=['java', 'makeblastdb', 'blastn', 'mafft'])
+    check_aliview(jarpath=aliview_jar)
+
+    # Other consensus library means any TE consensus library. It could be the TE consensus library from TEtrimmer,
     # or any other TE annotation software.
     # Make directory for temporary files
     temp_folder = os.path.join(bin_py_path, 'temp_TEtrimmer_clustered')
@@ -215,8 +185,6 @@ def proof_curation(
     )
 
     # Create cdd database directory when it is not given
-    # /TEtrimmerGUI/cdd_database/cdd_unzipped/cdd_profile*
-
     # cdd_dir_default is the path to store cdd database when the database is not provided
     cdd_dir_default = os.path.join(bin_py_path, 'cdd_database')
 
@@ -363,7 +331,7 @@ def proof_curation(
 
     # Initialize Tk window
     root = Tk()
-    root.title('TEtrimmer Proof Curation Tool v1.4.1')
+    root.title(f'TEtrimmer Proof Curation Tool {__version__}')
     # width * height
     if os_type == 'Windows':
         root.geometry('1000x800')
@@ -1926,7 +1894,7 @@ def proof_curation(
         return _copy_file
 
     # Set nested function to enable this function containing parameters to be used by button
-    def open_file(filename, button, source_dir):
+    def open_file(filename, button, source_dir, aliview_jar_path=None):
         def _open_file(event):
             filepath = os.path.join(source_dir, filename)
             # if os_type == "Darwin":
@@ -1942,10 +1910,10 @@ def proof_curation(
                 open_cluster_folder(filename, source_dir)
             else:
                 if filename.lower().endswith(('.fa', '.fasta')):
-                    if os_type == 'Windows':
-                        subprocess.run(['java', '-jar', aliview_path, filepath])
+                    if aliview_jar_path:
+                        subprocess.run(['java', '-jar', aliview_jar_path, filepath])
                     else:
-                        subprocess.run([aliview_path, filepath])
+                        subprocess.run(['aliview', filepath])
                 elif filename.lower().endswith('.pdf'):
                     if os_type == 'Linux':
                         subprocess.run(['xdg-open', filepath])
