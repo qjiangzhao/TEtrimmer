@@ -110,8 +110,11 @@ def check_database(genome_file, output_dir=None, os_type='Darwin'):
             # Check if the makeblastdb command is available in PATH
             check_cmd_in_path('makeblastdb')
 
+            # Make makeblastdb command to create a BLAST database
+            makeblastdb_cmd = f'makeblastdb -in {genome_file} -dbtype nucl -out {database_path}'
+
             subprocess.run(
-                'makeblastdb',
+                makeblastdb_cmd,
                 shell=True,
                 check=True,
                 stdout=subprocess.PIPE,
