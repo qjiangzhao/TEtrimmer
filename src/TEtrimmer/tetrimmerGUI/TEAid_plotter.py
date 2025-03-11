@@ -1,10 +1,10 @@
+import logging
 import os
 import platform
 import traceback
 import warnings
 from tkinter import messagebox
 
-import click
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -62,12 +62,12 @@ def teaid_genome_blast(input_file, genome_file, output_dir, e_value, num_threads
     # Used global variable: os_type
 
     if genome_file is None:
-        click.echo("WARNING: Genome file not found. TEAid can't perform genome blast.")
+        logging.error("WARNING: Genome file not found. TEAid can't perform genome blast.")
         return False
 
     # Check if provided genome file exist
     elif not os.path.isfile(genome_file):
-        click.echo(
+        logging.error(
             "WARNING: You provided genome file not found. TEAid can't perform genome blast."
         )
         return False
@@ -77,14 +77,14 @@ def teaid_genome_blast(input_file, genome_file, output_dir, e_value, num_threads
 
     # Check if makeblastdb is correctly installed
     if blast_database == 'makeblastdb_not_found':
-        click.echo(
+        logging.error(
             "Error: makeblastdb command not found. TEAid can't perform genome blast."
         )
         return False
 
     # Check if error happened
     elif blast_database == 'makeblastdb_got_error':
-        click.echo(
+        logging.error(
             "Error: BLAST database can't be established for the genome. TEAid can't perform genome blast."
         )
         return False
@@ -100,21 +100,21 @@ def teaid_genome_blast(input_file, genome_file, output_dir, e_value, num_threads
     )
 
     if genome_blast_out == 'blastn_not_found':
-        click.echo("Error: BLAST command not found. TEAid can't perform genome blast.")
+        logging.error("Error: BLAST command not found. TEAid can't perform genome blast.")
         return False
 
     elif genome_blast_out == 'blastn_got_error':
-        click.echo(
+        logging.error(
             "TEAid can't perform genome blast. Refer to terminal for more information."
         )
         return False
 
     elif genome_blast_out == 'blast_n_zero':
-        click.echo('Genome blast hit number is 0 for this sequence.')
+        logging.warning('Genome blast hit number is 0 for this sequence.')
         return 'blast_n_zero'
 
     elif not genome_blast_out:
-        click.echo(
+        logging.error(
             "TEAid can't perform genome blast. Refer to terminal for more information."
         )
         return False
@@ -140,14 +140,14 @@ def self_blast(input_file, output_dir):
 
     # Check if makeblastdb is correctly installed
     if blast_database == 'makeblastdb_not_found':
-        click.echo(
+        logging.error(
             "Error: makeblastdb command not found. TEAid can't perform self blast."
         )
         return False
 
     # Check if error happened
     elif blast_database == 'makeblastdb_got_error':
-        click.echo(
+        logging.error(
             "Error: BLAST database can't be established for the genome. TEAid can't perform self blast."
         )
         return False
@@ -162,21 +162,21 @@ def self_blast(input_file, output_dir):
     )
 
     if self_blast_out == 'blastn_not_found':
-        click.echo("Error: BLAST command not found. TEAid can't perform self blast.")
+        logging.error("Error: BLAST command not found. TEAid can't perform self blast.")
         return False
 
     elif self_blast_out == 'blastn_got_error':
-        click.echo(
+        logging.error(
             "TEAid can't perform self blast. Refer to terminal for more information."
         )
         return False
 
     elif self_blast_out == 'blast_n_zero':
-        click.echo('Self blast hit number is 0 for this sequence.')
+        logging.warning('Self blast hit number is 0 for this sequence.')
         return 'blast_n_zero'
 
     elif not self_blast_out:
-        click.echo(
+        logging.error(
             "TEAid can't perform self blast. Refer to terminal for more information."
         )
         return False
@@ -200,7 +200,7 @@ def empty_plot(seq_len, width_n=600, height_n=600, custom_text=None):
                 y=[5],  # Centered in the middle of the y-axis range
                 text=[custom_text],
                 mode='text',
-                textfont=dict(size=16, family='Arial, sans-serif', color='black'),
+                textfont={'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
                 textposition='middle center',
                 showlegend=False,
                 hoverinfo='none',
@@ -795,14 +795,14 @@ def teaid_plotter(
 
     run_succeed = True
 
-    click.echo(f'\nTEAid running:{os.path.basename(input_file)}')
+    logging.info(f'\nTEAid running:{os.path.basename(input_file)}')
 
     try:
         # Generate consensus sequence
         con_seq, cons_len = con_generater(input_file, output_dir, threshold=0.3)
 
     except Exception as e:
-        click.echo(
+        logging.error(
             f'An error for consensus sequence generation: \n {traceback.format_exc()}'
         )
         messagebox.showerror(
@@ -891,7 +891,7 @@ def teaid_plotter(
                     custom_text='No protein domains found',
                 )
                 num_tracks = 1
-                click.echo('rpstblastn_n_zero')
+                logging.info('rpstblastn_n_zero')
             else:
                 fig_rpstblastn, num_tracks = plot_rpsblast_hits(
                     rpstblastn_out, cons_len
@@ -905,7 +905,7 @@ def teaid_plotter(
                 custom_text='An error occurred. Please check the terminal for details.',
             )
             num_tracks = 1
-            click.echo('Error: rpstblastn')
+            logging.error('Error: rpstblastn')
 
     else:
         fig_rpstblastn = empty_plot(
@@ -1082,6 +1082,6 @@ def teaid_plotter(
     )
     pio.write_html(fig, file=output_html_path, auto_open=True)
 
-    click.echo(f'\nTEAid finished: {os.path.basename(input_file)}.')
+    logging.info(f'\nTEAid finished: {os.path.basename(input_file)}.')
     # fig.show()
     return run_succeed

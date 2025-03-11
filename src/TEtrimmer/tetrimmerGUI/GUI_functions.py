@@ -1,4 +1,5 @@
 import gzip
+import logging
 import os
 import random
 import shutil
@@ -9,7 +10,6 @@ import threading
 import traceback
 import urllib.request
 
-import click
 import pandas as pd
 import requests
 from Bio import SeqIO
@@ -30,9 +30,9 @@ special_character = {
 def check_cmd_in_path(cmd):
     cmd_path = shutil.which(cmd)
     if cmd_path:
-        print(f"{cmd} is available at: {cmd_path}")
+        logging.info(f"{cmd} is available at: {cmd_path}")
     else:
-        print(f"{cmd} is not available in the system's PATH")
+        logging.error(f"{cmd} is not available in the system's PATH")
         # Raise error if tool is not available
         raise FileNotFoundError
 
@@ -124,18 +124,18 @@ def check_database(genome_file, output_dir=None, os_type='Darwin'):
             return database_path
 
         except FileNotFoundError:
-            click.echo(
+            logging.error(
                 f"'makeblastdb' command not found. Please ensure 'makeblastdb' is installed correctly.\n"
                 f'{traceback.format_exc()}'
             )
             return 'makeblastdb_not_found'
 
         except subprocess.CalledProcessError as e:
-            click.echo(
+            logging.error(
                 f'makeblastdb failed with exit code {e.returncode} \n'
                 f'{traceback.format_exc()}'
             )
-            click.echo(e.stderr)
+            logging.error(e.stderr)
             return 'makeblastdb_got_error'
     else:
         return database_path
@@ -207,17 +207,17 @@ def blast(
         subprocess.run(blast_cmd, check=True, capture_output=True, text=True)
 
     except FileNotFoundError:
-        click.echo(
+        logging.error(
             f"'blastn' command not found. Please ensure 'blastn' is installed correctly.\n"
             f'{traceback.format_exc()}'
         )
         return 'blastn_not_found', False
 
     except subprocess.CalledProcessError as e:
-        click.echo(f'An error occurred during BLAST: \n {traceback.format_exc()}')
-        click.echo(f'\nBLAST failed with error code {e.returncode}')
+        logging.error(f'An error occurred during BLAST: \n {traceback.format_exc()}')
+        logging.error(f'\nBLAST failed with error code {e.returncode}')
         # Print the error generated from the BLAST itself
-        click.echo(e.stderr)
+        logging.error(e.stderr)
         return 'blastn_got_error', False
 
     # Check if the blast hit number is 0
@@ -260,7 +260,7 @@ def blast(
             return blast_out_teaid_file, False
 
         except Exception:
-            click.echo(
+            logging.error(
                 f'An error occurred while processing the BLAST output for TE-Aid : \n {traceback.format_exc()}'
             )
             return False, False
@@ -321,7 +321,7 @@ def blast(
             return blast_out_bed_file, blast_out_file_header
 
         except Exception:
-            click.echo(
+            logging.error(
                 f'An error occurred while processing the BLAST output for BED file : \n {traceback.format_exc()}'
             )
             return False, False
@@ -535,7 +535,7 @@ def check_and_download(directory, check_pattern, filename, url):
 
     # Check if the cdd database is already downloaded but not unzipped
     if os.path.isfile(os.path.join(directory, filename)) and not os.path.isfile(check_pattern_file_path):
-        click.echo(
+        logging.info(
             '\n CDD database is found but not unzipped. Unzipping......'
         )
 
@@ -543,7 +543,7 @@ def check_and_download(directory, check_pattern, filename, url):
         with tarfile.open(os.path.join(directory, filename), 'r:gz') as tar:
             tar.extractall(path=directory)
 
-        click.echo(
+        logging.info(
             f'\n{filename} is unzipped. CDD database was stored in \n'
             f'{directory}\n'
         )
@@ -552,7 +552,7 @@ def check_and_download(directory, check_pattern, filename, url):
 
     # If cdd database was not found, download it
     if not os.path.isfile(check_pattern_file_path) and not os.path.isfile(os.path.join(directory, filename)):
-        click.echo(
+        logging.warning(
             '\n CDD database not found. Downloading... This might take some time. Please be patient.\n'
         )
 
@@ -565,7 +565,7 @@ def check_and_download(directory, check_pattern, filename, url):
             requests.exceptions.HTTPError,
             requests.exceptions.ConnectionError,
         ) as e:
-            click.echo(
+            logging.error(
                 f'\nFailed to reach the server at {url} for downloading cdd database. {e}\n'
             )
             return False
@@ -576,7 +576,7 @@ def check_and_download(directory, check_pattern, filename, url):
             )  # Provide a defined name for the file that will be downloaded
             urllib.request.urlretrieve(url, gz_file_path, show_progress)
 
-            click.echo('\n CDD database is downloaded. Unzipping......')
+            logging.info('\n CDD database is downloaded. Unzipping......')
 
             # Unzipping using tarfile
             with tarfile.open(gz_file_path, 'r:gz') as tar:
@@ -585,23 +585,23 @@ def check_and_download(directory, check_pattern, filename, url):
             # Delete gz file after extraction
             # os.remove(gz_file_path)
 
-            click.echo(
+            logging.info(
                 f'\n{filename} is downloaded and unzipped. CDD database was stored in \n'
                 f'{directory}\n'
             )
 
         except Exception:
-            click.echo('TEtrimmer failed to unpack the downloaded cdd database.')
+            logging.error('TEtrimmer failed to unpack the downloaded cdd database.')
             return False
 
     # Check if download was successful
     if os.path.isfile(check_pattern_file_path):
-        click.echo('CDD database is found.')
+        logging.info('CDD database is found.')
 
         return True
 
     else:
-        click.echo(
+        logging.error(
             'The CDD database cannot be downloaded by TEtrimmerGUI. Please check your internet connection '
             "or download CDD database manually and use '--cdd_dir' to indicate your cdd database path. "
             'After downloading, you have to unzip it by yourself. '
@@ -638,7 +638,7 @@ def check_cdd_index_files(directory):
     if not missing_files:
         return True
     else:
-        click.echo(
+        logging.error(
             f'CDD index files are missing in the provided directory. The following files are missing: {missing_files}'
         )
         return False
@@ -681,11 +681,11 @@ def prepare_cdd_database(cdd_database_dir, os_type='Darwin'):
             ]
 
             try:
-                print(
+                logging.warning(
                     'CDD database index file not found. Making it ...... This can take around 10 mins.'
                 )
 
-                print(' '.join(makeprofiledb_cmd))
+                logging.info(' '.join(makeprofiledb_cmd))
 
                 # Run the makeprofiledb command from the cdd_database_dir (with cwd).
                 subprocess.run(
@@ -698,9 +698,9 @@ def prepare_cdd_database(cdd_database_dir, os_type='Darwin'):
                 )
 
                 if check_cdd_index_files(cdd_database_dir):
-                    print('CDD profile database index file generated.')
+                    logging.info('CDD profile database index file generated.')
                 else:
-                    print('CDD profile database index file generation failed.')
+                    logging.error('CDD profile database index file generation failed.')
                     raise FileNotFoundError
 
                 # Change global variable prepared_cdd_g when it is generated successfully
@@ -708,21 +708,18 @@ def prepare_cdd_database(cdd_database_dir, os_type='Darwin'):
                 return os.path.join(cdd_database_dir, 'cdd_profile')
 
             except FileNotFoundError:
-                print("'makeprofiledb' command not found.")
+                logging.error("'makeprofiledb' command not found.")
                 return False
 
             except subprocess.CalledProcessError as e:
-                print(
-                    f'\nCDD index file generation failed with error code {e.returncode}'
-                )
-                print(f'\n{e.stdout}')
-                print(f'\n{e.stderr}')
+                logging.error(
+                    f'\nCDD index file generation failed with error code {e.returncode}\n{e.stdout}\n{e.stderr}')
                 return False
         else:
             return False
 
     except Exception as e:
-        print(f'\nDownloading CDD database failed with error {e}')
+        logging.error(f'\nDownloading CDD database failed with error {e}')
         return False
 
 
@@ -763,30 +760,31 @@ def rpstblastn(
     ]
 
     try:
-        # click.echo("rpstblastn is running......")
+        # Print the rpstblastn command
+        logging.info(' '.join(rpsblast_cmd))
         # Run the rpstblastn command
         subprocess.run(rpsblast_cmd, check=True, capture_output=True, text=True)
-        # click.echo("rpstblastn is finished.")
+
 
         # Check if the blast hit number is 0
         if (
             os.path.isfile(rpstblastn_out_file)
             and os.path.getsize(rpstblastn_out_file) == 0
         ):
-            click.echo('rpstblastn hit number is 0.')
+            logging.warning('rpstblastn hit number is 0.')
             return 'rpstblastn_n_zero'
 
         return rpstblastn_out_file
 
     except FileNotFoundError:
-        click.echo(f"'rpsblastn' command not found.\n{traceback.format_exc()}")
+        logging.error(f"'rpsblastn' command not found.\n{traceback.format_exc()}")
         return False
 
     except subprocess.CalledProcessError as e:
-        click.echo(f'An error occurred during rpstblastn: \n {traceback.format_exc()}')
-        click.echo(f'\nrpstblastn failed with error code {e.returncode}')
+        logging.error(f'An error occurred during rpstblastn: \n {traceback.format_exc()}')
+        logging.error(f'\nrpstblastn failed with error code {e.returncode}')
         # Print the error generated from the BLAST itself
-        click.echo(e.stderr)
+        logging.error(e.stderr)
         return False
 
 

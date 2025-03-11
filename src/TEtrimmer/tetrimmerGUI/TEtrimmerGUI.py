@@ -1,3 +1,4 @@
+import logging
 import os
 import platform
 import re
@@ -12,6 +13,7 @@ from Bio import SeqIO
 
 from .._version import __version__
 from ..utils.checks import check_tools
+from ..utils.logs import init_logging
 from .cialign_plot import drawMiniAlignment
 
 # Import cleaning module
@@ -53,7 +55,7 @@ try:
         ttk,
     )
 except ImportError:
-    print('tkinter (TK) is not available in your Python installation.')
+    logging.info('tkinter (TK) is not available in your Python installation.')
 
 
 #####################################################################################################
@@ -64,7 +66,7 @@ def check_aliview(jarpath=None):
     """
     Check if AliView is available on the system's PATH.
     """
-   # If jarpath is provided, check if file exists
+    # If jarpath is provided, check if file exists
     if jarpath:
         if os.path.isfile(jarpath):
             return jarpath
@@ -149,6 +151,15 @@ bin_py_path = get_original_file_path()
     default=None,
     help='Path to the AliView jar file. If not provided, search for "aliview" executable on the PATH.',
 )
+@click.option('--logfile', '-l', default=None, type=str, help='Path to log file.')
+@click.option(
+    '--loglevel',
+    '-ll',
+    default='INFO',
+    type=str,
+    help='Log level. [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
+)
+@click.version_option(__version__, prog_name='TEtrimmer')
 def proof_curation(
     te_trimmer_proof_curation_dir,
     output_dir,
@@ -158,6 +169,8 @@ def proof_curation(
     max_msa_lines,
     top_msa_lines,
     aliview_jar,
+    logfile,
+    loglevel,
 ):
     """
     This GUI is designed to inspect and improve TEtrimmer outputs and any TE consensus libraries.
@@ -165,9 +178,14 @@ def proof_curation(
     python ./TEtrimmerGUI.py -i <TEtrimmer_for_proof_curation_folder> -g <genome_file.fa>
     """
 
+
+
     # Check that required tools are available
     check_tools(required_tools=['java', 'makeblastdb', 'blastn', 'mafft'])
     check_aliview(jarpath=aliview_jar)
+
+    # Initialize the logging system
+    init_logging(loglevel=loglevel, logfile=logfile)
 
     # Other consensus library means any TE consensus library. It could be the TE consensus library from TEtrimmer,
     # or any other TE annotation software.
@@ -190,13 +208,13 @@ def proof_curation(
 
     if cdd_dir is None:
         cdd_dir = cdd_dir_default
-        print(f"Checking for CDD in default location: {cdd_dir_default}")
+        logging.info(f"Checking for CDD in default location: {cdd_dir_default}")
     else:
-        print(f"Checking for CDD user provided path: {cdd_dir}")
+        logging.info(f"Checking for CDD user provided path: {cdd_dir}")
 
     # Check if cdd_dir is a valid directory
     if not os.path.isdir(cdd_dir):
-        print(f"Directory {cdd_dir} does not exist. Creating it.")
+        logging.info(f"Directory {cdd_dir} does not exist. Creating it.")
         os.makedirs(cdd_dir, exist_ok=True)
 
     # Define prepared cdd global variable
@@ -1448,7 +1466,7 @@ def proof_curation(
                         )
         else:
             prepared_cdd_g = os.path.join(cdd_dir, 'cdd_profile')
-            print(f'CDD database is prepared at {prepared_cdd_g}')
+            logging.info(f'CDD database is prepared at {prepared_cdd_g}')
             messagebox.showinfo("Information", "CDD database is prepared.")
 
     def clear_frame():
@@ -1456,7 +1474,7 @@ def proof_curation(
             widget.destroy()
 
     def open_start_page():
-        print("Open start page")
+        logging.info("Open start page")
         clear_frame()  # Clear any existing widgets in the frame
 
         # Create and pack the logo label
