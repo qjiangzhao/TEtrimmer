@@ -377,13 +377,7 @@ def main(
     curatedlib,
     logfile,
     loglevel,
-    version=None,
 ):
-    # Print the version and exit
-    if version:
-        click.echo(f'TEtrimmer {__version__}')
-        exit()
-
     # Add this to click options if mmseq2 has been fully tested
     engine = 'blast'
 
@@ -1046,7 +1040,7 @@ def main(
                 thread=num_threads,
             )
             if genome_anno_result:
-                click.echo('\nFinished whole genome TE annotation by RepeatMasker\n')
+                logging.info.echo('\nFinished whole genome TE annotation by RepeatMasker\n')
 
     except Exception as e:
         logging.error(
