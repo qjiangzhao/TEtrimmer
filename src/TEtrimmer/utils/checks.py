@@ -33,7 +33,7 @@ def check_tools(required_tools=[], optional_tools=[]):
         print(message, file=sys.stderr)
 
     # Check required tools
-    logging.info('Checking for dependencies:')
+    print('Checking for dependencies:')
     for tool in required_tools:
         path = shutil.which(tool)
         if path:
