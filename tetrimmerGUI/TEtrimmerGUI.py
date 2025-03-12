@@ -79,7 +79,7 @@ os_type = platform.system()
 bin_py_path = get_original_file_path()
 
 aliview_folder = os.path.join(bin_py_path, "aliview")
-#change_permissions_recursive(aliview_folder, 0o755)
+change_permissions_recursive(aliview_folder, 0o755)
 
 aliview_path = os.path.join(bin_py_path, "aliview/aliview")
 if os_type == "Windows":
@@ -104,7 +104,7 @@ if os_type == "Windows":
                    'library e.g. The TE library directly from EDTA2, RepeatModeler2, and other tools. If you want to '
                    'check the same TE library as last time, you do not need to use this option again.')
 @click.option('--cdd_dir', '-cdd', default=None, type=str,
-              help='NCBI cdd database path.')
+              help='The directory path that contain downloaded and indexed NCBI cdd database.')
 @click.option('--max_msa_lines', type=int, default=100,
               help='Set the maximum number of sequences to be included when click "Blast" button. Default: 100')
 @click.option('--top_msa_lines', type=int, default=70,

@@ -142,7 +142,7 @@ with open(config_path, "r") as config_file:
                     'has proportion smaller than <ext_thr>, a “N” will be called at this position. Used with <ext_check_win>. ' 
                     'The lower the value of <ext_thr>, the more likely to get longer the extensions on both ends. '
                     'You can try reducing <ext_thr> if TEtrimmer fails to find full-length TEs. Default: 0.7')
-@click.option('--ext_check_win', type=str,
+@click.option('--ext_check_win', type=int,
               help='the check windows size during defining start and end of the consensus sequence based on the multiple '
                     'sequence alignment. Used with <ext_thr>. If <ext_check_win> bp at the end of multiple sequence alignment ' 
                     'has “N” present (ie. positions have similarity proportion smaller than <ext_thr>), the extension will stop, '
