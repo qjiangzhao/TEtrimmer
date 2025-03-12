@@ -24,7 +24,7 @@ classifiers = [
 
 # Project dependencies
 dependencies = ["biopython>=1.70", "click", "dataclasses", "dill", "ghostscript", "joblib",
-"matplotlib", "multiprocess", "numpy", "pandas", "plotly", "pypdf2", "regex", "requests", "scikit-learn", "tk", "urllib3"
+"matplotlib", "multiprocess", "numpy", "pandas", "plotly", "pypdf2", "regex", "requests", "seaborn", "scikit-learn", "tk", "urllib3"
 ]
 
 # Dynamic versioning

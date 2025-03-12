@@ -39,6 +39,7 @@ dependencies:
     - pypdf2
     - regex
     - requests
+    - seaborn
     - scikit-learn
     - tk
     - urllib3
