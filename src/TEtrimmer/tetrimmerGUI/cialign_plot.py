@@ -127,7 +127,7 @@ def arrNumeric(arr):
 
     # make a dictionary where each integer corresponds to a base or nt
     i = 0
-    nD = dict()
+    nD = {}
     colours = []
     for key in keys:
         if key in arr:

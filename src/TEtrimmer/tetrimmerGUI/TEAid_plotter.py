@@ -209,32 +209,32 @@ def empty_plot(seq_len, width_n=600, height_n=600, custom_text=None):
 
     # Update layout to match the style of other plots
     fig.update_layout(
-        xaxis=dict(
-            title='',  # No title for empty plot
-            showgrid=False,
-            zeroline=False,
-            linewidth=1,
-            linecolor='black',
-            mirror=True,
-            range=[0, int(seq_len)],  # Adjusted range for normalization
-            ticks='',  # Hide tick marks
-            showticklabels=True,  # Hide tick labels
-        ),
-        yaxis=dict(
-            title='',  # No title for empty plot
-            showgrid=False,
-            zeroline=False,
-            linewidth=1,
-            linecolor='black',
-            mirror=True,
-            range=[0, 10],
-            ticks='',
-            showticklabels=True,
-        ),
+        xaxis={
+            'title': '',  # No title for empty plot
+            'showgrid': False,
+            'zeroline': False,
+            'linewidth': 1,
+            'linecolor': 'black',
+            'mirror': True,
+            'range': [0, int(seq_len)],  # Adjusted range for normalization
+            'ticks': '',  # Hide tick marks
+            'showticklabels': True,  # Hide tick labels
+        },
+        yaxis={
+            'title': '',  # No title for empty plot
+            'showgrid': False,
+            'zeroline': False,
+            'linewidth': 1,
+            'linecolor': 'black',
+            'mirror': True,
+            'range': [0, 10],
+            'ticks': '',
+            'showticklabels': True,
+        },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin=dict(l=60, r=60, t=60, b=60),
-        font=dict(family='Arial, sans-serif', size=12, color='black'),
+        margin={'l': 60, 'r': 60, 't': 60, 'b': 60},
+        font={'family': 'Arial, sans-serif', 'size': 12, 'color': 'black'},
         width=int(width_n),
         height=int(height_n),
     )
@@ -268,7 +268,7 @@ def blast_plot(df, cons_len, full_len_thr=0.8):
                 x=[df.loc[i, 'V7'], df.loc[i, 'V8']],
                 y=[100 - df.loc[i, 'V3'], 100 - df.loc[i, 'V3']],
                 mode='lines',
-                line=dict(color='black'),
+                line={'color': 'black'},
                 hoverinfo='text',
                 text=create_hovertext(df.loc[i]),
                 showlegend=False,
@@ -282,7 +282,7 @@ def blast_plot(df, cons_len, full_len_thr=0.8):
                 x=[full.loc[i, 'V7'], full.loc[i, 'V8']],
                 y=[100 - full.loc[i, 'V3'], 100 - full.loc[i, 'V3']],
                 mode='lines',
-                line=dict(color='red', width=3),
+                line={'color': 'red', 'width': 3},
                 hoverinfo='text',
                 text=create_hovertext(full.loc[i]),
                 showlegend=False,
@@ -297,28 +297,28 @@ def blast_plot(df, cons_len, full_len_thr=0.8):
         title=plot_title,
         xaxis_title='TE consensus (bp)',
         yaxis_title='Divergence to consensus (%)',
-        xaxis=dict(
-            title_font=dict(size=16, family='Arial, sans-serif', color='black'),
-            showgrid=False,
-            range=[0, cons_len + 10],
-            linewidth=1,
-            linecolor='black',
-            mirror=True,
-        ),
-        yaxis=dict(
-            showgrid=False,
-            title_font=dict(size=16, family='Arial, sans-serif', color='black'),
-            range=[-(y_max / 30), y_max + (y_max / 30)],
-            linewidth=1,
-            linecolor='black',
-            mirror=True,
-        ),
+        xaxis={
+            'title_font': {'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
+            'showgrid': False,
+            'range': [0, cons_len + 10],
+            'linewidth': 1,
+            'linecolor': 'black',
+            'mirror': True,
+        },
+        yaxis={
+            'showgrid': False,
+            'title_font': {'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
+            'range': [-(y_max / 30), y_max + (y_max / 30)],
+            'linewidth': 1,
+            'linecolor': 'black',
+            'mirror': True,
+        },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin=dict(
-            l=60, r=60, t=60, b=60
-        ),  # Adjust margins to ensure frame visibility
-        font=dict(family='Arial, sans-serif', size=12, color='black'),
+        margin={
+            'l': 60, 'r': 60, 't': 60, 'b': 60
+        },  # Adjust margins to ensure frame visibility
+        font={'family': 'Arial, sans-serif', 'size': 12, 'color': 'black'},
         width=600,
         height=600,
     )
@@ -352,7 +352,7 @@ def coverage_plot(df, cons_len):
             x=np.arange(1, cons_len + 1),  # X-axis from 1 to cons_len
             y=total_coverage,
             mode='lines',
-            line=dict(color='black', width=3),
+            line={'color': 'black', 'width': 3},
             showlegend=False,
         )
     )
@@ -362,28 +362,28 @@ def coverage_plot(df, cons_len):
         title='TE Consensus Genomic Coverage Plot',
         xaxis_title='Position along TE consensus (bp)',
         yaxis_title='Coverage (bp)',
-        xaxis=dict(
-            title_font=dict(size=16, family='Arial, sans-serif', color='black'),
-            showgrid=False,
-            range=[0, cons_len + 10],
-            linewidth=1,
-            linecolor='black',
-            mirror=True,
-        ),
-        yaxis=dict(
-            showgrid=False,
-            title_font=dict(size=16, family='Arial, sans-serif', color='black'),
-            range=[-(max_coverage / 30), max_coverage + (max_coverage / 30)],
-            linewidth=1,
-            linecolor='black',
-            mirror=True,
-        ),
+        xaxis={
+            'title_font': {'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
+            'showgrid': False,
+            'range': [0, cons_len + 10],
+            'linewidth': 1,
+            'linecolor': 'black',
+            'mirror': True,
+        },
+        yaxis={
+            'showgrid': False,
+            'title_font': {'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
+            'range': [-(max_coverage / 30), max_coverage + (max_coverage / 30)],
+            'linewidth': 1,
+            'linecolor': 'black',
+            'mirror': True,
+        },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin=dict(
-            l=60, r=60, t=60, b=60
-        ),  # Adjust margins to ensure frame visibility
-        font=dict(family='Arial, sans-serif', size=12, color='black'),
+        margin={
+            'l': 60, 'r': 60, 't': 60, 'b': 60
+        },  # Adjust margins to ensure frame visibility
+        font={'family': 'Arial, sans-serif', 'size': 12, 'color': 'black'},
         width=600,
         height=600,
     )
@@ -409,7 +409,7 @@ def dot_plot(df):
                 x=[segment['V7'], segment['V8']],
                 y=[segment['V9'], segment['V10']],
                 mode='lines',
-                line=dict(color=color, width=3),
+                line={'color': color, 'width': 3},
                 hoverinfo='text',
                 text=f'x left: {segment["V7"]}, y left: {segment["V9"]}<br>x right: {segment["V8"]}, y right: {segment["V10"]}',
                 showlegend=False,
@@ -420,28 +420,28 @@ def dot_plot(df):
         title='Self dot plot',
         xaxis_title='TE consensus self dotplot (bp)',
         yaxis_title='TE consensus self dotplot (bp)',
-        xaxis=dict(
-            title_font=dict(size=16, family='Arial, sans-serif', color='black'),
-            showgrid=False,
-            range=[0, max(df['V8'])],
-            linewidth=1,
-            linecolor='black',
-            mirror=True,
-        ),
-        yaxis=dict(
-            showgrid=False,
-            title_font=dict(size=16, family='Arial, sans-serif', color='black'),
-            range=[0, max(df['V8'])],
-            linewidth=1,
-            linecolor='black',
-            mirror=True,
-        ),
+        xaxis={
+            'title_font': {'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
+            'showgrid': False,
+            'range': [0, max(df['V8'])],
+            'linewidth': 1,
+            'linecolor': 'black',
+            'mirror': True,
+        },
+        yaxis={
+            'showgrid': False,
+            'title_font': {'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
+            'range': [0, max(df['V8'])],
+            'linewidth': 1,
+            'linecolor': 'black',
+            'mirror': True,
+        },
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin=dict(
-            l=60, r=60, t=60, b=60
-        ),  # Adjust margins to ensure frame visibility
-        font=dict(family='Arial, sans-serif', size=12, color='black'),
+        margin={
+            'l': 60, 'r': 60, 't': 60, 'b': 60
+        },  # Adjust margins to ensure frame visibility
+        font={'family': 'Arial, sans-serif', 'size': 12, 'color': 'black'},
         width=600,
         height=600,
     )
@@ -502,7 +502,7 @@ def plot_rpsblast_hits(input_file, cons_len):
         ).reset_index(drop=True)
         track_assignment = []  # list records which track each hit is assigned to
 
-        for idx, hit in df_rps_assign_sorted.iterrows():
+        for _idx, hit in df_rps_assign_sorted.iterrows():
             assigned = False
             for track_num, track_end in enumerate(tracks):
                 if hit['start'] > track_end + (
@@ -607,7 +607,7 @@ def plot_rpsblast_hits(input_file, cons_len):
     # Initialize list to hold annotations
     annotations = []
 
-    for idx, hit in df_rps_with_tracks.iterrows():
+    for _idx, hit in df_rps_with_tracks.iterrows():
         x_start = hit['qstart']
         x_end = hit['qend']
         y = hit['track']
@@ -701,10 +701,10 @@ def plot_rpsblast_hits(input_file, cons_len):
                 x=x_coords,
                 y=y_coords,
                 mode='lines+markers',
-                marker=dict(size=0.1, opacity=0),  # Invisible markers
+                marker={'size': 0.1, 'opacity': 0},  # Invisible markers
                 fill='toself',
                 fillcolor=color,
-                line=dict(color='black'),
+                line={'color': 'black'},
                 hoverinfo='text',
                 hovertext=trace_hovertext,
                 showlegend=False,  # Keep legend entries from arrows
@@ -717,15 +717,15 @@ def plot_rpsblast_hits(input_file, cons_len):
 
         # Add annotation for brief info under the bar
         annotations.append(
-            dict(
-                x=x_mid,
-                y=annotation_y,
-                text=brief_info,
-                showarrow=False,
-                font=dict(size=10),
-                xanchor='center',
-                yanchor='bottom',  # Adjusted for placement
-            )
+            {
+                'x': x_mid,
+                'y': annotation_y,
+                'text': brief_info,
+                'showarrow': False,
+                'font': {'size': 10},
+                'xanchor': 'center',
+                'yanchor': 'bottom',  # Adjusted for placement
+            }
         )
 
     # Add annotations to the figure
@@ -737,41 +737,41 @@ def plot_rpsblast_hits(input_file, cons_len):
         # title_x=0.5,  # Center the title
         xaxis_title='TE consensus (bp)',
         yaxis_title='TE Protein Domains',
-        font=dict(family='Arial, sans-serif', size=14, color='black'),
-        xaxis=dict(
-            range=[0, cons_len + 10],
-            side='bottom',
-            showgrid=False,
-            zeroline=False,
-            showticklabels=True,
-            linecolor='black',
-            mirror=True,
-            linewidth=2,
-        ),
-        yaxis=dict(
+        font={'family': 'Arial, sans-serif', 'size': 14, 'color': 'black'},
+        xaxis={
+            'range': [0, cons_len + 10],
+            'side': 'bottom',
+            'showgrid': False,
+            'zeroline': False,
+            'showticklabels': True,
+            'linecolor': 'black',
+            'mirror': True,
+            'linewidth': 2,
+        },
+        yaxis={
             # visible=False,
             # range=[max_y, min_y],
-            autorange=True,
-            fixedrange=False,
-            showticklabels=False,
-            linecolor='black',
-            mirror=True,
-            linewidth=2,
-        ),
+            'autorange': True,
+            'fixedrange': False,
+            'showticklabels': False,
+            'linecolor': 'black',
+            'mirror': True,
+            'linewidth': 2,
+        },
         plot_bgcolor='white',
         width=1600,
         # height=600,
         height=(165 + (num_tracks - 1) * 40),  # Adjusted figure height
-        margin=dict(l=60, r=60, t=60, b=60),  # Increased top margin for legend
+        margin={'l': 60, 'r': 60, 't': 60, 'b': 60},  # Increased top margin for legend
         # Customize hover label appearance at the layout level
-        hoverlabel=dict(
-            bgcolor='lightgray',  # White background
-            font=dict(
-                size=12,  # Font size
-                color='black',  # Black text
-            ),
-            bordercolor='black',  # black border
-        ),
+        hoverlabel={
+            'bgcolor': 'lightgray',  # White background
+            'font': {
+                'size': 12,  # Font size
+                'color': 'black',  # Black text
+            },
+            'bordercolor': 'black',  # black border
+        },
     )
 
     return fig, num_tracks
@@ -953,7 +953,7 @@ def teaid_plotter(
 
     # Update the font size of subplot titles
     for annotation in fig['layout']['annotations']:
-        annotation['font'] = dict(size=13, family='Arial, sans-serif', color='black')
+        annotation['font'] = {'size': 13, 'family': 'Arial, sans-serif', 'color': 'black'}
 
     # Copy annotations from fig_rpstblastn to the combined figure and adjust references
     if 'annotations' in fig_rpstblastn.layout:
@@ -969,7 +969,7 @@ def teaid_plotter(
         title_text='TE consensus (bp)',
         showgrid=False,
         showticklabels=True,
-        title_font=dict(size=16, family='Arial, sans-serif', color='black'),
+        title_font={'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
         range=[0, cons_len + 10],
         linewidth=1,
         linecolor='black',
@@ -981,7 +981,7 @@ def teaid_plotter(
         title_text='Divergence to consensus (%)',
         showgrid=False,
         showticklabels=True,
-        title_font=dict(size=16, family='Arial, sans-serif', color='black'),
+        title_font={'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
         range=[-(divergence_max / 30), divergence_max + (divergence_max / 30)],
         linewidth=1,
         linecolor='black',
@@ -995,7 +995,7 @@ def teaid_plotter(
         title_text='TE consensus (bp)',
         showgrid=False,
         showticklabels=True,
-        title_font=dict(size=16, family='Arial, sans-serif', color='black'),
+        title_font={'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
         range=[0, cons_len + 10],
         linewidth=1,
         linecolor='black',
@@ -1007,7 +1007,7 @@ def teaid_plotter(
         title_text='Coverage (bp)',
         showgrid=False,
         showticklabels=True,
-        title_font=dict(size=16, family='Arial, sans-serif', color='black'),
+        title_font={'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
         range=[-(coverage_max / 30), coverage_max + (coverage_max / 30)],
         linewidth=1,
         linecolor='black',
@@ -1021,7 +1021,7 @@ def teaid_plotter(
         title_text='TE consensus (bp)',
         showgrid=False,
         showticklabels=True,
-        title_font=dict(size=16, family='Arial, sans-serif', color='black'),
+        title_font={'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
         range=[0, cons_len + 10],
         linewidth=1,
         linecolor='black',
@@ -1033,7 +1033,7 @@ def teaid_plotter(
         title_text='TE consensus (bp)',
         showgrid=False,
         showticklabels=True,
-        title_font=dict(size=16, family='Arial, sans-serif', color='black'),
+        title_font={'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
         range=[0, cons_len + 10],
         linewidth=1,
         linecolor='black',
@@ -1047,7 +1047,7 @@ def teaid_plotter(
         title_text='TE consensus (bp)',
         showgrid=False,
         showticklabels=True,
-        title_font=dict(size=16, family='Arial, sans-serif', color='black'),
+        title_font={'size': 16, 'family': 'Arial, sans-serif', 'color': 'black'},
         range=[0, cons_len + 10],
         linewidth=1,
         linecolor='black',
@@ -1071,10 +1071,10 @@ def teaid_plotter(
         height=total_fig_height,
         width=1600,
         title_text=plot_main_title,
-        title_font=dict(size=26, family='Arial, sans-serif', color='black'),
+        title_font={'size': 26, 'family': 'Arial, sans-serif', 'color': 'black'},
         plot_bgcolor='white',
         paper_bgcolor='white',
-        margin=dict(t=top_margin, b=bottom_margin, l=60, r=60),
+        margin={'t': top_margin, 'b': bottom_margin, 'l': 60, 'r': 60},
     )
     # Save the figure as an HTML file
     output_html_path = os.path.join(

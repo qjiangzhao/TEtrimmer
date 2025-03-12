@@ -93,9 +93,9 @@ def separate_sequences(input_file, output_dir):
 
 
 def check_database(genome_file, output_dir=None, os_type='Darwin'):
-    script_dir = get_original_file_path()
+    #script_dir = get_original_file_path()
+    #blast_dir = os.path.join(script_dir, 'blast')
 
-    blast_dir = os.path.join(script_dir, 'blast')
     # Define database path
     genome_n = os.path.basename(genome_file)
     if output_dir is None:
@@ -151,8 +151,8 @@ def blast(
     os_type='Darwin',
     num_threads=1,
 ):
-    script_dir = get_original_file_path()
-    blast_dir = os.path.join(script_dir, 'blast')
+    #script_dir = get_original_file_path()
+    #blast_dir = os.path.join(script_dir, 'blast')
 
     # Define blast out without header
     blast_out_file = os.path.join(
@@ -661,7 +661,7 @@ def prepare_cdd_database(cdd_database_dir, os_type='Darwin'):
         # Check if CDD database downloads and unzipped in target dir
         if check_and_download(cdd_database_dir, r'Cdd.pn', r'Cdd.tar.gz', cdd_url):
             # Create index file for cdd database
-            script_dir = get_original_file_path()
+            #script_dir = get_original_file_path()
 
             # Check if the makeprofiledb command is available in PATH
             check_cmd_in_path('makeprofiledb')
@@ -731,8 +731,8 @@ def rpstblastn(
     os_type='Darwin',
     num_threads=20,
 ):
-    script_dir = get_original_file_path()
-    blast_dir = os.path.join(script_dir, 'blast')
+    #script_dir = get_original_file_path()
+    #blast_dir = os.path.join(script_dir, 'blast')
 
     # Define output file
     rpstblastn_out_file = os.path.join(

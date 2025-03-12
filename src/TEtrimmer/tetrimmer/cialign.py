@@ -161,7 +161,7 @@ def arrNumeric(arr):
 
     # make a dictionary where each integer corresponds to a base or nt
     i = 0
-    nD = dict()
+    nD = {}
     colours = []
     for key in keys:
         if key in arr:
@@ -248,9 +248,9 @@ def drawMiniAlignment(
         xy=(start_point, ali_height - 0.5),
         xytext=(0, arrow_length),
         textcoords='offset points',
-        arrowprops=dict(
-            facecolor='red', edgecolor='red', width=2, headwidth=5, headlength=4
-        ),
+        arrowprops={
+            'facecolor': 'red', 'edgecolor': 'red', 'width': 2, 'headwidth': 5, 'headlength': 4
+        },
         ha='center',
         color='red',
         va='bottom',
@@ -261,9 +261,9 @@ def drawMiniAlignment(
         xy=(end_point, ali_height - 0.5),
         xytext=(0, arrow_length),
         textcoords='offset points',
-        arrowprops=dict(
-            facecolor='blue', edgecolor='blue', width=2, headwidth=5, headlength=4
-        ),
+        arrowprops={
+            'facecolor': 'blue', 'edgecolor': 'blue', 'width': 2, 'headwidth': 5, 'headlength': 4
+        },
         ha='center',
         color='blue',
         va='bottom',

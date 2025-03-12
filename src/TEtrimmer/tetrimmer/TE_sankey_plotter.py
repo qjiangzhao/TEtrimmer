@@ -554,7 +554,7 @@ def bed_merge(bed_file, genome_length, debug=False):
             )
         except subprocess.CalledProcessError as e:
             logging.error(f'\nbedtools merge error for command {command}\n{e.stdout}\n{e.stderr}\n')
-            raise Exception
+            raise Exception from e
 
     # Separate overlapped elements
     solve_overlaps(output_path_overlap, output_path_overlap_solved)
@@ -580,7 +580,7 @@ def bed_merge(bed_file, genome_length, debug=False):
             )
         except subprocess.CalledProcessError as e:
             logging.error(f'\nbedtools merge error for command {command}\n{e.stdout}\n{e.stderr}\n')
-            raise Exception
+            raise Exception from e
     if not debug:
         delete_file(
             output_path_no_overlap,
@@ -810,16 +810,16 @@ def sankey_plot(
         data=[
             go.Sankey(
                 arrangement='snap',
-                node=dict(
-                    pad=10,
-                    thickness=20,
-                    line=dict(color='black', width=2),
-                    label=all_labels_with_length,
-                    color=node_colors,
-                ),
-                link=dict(
-                    source=source, target=target, value=values, color=link_colors
-                ),
+                node={
+                    'pad': 10,
+                    'thickness': 20,
+                    'line': {'color': 'black', 'width': 2},
+                    'label': all_labels_with_length,
+                    'color': node_colors,
+                },
+                link={
+                    'source': source, 'target': target, 'value': values, 'color': link_colors
+                },
             )
         ]
     )
@@ -902,16 +902,16 @@ def sankey_plot_for_two_df(
     fig = go.Figure(
         data=[
             go.Sankey(
-                node=dict(
-                    pad=10,
-                    thickness=20,
-                    line=dict(color='black', width=2),
-                    label=all_labels,
-                    color=node_colors,
-                ),
-                link=dict(
-                    source=source, target=target, value=values, color=link_colors
-                ),
+                node={
+                    'pad': 10,
+                    'thickness': 20,
+                    'line': {'color': 'black', 'width': 2},
+                    'label': all_labels,
+                    'color': node_colors,
+                },
+                link={
+                    'source': source, 'target': target, 'value': values, 'color': link_colors
+                },
             )
         ]
     )
@@ -1093,7 +1093,7 @@ def spider_plot(metrics_df, output_path, categories_color, predefined_order):
     n_rows = int(np.ceil(n_types / n_cols))
 
     fig, axs = plt.subplots(
-        n_rows, n_cols, figsize=(n_cols * 3, n_rows * 3), subplot_kw=dict(polar=True)
+        n_rows, n_cols, figsize=(n_cols * 3, n_rows * 3), subplot_kw={'polar': True}
     )
 
     # Flatten axes array if it is multidimensional
@@ -1133,7 +1133,7 @@ def spider_plot(metrics_df, output_path, categories_color, predefined_order):
 
 
 @click.command(
-    context_settings=dict(max_content_width=120),
+    context_settings={'max_content_width': 120},
     help="""\b
                 ##########################################################################################
                 Transposable element Sankey plotter and confusion matrix calculator.

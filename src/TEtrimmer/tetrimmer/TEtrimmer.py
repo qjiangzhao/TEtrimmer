@@ -41,7 +41,7 @@ with open(config_path, 'r') as config_file:
 
 
 @click.command(
-    context_settings=dict(max_content_width=120),
+    context_settings={'max_content_width': 120},
     help=f"""\b
                ##########################################################################################
                \b
@@ -382,7 +382,7 @@ def main(
     engine = 'blast'
 
     # Check for required programs.
-    required_tools = ['bedtools','samtools', 'cd-hit-est', 'ps2pdf', 'polydot', 'mafft', 'iqtree', 'getorf', 'hmmbuild', 'hmmsearch','pfam_scan.pl']
+    required_tools = ['bedtools','samtools', 'cd-hit-est', 'ps2pdf', 'polydot', 'mafft', 'iqtree', 'getorf', 'hmmsearch','pfam_scan.pl']
     optional_tools = ['blastn', 'makeblastdb', 'mmseqs']
 
     if engine == 'blast':

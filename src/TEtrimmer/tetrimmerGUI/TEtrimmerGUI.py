@@ -688,7 +688,7 @@ def proof_curation(
                 input_file = os.path.join(source_dir, input_fasta_n)
 
                 try:
-                    thread_TEAid = run_func_in_thread(
+                    _thread_TEAid = run_func_in_thread(
                         teaid_plotter,
                         input_file,
                         output_dir,
@@ -1289,7 +1289,7 @@ def proof_curation(
             # Then current_canvas_status is "cons_lib"
             # The dirs variable should be "other_cons_lib_single_file_folder" to search TE consensus library
             if os.path.isdir(dirs):
-                sorted_cons_files = [f for f in sorted(os.listdir(dirs))]
+                sorted_cons_files = sorted(os.listdir(dirs))
                 for index, file in enumerate(sorted_cons_files):
                     if filename_pattern in file:
                         found_paths.append((f'Position number {index + 1}', file))
@@ -2084,7 +2084,7 @@ def proof_curation(
             return
 
         # Sort files
-        sorted_files = [f for f in sorted(os.listdir(source_dir))]
+        sorted_files = sorted(os.listdir(source_dir))
         for i, filename in enumerate(sorted_files[start:end], start=start):
             # Add line number into canvas frame
             line_number = Label(frame, text=str(i + 1), bg='white')
@@ -2428,7 +2428,7 @@ def proof_curation(
             return
 
         # Sort files
-        sorted_files = [f for f in sorted(os.listdir(source_dir))]
+        sorted_files = sorted(os.listdir(source_dir))
 
         for i, filename in enumerate(sorted_files[start:end], start=start):
             # Add line number into canvas frame

@@ -243,16 +243,16 @@ class PlotPfam:
                 text=True,
             )
 
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             logging.error(
                 'getorf command not found. Please ensure that getorf is installed and available in your PATH.'
             )
-            raise Exception
+            raise Exception from e
 
         except subprocess.CalledProcessError as e:
             logging.error(
                 f'\ngetorf failed for {self.input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
-            raise Exception
+            raise Exception from e
 
         # Check if the output_orf_file is empty
         if os.path.getsize(output_orf_file) == 0:
@@ -272,7 +272,7 @@ class PlotPfam:
         except subprocess.CalledProcessError as e:
             logging.error(
                 f'\nFilter ORF columns failed for {self.input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
-            raise Exception
+            raise Exception from e
 
         # Generate orf table for orf plot
         output_orf_file_name_modified_table = (
@@ -295,7 +295,7 @@ class PlotPfam:
         except subprocess.CalledProcessError as e:
             logging.error(
                 f'\nConverting ORF result to table failed for {self.input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
-            raise Exception
+            raise Exception from e
 
     def run_pfam_scan(self):
         """
@@ -333,16 +333,16 @@ class PlotPfam:
                 text=True,
             )
 
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             logging.error(
                 "'pfam_scan.pl' command not found. Please ensure 'pfam_scan.pl' is correctly installed."
             )
-            raise Exception
+            raise Exception from e
 
         except subprocess.CalledProcessError as e:
             logging.error(
                 f'\npfam_scan.pl failed for {self.input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
-            raise Exception
+            raise Exception from e
 
         # Modify PFAM output file for plot
         modify_pfam_result = (
@@ -365,7 +365,7 @@ class PlotPfam:
         except subprocess.CalledProcessError as e:
             logging.error(
                 f'\nTransform Pfam result failed for {self.input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
-            raise Exception
+            raise Exception from e
 
         # Check if the output file has only one line, which would mean no PFAM predictions.
         with open(self.output_pfam_file_modified, 'r') as file:

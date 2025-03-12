@@ -238,15 +238,15 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=2):
             text=True,
         )
 
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         logging.error(
             "'iqtree' command not found. Please ensure 'iqtree' is correctly installed."
         )
-        raise Exception
+        raise Exception from e
 
     except subprocess.CalledProcessError as e:
         logging.error(f'\niqtree failed with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
-        raise Exception('iqtree error')
+        raise Exception('iqtree error') from e
 
     treefile = f'{alignment}.treefile'
     distance_file = calculate_tree_dis(treefile)
@@ -591,7 +591,7 @@ def alignment_to_dataframe(alignment):
         # as a row
         np.array([list(rec) for rec in alignment], dtype=str),
         # Define the column number, be aware the difference between the len() and range()
-        columns=[i for i in range(len(alignment[0]))],
+        columns=list(range(len(alignment[0]))),
         # Define the row names of the dataframe
         index=[rec.id for rec in alignment],
     )
@@ -724,7 +724,7 @@ def plot_msa(
         'Start crop Point',
         xy=(start_point, -0.5),
         xytext=(start_point, -3),
-        arrowprops=dict(facecolor='red', edgecolor='red', shrink=0.05),
+        arrowprops={'facecolor': 'red', 'edgecolor': 'red', 'shrink': 0.05},
         ha='center',
         color='r',
     )
@@ -732,7 +732,7 @@ def plot_msa(
         'End crop Point',
         xy=(end_point, -0.5),
         xytext=(end_point, -3),
-        arrowprops=dict(facecolor='blue', edgecolor='blue', shrink=0.05),
+        arrowprops={'facecolor': 'blue', 'edgecolor': 'blue', 'shrink': 0.05},
         ha='center',
         color='b',
     )

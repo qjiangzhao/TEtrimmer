@@ -70,7 +70,7 @@ def check_progress_file(progress_file_path):
 
 def change_permissions_recursive(input_dir, mode):
     try:
-        for dirpath, dirnames, filenames in os.walk(input_dir):
+        for dirpath, _dirnames, filenames in os.walk(input_dir):
             os.chmod(dirpath, mode)
             for filename in filenames:
                 os.chmod(os.path.join(dirpath, filename), mode)
@@ -555,7 +555,7 @@ def merge_cons(
 
     # Create a dictionary with sequence names as keys
     sequence_info = {}
-    for index, row in progress_df.iterrows():
+    for _index, row in progress_df.iterrows():
         sequence_name = row['consensus_name']
         evaluation = (
             row['evaluation'] if pd.notna(row['evaluation']) else 'Unknown'
@@ -1000,7 +1000,7 @@ def analyze_sequence(
         # "run_getorf()" function will return 'True' if any ORF was detected. Otherwise, it will return 'False'.
         if input_orf_pfam_obj.run_getorf():
             # "run_pfam_scan()" will return 'True' if any PFAM domains were found. Otherwise, it will return 'False'.
-            pfam_scan_result = input_orf_pfam_obj.run_pfam_scan()
+            _pfam_scan_result = input_orf_pfam_obj.run_pfam_scan()
             input_orf_domain_plot = input_orf_pfam_obj.orf_domain_plot()
 
     except Exception as e:

@@ -664,7 +664,7 @@ def find_boundary_and_crop(
                 f.write(f'\nMSA extension failed for {seq_name} with error:\n{e}')
                 f.write('\n' + tb_content + '\n\n')
             logging.error(f'\nMSA extension failed for {seq_name} with error:\n{e}\n{tb_content}\n')
-            raise Exception
+            raise Exception from e
 
         try:
             # Update BED file for final MSA
@@ -715,7 +715,7 @@ def find_boundary_and_crop(
                 f.write(f'Boundary definition error {seq_name}\n')
                 f.write('\n' + tb_content + '\n\n')
             logging.error(f'\nBoundary definition failed for {seq_name} with error:\n{e}\n{tb_content}\n')
-            raise Exception
+            raise Exception from e
 
         #####################################################################################################
         # Code block: Check the consistency of the final MSA
@@ -765,7 +765,7 @@ def find_boundary_and_crop(
                 f.write('\n' + tb_content + '\n\n')
             logging.error(
                 f'\nBoundary definition clustering failed for {seq_name} with error:\n{e}\n{tb_content}\n')
-            raise Exception
+            raise Exception from e
 
         msa_loop_n += 1
 
@@ -945,7 +945,7 @@ def find_boundary_and_crop(
             f.write('\n' + tb_content + '\n\n')
         logging.error(
             f'\nConcatenate MSA for manual inspection plot failed for {seq_name} with error:\n{e}\n{tb_content}\n')
-        raise Exception
+        raise Exception from e
 
     #####################################################################################################
     # Code block: Predict ORFs and PFAM domains, determine sequence direction
@@ -1080,7 +1080,7 @@ def find_boundary_and_crop(
             )
             f.write('\n' + tb_content + '\n\n')
         logging.error(f'\nORF or PFAM prediction failed for {seq_name} with error:\n{e}\n{tb_content}\n')
-        raise Exception
+        raise Exception from e
 
     #####################################################################################################
     # Code block: Plot multiple sequence alignment.
@@ -1193,7 +1193,7 @@ def find_boundary_and_crop(
             f.write(f'\nTE-Aid plot failed for {seq_name} with error:\n{e}')
             f.write('\n' + tb_content + '\n\n')
         logging.error(f'\nTE-Aid plot failed for {seq_name} with error:\n{e}\n' + tb_content + '\n')
-        raise Exception
+        raise Exception from e
 
     #####################################################################################################
     # Code block: Generate dotplot
@@ -1253,7 +1253,7 @@ def find_boundary_and_crop(
             f.write(f'\nPlot merging to PDF failed for {seq_name} with error:\n{e}')
             f.write('\n' + tb_content + '\n\n')
         logging.error(f'\nPlot merging to PDF failed for {seq_name} with error:\n{e}\n{tb_content}\n')
-        raise Exception
+        raise Exception from e
 
     #####################################################################################################
     # Code block: Update sequence object (seq_obj)
@@ -1340,7 +1340,7 @@ def find_boundary_and_crop(
             f.write(f'\nUpdate sequence object failed for {seq_name} with error:\n{e}')
             f.write('\n' + tb_content + '\n\n')
         logging.error(f'\nUpdate sequence object failed for {seq_name} with error:\n{e}\n{tb_content}\n')
-        raise Exception
+        raise Exception from e
 
     #####################################################################################################
     # Code block: Run RepeatClassifier in RepeatModeler to classify TEtrimmer consensus sequences
@@ -1535,4 +1535,4 @@ def find_boundary_and_crop(
             f.write(f'\nMoving of files failed for {seq_name} with error:\n{e}')
             f.write('\n' + tb_content + '\n\n')
         logging.error(f'\nMoving of files failed for {seq_name} with error:\n{e}\n{tb_content}\n')
-        raise Exception
+        raise Exception from e
