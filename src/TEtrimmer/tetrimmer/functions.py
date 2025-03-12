@@ -208,15 +208,15 @@ def blast(
                 text=True,
             )
 
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             logging.error(
                 "'blastn' command not found. Please ensure 'blastn' is installed correctly."
             )
-            raise Exception
+            raise Exception from e
 
         except subprocess.CalledProcessError as e:
             logging.error(f'\nBLAST failed for {input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
-            raise Exception
+            raise Exception from e
 
     elif search_type == 'mmseqs':
         # MMseqs2 search
@@ -277,7 +277,7 @@ def blast(
         except subprocess.CalledProcessError as e:
             logging.error(
                 f'\nBLAST to BED file conversion failed for {input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
-            raise Exception
+            raise Exception from e
 
         # Append BLAST hit number to sequence object when seq_obj is provided
         if seq_obj is not None:
@@ -476,20 +476,20 @@ def extract_fasta(
             text=True,
         )
 
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         logging.error(
             "'bedtools slop' command not found. Please ensure 'bedtools' is installed correctly."
         )
-        raise Exception
+        raise Exception from e
 
     except subprocess.CalledProcessError as e:
         logging.error(
             f'\nbedtools slop failed for {input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
-        raise Exception
+        raise Exception from e
 
     except Exception as e:
         logging.error(f'bedtools slop failed for {input_file_n} with error code {e}')
-        raise Exception
+        raise Exception from e
 
     bed_out_flank_file = check_bed_uniqueness(output_dir, bed_out_flank_file_dup)
 
@@ -508,16 +508,16 @@ def extract_fasta(
             text=True,
         )
 
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         logging.error(
             "'bedtools getfasta' command not found. Please ensure 'bedtools' is installed correctly."
         )
-        raise Exception
+        raise Exception from e
 
     except subprocess.CalledProcessError as e:
         logging.error(
             f'\nbedtools getfasta failed for {input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
-        raise Exception
+        raise Exception from e
 
     # Use awk to remove letters other than: A G C T a g c t
     fasta_nucleotide_clean = (
@@ -534,9 +534,9 @@ def extract_fasta(
             text=True,
         )
 
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
         logging.error('Fasta nucleotide clean failed by awk\n{e.stdout}\n{e.stderr}\n')
-        raise Exception
+        raise Exception from e
 
     return fasta_out_flank_file_nucleotide_clean, bed_out_flank_file_dup
 
@@ -581,11 +581,11 @@ def align_sequences(input_file, output_dir):
             text=True,
         )
 
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         logging.error(
             "'mafft' command not found. Please ensure 'mafft' is installed correctly."
         )
-        raise Exception
+        raise Exception from e
 
     except subprocess.CalledProcessError as e:
         error_message = e.stderr
@@ -600,7 +600,7 @@ def align_sequences(input_file, output_dir):
                 'It seems insufficient RAM was available for MAFFT multiple sequence alignment. Please assign more '
                 'RAM or reduce the thread number to solve this problem.\n'
             )
-        raise Exception
+        raise Exception from e
 
     # Write the output to the file
     with open(fasta_out_flank_mafft_file, 'w') as f:
@@ -1517,6 +1517,9 @@ def cd_hit_est(
     ]
 
     try:
+        logging.info(f'Running cd-hit-est for {os.path.basename(input_file)}')
+        logging.info(f'Command: {" ".join(command)}')
+
         subprocess.run(
             command,
             check=True,
@@ -1525,17 +1528,17 @@ def cd_hit_est(
             text=True,
         )
 
-    except FileNotFoundError:
+    except FileNotFoundError as err:
         logging.error(
             "'cd-hit-est' command not found. Please ensure 'cd-hit-est' is installed correctly.\n"
         )
-        raise Exception
+        raise Exception from err
 
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError as err:
         logging.error(
-            f'\ncd-hit-est failed for {os.path.basename(input_file)} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
-
-        raise Exception
+            f'\ncd-hit-est failed for {os.path.basename(input_file)} with error code {err.returncode}\n{err.stdout}\n{err.stderr}\n'
+        )
+        raise Exception from err
 
 
 def parse_cd_hit_est_result(input_file):
@@ -1543,6 +1546,8 @@ def parse_cd_hit_est_result(input_file):
     detailed_clusters = {}  # Key: cluster name, Value: list of tuples (sequence length, sequence name, percentage)
     current_cluster = []
     current_detailed_cluster = []
+    cluster_name = None  # Initialize cluster_name to None
+
     with open(input_file, 'r') as f:
         for line in f:
             # cd-hit-est introduces empty spaces in cluster headers like ">Cluster 53", which can cause
@@ -1647,11 +1652,11 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
         )
         return True
 
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         logging.error(
             "'RepeatMasker' command not found. Please ensure 'RepeatMasker' is installed correctly."
         )
-        raise Exception
+        raise Exception from e
 
     except subprocess.CalledProcessError as e:
         if classify:
@@ -1660,7 +1665,7 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
             logging.warning(
                 'This will not affect the final result. Only the classification of TE may not be correct.'
             )
-            raise Exception
+            raise Exception from e
         else:
             logging.error(
                 f'\nRepeatMasker failed during final whole-genome TE annotation with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
@@ -1668,7 +1673,7 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
                 'This does not affect the final TE consensus library. You can perform the final genome-wide TE'
                 ' annotation by yourself with RepeatMasker.'
             )
-            raise Exception
+            raise Exception from e
 
 
 def repeatmasker_output_classify(
@@ -2337,7 +2342,7 @@ def check_terminal_repeat(
         except subprocess.CalledProcessError as e:
             logging.error(
                 f'\nTerminal repeat detection failed for {os.path.basename(input_file)} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
-            raise Exception
+            raise Exception from e
 
         # Define BLAST output file
         blast_out_file = os.path.join(output_dir, 'tem_blast_out.txt')
@@ -2601,21 +2606,21 @@ def multi_seq_dotplot(input_file, output_dir, title):
             text=True,
         )
 
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         logging.error(
             "'\npolydot' command not found. Please ensure 'emboss' is correctly installed."
         )
         logging.warning(
             "\npolydot won't affect the final consensus sequence. You can choose to ignore this error\n"
         )
-        raise Exception
+        raise Exception from e
 
     except subprocess.CalledProcessError as e:
         logging.error(f'\npolydot failed for {input_name} with error code {e.returncode}\n{e.stdout}\n{e.stderr}')
         logging.warning(
             "\npolydot won't affect the final consensus sequence. You can choose to ignore this error\n"
         )
-        raise Exception
+        raise Exception from e
 
     # Define command to convert ps to pdf
     ps2pdf_command = ['ps2pdf', str(ps_out), str(pdf_out)]
@@ -2629,21 +2634,21 @@ def multi_seq_dotplot(input_file, output_dir, title):
             text=True,
         )
 
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         logging.error(
             "'\nps2pdf' command not found. Please install it by 'sudo apt-get install ghostscript'"
         )
         logging.warning(
             "ps2pdf won't affect the final consensus file. You can choose to ignore it."
         )
-        raise Exception
+        raise Exception from e
 
     except subprocess.CalledProcessError as e:
         logging.error(f'\nps2pdf failed for {input_name} with error code {e.returncode}\n{e.stdout}\n{e.stderr}')
         logging.warning(
             "\nps2pdf won't affect the final consensus sequence. You can choose to ignore this error\n"
         )
-        raise Exception
+        raise Exception from e
 
     return pdf_out
 
