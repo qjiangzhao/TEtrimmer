@@ -3,20 +3,26 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
 [![Manual Available](https://img.shields.io/badge/Manual-available-brightgreen.svg)](./docs/TEtrimmerv1.4.0Manual.pdf)
 
-
+# TEtrimmer
+Automated and interactive curation of transposable elements.
 
 ## Contents
-- [Introduction](#Introduction)
-- [Installation](#Installation)
-- [Usage](#Usage)
-  - [Test](#Test)
-  - [Hardware requirements](#Hardware-requirements)
-  - [Inputs](#Inputs)
-  - [Outputs](#Outputs)
-  - [Proof curation](#Proof-annotation)
-- [All available options](#All-available-options)
-- [Update history](#Update-history)
-- [Citation](#Citation)
+
+- [Introduction](#introduction)
+- [Manual](#manual)
+- [Installation](#installation)
+  - [1. Conda](#1-conda)
+  - [2. Singularity](#2-singularity)
+  - [3. Docker](#3-docker)
+- [Example Usage](#example-usage)
+  - [Inputs](#inputs)
+  - [Resume run](#resume-run)
+  - [Combining TE libraries](#combining-te-libraries)
+  - [Outputs](#outputs)
+- [TEtrimmerGUI](#tetrimmergui)
+  - [Curate existing TE libraries](#curate-existing-te-libraries)
+- [Hardware requirements](#hardware-requirements)
+- [Citation](#citation)
 
 ## Introduction
 
@@ -43,8 +49,12 @@ achieving manual curation-level TE consensus libraries easily.
 For detailed instructions, including installation steps, usage options, example outputs, and more,
 please refer to [TEtrimmerv1.4.0Manual.pdf](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerv1.4.0Manual.pdf)
 
+**Note: Manual is out of date.**
+
 ## Installation
 TEtrimmer can be installed locally with Conda, or run from a Container with Singularity or Docker.
+
+You will need local copies of the Pfam-A and CDD databases available. See example usage section for download instructions.
 
 ### 1. Conda
 
@@ -153,52 +163,95 @@ docker run -it --name TEtrimmer -v <bind_your_path>:/data quay.io/biocontainers/
 # Please note: Run TEtrimmer via Docker is relatively slower than Conda and Singularity.
 ```
 
-## Hardware requirements
-System: Linux, macOS, Windows WSL (untested)
+## Example Usage
 
-RAM:
-- For HPC Linux user, enough RAM needs to be assigned. We highly recommend running TEtrimmer on HPC with at least 40 threads and assigning at least 5 GB RAM to each thread.
+In this example we will clone the development repo and create a fresh Conda environment to run `TEtrimmer`.
 
-
-| Threads | RAM    |
-|---------|--------|
-| 40      | 200 GB |
-| 100     | 600 GB |
-
-- Windows and macOS PC users can use Virtual Memory. Simply assign 20 threads to push the CPU to its limits. We did tests on a Macbook Pro (2020 M1 chip, 16 GB RAM) and compared with HPC, you can find the running time here:
-
-| Query sequence number | Platform       | Threads | RAM                    | Run time |
-|-----------------------|----------------|---------|------------------------|--------------|
-| 1700                  | Macbook Pro M1 | 20      | 16 GB + Virtual Memory | 50 hours     |
-| 1700                  | HPC            | 40      | 150 GB                 | 5 hours      |
-
-
-
-## Test
 
 ```bash
-# To see all options
+# Clone this fork and navigate into repo dir
+git clone git@github.com:qjiangzhao/TEtrimmer.git && cd TEtrimmer
+
+# Create env "TEtrimmer"
+conda env create -f environment.yml
+
+# Activate new env
+conda activate TEtrimmer
+
+# Install package in editable mode
+pip install -e '.[tests]'
+
+# Confirm installation
 TEtrimmer --help
 ```
 
-- Download the test files [test_input.fa.gz](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/data/test_input.fa.gz) and [test_genome.fa.gz](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/data/test_genome.fa.gz).
 
-```bash
-TEtrimmer --input_file test_input.fa.gz \
-          --genome_file test_genome.fa.gz \
-          --output_dir output_directory \
-          --num_threads 20
-          --classify_all
+Fetch Pfam-A database. We will store the database files in the default location. Any database path can be specified with `--pfam_dir`.
+
+``` bash
+# Create default db dir
+mkdir src/TEtrimmer/pfam_database
+
+# Download files
+curl -o src/TEtrimmer/pfam_database/Pfam-A.hmm.gz https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz
+curl -o src/TEtrimmer/pfam_database/Pfam-A.hmm.dat.gz https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.dat.gz
+
+# Unzip PFAM files
+gunzip src/TEtrimmer/pfam_database/Pfam-A.hmm.gz
+gunzip src/TEtrimmer/pfam_database/Pfam-A.hmm.dat.gz
 ```
 
-## Inputs
+Now we can run `TEtrimmer` on the test data files[test_input.fa.gz](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/data/test_input.fa.gz) and [test_genome.fa.gz](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/data/test_genome.fa.gz).
+
+``` bash
+# Run TEtrimmer
+TEtrimmer --input_file tests/data/test_input.fa.gz \
+--genome_file tests/data/test_genome.fa.gz \
+--output_dir output_directory \
+--num_threads 2 \
+--classify_all \
+--classify_unknown \
+--cons_thr 0.8 \
+--mini_orf 200 \
+--max_msa_lines 100 \
+--genome_anno \
+--preset divergent \
+--pfam_dir src/TEtrimmer/pfam_database
+```
+
+
+After running `TEtrimmer `the processes TE families can be further curated with TEtrimmerGUI.
+
+First we will need to fetch the CDD database of TE domains. Again we will store it in the default location.
+
+```bash
+# Create default db path
+mkdir src/TEtrimmer/tetrimmerGUI/cdd_database
+
+# Download or copy existing cdd.tar.gz into local dir
+curl -o src/TEtrimmer/tetrimmerGUI/cdd_database/cdd.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/mmdb/cdd/cdd.tar.gz
+```
+
+Finally, we can launch `TEtrimmerGUI`. We provide the path to the CDD database with `--cdd_dir`.
+
+``` bash
+# Launch GUI
+
+TEtrimmerGUI -i output_directory/TEtrimmer_for_proof_curation \
+-g tests/data/test_genome.fa.gz  \
+--output_dir output_dir_GUI \
+-cdd_dir src/TEtrimmer/tetrimmerGUI/cdd_database
+```
+
+
+### Inputs
 
 - **Genome file**: The genome sequence in FASTA format (.fa or .fasta). May be GZIP compressed (.fa.gz or .fasta.gz)
 - **TE consensus library**: TEtrimmer uses the TE consensus library from *de novo* TE annotation tools, like `RepeatModeler` or `EDTA`, as input.
 For this reason, you have to run `RepeatModeler` or other TE annotation software first.
 
 ```bash
-# RepeatModeler is installed in the TEtrimmer conda environment. Below is an exmpale command of running RepeatModeler.
+# RepeatModeler is installed in the TEtrimmer conda environment. Below is an example command for running RepeatModeler.
 
 # Build genome database index files
 BuildDatabase -name <genome_file_database_name> <genome_file.fa>
@@ -220,6 +273,8 @@ TEtrimmer --input_file TE_consensus_library.fa \
           --classify_all
 ```
 
+### Resume run
+
 If you want to **continue the analysis based on previous unfinished results in the same directory:**:
 
 ```bash
@@ -231,11 +286,19 @@ TEtrimmer --input_file TE_consensus_library.fa \
           --continue_analysis
 ```
 
-If you want to **combine files from different sources for the input file, we recommend removing duplicate sequences
-before processing. This step can potentially save overall run time in the input file** (TEtrimmer only accepts single file
-input, you have to combine files in advance):
+### Combining TE libraries
+
+If you want to combine TE predictions from different sources for the input file, we recommend using `--dedup` to remove duplicate sequences before processing.
+
+This step can potentially save overall run time.
+
+**Note: TEtrimmer only accepts a single input file, you have to combine TE libraries in advance.**
 
 ```bash
+# Combine TE libraries
+cat library_1.fa library_2.fa > TE_consensus_library.fa
+
+# Run TEtrimmer with dedup mode
 TEtrimmer --input_file TE_consensus_library.fa \
           --genome_file genome_file.fa \
           --output_dir output_directory \
@@ -244,29 +307,8 @@ TEtrimmer --input_file TE_consensus_library.fa \
           --dedup
 ```
 
-More options are available:
+### Outputs
 
-```code
-  --classify_unknown              Use RepeatClassifier to classify the consensus sequence if the input
-                                  sequence is not classified or is unknown or the processed sequence
-                                  length by TEtrimmer is 2000 bp longer or shorter than the query
-                                  sequence.
-
-  --cons_thr FLOAT                The minimum level of agreement required at a given position in the
-                                  alignment for a consensus character to be called. Default: 0.8
-
-  --mini_orf INTEGER              Define the minimum ORF length to be predicted by TEtrimmer. Default:
-                                  200
-
-  --max_msa_lines INTEGER         Set the maximum number of sequences to be included in a multiple
-                                  sequence alignment. Default: 100
-
-  -ga, --genome_anno              Perform genome TE annotation using RepeatMasker with the TEtrimmer
-                                  curated TE libraries.
-
-```
-
-## Outputs
 - 📁**Classification** - *This folder is used for TE classifications.*
 - 📁**Multiple_sequence_alignment** - *All raw files will be stored in this folder if < --debug > is enabled.*
   - 📄**error_file.txt** - *Error file to store all error messages, only visible if errors were found.*
@@ -289,6 +331,10 @@ More options are available:
 - 📄**TEtrimmer_consensus.fasta** - *TE consensus library file before de-duplication.*
 - 📄**TEtrimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
 
+## Example report plots for each output TE consensus sequence
+
+For each TEtrimmer output TE consensus sequence. You will get a report plot file like this:
+![Reportplots](docs/TEtrimmer_report_plots_for_each_output.jpg)
 
 ## TEtrimmerGUI
 
@@ -322,6 +368,7 @@ TEtrimmerGUI --help
 # Open other consensus lib of TE predictions
 TEtrimmerGUI -g <genome_file.fa> -clib <TE_consensus_library.fa>
 ```
+
 
 #### Other TEtrimmerGUI Options
 
@@ -361,10 +408,6 @@ Options:
 
   ```
 
-## Example report plots for each output TE consensus sequence
-
-For each TEtrimmer output TE consensus sequence. You will get a report plot file like this:
-![Reportplots](docs/TEtrimmer_report_plots_for_each_output.jpg)
 
 ## All TEtrimmer available options
 ```commandline
@@ -509,6 +552,26 @@ Options:
 
   --help                          Show this message and exit.
 ```
+
+## Hardware requirements
+System: Linux, macOS, Windows WSL (untested)
+
+RAM:
+- For HPC Linux user, enough RAM needs to be assigned. We highly recommend running TEtrimmer on HPC with at least 40 threads and assigning at least 5 GB RAM to each thread.
+
+
+| Threads | RAM    |
+|---------|--------|
+| 40      | 200 GB |
+| 100     | 600 GB |
+
+- Windows and macOS PC users can use Virtual Memory. Simply assign 20 threads to push the CPU to its limits. We did tests on a Macbook Pro (2020 M1 chip, 16 GB RAM) and compared with HPC, you can find the running time here:
+
+| Query sequence number | Platform       | Threads | RAM                    | Run time |
+|-----------------------|----------------|---------|------------------------|--------------|
+| 1700                  | Macbook Pro M1 | 20      | 16 GB + Virtual Memory | 50 hours     |
+| 1700                  | HPC            | 40      | 150 GB                 | 5 hours      |
+
 
 ## Citation
 Qian, J., Xue, H., Ou, S., Storer, J., Fürtauer, L., Wildermuth, M. C., Kusch, S., & Panstruga, R. bioRxiv (2024) https://doi.org/10.1101/2024.06.27.600963
