@@ -8,13 +8,6 @@ from Bio.Align import MultipleSeqAlignment
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-required_packages = {
-    'click': 'click',
-    'Bio': 'biopython',
-    'numpy': 'numpy',
-    'pandas': 'pandas',
-}
-
 
 class CropEnd:
     """

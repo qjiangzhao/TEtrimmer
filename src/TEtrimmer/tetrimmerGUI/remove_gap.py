@@ -3,9 +3,6 @@ import os
 import click
 from Bio import AlignIO
 
-required_packages = {'click': 'click', 'Bio': 'biopython'}
-# install_and_import(required_packages)
-
 
 def calc_conservation(col):
     """

@@ -128,7 +128,7 @@ bin_py_path = get_original_file_path()
     'check the same TE library as last time, you do not need to use this option again.',
 )
 @click.option(
-    '--cdd_dir', '-cdd', default=None, type=str, help='NCBI cdd database path.'
+    '--cdd_dir', '-cdd', default=None, type=str, help='Path to cdd database.'
 )
 @click.option(
     '--max_msa_lines',

@@ -613,8 +613,8 @@ def check_and_download(directory, check_pattern, filename, url):
 def check_cdd_index_files(directory):
     """
     Check if the cdd index files exist in the provided directory.
-    :param directory: str, the directory to search for the PFAM index files.
-    :return: boolean, 'True' if all PFAM index files exist, 'False' otherwise.
+    :param directory: str, the directory to search for the cdd index files.
+    :return: boolean, 'True' if all cdd index files exist, 'False' otherwise.
     """
     # Define the list of cdd index files
     cdd_files = [

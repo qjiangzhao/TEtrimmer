@@ -6,9 +6,6 @@ from Bio.Align import MultipleSeqAlignment
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-required_packages = {'click': 'click', 'Bio': 'biopython'}
-# install_and_import(required_packages)
-
 
 class CropEndByGap:
     def __init__(self, input_file, gap_threshold=0.05, window_size=300):
