@@ -250,7 +250,7 @@ with open(config_path, 'r') as config_file:
 )
 @click.option(
     '--ext_check_win',
-    type=str,
+    type=int,
     help='the check windows size during defining start and end of the consensus sequence based on the multiple '
     'sequence alignment. Used with <ext_thr>. If <ext_check_win> bp at the end of multiple sequence alignment '
     'has “N” present (ie. positions have similarity proportion smaller than <ext_thr>), the extension will stop, '
