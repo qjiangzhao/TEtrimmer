@@ -933,7 +933,6 @@ def analyze_sequence(
         if 'DNA' in seq_type:
             ex_step = 500
             max_extension = 7000
-            min_blast_len = 150
             crop_end_gap_win = 100
             check_extension_win = 50
 
@@ -942,20 +941,19 @@ def analyze_sequence(
             ex_step = 200
             max_extension = 1400
             min_blast_len = 80
-            crop_end_gap_win = 50
+            min_blast_len = min(min_blast_len, 50)
             check_extension_win = 50
 
-        if 'Helitron' in seq_type:
+        if "Helitron" in seq_type or "helitron" in seq_type:
             ex_step = 500
             max_extension = 7000
-            min_blast_len = 150
             crop_end_gap_win = 100
             check_extension_win = 50
 
         if 'MITE' in seq_type:
             ex_step = 100
             max_extension = 500
-            min_blast_len = 50
+            min_blast_len = min(min_blast_len, 50)
             crop_end_gap_win = 40
             check_extension_win = 50
 
