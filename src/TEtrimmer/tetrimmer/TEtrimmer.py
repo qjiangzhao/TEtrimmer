@@ -118,9 +118,9 @@ with open(config_path, 'r') as config_file:
 @click.option(
     '--num_threads',
     '-t',
-    default=10,
+    default=1,
     type=int,
-    help='Thread number used for TEtrimmer. Default: 10',
+    help='Thread number used for TEtrimmer. Default: 1',
 )
 @click.option(
     '--classify_unknown',
