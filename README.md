@@ -4,6 +4,7 @@
 [![Manual Available](https://img.shields.io/badge/Manual-available-brightgreen.svg)](./docs/TEtrimmerv1.4.0Manual.pdf)
 
 # TEtrimmer
+
 Automated and interactive curation of transposable elements.
 
 ## Contents
@@ -46,12 +47,14 @@ achieving manual curation-level TE consensus libraries easily.
 
 
 ## Manual
+
 For detailed instructions, including installation steps, usage options, example outputs, and more,
 please refer to [TEtrimmerv1.4.0Manual.pdf](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerv1.4.0Manual.pdf)
 
 **Note: Manual is out of date.**
 
 ## Installation
+
 TEtrimmer can be installed locally with Conda, or run from a Container with Singularity or Docker.
 
 You will need local copies of the Pfam-A and CDD databases available. See example usage section for download instructions.
@@ -167,7 +170,6 @@ docker run -it --name TEtrimmer -v <bind_your_path>:/data quay.io/biocontainers/
 
 In this example we will clone the development repo and create a fresh Conda environment to run `TEtrimmer`.
 
-
 ```bash
 # Clone this fork and navigate into repo dir
 git clone git@github.com:qjiangzhao/TEtrimmer.git && cd TEtrimmer
@@ -184,7 +186,6 @@ pip install -e '.[tests]'
 # Confirm installation
 TEtrimmer --help
 ```
-
 
 Fetch Pfam-A database. We will store the database files in the default location. Any database path can be specified with `--pfam_dir`.
 
@@ -219,8 +220,7 @@ TEtrimmer --input_file tests/data/test_input.fa.gz \
 --pfam_dir src/TEtrimmer/pfam_database
 ```
 
-
-After running `TEtrimmer `the processes TE families can be further curated with TEtrimmerGUI.
+After running `TEtrimmer` the processes TE families can be further curated with TEtrimmerGUI.
 
 First we will need to fetch the CDD database of TE domains. Again we will store it in the default location.
 
@@ -242,7 +242,6 @@ TEtrimmerGUI -i output_directory/TEtrimmer_for_proof_curation \
 --output_dir output_dir_GUI \
 -cdd_dir src/TEtrimmer/tetrimmerGUI/cdd_database
 ```
-
 
 ### Inputs
 
@@ -369,7 +368,6 @@ TEtrimmerGUI --help
 TEtrimmerGUI -g <genome_file.fa> -clib <TE_consensus_library.fa>
 ```
 
-
 #### Other TEtrimmerGUI Options
 
 ```code
@@ -408,8 +406,8 @@ Options:
 
   ```
 
-
 ## All TEtrimmer available options
+
 ```commandline
 Options:
   -i, --input_file TEXT           Path to TE consensus file (FASTA format). Use the output from
@@ -554,11 +552,12 @@ Options:
 ```
 
 ## Hardware requirements
+
 System: Linux, macOS, Windows WSL (untested)
 
 RAM:
-- For HPC Linux user, enough RAM needs to be assigned. We highly recommend running TEtrimmer on HPC with at least 40 threads and assigning at least 5 GB RAM to each thread.
 
+- For HPC Linux user, enough RAM needs to be assigned. We highly recommend running TEtrimmer on HPC with at least 40 threads and assigning at least 5 GB RAM to each thread.
 
 | Threads | RAM    |
 |---------|--------|
@@ -572,7 +571,11 @@ RAM:
 | 1700                  | Macbook Pro M1 | 20      | 16 GB + Virtual Memory | 50 hours     |
 | 1700                  | HPC            | 40      | 150 GB                 | 5 hours      |
 
-
 ## Citation
-Qian, J., Xue, H., Ou, S., Storer, J., Fürtauer, L., Wildermuth, M. C., Kusch, S., & Panstruga, R. bioRxiv (2024) https://doi.org/10.1101/2024.06.27.600963
-TEtrimmer: A novel tool to automate the manual curation of transposable elements.
+
+Qian, J., Xue, H., Ou, S., Storer, J., Fürtauer, L., Wildermuth, M. C., Kusch, S., & Panstruga, R. *TEtrimmer: A novel tool to automate the manual curation of transposable elements*. bioRxiv (2024) https://doi.org/10.1101/2024.06.27.600963
+
+You should also cite components of the TEtrimmer workflow, such as RepeatMasker, TE-Aid, and RepeatClassifier, if you use them in your work.
+
+**TE-Aid**
+Goubert, C., Craig, R.J., Bilat, A.F. et al. *A beginner’s guide to manual curation of transposable elements*. Mobile DNA 13, 7 (2022). https://doi.org/10.1186/s13100-021-00259-7
