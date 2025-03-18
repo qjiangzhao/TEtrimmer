@@ -45,7 +45,6 @@ achieving manual curation-level TE consensus libraries easily.
   <img src="docs/TEtrimmerFlowchart_video.png" alt="TEtrimmerFlowchart" style="width: 800px;">
 </a>
 
-
 ## Manual
 
 For detailed instructions, including installation steps, usage options, example outputs, and more,
@@ -88,7 +87,7 @@ TEtrimmer --help
 
 #### 1B. Install latest version into local Conda env
 
-Use the [`environment.yml`](https://github.com/qjiangzhao/TE-Trimmer/blob/main/environment.yml) file to create a new env called "TEtrimmer" with dependencies only.
+Use the [`environment.yml`](https://github.com/Adamtaranto/TE-Trimmer/blob/main/environment.yml) file to create a new env called "TEtrimmer" with dependencies only.
 
 ```bash
 # Create new conda environment
@@ -102,7 +101,7 @@ Now you can install TEtrimmer from this github repo:
 
 ```bash
 # Clone the latest version of TEtrimmer from Github
-git clone https://github.com/qjiangzhao/TEtrimmer.git && cd TEtrimmer
+git clone https://github.com/Adamtaranto/TEtrimmer.git && cd TEtrimmer
 
 # pip install package
 pip install -e '.[tests]'
@@ -138,7 +137,7 @@ TEtrimmer \
 # If you want to run the latest version of TEtrimmer via the singularity image
 # Clone the new version of TEtrimmer from Github
 
-git clone https://github.com/qjiangzhao/TEtrimmer.git
+git clone https://github.com/Adamtaranto/TEtrimmer.git
 
 singularity exec --writable-tmpfs \
 --bind <your_path_to_cloned_TEtrimmer_folder_which_contain_TEtrimmer.py>:/TEtrimmer_cloned \
@@ -172,7 +171,7 @@ In this example we will clone the development repo and create a fresh Conda envi
 
 ```bash
 # Clone this fork and navigate into repo dir
-git clone git@github.com:qjiangzhao/TEtrimmer.git && cd TEtrimmer
+git clone https://github.com/Adamtaranto/TEtrimmer.git && cd TEtrimmer
 
 # Create env "TEtrimmer"
 conda env create -f environment.yml
@@ -202,7 +201,7 @@ gunzip src/TEtrimmer/pfam_database/Pfam-A.hmm.gz
 gunzip src/TEtrimmer/pfam_database/Pfam-A.hmm.dat.gz
 ```
 
-Now we can run `TEtrimmer` on the test data files[test_input.fa.gz](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/data/test_input.fa.gz) and [test_genome.fa.gz](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/data/test_genome.fa.gz).
+Now we can run `TEtrimmer` on the test data files[test_input.fa.gz](https://github.com/Adamtaranto/TEtrimmer/blob/main/tests/data/test_input.fa.gz) and [test_genome.fa.gz](https://github.com/Adamtaranto/TEtrimmer/blob/main/tests/data/test_genome.fa.gz).
 
 ``` bash
 # Run TEtrimmer
