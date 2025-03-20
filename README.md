@@ -239,7 +239,7 @@ Finally, we can launch `TEtrimmerGUI`. We provide the path to the CDD database w
 TEtrimmerGUI -i output_directory/TEtrimmer_for_proof_curation \
 -g tests/data/test_genome.fa.gz  \
 --output_dir output_dir_GUI \
--cdd_dir src/TEtrimmer/tetrimmerGUI/cdd_database
+--cdd_dir src/TEtrimmer/tetrimmerGUI/cdd_database
 ```
 
 ### Inputs
@@ -364,7 +364,7 @@ RepeatModeler2, REPET, and other tools.
 TEtrimmerGUI --help
 
 # Open other consensus lib of TE predictions
-TEtrimmerGUI -g <genome_file.fa> -clib <TE_consensus_library.fa>
+TEtrimmerGUI -g <genome_file.fa> --clib <TE_consensus_library.fa>
 ```
 
 #### Other TEtrimmerGUI Options
