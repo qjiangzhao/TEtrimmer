@@ -957,7 +957,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     # Classification is not mandatory, skip this step if errors are encountered
     try:
         if classify_all or (
-                classify_unknown and (seq_obj.check_unknown() or (left_ex_total + right_ex_total >= 4000))):
+                classify_unknown and (seq_obj.check_unknown() or (left_ex_total + right_ex_total >= 3000))):
             # Define different folders for each sequence
             # the suffix .fasta is important, this ensures that this folder can be deleted later
             classification_seq_folder = os.path.join(classification_dir, f"{uniq_seq_name}.fasta")

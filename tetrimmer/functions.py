@@ -1534,7 +1534,7 @@ def eliminate_curatedlib_by_repeatmasker(curatedlib, input_seq, curatedlib_dir, 
     try:
         # Filter dataframe according to the percentage of coverage
         df = df[df['cov_query_perc'] >= min_cov]
-        df = df[df['cov_repeat_perc'] >= min_cov]
+        #df = df[df['cov_repeat_perc'] >= min_cov]
 
     except Exception as e:
         prgre("No sequences are found in --input_file that are identical to the sequences in --curatedlib")
@@ -1973,7 +1973,7 @@ def file_exists_and_not_empty(file_path):
         return False
 
 
-def merge_pdfs(output_dir, output_file_n, *pdfs):
+def merge_pdfs_old(output_dir, output_file_n, *pdfs):
     """
     Merge PDF files into one single PDF file. 
     The order in which file paths are provided in <*pdfs> defines the order of plots in the final single PDF file.
@@ -1981,14 +1981,16 @@ def merge_pdfs(output_dir, output_file_n, *pdfs):
     """
     merger = PdfMerger()
     valid_pdf_count = 0  # Counter to keep track of valid PDFs added
-
-    # Iterate over the list of file paths
-    for pdf in pdfs:
-        # Check if the file exists and is not empty before appending
-        if pdf is not None and os.path.exists(pdf) and os.path.getsize(pdf) > 0:
-            # Append PDF files
-            merger.append(pdf)
-            valid_pdf_count += 1
+    try:
+        # Iterate over the list of file paths
+        for pdf in pdfs:
+            # Check if the file exists and is not empty before appending
+            if pdf is not None and os.path.exists(pdf) and os.path.getsize(pdf) > 0:
+                # Append PDF files
+                merger.append(pdf)
+                valid_pdf_count += 1
+    except Exception:
+        raise Exception
 
     if valid_pdf_count > 0:
         merged_pdf_path = os.path.join(output_dir, os.path.join(output_dir, f"{output_file_n}_me.pdf"))
@@ -2000,6 +2002,41 @@ def merge_pdfs(output_dir, output_file_n, *pdfs):
         merger.close()
         raise Exception
 
+
+def merge_pdfs(output_dir, output_file_name, *pdfs):
+    """
+    Merge PDF files into one single PDF file.
+    The order in which file paths are provided in <*pdfs> defines the order of pages in the final single PDF file.
+
+    """
+
+    merger = PdfMerger()
+
+    try:
+        # Iterate over the list of file paths
+        for pdf in pdfs:
+            if pdf is None or not os.path.exists(pdf) or os.path.getsize(pdf) == 0:
+                continue
+
+            # Append valid PDF files
+            merger.append(pdf)
+
+        if len(merger.pages) > 0:
+            # Ensure output directory exists
+            os.makedirs(output_dir, exist_ok=True)
+
+            merged_pdf_path = os.path.join(output_dir, f"{output_file_name}_merged.pdf")
+            merger.write(merged_pdf_path)
+
+            return merged_pdf_path
+        else:
+            raise ValueError("No valid PDFs were provided for merging.")
+
+    except Exception as e:
+        raise RuntimeError(f"An error occurred while merging PDFs: {e}")
+
+    finally:
+        merger.close()
 
 def dotplot(sequence1, sequence2, output_dir):
 
