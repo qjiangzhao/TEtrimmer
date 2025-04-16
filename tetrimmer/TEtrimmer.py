@@ -79,15 +79,14 @@ with open(config_path, "r") as config_file:
 @click.option('--output_dir', '-o', default=os.getcwd(), type=str,
               help='Path to output directory. Default: current working directory.')
 @click.option('--preset', '-s', default='conserved', type=click.Choice(preset_config.keys()),
-              help='Choose one preset config (conserved or divergent).')
+              help='Choose one preset config (conserved or divergent). Default: conserved')
 #@click.option('--engine', '-e', default='blast', type=click.Choice(["blast", "mmseqs"]),
 #             help='Select the similar sequence search engine. "blast" or "mmseqs". Default: blast')
 @click.option('--num_threads', '-t', default=10, type=int,
               help='Thread number used for TEtrimmer. Default: 10')
 @click.option('--classify_unknown', default=False, is_flag=True,
               help='Use RepeatClassifier to classify the consensus sequence if the input sequence is not classified or '
-                   'is unknown or the processed sequence length by TEtrimmer is 2000 bp longer or shorter '
-                   'than the query sequence.')
+                   'is unknown or the query TE sequence is extended more than 3000 bp.')
 @click.option('--classify_all', default=False, is_flag=True,
               help='Use RepeatClassifier to classify every consensus sequence. WARNING: This may take a long time.')
 @click.option('--continue_analysis', '-ca', default=False, is_flag=True,
@@ -96,16 +95,16 @@ with open(config_path, "r") as config_file:
               help='Remove duplicate sequences in the input file.')
 @click.option('--curatedlib', default=None, type=str,
               help='Path to manually curated high-quality TE consensus library file. TEtrimmer eliminates TE consensus '
-                   'sequence from "--input_file" if the sequence shares more than 95% identity with sequences from '
+                   'sequence from "--input_file" if the sequence shares more than 95% identity and coverage with sequences from '
                    '"--curatedlib".')
 @click.option('--genome_anno', '-ga', default=False, is_flag=True,
-              help='Perform genome TE annotation using RepeatMasker with the TEtrimmer curated TE libraries.')
+              help='Perform genome TE annotation using RepeatMasker with the TEtrimmer curated TE library.')
 @click.option('--hmm', default=False, is_flag=True,
               help='Generate HMM files for each processed consensus sequence.')
 @click.option('--debug', default=False, is_flag=True,
-              help='debug mode. This will keep all raw files. WARNING: Many files will be generated.')
-@click.option('--fast_mode', default=False, is_flag=True,
-              help='Reduce running time at the cost of lower accuracy and specificity.')
+              help='Turn on debug mode. This will keep all raw files. WARNING: Many files will be generated.')
+#@click.option('--fast_mode', default=False, is_flag=True,
+#              help='Reduce running time at the cost of lower accuracy and specificity.')
 #@click.option('--plot_query', default=False, is_flag=True,
 #              help='Generate TE_Aid plot for each query sequence before TEtrimmer analysis.')
 #@click.option('--plot_skip', default=False, is_flag=True,
@@ -121,7 +120,7 @@ with open(config_path, "r") as config_file:
 @click.option('--mini_orf', type=int,
               help='Define the minimum ORF length to be predicted by TEtrimmer. Default: 200')
 @click.option('--max_msa_lines', type=int,
-              help='Set the maximum number of sequences to be included in a multiple sequence alignment. Default: 100')
+              help='Set the maximum number of sequences from the BLASTN search to be included in a multiple sequence alignment. Default: 100')
 @click.option('--top_msa_lines', type=int,
               help='If the sequence number of multiple sequence alignment (MSA) is greater than <max_msa_lines>, ' 
                     'TEtrimmer will first sort sequences by length and choose <top_msa_lines> number of sequences. ' 
@@ -138,7 +137,7 @@ with open(config_path, "r") as config_file:
                    'WARNING: using a larger number will potentially result in more accurate consensus results but will '
                    'significantly increase the running time. We do not recommend increasing this value to over 5. Default: 2')
 @click.option('--ext_thr', type=float,
-              help='The threshold to call “N” at a position. For example, if the most conserved nucleotide in a MSA column' 
+              help='The threshold to call “N” at a MSA column position. For example, if the most conserved nucleotide in a MSA column' 
                     'has proportion smaller than <ext_thr>, a “N” will be called at this position. Used with <ext_check_win>. ' 
                     'The lower the value of <ext_thr>, the more likely to get longer the extensions on both ends. '
                     'You can try reducing <ext_thr> if TEtrimmer fails to find full-length TEs. Default: 0.7')
@@ -152,7 +151,7 @@ with open(config_path, "r") as config_file:
                     'extension step. TE_Trimmer will iteratively add <ext_step> nucleotides until finding the TE boundary or '
                     'reaching <max_ext>. Default: 1000')
 @click.option('--max_ext', type=int,
-              help='The maximum extension in nucleotides at both ends of the multiple sequence alignment. Default: 7000')
+              help='The maximum extension in nucleotides at each ends of the multiple sequence alignment. Default: 7000')
 @click.option('--gap_thr', type=float,
               help='If a single column in the multiple sequence alignment has a gap proportion larger than <gap_thr> '
                     'and the proportion of the most common nucleotide in this column is less than <gap_nul_thr>, '
@@ -165,14 +164,14 @@ with open(config_path, "r") as config_file:
               help='The crop end by divergence function will convert each nucleotide in the multiple sequence '
                    'alignment into a proportion value. This function will iteratively choose a sliding window from '
                    'each end of each sequence of the MSA and sum up the proportion numbers in this window. '
-                   'The cropping will continue until the sum of proportions is larger than <--crop_end_div_thr>. '
+                   'The cropping will continue until the average of proportions is larger than <--crop_end_div_thr>. '
                    'Cropped nucleotides will be converted to -. Default: 0.7')
 @click.option('--crop_end_div_win', type=int,
               help='Window size used for the end-cropping process. Used with the <--crop_end_div_thr> option. Default: 40')
 @click.option('--crop_end_gap_thr', type=float,
               help='The crop end by gap function will iteratively choose a sliding window from each end of each sequence '
-                   'of the MSA and calculate the gap proportion in this window. The cropping will continue until the sum '
-                   'of gap proportions is smaller than <--crop_end_gap_thr>. Cropped nucleotides will be converted to -. '
+                   'of the MSA and calculate the gap proportion in this window. The cropping will continue until the '
+                   'gap proportions is smaller than <--crop_end_gap_thr>. Cropped nucleotides will be converted to -. '
                    'Default: 0.1')
 @click.option('--crop_end_gap_win', type=int,
               help='Define window size used to crop end by gap. Used with the <--crop_end_gap_thr> option. Default: 250')
@@ -196,14 +195,15 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
          top_msa_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ext_step,
          max_ext, gap_thr, gap_nul_thr, crop_end_div_thr, crop_end_div_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, mini_orf, preset, ext_check_win, dedup, genome_anno, hmm,
-         debug, fast_mode, classify_unknown, classify_all, curatedlib):
+         debug, classify_unknown, classify_all, curatedlib):
 
     # Add this to click options if mmseq2 has been fully tested
     engine = "blast"
 
-    # Set plot_query and plot_skip to true
+    # Set plot_query, plot_skip, and fast_mode to true
     plot_query = True
     plot_skip = True
+    fast_mode = True
     start_time = datetime.now()
     print(f"\nTEtrimmer started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}.\n", flush=True)
 
@@ -374,7 +374,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 
             # Remove duplicates
             try:
-                cd_hit_est(input_file, merge_output, identity_thr=0.9, aL=0.9, aS=0.9,
+                cd_hit_est(input_file, merge_output, identity_thr=0.9, aL=0.95, aS=0.95,
                            s=0.9, thread=num_threads)
                 # Convert input_file to merged input_file
                 input_file = merge_output

@@ -14,8 +14,8 @@
     "crop_end_div_win": 40,
     "crop_end_gap_thr": 0.1,
     "crop_end_gap_win": 250,
-    "start_patterns": "TGT",
-    "end_patterns": "ACA",
+    "start_patterns": "TG",
+    "end_patterns": "CA",
     "mini_orf": 200,
     "ext_check_win": 150
   },
