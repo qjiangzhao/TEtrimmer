@@ -311,6 +311,7 @@ def repeatmasker_classification(final_unknown_con_file, final_classified_con_fil
         temp_repeatmasker_dir = os.path.join(classification_dir, "temp_repeatmasker_classification")
         reclassified_recording_path = os.path.join(temp_repeatmasker_dir, "Reclassified_recoring.txt")
         os.makedirs(temp_repeatmasker_dir, exist_ok=True)
+
         classification_out = repeatmasker(final_unknown_con_file, final_classified_con_file,
                                           temp_repeatmasker_dir, thread=num_threads, classify=True)
 
@@ -598,7 +599,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                      single_fasta_n, hmm, hmm_dir, check_extension_win, debug, progress_file,
                      classify_unknown, classify_all, final_con_file, final_con_file_no_low_copy, final_unknown_con_file,
                      final_classified_con_file, low_copy_dir, fast_mode, error_files, plot_skip, skipped_dir,
-                     plot_query, engine, proof_curation_dir):
+                     plot_query, engine, proof_curation_dir, poly_patterns, poly_len):
     #####################################################################################################
     # Code block: Set different elongation number for different elements and do BLAST search
     #####################################################################################################
@@ -770,7 +771,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
     #####################################################################################################
 
     try:
-        # cluster_false means too few sequences were found in clusters from MSA (all_cluster_size < 10); TE Trimmer will skip this sequence.
+        # cluster_false means too few sequences were found in clusters from MSA (all_cluster_size < 10); TEtrimmer will skip this sequence.
         if cluster_MSA_result is False:
             check_low_copy, blast_full_length_n, found_match, TE_aid_plot = check_self_alignment(
                 seq_obj, seq_file, MSA_dir, genome_file, blast_hits_count, blast_out_file, plot_skip=plot_skip)
@@ -807,7 +808,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                     find_boundary_result = find_boundary_and_crop(
                         cluster_bed_files_list[i], genome_file, MSA_dir, pfam_dir, seq_obj,
                         hmm, classify_all, classify_unknown, error_files, plot_query, classification_dir,
-                        final_con_file, final_con_file_no_low_copy, proof_curation_dir, hmm_dir, cons_threshold=cons_thr,
+                        final_con_file, final_con_file_no_low_copy, proof_curation_dir, hmm_dir, poly_patterns,
+                        poly_len, cons_threshold=cons_thr,
                         ext_threshold=ext_thr, ex_step_size=ex_step, max_extension=max_extension,
                         gap_threshold=gap_thr, gap_nul_thr=gap_nul_thr,
                         crop_end_thr=crop_end_thr, crop_end_win=crop_end_win,

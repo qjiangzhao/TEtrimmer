@@ -13,7 +13,7 @@ from functions import generate_hmm_from_msa, extract_fasta, remove_gaps_with_sim
     con_generater_no_file, concatenate_alignments, select_window_columns, select_start_end_and_join, \
     con_generater, reverse_complement_seq_file, classify_single, check_terminal_repeat, select_star_to_end, \
     define_crop_end_simi_thr, prcyan, prgre, merge_pdfs, dotplot, scale_single_page_pdf, \
-    remove_files_with_start_pattern, find_poly_a_end_position, is_LTR, check_and_update, modify_fasta_headers
+    remove_files_with_start_pattern, find_poly_a_end_position, check_and_update, modify_fasta_headers
 from boundaryclass import CropEnd, CropEndByGap, DefineBoundary
 from TEaid import TEAid
 from orfdomain import PlotPfam, determine_sequence_direction
@@ -182,7 +182,8 @@ def extend_end(max_extension, ex_step_size, end, input_file, genome_file, output
 
 
 def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
-              define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win):
+              define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win, seq_obj,
+              poly_patterns, poly_len):
     found_match_crop = False
 
     bed_fasta, bed_out_flank_file = extract_fasta(bed_file, genome_file, output_dir, 0, 0, nameonly=True)
@@ -285,7 +286,12 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
     else:
         # Check if poly A can be found from the sequence and return the last A position
         # poly_a will be None if not found
-        poly_a = find_poly_a_end_position(bed_fasta_mafft_gap_sim_cp_con, min_length=10)
+        if "LINE" in seq_obj.old_TE_type or "SINE" in seq_obj.old_TE_type:
+
+            # Poly_a will be None if poly A is not found
+            poly_a = find_poly_a_end_position(bed_fasta_mafft_gap_sim_cp_con, min_length=poly_len)
+        else:
+            poly_a = None
 
         bed_boundary = DefineBoundary(bed_fasta_mafft_gap_sim_cp, threshold=ext_threshold,
                                       check_window=define_boundary_win, max_X=0.2,
@@ -297,7 +303,7 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
             # For LINE elements bed_fasta_mafft_boundary_crop will be changed. Copy alignment to another variable
             bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_boundary_crop
 
-            if "LINE" in bed_file:
+            if "LINE" in seq_obj.old_TE_type:
                 # For highly divergent regions, more gaps can be found. According to this feature, remove
                 # high-divergence regions. This function is very useful for dealing with LINE elements.
                 cropped_MSA_by_gap_object = CropEndByGap(bed_fasta_mafft_boundary_crop, gap_threshold=crop_end_gap_thr,
@@ -347,7 +353,7 @@ def crop_end_and_remove_gap(input_file, output_dir, crop_end_threshold=0.8, wind
 
 def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj, hmm, classify_all, classify_unknown,
                            error_files, plot_query, classification_dir, final_con_file, final_con_file_no_low_copy,
-                           proof_curation_dir, hmm_dir,
+                           proof_curation_dir, hmm_dir, poly_patterns, poly_len,
                            cons_threshold=0.8, ext_threshold=0.7, ex_step_size=1000,
                            max_extension=7000, gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=0.8, crop_end_win=40,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
@@ -464,7 +470,8 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
             # final_MSA return 'False' if when the start crop point is greater than the end crop point, which means the
             # sequence is too short. If the divergence is too high, CropEnd will return 'False'.
             final_msa_result = final_MSA(bed_final_MSA, genome_file, output_dir, gap_nul_thr, gap_threshold, ext_threshold,
-                                         define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr, crop_end_win)
+                                         define_boundary_win, crop_end_gap_thr, crop_end_gap_win, crop_end_thr,
+                                         crop_end_win, seq_obj, poly_patterns, poly_len)
 
             # Check if final_msa_result returned 'False', indicating an error or specific condition
             if not final_msa_result:
@@ -551,7 +558,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
         # If both start and end patterns are 'None', and found_match_crop is 'False' (no terminal repeat found), 
         # skip this block, because terminal repeats can precisely define the start and end points of TEs.
         if start_patterns is not None or end_patterns is not None and not found_match_crop:
-            if is_LTR(cropped_alignment_output_file_g):  # Check if file name contains "LTR"
+            if "LTR" in seq_obj.old_TE_type:  # Check if file name contains "LTR"
                 # Generate consensus sequences
                 consensus_seq = con_generater_no_file(cropped_alignment_output_file_g, threshold=0.7, ambiguous="X")
 

@@ -434,6 +434,7 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
             similarity_threshold=0.85, min_nucleotide=5)
     else:
         fasta_out_flank_mafft_file_gap_filter = input_msa
+
     # Extract columns that contain different alignment patter, use this for group separation.
     # This threshold will be used to replace nucleotides that are less than threshold with a gap character
     # for each column
@@ -460,18 +461,21 @@ def clean_and_cluster_MSA(input_file, bed_file, output_dir, div_column_thr=0.8, 
         # Turn on the next line of code when need the separated MSA
         # subset_alignment_dis(filtered_cluster_records, output_dir, pattern_alignment)
     # if false, meaning no enough divergent column for cluster
-    # Do full length alignment cluster and only keep the biggest cluster
+    # Do full length alignment cluster and only keep the biggest cluster. The reason for this is the MSA is consistent
+    # In the other word, the divergent columns is less. It is not necessary to do clustering.
+    # But there could be some sequences in the MSA that is distinct to the MSA, clustering step will eliminate
+    # those outline sequences.
     else:
 
         # Remove sequences that contain many gaps. This can cause problem for iqtree clustering.
         filter_out_big_gap_seq(fasta_out_flank_mafft_file_gap_filter, f"{fasta_out_flank_mafft_file_gap_filter}_gr.fa",
                                gap_threshold=0.9)
-
+        # Set max_cluster to 1. This will eliminate outline sequences from the original MSA
         filtered_cluster_records, if_cluster = cluster_msa_iqtree_DBSCAN(
-            f"{fasta_out_flank_mafft_file_gap_filter}_gr.fa", min_cluster_size=min_length_num, max_cluster=cluster_num)
-        if if_cluster:
+            f"{fasta_out_flank_mafft_file_gap_filter}_gr.fa", min_cluster_size=min_length_num, max_cluster=1)
+        #if if_cluster:
             # keep the biggest cluster only
-            filtered_cluster_records = [max(filtered_cluster_records, key=len)]
+        #    filtered_cluster_records = [max(filtered_cluster_records, key=len)]
     if if_cluster:
         # Subset bed file and return a list contain all clustered bed absolute files
         bed_dfs = process_labels(bed_file, filtered_cluster_records)

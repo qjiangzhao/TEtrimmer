@@ -11,19 +11,13 @@ from Bio.Align import MultipleSeqAlignment, AlignInfo
 import pandas as pd
 import pandas.errors
 import numpy as np
-from PyPDF2 import PdfMerger, PdfFileReader, PdfFileWriter
+from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 import warnings
 from Bio import BiopythonDeprecationWarning
 import traceback
 
 # Suppress all deprecation warnings
 warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
-
-
-# Check if file name contains the string LTR
-def is_LTR(input_file):
-    input_file_name = os.path.basename(input_file)
-    return 'LTR' in input_file_name
 
 
 # Generate consensus sequence
@@ -1347,7 +1341,7 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
 
     except FileNotFoundError:
         prcyan("'RepeatMasker' command not found. Please ensure 'RepeatMasker' is installed correctly.")
-        raise Exception
+        return False
 
     except subprocess.CalledProcessError as e:
         if classify:
@@ -1355,14 +1349,14 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
             prcyan(f"\n{e.stdout}")
             prcyan(f"\n{e.stderr}\n")
             prgre("This will not affect the final result. Only the classification of TE may not be correct.")
-            raise Exception
+            return False
         else:
             prcyan(f"\nRepeatMasker failed during final whole-genome TE annotation with error code {e.returncode}")
             prcyan(f"\n{e.stdout}")
             prcyan(f"\n{e.stderr}\n")
             prgre("This does not affect the final TE consensus library. You can perform the final genome-wide TE"
                   " annotation by yourself with RepeatMasker.")
-            raise Exception
+            return False
 
 
 def repeatmasker_output_classify(repeatmasker_out, progress_file, min_iden=70, min_len=80, min_cov=0.8):
@@ -2163,8 +2157,9 @@ def multi_seq_dotplot(input_file, output_dir, title):
 
 
 def scale_single_page_pdf(input_pdf_path, output_pdf_path, scale_ratio):
-    pdf_reader = PdfFileReader(input_pdf_path)
-    pdf_writer = PdfFileWriter()
+
+    pdf_reader = PdfReader(input_pdf_path)
+    pdf_writer = PdfWriter()
 
     page = pdf_reader.getPage(0)  # Get the first (and only) page
     page.scale_by(scale_ratio)  # Scale the page
@@ -2177,13 +2172,14 @@ def scale_single_page_pdf(input_pdf_path, output_pdf_path, scale_ratio):
 
 
 # Function used to find and return poly A end position
-def find_poly_a_end_position(input_file, min_length=10):
+def find_poly_a_end_position_old(input_file, poly_patterns="A", min_length=10):
 
     try:
         # Read input file and get sequence length
         record = SeqIO.read(input_file, "fasta")
         seq_length = len(record)
         seq_mid_position = seq_length // 2
+        patterns = [pattern.upper() for pattern in poly_patterns.split(',')] if poly_patterns else None
 
         reverse_sequence = record[::-1].upper()
         poly_a_length = 0
@@ -2208,6 +2204,67 @@ def find_poly_a_end_position(input_file, min_length=10):
     except Exception as e:
         prcyan(f"\nPoly A detection failed for {os.path.basename(input_file)} with error:\n{e}")
         prcyan('\n' + 'This is will not affect the result too much, you can choose ignore this error' + '\n')
+        return None
+
+
+
+def find_poly_a_end_position(input_file, poly_patterns="A", min_length=10):
+    try:
+        # Read input file
+        record = SeqIO.read(input_file, "fasta")
+        sequence = str(record.seq).upper()
+        seq_length = len(sequence)
+        seq_mid_position = seq_length - seq_length // 2.5
+
+        # Process patterns (split by comma and remove empty strings)
+        patterns = [p.strip().upper() for p in poly_patterns.split(',') if p.strip()]
+        if not patterns:
+            return None
+
+        # Check patterns in priority order
+        for pattern in patterns:
+            pattern_len = len(pattern)
+            if pattern_len == 0:
+                continue
+
+            # For single-character patterns (allow one interruption)
+            if pattern_len == 1:
+                poly_length = 0
+                interruption_used = False
+
+                # Search from the end towards the beginning
+                for i in range(seq_length - 1, seq_mid_position - 1, -1):
+                    if sequence[i] == pattern:
+                        poly_length += 1
+                    elif not interruption_used and poly_length >= 5 and poly_length < min_length:
+                        interruption_used = True
+                        poly_length += 1
+                    else:
+                        if poly_length >= min_length:
+                            return i + poly_length  # Return end position
+                        poly_length = 0
+                        interruption_used = False
+
+            # For multi-character patterns (no interruptions allowed)
+            else:
+                poly_length = 0
+                i = seq_length - pattern_len
+
+                while i >= seq_mid_position:
+                    if sequence[i:i+pattern_len] == pattern:
+                        poly_length += 1
+                        if poly_length >= min_length:
+                            return i + pattern_len  # End position of last full match
+                        i -= pattern_len  # Jump back by pattern length
+                    else:
+                        poly_length = 0
+                        i -= 1  # Move back one position
+
+        return None  # No valid poly tail found
+
+    except Exception as e:
+        prcyan(f"\nPoly A detection failed for {os.path.basename(input_file)} with error:\n{e}")
+        prcyan('\n' + 'This will not affect the result too much, you can choose to ignore this error' + '\n')
         return None
 
 
