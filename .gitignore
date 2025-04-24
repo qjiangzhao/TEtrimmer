@@ -13,6 +13,18 @@ tetrimmer/__pycache__
 tetrimmerGUI/__pycache__
 *.pyc
 
+tests/test_genome.fasta.fai
+tests/test_genome.fasta.length
+tests/test_genome.fasta.ndb
+tests/test_genome.fasta.nhr
+tests/test_genome.fasta.nin
+tests/test_genome.fasta.njs
+tests/test_genome.fasta.not
+tests/test_genome.fasta.nsq
+tests/test_genome.fasta.ntf
+tests/test_genome.fasta.nto
+
+
 # Ignore database
 pfam_database/
 tetrimmerGUI/cdd_database
