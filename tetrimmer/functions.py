@@ -2207,14 +2207,13 @@ def find_poly_a_end_position_old(input_file, poly_patterns="A", min_length=10):
         return None
 
 
-
 def find_poly_a_end_position(input_file, poly_patterns="A", min_length=10):
     try:
         # Read input file
         record = SeqIO.read(input_file, "fasta")
         sequence = str(record.seq).upper()
         seq_length = len(sequence)
-        seq_mid_position = seq_length - seq_length // 2.5
+        seq_mid_position = seq_length - int(seq_length // 2.5)
 
         # Process patterns (split by comma and remove empty strings)
         patterns = [p.strip().upper() for p in poly_patterns.split(',') if p.strip()]
@@ -2264,6 +2263,7 @@ def find_poly_a_end_position(input_file, poly_patterns="A", min_length=10):
 
     except Exception as e:
         prcyan(f"\nPoly A detection failed for {os.path.basename(input_file)} with error:\n{e}")
+        prcyan(traceback.format_exc())
         prcyan('\n' + 'This will not affect the result too much, you can choose to ignore this error' + '\n')
         return None
 

@@ -14,9 +14,6 @@
     "crop_end_div_win": 40,
     "crop_end_gap_thr": 0.1,
     "crop_end_gap_win": 250,
-    "start_patterns": "TG",
-    "end_patterns": "CA",
-    "poly_patterns": "A",
     "poly_len": 10,
     "mini_orf": 200,
     "ext_check_win": 150
@@ -36,9 +33,6 @@
     "crop_end_div_win": 40,
     "crop_end_gap_thr": 0.1,
     "crop_end_gap_win": 250,
-    "start_patterns": "TG",
-    "end_patterns": "CA",
-    "poly_patterns": "A",
     "poly_len": 10,
     "mini_orf": 200,
     "ext_check_win": 150

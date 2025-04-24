@@ -3,6 +3,8 @@ import os
 import shutil
 import traceback
 from datetime import timedelta, datetime
+from email.policy import default
+
 import click
 import concurrent.futures
 import json
@@ -175,7 +177,7 @@ with open(config_path, "r") as config_file:
                    'Default: 0.1')
 @click.option('--crop_end_gap_win', type=int,
               help='Define window size used to crop end by gap. Used with the <--crop_end_gap_thr> option. Default: 250')
-@click.option('--start_patterns', type=str,
+@click.option('--start_patterns', type=str, default = 'TG',
               help='LTR elements always start with a conserved sequence pattern. TEtrimmer searches the '
                    'beginning of the consensus sequence for these patterns. If the pattern is not found, '
                    'TEtrimmer will extend the search of <--start_patterns> to up to 15 nucleotides from the '
@@ -183,7 +185,7 @@ with open(config_path, "r") as config_file:
                    'if the pattern is found. Note: The user can provide multiple LTR start patterns in a '
                    'comma-separated list, like: TG,TA,TC (no spaces; the order of patterns determines '
                    'the priority for the search). Default: TG')
-@click.option('--end_patterns', type=str,
+@click.option('--end_patterns', type=str, default = 'CA',
               help='LTR elements always end with a conserved sequence pattern. TEtrimmer searches the '
                    'end of the consensus sequence for these patterns. If the pattern is not found, '
                    'TEtrimmer will extend the search of <--end_patterns> to up to 15 nucleotides from the '
@@ -191,7 +193,7 @@ with open(config_path, "r") as config_file:
                    'if the pattern is found. Note: The user can provide multiple LTR end patterns in a '
                    'comma-separated list, like: CA,TA,GA (no spaces; the order of patterns determines '
                    'the priority for the search). Default: CA')
-@click.option('--poly_patterns', type=str,
+@click.option('--poly_patterns', type=str, default = 'A',
               help="The 3' end of LINE and SINE elements often contains characteristic sequences such as poly(A), "
                    "poly(T), or short tandem repeats. TEtrimmer identifies the presence of those feature sequences "
                    "to help to define the 3' end boundary of LINE or SINE elements. "
@@ -312,17 +314,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
     if crop_end_gap_win is None:
         crop_end_gap_win = default_values.get("crop_end_gap_win")
 
-    if start_patterns is None:
-        start_patterns = default_values.get("start_patterns")
-
-    if end_patterns is None:
-        end_patterns = default_values.get("end_patterns")
-
-    if poly_patterns is None:
-        end_patterns = default_values.get("poly_patterns")
-
     if poly_len is None:
-        end_patterns = default_values.get("poly_len")
+        poly_len = default_values.get("poly_len")
 
     if mini_orf is None:
         mini_orf = default_values.get("mini_orf")

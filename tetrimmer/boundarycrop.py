@@ -289,7 +289,8 @@ def final_MSA(bed_file, genome_file, output_dir, gap_nul_thr, gap_threshold, ext
         if "LINE" in seq_obj.old_TE_type or "SINE" in seq_obj.old_TE_type:
 
             # Poly_a will be None if poly A is not found
-            poly_a = find_poly_a_end_position(bed_fasta_mafft_gap_sim_cp_con, min_length=poly_len)
+            poly_a = find_poly_a_end_position(bed_fasta_mafft_gap_sim_cp_con, poly_patterns=poly_patterns,
+                                              min_length=poly_len)
         else:
             poly_a = None
 
