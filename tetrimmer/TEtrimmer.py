@@ -133,11 +133,11 @@ with open(config_path, "r") as config_file:
                    'Default: 10')
 @click.option('--min_blast_len', type=int,
               help='The minimum sequence length for blast hits to be included for further analysis. Default: 150')
-@click.option('--max_cluster_num', default=2, type=int,
+@click.option('--max_cluster_num', default=5, type=int,
               help='The maximum number of clusters assigned in each multiple sequence alignment. '
                    'Each multiple sequence alignment can be grouped into different clusters based on alignment patterns '
                    'WARNING: using a larger number will potentially result in more accurate consensus results but will '
-                   'significantly increase the running time. We do not recommend increasing this value to over 5. Default: 2')
+                   'significantly increase the running time. Default: 5')
 @click.option('--ext_thr', type=float,
               help='The threshold to call “N” at a MSA column position. For example, if the most conserved nucleotide in a MSA column' 
                     'has proportion smaller than <ext_thr>, a “N” will be called at this position. Used with <ext_check_win>. ' 

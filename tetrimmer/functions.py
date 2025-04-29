@@ -1003,7 +1003,9 @@ def select_gaps_block_with_similarity_check(input_file,
             condition_met_count = 0  # Reset the count for a new block
 
         # Additional check for gap variance
+        # The gap number in each gap block should be similar
         elif prev_gap_count is not None and (
+                # Close this gap block when the gap number vary too many.
                 gap_count < 0.8 * prev_gap_count or gap_count > 1.2 * prev_gap_count) and block_start is not None:
             gap_blocks.append((block_start, col_idx, condition_met_count))
             block_start = None
@@ -1077,6 +1079,240 @@ def select_gaps_block_with_similarity_check(input_file,
         return flat_keep_blocks
     else:
         return False
+
+
+def select_gaps_block_with_similarity_check_test_old(input_file,
+                                            simi_check_gap_thre=0.3, similarity_threshold=0.6,
+                                            conservation_threshold=0.6, min_nucleotide=10):
+    """
+    :return: A list containing column numbers used for clustering
+    """
+    # Identify blocks of gaps
+    gap_blocks = []
+
+    # Load the MSA file
+    MSA_mafft = AlignIO.read(input_file, "fasta")
+
+    # Raise an error if the number of sequences in the MSA is less than 5
+    if len(MSA_mafft) < 5:
+        raise ValueError("Number of sequences in MSA is less than 5. Cannot remove gaps.")
+
+    # Define the starting point of a block
+    block_start = None
+
+    # Variables to keep track of the gap count in the previous column and the condition met count
+    prev_gap_count = None
+    condition_met_count = 0
+
+    # Go through each column in the alignment. Start from 0
+    for col_idx in range(MSA_mafft.get_alignment_length()):
+        # Define metrics for the column
+        col = MSA_mafft[:, col_idx]
+        gap_count = col.count('-')
+        gap_fraction = gap_count / len(col)
+        nt_fraction = calc_conservation(col)
+        nt_count = len(col) - gap_count
+
+        # Check if the column meets the criteria to open a new block
+        if simi_check_gap_thre <= gap_fraction and nt_fraction >= similarity_threshold and \
+                nt_count >= min_nucleotide and block_start is None:
+            block_start = col_idx
+            condition_met_count = 0  # Reset the count for a new block
+
+        # Additional check for gap variance
+        # The gap number in each gap block should be similar
+        elif prev_gap_count is not None and (
+                # Close this gap block when the gap number vary too many.
+                gap_count < 0.8 * prev_gap_count or gap_count > 1.2 * prev_gap_count) and block_start is not None:
+            gap_blocks.append((block_start, col_idx, condition_met_count))
+            block_start = None
+
+        # Close the gap block if nucleotide similarity is smaller than the threshold
+        elif (
+                simi_check_gap_thre <= gap_fraction and nt_fraction < similarity_threshold and block_start is not None) or \
+                (nt_count < min_nucleotide and block_start is not None):
+            # Check the gap count of the next column if it exists
+            next_gap_count = None
+            if col_idx + 1 < MSA_mafft.get_alignment_length():
+                next_col = MSA_mafft[:, col_idx + 1]
+                next_gap_count = next_col.count('-')
+
+            # If gap count is not similar to both previous and next columns, close the block
+            if prev_gap_count is not None and next_gap_count is not None:
+                if not (0.8 * prev_gap_count <= gap_count <= 1.2 * prev_gap_count and
+                        0.8 * next_gap_count <= gap_count <= 1.2 * next_gap_count):
+                    condition_met_count += 1
+
+        # Stop the gap block if the gap number is below threshold simi_check_gap_thre
+        elif gap_fraction < simi_check_gap_thre and block_start is not None:
+            gap_blocks.append((block_start, col_idx, condition_met_count))
+            block_start = None
+
+        # Update the gap count of the previous column
+        prev_gap_count = gap_count
+    print(gap_blocks)
+    # Process the identified gap blocks
+    keep_blocks = []
+
+    if gap_blocks:
+        for block in gap_blocks:
+            start, end, block_condition_count = block  # Now also unpacking the block_condition_count
+
+            # Calculate the maximum allowable condition_met_count based on the gap block length
+            block_length = end - start
+            if block_length < 10:
+                max_condition_count = 1
+            else:
+                max_condition_count = min(0.1 * block_length, 50)
+
+            # Check if the condition_met_count exceeds the maximum allowable value for the gap block
+            if block_condition_count > max_condition_count:
+                continue
+
+            if start and end and block_length > 10:
+                if start > 0:
+                    col_before = [MSA_mafft[i, start - 1] for i in range(len(MSA_mafft[:, start])) if
+                                  MSA_mafft[i, start] == '-']
+                    gap_fraction_before = col_before.count('-') / len(col_before)
+                else:
+                    col_before = None
+                    gap_fraction_before = 0
+
+                if end < MSA_mafft.get_alignment_length():
+                    col_after = [MSA_mafft[i, end] for i in range(len(MSA_mafft[:, end - 1])) if
+                                 MSA_mafft[i, end - 1] == '-']
+                    gap_fraction_after = col_after.count('-') / len(col_after)
+                else:
+                    col_after = None
+                    gap_fraction_after = 0
+
+                if gap_fraction_before <= 0.3 and gap_fraction_after <= 0.3 and \
+                        col_before is not None and calc_conservation(col_before) > conservation_threshold and \
+                        col_after is not None and calc_conservation(col_after) > conservation_threshold:
+                    keep_blocks.append((start, end))
+
+    if keep_blocks:
+        flat_keep_blocks = [item for start, end in keep_blocks for item in range(start, end)]
+        print(keep_blocks)
+        return flat_keep_blocks
+    else:
+        return False
+
+
+
+def select_gaps_block_with_similarity_check(
+    input_file: str,
+    simi_check_gap_thre: float = 0.3,
+    similarity_threshold: float = 0.6,
+    min_nucleotide: int = 10,
+    min_block_length: int = 3,
+    merge_tolerance: int = 2):
+    """
+    Scan an MSA and return a list of 0-based (start, end) gap-blocks
+    that pass internal jump checks, are ≥ min_block_length, are merged
+    across small gaps (≤ merge_tolerance), and whose flanking columns
+    each have:
+      - low gap_fraction
+      - conservation ≥ boundary_conservation_threshold
+      - a single predominant nucleotide at ≥ boundary_identity_threshold.
+    """
+    aln = AlignIO.read(input_file, "fasta")
+    n_seqs = len(aln)
+    alignment_length = aln.get_alignment_length()
+
+    if n_seqs < 5:
+        raise ValueError("Need at least 5 sequences in the MSA to remove gaps reliably.")
+
+    def col_stats(idx):
+        col = aln[:, idx]
+        gap_count = col.count('-')
+        gap_frac  = gap_count / n_seqs
+        nt_count  = n_seqs - gap_count
+        cons      = calc_conservation(col)
+        return gap_count, gap_frac, nt_count, cons
+
+    # 1) build “raw” blocks by your original criteria + jump check
+    raw = []
+    in_block = False
+    start = None
+    prev_gap = None
+    max_jump = 0.1
+
+    for i in range(alignment_length):
+        gap_count, gap_frac, nt_count, cons = col_stats(i)
+        require_meet = (gap_frac >= simi_check_gap_thre and nt_count >= min_nucleotide and cons >= similarity_threshold)
+
+        if require_meet:
+            if not in_block:
+                in_block = True
+                start = i
+                prev_gap = gap_count
+            else:
+                if prev_gap is not None and abs(gap_count - prev_gap) / prev_gap > max_jump:
+                    raw.append((start, i))
+                    start = i
+                prev_gap = gap_count
+        else:
+            if in_block:
+                raw.append((start, i))
+                in_block = False
+            prev_gap = None
+
+    if in_block:
+        raw.append((start, alignment_length))
+
+    # 2) drop tiny blocks
+    raw = [(s, e) for s, e in raw if (e - s) >= min_block_length]
+
+    # 3) merge across small gaps
+    merged = []
+    for s, e in sorted(raw, key=lambda x: x[0]):
+        if merged and (s - merged[-1][1]) <= merge_tolerance:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], e))
+        else:
+            merged.append((s, e))
+
+    # 4) gap block boundary checks
+
+    final = []
+    for s, e in merged:
+
+        # which seqs actually open/close the block?
+        seq_ids_left  = [rec.id for rec in aln if rec.seq[s] == '-']
+        seq_ids_right = [rec.id for rec in aln if rec.seq[e-1] == '-']
+
+        # --- LEFT flank at s-1 ---
+        if s == 0 or e >= alignment_length:
+            continue
+
+        chars_left = [rec.seq[s-1] for rec in aln if rec.id in seq_ids_left and rec.seq[s-1] != "-"]
+
+        if len(chars_left) <= 5:
+            continue
+
+        left_freq = calc_conservation(chars_left)
+
+        if left_freq < 0.8:
+            continue
+
+        # --- RIGHT flank at e ---
+
+        chars_right = [rec.seq[e] for rec in aln if rec.id in seq_ids_right and rec.seq[e] != "-"]
+
+        if len(chars_right) <= 5:
+            continue
+        right_freq = calc_conservation(chars_right)
+
+        if right_freq < 0.8:
+            continue
+
+        # passed all tests!
+        final.append((s, e))
+    if len(final) == 0:
+        return False
+
+    return final
+
 
 
 # Select MSA columns according to the provided start and end position

@@ -253,7 +253,9 @@ class PlotPfam:
             "-fasta", self.output_orf_file_name_modified,
             "-dir", self.pfam_database_dir,
             "-outfile", output_pfam_file,
-            "-cpu", str("1")
+            "-cpu", str("1"),
+            "-e_seq", str("1e-2"),
+            "-e_dom", str("1e-2")
         ]
         try:
             subprocess.run(pfam_sacn_command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
