@@ -231,26 +231,7 @@ TEtrimmer --input_file <TE_consensus_library.fa> \
           --classify_all
           --dedup    
 ```
-More options are available:
-```commandline
-  --classify_unknown              Use RepeatClassifier to classify the consensus sequence if the input
-                                  sequence is not classified or is unknown or the processed sequence
-                                  length by TEtrimmer is 2000 bp longer or shorter than the query
-                                  sequence.
-                                  
-  --cons_thr FLOAT                The minimum level of agreement required at a given position in the
-                                  alignment for a consensus character to be called. Default: 0.8
-                                  
-  --mini_orf INTEGER              Define the minimum ORF length to be predicted by TEtrimmer. Default:
-                                  200
 
-  --max_msa_lines INTEGER         Set the maximum number of sequences to be included in a multiple
-                                  sequence alignment. Default: 100
-                                  
-  -ga, --genome_anno              Perform genome TE annotation using RepeatMasker with the TEtrimmer
-                                  curated TE libraries.
-
-```
 ## Outputs
 - 📁**Classification** - *This folder is used for TE classifications.*  
 - 📁**Multiple_sequence_alignment** - *All raw files will be stored in this folder if < --debug > is enabled.*
@@ -303,6 +284,9 @@ For each TEtrimmer output TE consensus sequence. You will get a report plot file
 Many thanks to all the people who contributed to the TEtrimmer development. 
 
 ## All available options 
+We provided tutorial video to introduce the TEtrimmer parameters.
+[![TEtrimmerParameter](docs/TEtrimmerParameter_video.png)](https://www.youtube.com/watch?v=8jp3j5FFf1w&t=1114s)
+
 ```commandline
 Options:
   -i, --input_file TEXT           Path to TE consensus file (FASTA format). Use the output from
@@ -442,6 +426,7 @@ Options:
 
   --help                          Show this message and exit.
 ```
+
 The TEtrimmer GUI can also be used to check other TE consensus libraries like the TE library directly from EDTA,
 RepeatModeler2, REPET, and other tools. 
 ```commandline
