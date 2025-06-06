@@ -514,7 +514,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
 
                 try:
                     input_file = os.path.join(source_dir, input_fasta_n)
-                    output_file = os.path.join(output_dir_g, f"{input_fasta_n}_CDiv.fa")
+                    output_file = os.path.join(output_dir_g, f"{input_fasta_n}_Div.fa")
 
                     click.echo("\nCropDiv is running ......")
                     crop_end_div(input_file, output_file, threshold=crop_div_thr_g, window_size=crop_div_win_g)
@@ -552,7 +552,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
                 try:
                     input_file = os.path.join(source_dir, input_fasta_n)
-                    output_file = os.path.join(output_dir_g, f"{input_fasta_n}_CGap.fa")
+                    output_file = os.path.join(output_dir_g, f"{input_fasta_n}_Gap.fa")
 
                     click.echo("\nCropGap is running ......")
                     crop_end_gap(input_file, output_file, gap_threshold=crop_gap_thr_g, window_size=crop_gap_win_g)
@@ -592,7 +592,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
                 try:
                     input_file = os.path.join(source_dir, input_fasta_n)
-                    output_file = os.path.join(output_dir_g, f"{input_fasta_n}_CCol.fa")
+                    output_file = os.path.join(output_dir_g, f"{input_fasta_n}_Col.fa")
 
                     click.echo("\nCleanCol is running ......")
                     remove_gaps_with_similarity_check(input_file, output_file, gap_threshold=column_gap_thr_g,
@@ -803,7 +803,7 @@ def proof_curation(te_trimmer_proof_curation_dir, output_dir, genome_file, conse
                 try:
                     # draw CIAlign style plot
                     # Define output plot file
-                    cialign_plot_file = os.path.join(source_dir, f"{os.path.basename(input_fasta_file)}_CIAlign.png")
+                    cialign_plot_file = os.path.join(source_dir, f"{os.path.basename(input_fasta_file)}_plot.png")
                     drawMiniAlignment(input_fasta_file, cialign_plot_file, dpi=300)
 
                 except Exception as e:

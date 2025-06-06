@@ -13,6 +13,7 @@ tetrimmer/__pycache__
 tetrimmerGUI/__pycache__
 *.pyc
 
+# Ignore test files
 tests/test_genome.fasta.fai
 tests/test_genome.fasta.length
 tests/test_genome.fasta.ndb

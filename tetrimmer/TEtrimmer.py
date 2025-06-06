@@ -137,7 +137,7 @@ with open(config_path, "r") as config_file:
               help='The maximum number of clusters assigned in each multiple sequence alignment. '
                    'Each multiple sequence alignment can be grouped into different clusters based on alignment patterns '
                    'WARNING: using a larger number will potentially result in more accurate consensus results but will '
-                   'significantly increase the running time. Default: 5')
+                   'also increase the running time. Default: 5')
 @click.option('--ext_thr', type=float,
               help='The threshold to call “N” at a MSA column position. For example, if the most conserved nucleotide in a MSA column' 
                     'has proportion smaller than <ext_thr>, a “N” will be called at this position. Used with <ext_check_win>. ' 

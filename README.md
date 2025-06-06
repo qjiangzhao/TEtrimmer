@@ -151,26 +151,20 @@ docker run -it --name TEtrimmer -v <bind_your_path>:/data quay.io/biocontainers/
 # Please note: Run TEtrimmer via Docker is relatively slower than Conda and Singularity. 
 ```
 
-## Hardware requirements
-System: Linux, macOS, Windows WSL
+## Runtime test
 
-RAM:
-- For HPC Linux user, enough RAM needs to be assigned. We highly recommend running TEtrimmer on HPC with at least 40 threads and assigning at least 5 GB RAM to each thread.
+We evaluated the runtime performance of TEtrimmer on genomes of four organisms, i.e., 
+*D. melanogaster*, *D. rerio*, *O. sativa*, and *B. hordei*. For each genome, the analysis was executed three times 
+using a compute node allocated via SLURM with 48 CPU cores (Intel Xeon 8468 Sapphire) and 140 GB of RAM. 
+Runtime and output size were recorded for each repetition, and the mean and standard deviation were calculated across the three runs. 
 
+| Species           | Genome size (Mbp) | EDTA Input TE number | EDTA Runtime (h)   | EDTA Output folder size (GB) | RepeatMaster2 Input TE number | RepeatMaster2 Runtime (h) | RepeatMaster2 Output folder size (GB) |
+|-------------------|-------------------|----------------------|--------------------|------------------------------|-------------------------------|---------------------------|---------------------------------------|
+| *B. hordei*       | 124               | 996                  | 0.92 ± 0.049       | 2.30                         | 818                           | 0.83 ± 0.040              | 2.10                                  |
+| *D. melanogaster* | 144               | 819                  | 0.66 ± 0.067       | 0.92                         | 480                           | 0.66 ± 0.046              | 0.96                                  |
+| *D. rerio*        | 1,679             | 8,631                | 4.95 ± 0.225       | 15.10                        | 3,504                         | 2.32 ± 0.066              | 5.50                                  |
+| *O. sativa*       | 373               | 10,404               | 3.30 ± 0.200       | 7.30                         | 2,334                         | 1.31 ± 0.090              | 2.50                                  |
 
-| Threads | RAM    |
-|---------|--------|
-| 40      | 200 GB |
-| 100     | 600 GB |
-
-- Windows and macOS PC users can use Virtual Memory. Simply assign 20 threads to push the CPU to its limits. We did tests on a Macbook Pro (2020 M1 chip, 16 GB RAM) and compared with HPC, you can find the running time here:
-
-| Query sequence number | Platform       | Threads | RAM                    | Run time |
-|-----------------------|----------------|---------|------------------------|--------------| 
-| 1700                  | Macbook Pro M1 | 20      | 16 GB + Virtual Memory | 50 hours     |
-| 1700                  | HPC            | 40      | 150 GB                 | 5 hours      | 
-
-- We have not tested it on the WLS of Windows, but it should be feasible to run TEtrimmer on it as well given sufficient resources. 
 
 ## Test
 ```commandline
@@ -281,10 +275,11 @@ More options are available:
 - 📄**TEtrimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
 
 
-## Optional! Manual inspection of TEtrimmer outputs by provided TEtrimmerGUI. 
+## Optional! But recommended! Manual inspection of TEtrimmer outputs by provided TEtrimmerGUI. 
 You can use the TEtrimmerGUI tool to inspect and improve TEtrimmer generated TE consensus library. 
-This step is optional! TEtrimmer output can be used for genome-wide TE annotation directly. 
+TEtrimmer output can be used for genome-wide TE annotation directly. 
 But if you want to get a traditional manual-curation level TE consensus library, you have to perform this step.
+Especially for LINE and SINE elements.
 
 ### Start TEtrimmerGUI 
 
@@ -370,10 +365,7 @@ Options:
 
   --max_cluster_num INTEGER       The maximum number of clusters assigned in each multiple sequence
                                   alignment. Each multiple sequence alignment can be grouped into
-                                  different clusters based on alignment patterns WARNING: using a
-                                  larger number will potentially result in more accurate consensus
-                                  results but will significantly increase the running time. We do not
-                                  recommend increasing this value to over 5. Default: 2
+                                  different clusters based on alignment patterns. Default: 5
 
   --ext_thr FLOAT                 The threshold to call “N” at a position. For example, if the most
                                   conserved nucleotide in a MSA columnhas proportion smaller than
@@ -463,6 +455,10 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 ```
 
 ## Update history
+** June.06.2025
+change pfam_scan.pl e-value to 1e-2
+Increase default number of --max_cluster_num to 5
+
 ** October.17.2024
 Add --curatedlib option
 
