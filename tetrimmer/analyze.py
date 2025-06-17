@@ -599,7 +599,7 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                      single_fasta_n, hmm, hmm_dir, check_extension_win, debug, progress_file,
                      classify_unknown, classify_all, final_con_file, final_con_file_no_low_copy, final_unknown_con_file,
                      final_classified_con_file, low_copy_dir, fast_mode, error_files, plot_skip, skipped_dir,
-                     plot_query, engine, proof_curation_dir, poly_patterns, poly_len):
+                     plot_query, engine, proof_curation_dir, poly_patterns, poly_len, perfect_seq_num):
     #####################################################################################################
     # Code block: Set different elongation number for different elements and do BLAST search
     #####################################################################################################
@@ -816,7 +816,8 @@ def analyze_sequence(seq_obj, genome_file, MSA_dir, min_blast_len, min_seq_num, 
                         crop_end_gap_thr=crop_end_gap_thr, crop_end_gap_win=crop_end_gap_win,
                         start_patterns=start_patterns, end_patterns=end_patterns,
                         mini_orf=mini_orf, define_boundary_win=check_extension_win, fast_mode=fast_mode, engine=engine,
-                        input_orf_pfam=input_orf_domain_plot, debug=debug, cluster_msa=fasta_out_flank_mafft_gap_rm_nm)
+                        input_orf_pfam=input_orf_domain_plot, debug=debug, cluster_msa=fasta_out_flank_mafft_gap_rm_nm,
+                        perfect_seq_num=perfect_seq_num)
                 except Exception as e:
                     return
 

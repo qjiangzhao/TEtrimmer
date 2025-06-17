@@ -359,7 +359,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
                            max_extension=7000, gap_threshold=0.4, gap_nul_thr=0.7, crop_end_thr=0.8, crop_end_win=40,
                            crop_end_gap_thr=0.1, crop_end_gap_win=150, start_patterns=None, end_patterns=None,
                            mini_orf=200, define_boundary_win=150, fast_mode=False, engine="blast",
-                           input_orf_pfam=False, debug=False, cluster_msa=None):
+                           input_orf_pfam=False, debug=False, cluster_msa=None, perfect_seq_num=30):
     """
     :param bed_file: str, BED file directory
     :param genome_file: str, directory containing the genome FASTA file
@@ -1015,7 +1015,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
     try:
         if (consi_obj.new_TE_terminal_repeat != "False" and
                 consi_obj.new_TE_type != "NaN" and "unknown" not in consi_obj.new_TE_type.lower() and
-                consi_obj.new_TE_MSA_seq_n >= 30 and
+                consi_obj.new_TE_MSA_seq_n >= perfect_seq_num and
                 consi_obj.new_TE_blast_full_length_n >= 5 and
                 consi_obj.cons_pfam):
             consi_obj.set_cons_evaluation("Perfect")

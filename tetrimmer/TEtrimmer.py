@@ -201,11 +201,18 @@ with open(config_path, "r") as config_file:
                    "patterns determines the priority for the search). Default: A")
 @click.option('--poly_len', type=int,
               help='Define the minimum length requirement of the poly pattern from the parameter --poly_patterns. Default: 10')
+@click.option('--define_perfect', type=int, default = 30,
+              help='Define the minimum copy number that the output TE consensus sequence can be evaluated as "Perfect". Default: 30')
 def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_blast_len, num_threads, max_msa_lines,
          top_msa_lines, min_seq_num, max_cluster_num, cons_thr, ext_thr, ext_step,
          max_ext, gap_thr, gap_nul_thr, crop_end_div_thr, crop_end_div_win, crop_end_gap_thr, crop_end_gap_win,
          start_patterns, end_patterns, mini_orf, preset, ext_check_win, dedup, genome_anno, hmm,
-         debug, classify_unknown, classify_all, curatedlib, poly_patterns, poly_len):
+         debug, classify_unknown, classify_all, curatedlib, poly_patterns, poly_len, define_perfect):
+
+    perfect_seq_num = define_perfect
+
+    if perfect_seq_num < 10:
+        perfect_seq_num = 10
 
     # Add this to click options if mmseq2 has been fully tested
     engine = "blast"
@@ -442,8 +449,8 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
          start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, single_fasta_n, hmm, hmm_dir,
          ext_check_win, debug, progress_file, classify_unknown, classify_all,
          final_con_file, final_con_file_no_low_copy, final_unknown_con_file, final_classified_con_file, low_copy_dir,
-         fast_mode, error_files, plot_skip, skipped_dir, plot_query, engine, proof_curation_dir, poly_patterns, poly_len
-         ) for seq in seq_list]
+         fast_mode, error_files, plot_skip, skipped_dir, plot_query, engine, proof_curation_dir, poly_patterns, poly_len,
+         perfect_seq_num) for seq in seq_list]
 
     # Using a ProcessPoolExecutor to run the function in parallel
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_threads) as executor:
