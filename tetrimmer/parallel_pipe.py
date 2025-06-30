@@ -73,6 +73,9 @@ class ChattyParallelProcessor:
 						
 						res_set = ()
 						
+						#print(worker_id, request_args, request_type)
+						#print("")
+						
 						#Add next task or stop;
 						if request_type == "TASK_COMPLETE":
 							q = self.queues[result[0]]

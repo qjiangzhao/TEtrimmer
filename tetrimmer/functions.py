@@ -216,6 +216,45 @@ def blast(seq_file, genome_file, output_dir, min_length=150, search_type="blast"
 	return bed_out_file, blast_hits_count, blast_out_file
 
 
+def blast_to_database(seq_file, genome_file, output_dir, search_type="blast", task="blastn", seq_obj=None):
+	"""
+	Runs BLAST calling a specified task type and saves the results as a BED file.
+
+	:param seq_file: str, path to input FASTA file
+	:param genome_file: str, path to genome FASTA file
+	:param output_dir: str, prefix for output files
+	:param min_length: int, minimum alignment length. Default: 150
+	:param task: str, BLAST task type ("blastn", "dc-megablast", etc.). Default: "blastn"
+	:param seq_obj: object (optional), sequence object to update with BLAST hits
+	:return: tuple, output BED file name and BLAST hit count for each sequence
+	"""
+	input_file = seq_file
+	input_file_n = os.path.basename(input_file)
+	blast_hits_count = 0
+	bed_out_file = None
+	# define blast outfile
+	blast_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b")
+
+	if search_type == "blast":
+		# Modify the blast command to include the specified task
+		blast_cmd = (f"blastn -max_target_seqs 10000 -task {task} -query {input_file} -db {genome_file} -out {blast_out_file} " 
+					 f"-outfmt \"6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand evalue qcovhsp\" ")
+		try:
+			subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+		except FileNotFoundError:
+			prcyan("'blastn' command not found. Please ensure 'blastn' is installed correctly.")
+			raise Exception
+
+		except subprocess.CalledProcessError as e:
+			prcyan(f"\nBLAST failed for {input_file_n} with error code {e.returncode}")
+			prcyan(f"\n{e.stdout}")
+			prcyan(f"\n{e.stderr}\n")
+			raise Exception
+
+	return blast_out_file
+
+
 def check_bed_uniqueness(output_dir, bed_file):
 	"""
 	Check if the BED file contains duplicated lines, and if so, delete any duplicates
@@ -438,7 +477,7 @@ def align_sequences(input_file, output_dir):
 
 	
 	# Construct the command as a list of strings
-	mafft_cmd = ["mafft", "--quiet", "--nuc", "--retree", "1", input_file]
+	#mafft_cmd = ["mafft", "--quiet", "--nuc", "--retree", "1", input_file]
 	famsa_cmd = ["famsa", '-t', '1', input_file, fasta_out_flank_mafft_file]
 
 	# If any of the top 5 sequences are longer than 10000, add --memsave to save memory
@@ -498,7 +537,7 @@ def fasta_to_lowercase(output_file):
 	for seq in sequences:
 		seq.seq = seq.seq.lower()
 	SeqIO.write(sequences, output_file, "fasta")
-
+	
 def famsa_align(input_file, output_dir):
 	output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_famsa_aln.fa")
 	famsa_cmd = ["famsa", '-t', '1', input_file, output_file]

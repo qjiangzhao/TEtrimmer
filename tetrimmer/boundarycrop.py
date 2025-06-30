@@ -393,7 +393,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 
 	msa_loop_n = 1
 	
-	print("MSA loop start", seq_obj.name)
+	#print("MSA loop start", seq_obj.name)
 	while msa_loop_n <= 2:
 
 		# TEtrimmer will do the second round clustering and extension. The MSA has been extensively extended during
@@ -540,7 +540,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 		#ex_step_size = 700
 
 	
-	print("MSA loop end", seq_obj.name)
+	#print("MSA loop end", seq_obj.name)
 	#####################################################################################################
 	# Code block: Check if the final MSA contains too many instances of the ambiguous letter "N"
 	#####################################################################################################
@@ -592,7 +592,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 			  "For traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n")
 
 
-	print("CIAlign", seq_obj.name)
+	#print("CIAlign", seq_obj.name)
 	#####################################################################################################
 	# Code block: Generate MSA for CIAlign plot
 	#####################################################################################################
@@ -659,7 +659,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 		prcyan('\n' + tb_content + '\n')
 		raise Exception
 	
-	print("ORFs", seq_obj.name)
+	#print("ORFs", seq_obj.name)
 	#####################################################################################################
 	# Code block: Predict ORFs and PFAM domains, determine sequence direction
 	#####################################################################################################
@@ -770,7 +770,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 		raise Exception
 
 	
-	print("MSA plots", seq_obj.name)
+	#print("MSA plots", seq_obj.name)
 	#####################################################################################################
 	# Code block: Plot multiple sequence alignment. 
 	#####################################################################################################
@@ -799,7 +799,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 		prgre("\nMSA plots are only used to evaluate TEtrimmer and will not affect the final TE consensus library."
 			  " For traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder\n")
 
-	print("TE aid", seq_obj.name)
+	#print("TE aid", seq_obj.name)
 	#####################################################################################################
 	# Code block: Generate TE-Aid plot
 	#####################################################################################################
@@ -845,7 +845,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 		prcyan('\n' + tb_content + '\n')
 		raise Exception
 
-	print("Dotplots", seq_obj.name)
+	#print("Dotplots", seq_obj.name)
 	#####################################################################################################
 	# Code block: Generate dotplot
 	#####################################################################################################
@@ -877,7 +877,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 			f.write(f"\nps file to pdf conversion failed for {seq_name} with error:\n{e}")
 			f.write('\n' + tb_content + '\n\n')
 			
-	print("Merge plots", seq_obj.name)
+	#print("Merge plots", seq_obj.name)
 	#####################################################################################################
 	# Code block: Merge plot files
 	#####################################################################################################
@@ -897,7 +897,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 		raise Exception
 
 
-	print("Seq update", seq_obj.name)
+	#print("Seq update", seq_obj.name)
 	#####################################################################################################
 	# Code block: Update sequence object (seq_obj)
 	#####################################################################################################
@@ -976,7 +976,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 		prcyan('\n' + tb_content + '\n')
 		raise Exception
 
-	print("Repeat classifier", seq_obj.name)
+	#print("Repeat classifier", seq_obj.name)
 	#####################################################################################################
 	# Code block: Run RepeatClassifier in RepeatModeler to classify TEtrimmer consensus sequences
 	#####################################################################################################
@@ -1029,7 +1029,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 	updated_TE_type = consi_obj.get_TE_type_for_file()
 	consi_obj.set_new_TE_type(updated_TE_type)
 
-	print("Evaluation", seq_obj.name)
+	#print("Evaluation", seq_obj.name)
 	###############################################################################################################
 	# Code block: Output evaluation (perfect, good, Reco_check, need_check)
 	###############################################################################################################
@@ -1139,7 +1139,7 @@ def find_boundary_and_crop(bed_file, genome_file, output_dir, pfam_dir, seq_obj,
 		prcyan('\n' + tb_content + '\n')
 		raise Exception
 
-	print("End", seq_obj.name)
+	#print("End", seq_obj.name)
 	return
 
 

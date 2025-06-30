@@ -17,6 +17,8 @@ from functions import repeatmasker, prcyan, prgre, cd_hit_est, eliminate_curated
 from parallel_pipe import ChattyParallelProcessor
 from pyhmmer_manager import pyhmmer_manager
 
+from blast_and_orfs_to_database import run_blast_search, sequence_params
+
 import warnings
 from Bio import BiopythonDeprecationWarning
 
@@ -456,12 +458,34 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 		 fast_mode, error_files, plot_skip, skipped_dir, plot_query, engine, proof_curation_dir, poly_patterns, poly_len,
 		 perfect_seq_num] for seq in seq_list]
 
+	'''
+	In progress testing on a different checkpointing approach
+	
+	analyze_objects = [sequence_params(seq, genome_file, MSA_dir, min_blast_len, min_seq_num, max_msa_lines,
+		 top_msa_lines, max_cluster_num, cons_thr, ext_thr, ext_step, classification_dir,
+		 max_ext, gap_thr, gap_nul_thr, crop_end_div_thr, crop_end_div_win, crop_end_gap_thr, crop_end_gap_win,
+		 start_patterns, end_patterns, output_dir, pfam_dir, mini_orf, single_fasta_n, hmm, hmm_dir,
+		 ext_check_win, debug, progress_file, classify_unknown, classify_all,
+		 final_con_file, final_con_file_no_low_copy, final_unknown_con_file, final_classified_con_file, low_copy_dir,
+		 fast_mode, error_files, plot_skip, skipped_dir, plot_query, engine, proof_curation_dir, poly_patterns, poly_len,
+		 perfect_seq_num) for seq in seq_list]
+	
+	
+	run_blast_search(analyze_objects, genome_file, "trimmer_blastdb.db")
+	'''
+
+	
+
 	# Using a ProcessPoolExecutor to run the function in parallel
 	#with concurrent.futures.ProcessPoolExecutor(max_workers=num_threads) as executor:
 	#	executor.map(analyze.analyze_sequence_helper, analyze_sequence_params)
 	# multiprocessing
 	# with mp.Pool(processes=10) as p:
 	# p.starmap(analyze_sequence, analyze_sequence_params)
+
+	'''
+	It's worth considering here - run BLAST as the first step and see which sequences actually need processing, proceed to process only those.
+	'''
 
 	#find pfam files
 	pfam_database = os.path.join(pfam_dir, "Pfam-A.hmm")
@@ -470,7 +494,7 @@ def main(input_file, genome_file, output_dir, continue_analysis, pfam_dir, min_b
 	#Load the pyhmmer manager
 	pyhm = pyhmmer_manager(pfam_database, pfam_dat_file)
 	pyhm.prepare()
-	
+
 	run_fnc = {"HMMscan":pyhm.run}
 	
 	paraproc = ChattyParallelProcessor(num_workers = num_threads, task_func_dict = run_fnc, worker_task = analyze.analyze_sequence_helper, args = analyze_sequence_params)

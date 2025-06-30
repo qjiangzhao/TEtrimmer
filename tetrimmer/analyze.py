@@ -9,6 +9,7 @@ import pandas as pd
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
+
 # Local imports
 from functions import blast, remove_files_with_start_pattern, check_bed_uniqueness, extract_fasta, \
 	handle_sequence_low_copy, handle_sequence_skipped, update_low_copy_cons_file, prcyan, prgre, \
