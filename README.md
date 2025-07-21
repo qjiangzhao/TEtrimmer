@@ -158,12 +158,12 @@ We evaluated the runtime performance of TEtrimmer on genomes of four organisms, 
 using a compute node allocated via SLURM with 48 CPU cores (Intel Xeon 8468 Sapphire) and 140 GB of RAM. 
 Runtime and output size were recorded for each repetition, and the mean and standard deviation were calculated across the three runs. 
 
-| Species           | Genome size (Mbp) | EDTA Input TE number | EDTA Runtime (h)   | EDTA Output folder size (GB) | RepeatMaster2 Input TE number | RepeatMaster2 Runtime (h) | RepeatMaster2 Output folder size (GB) |
-|-------------------|-------------------|----------------------|--------------------|------------------------------|-------------------------------|---------------------------|---------------------------------------|
-| *B. hordei*       | 124               | 996                  | 0.92 ± 0.049       | 2.30                         | 818                           | 0.83 ± 0.040              | 2.10                                  |
-| *D. melanogaster* | 144               | 819                  | 0.66 ± 0.067       | 0.92                         | 480                           | 0.66 ± 0.046              | 0.96                                  |
-| *D. rerio*        | 1,679             | 8,631                | 4.95 ± 0.225       | 15.10                        | 3,504                         | 2.32 ± 0.066              | 5.50                                  |
-| *O. sativa*       | 373               | 10,404               | 3.30 ± 0.200       | 7.30                         | 2,334                         | 1.31 ± 0.090              | 2.50                                  |
+| Species           | Genome size (Mbp) | EDTA Input TE number | EDTA+TEtrimmer Runtime (h) | EDTA+TEtrimmer Output size (GB) | RM2 Input TE number | RM2+TEtrimmer Runtime (h) | RM2+TEtrimmer Output size (GB) |
+|-------------------|-------------------|----------------------|----------------------------|---------------------------------|---------------------|---------------------------|--------------------------------|
+| *B. hordei*       | 124               | 996                  | 0.92 ± 0.049               | 2.30                            | 818                 | 0.83 ± 0.040              | 2.10                           |
+| *D. melanogaster* | 144               | 819                  | 0.66 ± 0.067               | 0.92                            | 480                 | 0.66 ± 0.046              | 0.96                           |
+| *D. rerio*        | 1,679             | 8,631                | 4.95 ± 0.225               | 15.10                           | 3,504               | 2.32 ± 0.066              | 5.50                           |
+| *O. sativa*       | 373               | 10,404               | 3.30 ± 0.200               | 7.30                            | 2,334               | 1.31 ± 0.090              | 2.50                           |
 
 
 ## Test
