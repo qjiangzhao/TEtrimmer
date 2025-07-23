@@ -12,8 +12,8 @@ import click
 from Bio import SeqIO
 
 from .._version import __version__
-from ..utils.checks import check_tools
-from ..utils.logs import init_logging
+from src.TEtrimmer.utils.checks import check_tools
+from src.TEtrimmer.utils.logs import init_logging
 from .cialign_plot import drawMiniAlignment
 
 # Import cleaning module
