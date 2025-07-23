@@ -4,7 +4,7 @@ import subprocess
 
 import pandas as pd
 
-from .functions import blast, check_terminal_repeat, file_exists_and_not_empty
+from functions import blast, check_terminal_repeat, file_exists_and_not_empty
 
 
 def check_self_alignment(

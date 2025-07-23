@@ -12,10 +12,10 @@ import pandas as pd
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
-from .boundarycrop import find_boundary_and_crop
+from boundarycrop import find_boundary_and_crop
 
 # Local imports
-from .functions import (
+from functions import (
     blast,
     cd_hit_est,
     check_bed_uniqueness,
@@ -35,10 +35,10 @@ from .functions import (
     repeatmasker_output_classify,
     update_low_copy_cons_file,
 )
-from .MSAcluster import clean_and_cluster_MSA
-from .orfdomain import PlotPfam, prepare_pfam_database
-from .seqclass import SeqObject
-from .TEaid import check_self_alignment
+from MSAcluster import clean_and_cluster_MSA
+from orfdomain import PlotPfam, prepare_pfam_database
+from seqclass import SeqObject
+from TEaid import check_self_alignment
 
 
 # Define a function to check the progress file, which will be used to continue analysis if program exited prematurely

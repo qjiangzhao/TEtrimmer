@@ -11,15 +11,16 @@ from datetime import datetime, timedelta
 import click
 from Bio import BiopythonDeprecationWarning
 
-from .._version import __version__
-from src.TEtrimmer.utils.checks import check_tools
-from src.TEtrimmer.utils.logs import init_logging
-from . import analyze
-from .functions import (
+#from .._version import __version__
+
+from checks import check_tools
+from logs import init_logging
+import analyze
+from functions import (
     cd_hit_est,
     decompress_gzip,
     eliminate_curatedlib_by_repeatmasker,
-    repeatmasker,
+    repeatmasker
 )
 
 # Suppress all deprecation warnings
@@ -55,7 +56,7 @@ with open(config_path, 'r') as config_file:
                    \\__|   \\________| \\____/ \\__|      \\__|\\__| \\__| \\__|\\__| \\__| \\__| \\_______|\\__|
 
 
-                Version: {__version__}
+                Version: 
 
                 Github: https://github.com/qjiangzhao/TEtrimmer
 
@@ -339,7 +340,7 @@ with open(config_path, 'r') as config_file:
     type=str,
     help='Log level. [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
 )
-@click.version_option(__version__, prog_name='TEtrimmer')
+@click.version_option("1.4.1", prog_name='TEtrimmer')
 def main(
     input_file,
     genome_file,

@@ -6,11 +6,11 @@ import traceback
 import pandas as pd
 from Bio import AlignIO
 
-from . import cialign
-from .boundaryclass import CropEnd, CropEndByGap, DefineBoundary
+import cialign
+from boundaryclass import CropEnd, CropEndByGap, DefineBoundary
 
 # Local imports
-from .functions import (
+from functions import (
     align_sequences,
     check_and_update,
     check_terminal_repeat,
@@ -34,9 +34,9 @@ from .functions import (
     select_start_end_and_join,
     select_window_columns,
 )
-from .MSAcluster import CleanAndSelectColumn, clean_and_cluster_MSA, process_msa
-from .orfdomain import PlotPfam, determine_sequence_direction
-from .TEaid import TEAid
+from MSAcluster import CleanAndSelectColumn, clean_and_cluster_MSA, process_msa
+from orfdomain import PlotPfam, determine_sequence_direction
+from TEaid import TEAid
 
 
 def long_bed(input_file, output_dir):

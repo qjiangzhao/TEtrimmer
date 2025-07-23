@@ -13,7 +13,7 @@ from matplotlib.colors import ListedColormap
 from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
 
-from .functions import (
+from functions import (
     align_sequences,
     filter_out_big_gap_seq,
     muscle_align,
