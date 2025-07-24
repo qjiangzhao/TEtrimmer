@@ -1,34 +1,49 @@
+import gzip
+import logging
+import os
+import random
+import shutil
+import subprocess
+import sys
+import tarfile
+import threading
+import traceback
+import urllib.request
+
+import pandas as pd
+import requests
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
-import os
-import subprocess
-import pandas as pd
-import click
-import traceback
-import sys
-import requests
-import urllib.request
-import tarfile
-import shutil
-import random
-import threading
-
 
 special_character = {
-        '/': '__',
-        '\\': '__',
-        ' ': '_',
-        '|': '_',
-        '<': '_',
-        ':': '_',
-        '"': '_',
-        '*': '_',
-        '?': '_'
-    }
+    '/': '__',
+    '\\': '__',
+    ' ': '_',
+    '|': '_',
+    '<': '_',
+    ':': '_',
+    '"': '_',
+    '*': '_',
+    '?': '_',
+}
 
+def check_cmd_in_path(cmd):
+    cmd_path = shutil.which(cmd)
+    if cmd_path:
+        logging.info(f"{cmd} is available at: {cmd_path}")
+    else:
+        logging.error(f"{cmd} is not available in the system's PATH")
+        # Raise error if tool is not available
+        raise FileNotFoundError
+
+def decompress_gzip(file_path):
+    decompressed_file = file_path.rstrip('.gz')
+    with gzip.open(file_path, 'rt') as f_in, open(decompressed_file, 'w') as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    return decompressed_file
 
 def get_original_file_path():
-    """ Get the path of the original script file, whether running in development or as a PyInstaller bundle. """
+    """Get the path of the original script file, whether running in development or as a PyInstaller bundle."""
     if hasattr(sys, '_MEIPASS'):
         # Path to the temporary folder where PyInstaller extracts your package
         original_file_path = sys._MEIPASS
@@ -39,7 +54,6 @@ def get_original_file_path():
 
 
 def sanitize_name(name):
-
     for char, replacement in special_character.items():
         name = name.replace(char, replacement)
     return name
@@ -52,10 +66,8 @@ def separate_sequences(input_file, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
     with open(input_file, 'r') as fasta_file:
-
         id_list = []
         for record in SeqIO.parse(fasta_file, 'fasta'):
-
             # Modify record.id to remove special characters
             sanitized_id = sanitize_name(record.id)
 
@@ -65,10 +77,10 @@ def separate_sequences(input_file, output_dir):
             else:
                 id_list.append(sanitized_id)
                 count = id_list.count(sanitized_id)
-                sanitized_id = f"{sanitized_id}_{count}"
+                sanitized_id = f'{sanitized_id}_{count}'
 
             # Define output file name
-            output_filename = os.path.join(output_dir, f"{sanitized_id}.fa")
+            output_filename = os.path.join(output_dir, f'{sanitized_id}.fa')
 
             # Convert sequence name to sanitized_id
             record.id = sanitized_id
@@ -80,7 +92,9 @@ def separate_sequences(input_file, output_dir):
                 SeqIO.write(record, output_file, 'fasta')
 
 
-def check_database(genome_file, output_dir=None, os_type="Darwin"):
+def check_database(genome_file, output_dir=None, os_type='Darwin'):
+    #script_dir = get_original_file_path()
+    #blast_dir = os.path.join(script_dir, 'blast')
 
     script_dir = get_original_file_path()
 
@@ -92,11 +106,17 @@ def check_database(genome_file, output_dir=None, os_type="Darwin"):
     else:
         database_path = os.path.join(output_dir, genome_n)
 
-    database_file = f"{database_path}.nin"
+    database_file = f'{database_path}.nin'
 
     if not os.path.isfile(database_file):
-
         try:
+
+            # Check if the makeblastdb command is available in PATH
+            check_cmd_in_path('makeblastdb')
+
+            # Make makeblastdb command to create a BLAST database
+            makeblastdb_cmd = f'makeblastdb -in {genome_file} -dbtype nucl -out {database_path}'
+
             if os_type == "Linux":
                 makeblastdb_cmd = f"{os.path.join(blast_dir, 'makeblastdb_linux')} -in {genome_file} -dbtype nucl -out {database_path}"
             elif os_type == "Darwin":
@@ -104,34 +124,58 @@ def check_database(genome_file, output_dir=None, os_type="Darwin"):
             else:
                 makeblastdb_cmd = f"{os.path.join(blast_dir, 'makeblastdb.exe')} -in {genome_file} -dbtype nucl -out {database_path}"
 
-            subprocess.run(makeblastdb_cmd, shell=True, check=True, stdout=subprocess.PIPE,
-                           stderr=subprocess.PIPE, text=True)
+            subprocess.run(
+                makeblastdb_cmd,
+                shell=True,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
             return database_path
 
         except FileNotFoundError:
-            click.echo(f"'makeblastdb' command not found. Please ensure 'makeblastdb' is installed correctly.\n"
-                       f"{traceback.format_exc()}")
-            return "makeblastdb_not_found"
+            logging.error(
+                f"'makeblastdb' command not found. Please ensure 'makeblastdb' is installed correctly.\n"
+                f'{traceback.format_exc()}'
+            )
+            return 'makeblastdb_not_found'
 
         except subprocess.CalledProcessError as e:
-            click.echo(f"makeblastdb failed with exit code {e.returncode} \n"
-                       f"{traceback.format_exc()}")
-            click.echo(e.stderr)
-            return "makeblastdb_got_error"
+            logging.error(
+                f'makeblastdb failed with exit code {e.returncode} \n'
+                f'{traceback.format_exc()}'
+            )
+            logging.error(e.stderr)
+            return 'makeblastdb_got_error'
     else:
         return database_path
 
 
-def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=False, self_blast=False,
-          os_type="Darwin", num_threads=1):
-
+def blast(
+    input_file,
+    blast_database,
+    blast_out_dir,
+    e_value=1e-40,
+    bed_file=False,
+    self_blast=False,
+    os_type='Darwin',
+    num_threads=1,
+):
     script_dir = get_original_file_path()
-    blast_dir = os.path.join(script_dir, "blast")
+    blast_dir = os.path.join(script_dir, 'blast')
 
     # Define blast out without header
-    blast_out_file = os.path.join(blast_out_dir, f"{os.path.basename(input_file)}_no_header.b")
+    blast_out_file = os.path.join(
+        blast_out_dir, f'{os.path.basename(input_file)}_no_header.b'
+    )
     # Define blast out with header
-    blast_out_file_header = os.path.join(blast_out_dir, f"{os.path.basename(input_file)}_blast.txt")
+    blast_out_file_header = os.path.join(
+        blast_out_dir, f'{os.path.basename(input_file)}_blast.txt'
+    )
+
+    # Check if the blastn command is available in PATH
+    check_cmd_in_path('blastn')
 
     if os_type == "Linux":
         blastn = os.path.join(blast_dir, "blastn_linux")
@@ -167,20 +211,22 @@ def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=Fa
         subprocess.run(blast_cmd, check=True, capture_output=True, text=True)
 
     except FileNotFoundError:
-        click.echo(f"'blastn' command not found. Please ensure 'blastn' is installed correctly.\n"
-                   f"{traceback.format_exc()}")
-        return "blastn_not_found", False
+        logging.error(
+            f"'blastn' command not found. Please ensure 'blastn' is installed correctly.\n"
+            f'{traceback.format_exc()}'
+        )
+        return 'blastn_not_found', False
 
     except subprocess.CalledProcessError as e:
-        click.echo(f"An error occurred during BLAST: \n {traceback.format_exc()}")
-        click.echo(f"\nBLAST failed with error code {e.returncode}")
+        logging.error(f'An error occurred during BLAST: \n {traceback.format_exc()}')
+        logging.error(f'\nBLAST failed with error code {e.returncode}')
         # Print the error generated from the BLAST itself
-        click.echo(e.stderr)
-        return "blastn_got_error", False
+        logging.error(e.stderr)
+        return 'blastn_got_error', False
 
     # Check if the blast hit number is 0
     if os.path.isfile(blast_out_file) and os.path.getsize(blast_out_file) == 0:
-        return "blast_n_zero", False
+        return 'blast_n_zero', False
 
     # TE-Aid analysis don't need bed file
     if not bed_file:
@@ -191,18 +237,22 @@ def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=Fa
         # Read the BLAST output file into a pandas DataFrame
         try:
             # Define blast output file for TE-Aid
-            blast_out_teaid_file = f"{blast_out_file}_TEAid.b"
+            blast_out_teaid_file = f'{blast_out_file}_TEAid.b'
 
             # Add TE-Aid style header to the blast output
-            blast_data_teaid_df = pd.read_csv(blast_out_file, delimiter="\t", header=None, names=col_n)
+            blast_data_teaid_df = pd.read_csv(
+                blast_out_file, delimiter='\t', header=None, names=col_n
+            )
 
             # Save the DataFrame back to the file with the header, use "," as deliminator for TE-Aid
             blast_data_teaid_df.to_csv(blast_out_teaid_file, sep=',', index=False)
 
             return blast_out_teaid_file, False
 
-        except Exception as e:
-            click.echo(f"An error occurred while processing the BLAST output for TE-Aid : \n {traceback.format_exc()}")
+        except Exception:
+            logging.error(
+                f'An error occurred while processing the BLAST output for TE-Aid : \n {traceback.format_exc()}'
+            )
             return False, False
     # "Blast" button need bed file to allow to extract sequence from the genome
     else:
@@ -210,16 +260,29 @@ def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=Fa
             # Add header to blast out
             # Define the header
             header = [
-                "qseqid", "sseqid", "pident", "length", "mismatch", "gapopen",
-                "qstart", "qend", "sstart", "send", "sstrand", "evalue", "bitscore"
+                'qseqid',
+                'sseqid',
+                'pident',
+                'length',
+                'mismatch',
+                'gapopen',
+                'qstart',
+                'qend',
+                'sstart',
+                'send',
+                'sstrand',
+                'evalue',
+                'bitscore',
             ]
 
             # Read the BLAST output into a DataFrame and add header to the blast output
-            blast_out_file_df = pd.read_csv(blast_out_file, delimiter='\t', header=None, names=header)
+            blast_out_file_df = pd.read_csv(
+                blast_out_file, delimiter='\t', header=None, names=header
+            )
 
             # Save the DataFrame back to blast_out_file_header file, this file will be shown in the GUI
             blast_out_file_df.to_csv(blast_out_file_header, sep='\t', index=False)
-            blast_out_bed_file = f"{blast_out_file}.bed"
+            blast_out_bed_file = f'{blast_out_file}.bed'
 
             blast_data_bed_df = pd.read_csv(blast_out_file, delimiter='\t', header=None)
 
@@ -231,18 +294,26 @@ def blast(input_file, blast_database, blast_out_dir, e_value=1e-40,  bed_file=Fa
                     return [row[1], row[9], row[8], row[0], 0, '-']
 
             # Apply the function to each row and create a new DataFrame
-            blast_data_bed_df_processed = blast_data_bed_df.apply(process_row, axis=1, result_type='expand')
+            blast_data_bed_df_processed = blast_data_bed_df.apply(
+                process_row, axis=1, result_type='expand'
+            )
 
             # Drop duplicate rows
-            blast_data_bed_df_processed_unique = blast_data_bed_df_processed.drop_duplicates()
+            blast_data_bed_df_processed_unique = (
+                blast_data_bed_df_processed.drop_duplicates()
+            )
 
             # Save bed file
-            blast_data_bed_df_processed_unique.to_csv(blast_out_bed_file, sep='\t', index=False, header=False)
+            blast_data_bed_df_processed_unique.to_csv(
+                blast_out_bed_file, sep='\t', index=False, header=False
+            )
 
             return blast_out_bed_file, blast_out_file_header
 
-        except Exception as e:
-            click.echo(f"An error occurred while processing the BLAST output for BED file : \n {traceback.format_exc()}")
+        except Exception:
+            logging.error(
+                f'An error occurred while processing the BLAST output for BED file : \n {traceback.format_exc()}'
+            )
             return False, False
 
 
@@ -255,7 +326,9 @@ def select_random_lines(n, remaining_lines):
     return remaining_lines[:n]
 
 
-def process_bed_lines(input_file, output_dir, max_lines=100, top_longest_lines_count=70):
+def process_bed_lines(
+    input_file, output_dir, max_lines=100, top_longest_lines_count=70
+):
     """
     Select desired line numbers from bed file.
 
@@ -275,7 +348,9 @@ def process_bed_lines(input_file, output_dir, max_lines=100, top_longest_lines_c
     with open(input_file, 'r') as file:
         lines = [line.strip().split('\t') for line in file]
 
-    bed_out_filter_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_f.bed")
+    bed_out_filter_file = os.path.join(
+        output_dir, f'{os.path.basename(input_file)}_f.bed'
+    )
 
     if len(lines) > max_lines:
         top_longest_lines = select_top_longest_lines(lines, top_longest_lines_count)
@@ -284,13 +359,15 @@ def process_bed_lines(input_file, output_dir, max_lines=100, top_longest_lines_c
         remaining_lines = [line for line in lines if line not in top_longest_lines]
 
         # Randomly choose lines
-        random_lines = select_random_lines(max_lines - top_longest_lines_count, remaining_lines)
+        random_lines = select_random_lines(
+            max_lines - top_longest_lines_count, remaining_lines
+        )
         selected_lines = top_longest_lines + random_lines
 
         # Write the selected lines to the output file.
         with open(bed_out_filter_file, 'w') as file:
             for line in selected_lines:
-                file.write("\t".join(line) + "\n")
+                file.write('\t'.join(line) + '\n')
     else:
         # Copy the original file to the output directory with the new name to keep the file name consistency.
         shutil.copy(input_file, bed_out_filter_file)
@@ -306,6 +383,8 @@ def process_bed_lines(input_file, output_dir, max_lines=100, top_longest_lines_c
 > scaffold_1:346385-347665(+)
 > scaffold_1:346200-347196(+)
 """
+
+
 def fasta_header_to_bed(input_file, output_file):
     unique_lines = set()
 
@@ -330,8 +409,9 @@ def fasta_header_to_bed(input_file, output_file):
 
 
 # Avoid to use bedtools slop and getfasta to make it compatible with Windows system
-def extend_bed_regions(bed_file, left_extension, right_extension, chrom_sizes, output_bed):
-
+def extend_bed_regions(
+    bed_file, left_extension, right_extension, chrom_sizes, output_bed
+):
     with open(bed_file, 'r') as infile, open(output_bed, 'w') as outfile:
         for line in infile:
             parts = line.strip().split()
@@ -342,16 +422,19 @@ def extend_bed_regions(bed_file, left_extension, right_extension, chrom_sizes, o
                 new_start = max(0, start - left_extension)
                 new_end = min(chrom_sizes[chrom], end + right_extension)
             else:  # For anti sense strand
-                new_start = max(0, start - right_extension)  # Extend "start" less, as it's the "end"
-                new_end = min(chrom_sizes[chrom], end + left_extension)  # Extend "end" more, as it's the "start"
+                new_start = max(
+                    0, start - right_extension
+                )  # Extend "start" less, as it's the "end"
+                new_end = min(
+                    chrom_sizes[chrom], end + left_extension
+                )  # Extend "end" more, as it's the "start"
 
             # Write the extended region to the output BED file
-            outfile.write(f"{chrom}\t{new_start}\t{new_end}\tTEtrimmer\t0\t{strand}\n")
+            outfile.write(f'{chrom}\t{new_start}\t{new_end}\tTEtrimmer\t0\t{strand}\n')
     return output_bed
 
 
 def read_bed(bed_file):
-
     with open(bed_file, 'r') as file:
         for line in file:
             parts = line.strip().split('\t')
@@ -361,12 +444,11 @@ def read_bed(bed_file):
                 'chrom': parts[0],
                 'start': int(parts[1]),
                 'end': int(parts[2]),
-                'strand': parts[5]
+                'strand': parts[5],
             }
 
 
 def extract_fasta_from_bed(genome_fasta, bed_file, output_fasta):
-
     genome = SeqIO.to_dict(SeqIO.parse(genome_fasta, 'fasta'))
     with open(output_fasta, 'w') as out_fasta:
         for region in read_bed(bed_file):
@@ -377,17 +459,23 @@ def extract_fasta_from_bed(genome_fasta, bed_file, output_fasta):
             if chrom in genome:
                 sequence = genome[chrom].seq[start:end]
                 if strand == '-':
-                    sequence = sequence.reverse_complement()  # Reverse complement if on negative strand
-                seq_record = SeqRecord(sequence, id=f"{chrom}:{start}-{end}({strand})", description="")
+                    sequence = (
+                        sequence.reverse_complement()
+                    )  # Reverse complement if on negative strand
+                seq_record = SeqRecord(
+                    sequence, id=f'{chrom}:{start}-{end}({strand})', description=''
+                )
                 SeqIO.write(seq_record, out_fasta, 'fasta')
     return output_fasta
 
 
-def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=50, fill='█', final=False):
+def printProgressBar(
+    iteration, total, prefix='', suffix='', decimals=1, length=50, fill='█', final=False
+):
     """
     Custom terminal progress bar with MB display
     """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    percent = ('{0:.' + str(decimals) + 'f}').format(100 * (iteration / float(total)))
     if not final:
         percent = min(float(percent), 100)
     filledLength = int(length * iteration // total)
@@ -397,7 +485,11 @@ def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=
     iteration_mb = iteration / (1024 * 1024)
     total_mb = total / (1024 * 1024)
 
-    print(f'\r{prefix} |{bar}| {iteration_mb:.2f}/{total_mb:.2f} MB = {percent}% {suffix}', end='', flush=True)
+    print(
+        f'\r{prefix} |{bar}| {iteration_mb:.2f}/{total_mb:.2f} MB = {percent}% {suffix}',
+        end='',
+        flush=True,
+    )
 
     # Print a new line on completion
     if iteration == total:
@@ -409,9 +501,15 @@ def show_progress(block_num, block_size, total_size):
         iteration = block_num * block_size
         # Ensure we don't exceed total size
         iteration = min(iteration, total_size)
-        printProgressBar(iteration, total_size, prefix='Downloading CDD:', suffix='Complete', length=50)
+        printProgressBar(
+            iteration,
+            total_size,
+            prefix='Downloading CDD:',
+            suffix='Complete',
+            length=50,
+        )
     else:
-        print("Total size unknown. Downloading without progress bar.")
+        print('Total size unknown. Downloading without progress bar.')
 
 
 def check_and_download(directory, check_pattern, filename, url):
@@ -425,52 +523,80 @@ def check_and_download(directory, check_pattern, filename, url):
 
     check_pattern_file_path = os.path.join(directory, check_pattern)
 
-    # If cdd database was not found, download it
-    if not os.path.isfile(check_pattern_file_path):
+    # Check if the cdd database is already downloaded but not unzipped
+    if os.path.isfile(os.path.join(directory, filename)) and not os.path.isfile(check_pattern_file_path):
+        logging.info(
+            '\n CDD database is found but not unzipped. Unzipping......'
+        )
 
-        click.echo("\n CDD database not found. Downloading... This might take some time. Please be patient.\n")
+        # Unzipping using tarfile
+        with tarfile.open(os.path.join(directory, filename), 'r:gz') as tar:
+            tar.extractall(path=directory)
+
+        logging.info(
+            f'\n{filename} is unzipped. CDD database was stored in \n'
+            f'{directory}\n'
+        )
+        # Return True to indicate that the cdd database is found
+        return True
+
+    # If cdd database was not found, download it
+    if not os.path.isfile(check_pattern_file_path) and not os.path.isfile(os.path.join(directory, filename)):
+        logging.warning(
+            '\n CDD database not found. Downloading... This might take some time. Please be patient.\n'
+        )
 
         # Check if the URL is valid
         try:
             response = requests.get(url, stream=True)
             response.raise_for_status()  # Raise an exception if the GET request was unsuccessful
 
-        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
-            click.echo(f"\nFailed to reach the server at {url} for downloading cdd database. {e}\n")
+        except (
+            requests.exceptions.HTTPError,
+            requests.exceptions.ConnectionError,
+        ) as e:
+            logging.error(
+                f'\nFailed to reach the server at {url} for downloading cdd database. {e}\n'
+            )
             return False
 
         try:
-            gz_file_path = os.path.join(directory, filename)  # Provide a defined name for the file that will be downloaded
+            gz_file_path = os.path.join(
+                directory, filename
+            )  # Provide a defined name for the file that will be downloaded
             urllib.request.urlretrieve(url, gz_file_path, show_progress)
 
-            click.echo("\n CDD database is downloaded. Unzipping......")
+            logging.info('\n CDD database is downloaded. Unzipping......')
 
             # Unzipping using tarfile
             with tarfile.open(gz_file_path, 'r:gz') as tar:
                 tar.extractall(path=directory)
 
             # Delete gz file after extraction
-            #os.remove(gz_file_path)
+            # os.remove(gz_file_path)
 
-            click.echo(f"\n{filename} is downloaded and unzipped. CDD database was stored in \n"
-                       f"{directory}\n")
+            logging.info(
+                f'\n{filename} is downloaded and unzipped. CDD database was stored in \n'
+                f'{directory}\n'
+            )
 
         except Exception:
-            click.echo("TEtrimmer failed to unpack the downloaded cdd database.")
+            logging.error('TEtrimmer failed to unpack the downloaded cdd database.')
             return False
 
     # Check if download was successful
     if os.path.isfile(check_pattern_file_path):
-        click.echo("CDD database is found.")
+        logging.info('CDD database is found.')
 
         return True
 
     else:
-        click.echo(
-            f"The CDD database cannot be downloaded by TEtrimmerGUI. Please check your internet connection "
-            f"or download CDD database manually and use '--cdd_dir' to indicate your cdd database path. "
-            f"After downloading, you have to unzip it by yourself. "
-            f"\n CDD database is only used to detect TE protein domains and doesn't affect other functions.")
+        logging.error(
+            'The CDD database cannot be downloaded by TEtrimmerGUI. Please check your internet connection '
+            "or download CDD database manually and use '--cdd_dir' to indicate your cdd database path. "
+            'After downloading, you have to unzip it by yourself. '
+            "\n CDD database is only used to detect TE protein domains and doesn't affect other functions."
+        )
         return False
 
 
@@ -481,18 +607,34 @@ def check_cdd_index_files(directory):
     :return: boolean, 'True' if all cdd index files exist, 'False' otherwise.
     """
     # Define the list of cdd index files
-    cdd_files = ["cdd_profile.24.freq", "cdd_profile.24.aux", "cdd_profile.24.rps", "cdd_profile.24.loo",
-                 "cdd_profile.24.ptf", "cdd_profile.24.pot", "cdd_profile.24.pdb", "cdd_profile.24.pos"]
+    cdd_files = [
+        'cdd_profile.24.freq',
+        'cdd_profile.24.aux',
+        'cdd_profile.24.rps',
+        'cdd_profile.24.loo',
+        'cdd_profile.24.ptf',
+        'cdd_profile.24.pot',
+        'cdd_profile.24.pdb',
+        'cdd_profile.24.pos',
+    ]
 
-    # Check if all index files exist
-    if all(os.path.isfile(os.path.join(directory, file)) for file in cdd_files):
+    # Check if all index files exist, store missing files in a list
+    missing_files = []
+    for file in cdd_files:
+        if not os.path.isfile(os.path.join(directory, file)):
+            missing_files.append(file)
+
+    # Return True if all files exist, False otherwise
+    if not missing_files:
         return True
     else:
+        logging.error(
+            f'CDD index files are missing in the provided directory. The following files are missing: {missing_files}'
+        )
         return False
 
 
-def prepare_cdd_database(cdd_database_dir, os_type="Darwin"):
-
+def prepare_cdd_database(cdd_database_dir, os_type='Darwin'):
     # The downloaded database zipped name is cdd_tetrimmer.tar.gz
     # The name of cdd_database_dir is cdd_database, it is stored under TEtrimmerGUI path
     # Inside cdd_tetrimmer there should have a file called Cdd.cn, generate index file based that.
@@ -502,66 +644,93 @@ def prepare_cdd_database(cdd_database_dir, os_type="Darwin"):
 
     global prepared_cdd_g
 
-    cdd_url = "https://ftp.ncbi.nlm.nih.gov/pub/mmdb/cdd/cdd.tar.gz"
-    cdd_pn_path = os.path.join(cdd_database_dir, "Cdd.pn")
+    cdd_url = 'https://ftp.ncbi.nlm.nih.gov/pub/mmdb/cdd/cdd.tar.gz'
+    #cdd_pn_path = os.path.join(cdd_database_dir, 'Cdd.pn')
 
     try:
-        # Check and download the Cdd database files
-        if check_and_download(cdd_database_dir, r"Cdd.pn", r"Cdd.tar.gz", cdd_url):
+        # Check if CDD database downloads and unzipped in target dir
+        if check_and_download(cdd_database_dir, r'Cdd.pn', r'Cdd.tar.gz', cdd_url):
             # Create index file for cdd database
-            script_dir = get_original_file_path()
-            blast_dir = os.path.join(script_dir, "blast")
+            #script_dir = get_original_file_path()
 
-            if os_type == "Linux":
-                makeprofiledb = os.path.join(blast_dir, "makeprofiledb_linux")
-            elif os_type == "Darwin":
-                makeprofiledb = os.path.join(blast_dir, "makeprofiledb_mac")
-            else:
-                makeprofiledb = os.path.join(blast_dir, "makeprofiledb.exe")
+            # Check if the makeprofiledb command is available in PATH
+            check_cmd_in_path('makeprofiledb')
 
             makeprofiledb_cmd = [
-                str(makeprofiledb),
-                "-in", cdd_pn_path,
-                "-out", os.path.join(cdd_database_dir, "cdd_profile"),
-                "-threshold", str(9.82),
-                "-scale", str(100.0),
-                "-dbtype", "rps"]
+                'makeprofiledb',
+                '-in',
+                'Cdd.pn',
+                '-out',
+                'cdd_profile',
+                '-threshold',
+                str(9.82),
+                '-scale',
+                str(100.0),
+                '-dbtype',
+                'rps',
+            ]
 
             try:
-                print("CDD database index file not found. Making it ...... This can take around 10 mins.")
-                subprocess.run(makeprofiledb_cmd, check=True, cwd=cdd_database_dir, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, text=True)
+                logging.warning(
+                    'CDD database index file not found. Making it ...... This can take around 10 mins.'
+                )
 
-                print("CDD database index file generated.")
+                logging.info(' '.join(makeprofiledb_cmd))
+
+                # Run the makeprofiledb command from the cdd_database_dir (with cwd).
+                subprocess.run(
+                    makeprofiledb_cmd,
+                    check=True,
+                    cwd=cdd_database_dir,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+
+                if check_cdd_index_files(cdd_database_dir):
+                    logging.info('CDD profile database index file generated.')
+                else:
+                    logging.error('CDD profile database index file generation failed.')
+                    raise FileNotFoundError
 
                 # Change global variable prepared_cdd_g when it is generated successfully
-                prepared_cdd_g = os.path.join(cdd_database_dir, "cdd_profile")
-                return os.path.join(cdd_database_dir, "cdd_profile")
+                prepared_cdd_g = os.path.join(cdd_database_dir, 'cdd_profile')
+                return os.path.join(cdd_database_dir, 'cdd_profile')
 
             except FileNotFoundError:
-                print("'makeprofiledb' command not found.")
+                logging.error("'makeprofiledb' command not found.")
                 return False
 
             except subprocess.CalledProcessError as e:
-                print(f"\nCDD index file generation failed with error code {e.returncode}")
-                print(f"\n{e.stdout}")
-                print(f"\n{e.stderr}")
+                logging.error(
+                    f'\nCDD index file generation failed with error code {e.returncode}\n{e.stdout}\n{e.stderr}')
                 return False
         else:
             return False
 
     except Exception as e:
-        print(f"\nDownloading CDD database failed with error {e}")
+        logging.error(f'\nDownloading CDD database failed with error {e}')
         return False
 
 
-def rpstblastn(input_file, rpsblast_database, rpsblast_out_dir, e_value=0.01, os_type="Darwin", num_threads=20):
-
+def rpstblastn(
+    input_file,
+    rpsblast_database,
+    rpsblast_out_dir,
+    e_value=0.01,
+    os_type='Darwin',
+    num_threads=20,
+):
     script_dir = get_original_file_path()
-    blast_dir = os.path.join(script_dir, "blast")
+    blast_dir = os.path.join(script_dir, 'blast')
 
     # Define output file
-    rpstblastn_out_file = os.path.join(rpsblast_out_dir, f"{os.path.basename(input_file)}_pcc.txt")
+    rpstblastn_out_file = os.path.join(
+        rpsblast_out_dir, f'{os.path.basename(input_file)}_pcc.txt'
+    )
+
+    # Check if the rpstblastn command is available in PATH
+    check_cmd_in_path('rpstblastn')
 
     if os_type == "Linux":
         rpstblastn = os.path.join(blast_dir, "rpstblastn_linux")
@@ -582,28 +751,31 @@ def rpstblastn(input_file, rpsblast_database, rpsblast_out_dir, e_value=0.01, os
     ]
 
     try:
-        #click.echo("rpstblastn is running......")
+        # Print the rpstblastn command
+        logging.info(' '.join(rpsblast_cmd))
         # Run the rpstblastn command
         subprocess.run(rpsblast_cmd, check=True, capture_output=True, text=True)
-        #click.echo("rpstblastn is finished.")
+
 
         # Check if the blast hit number is 0
-        if os.path.isfile(rpstblastn_out_file) and os.path.getsize(rpstblastn_out_file) == 0:
-            click.echo("rpstblastn hit number is 0.")
-            return "rpstblastn_n_zero"
+        if (
+            os.path.isfile(rpstblastn_out_file)
+            and os.path.getsize(rpstblastn_out_file) == 0
+        ):
+            logging.warning('rpstblastn hit number is 0.')
+            return 'rpstblastn_n_zero'
 
         return rpstblastn_out_file
 
     except FileNotFoundError:
-        click.echo(f"'rpsblastn' command not found.\n"
-                   f"{traceback.format_exc()}")
+        logging.error(f"'rpsblastn' command not found.\n{traceback.format_exc()}")
         return False
 
     except subprocess.CalledProcessError as e:
-        click.echo(f"An error occurred during rpstblastn: \n {traceback.format_exc()}")
-        click.echo(f"\nrpstblastn failed with error code {e.returncode}")
+        logging.error(f'An error occurred during rpstblastn: \n {traceback.format_exc()}')
+        logging.error(f'\nrpstblastn failed with error code {e.returncode}')
         # Print the error generated from the BLAST itself
-        click.echo(e.stderr)
+        logging.error(e.stderr)
         return False
 
 
@@ -623,5 +795,3 @@ def run_func_in_thread(func, *args, **kwargs):
     thread = threading.Thread(target=func, args=args, kwargs=kwargs)
     thread.start()
     return thread  # Optionally return the thread for monitoring
-
-
