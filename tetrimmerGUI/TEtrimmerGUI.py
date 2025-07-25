@@ -157,12 +157,26 @@ if os_type == "Windows":
     'sequences are found. Default: 100',
 )
 @click.option(
-    '--aliview_jar',
-    type=str,
-    default=None,
-    help='Path to the AliView jar file. If not provided, search for "aliview" executable on the PATH.',
+    '--use_system_sequence_viewer',
+    '-ssv',
+    default=False,
+    is_flag=True,
+    help='Open FASTA files with your system default application instead of the built-in AliView.'
+         'NOTE: Currently this is not applicable for Windows system (default: False).'
 )
-@click.option('--logfile', '-l', default=None, type=str, help='Path to log file.')
+@click.option(
+    '--use_system_blast',
+    '-usb',
+    default=False,
+    is_flag=True,
+    help='Use your system BLAST package instead of the TEtrimmerGUI built-in BLAST packages (2.14.1) (default: False).'
+)
+@click.option(
+    '--logfile',
+    '-l',
+    default=None,
+    type=str,
+    help='Path to log file.')
 @click.option(
     '--loglevel',
     '-ll',
@@ -170,7 +184,7 @@ if os_type == "Windows":
     type=str,
     help='Log level. [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
 )
-@click.version_option("1.4.1", prog_name='TEtrimmer')
+@click.version_option("1.5.1", prog_name='TEtrimmerGUI')
 def proof_curation(
     te_trimmer_proof_curation_dir,
     output_dir,
@@ -179,7 +193,8 @@ def proof_curation(
     cdd_dir,
     max_msa_lines,
     top_msa_lines,
-    aliview_jar,
+    use_system_sequence_viewer,
+    use_system_blast,
     logfile,
     loglevel,
 ):
@@ -229,7 +244,6 @@ def proof_curation(
     # Define empty list to store copy history, which enable undo button
     copy_history = []
 
-    #
     # If genome_file is gzipped make a copy of the genome file and unzip it
     # Check if the genome file is gzipped
     if genome_file is not None:
@@ -358,7 +372,7 @@ def proof_curation(
 
     # Initialize Tk window
     root = Tk()
-    root.title(f'TEtrimmer Proof Curation Tool 1.4.1')
+    root.title(f'TEtrimmer Proof Curation Tool 1.5.1')
     # width * height
     if os_type == 'Windows':
         root.geometry('1000x800')
@@ -706,6 +720,7 @@ def proof_curation(
                         prepared_cdd=prepared_cdd,
                         e_value=blast_e_value_g,
                         num_threads=5,
+                        use_system_blast = use_system_blast
                     )
                     GUI_plotter_succeed = True
 
@@ -1030,7 +1045,7 @@ def proof_curation(
                         return
 
                     # Check genome blast database availability
-                    blast_database = check_database(genome_f, os_type=os_type)
+                    blast_database = check_database(genome_f, os_type=os_type, use_system_blast=use_system_blast)
 
                     # Check if makeblastdb is correctly installed
                     if blast_database == 'makeblastdb_not_found':
@@ -1058,6 +1073,7 @@ def proof_curation(
                         e_value=e_value,
                         bed_file=True,
                         os_type=os_type,
+                        use_system_blast=use_system_blast
                     )
 
                     if other_cons_bed == 'blastn_not_found':
@@ -1421,12 +1437,12 @@ def proof_curation(
                 if messagebox.askyesnocancel(
                         'Confirmation',
                         'Conserved Domains Database (CDD) database found but not '
-                        'indexed. Do you want to index it? '
-                        '\n Skip if you do not want to detect TE protein '
-                        "domains.",
+                        'indexed. Do you want to index it? Please make sure the CDD database is intact.'
+                        '\n Skip if you do not want to detect TE protein domains.'
                     ):
                         run_func_in_thread(
-                            prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type
+                            prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type,
+                            use_system_blast=use_system_blast
                         )
 
                         messagebox.showinfo(
@@ -1443,7 +1459,8 @@ def proof_curation(
                         "domains and doesn't affect other functions.",
                     ):
                         run_func_in_thread(
-                            prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type
+                            prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type,
+                            use_system_blast=use_system_blast
                         )
 
                         messagebox.showinfo(
@@ -1459,11 +1476,11 @@ def proof_curation(
                         'Confirmation',
                         'Conserved Domains Database (CDD) database is not detected '
                         'from provided --cdd_dir path.'
-                        'Do you want to download the CDD database by TEtrimmerGUI'
-                        ' again?',
+                        'Do you want to download the CDD database by TEtrimmerGUI again?'
                     ):
                         run_func_in_thread(
-                            prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type
+                            prepare_cdd_database, cdd_database_dir=cdd_dir, os_type=os_type,
+                            use_system_blast=use_system_blast
                         )
 
                         messagebox.showinfo(
@@ -1921,7 +1938,7 @@ def proof_curation(
         return _copy_file
 
     # Set nested function to enable this function containing parameters to be used by button
-    def open_file(filename, button, source_dir, aliview_jar_path=None):
+    def open_file(filename, button, source_dir):
         def _open_file(event):
             filepath = os.path.join(source_dir, filename)
             # if os_type == "Darwin":
@@ -1936,11 +1953,21 @@ def proof_curation(
             if os.path.isdir(filepath):
                 open_cluster_folder(filename, source_dir)
             else:
-                if filename.lower().endswith(('.fa', '.fasta')):
+                if not use_system_sequence_viewer and filename.lower().endswith(('.fa', '.fasta')):
                     if os_type == "Windows":
                         subprocess.run(["java", "-jar", aliview_path, filepath])
                     else:
                         subprocess.run([aliview_path, filepath])
+                elif use_system_sequence_viewer and filename.lower().endswith(('.fa', '.fasta')):
+                    if os_type == 'Linux':
+                        subprocess.run(['xdg-open', filepath])
+                    elif os_type == 'Darwin':  # macOS
+                        subprocess.run(['open', filepath])
+                    elif os_type == 'Windows':
+                        os.startfile(filepath)
+                    else:
+                        subprocess.run(['xdg-open', filepath])
+
                 elif filename.lower().endswith('.pdf'):
                     if os_type == 'Linux':
                         subprocess.run(['xdg-open', filepath])
@@ -1950,6 +1977,7 @@ def proof_curation(
                         os.startfile(filepath)
                     else:
                         subprocess.run(['xdg-open', filepath])
+
                 elif filename.lower().endswith(('.txt', '.py', '.csv', '.md', '.bed')):
                     if os_type == 'Linux':
                         text_editor = (

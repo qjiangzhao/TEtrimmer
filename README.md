@@ -95,9 +95,9 @@ git clone https://github.com/qjiangzhao/TEtrimmer.git
 conda install -c conda-forge mamba
 
 # Install TEtrimmer by the "yml" file
-mamba env create -f <path to/TEtrimmer_env_for_linux.yml>
+mamba env create -f <path to/TEtrimmer_env.yml>
 ```
-Here is the provided [TEtrimmer_env_for_linux.yml](https://github.com/qjiangzhao/TE-Trimmer/blob/main/TEtrimmer_env_for_linux.yml)
+Here is the provided [TEtrimmer_env.yml](./TEtrimmer_env.yml)
 
 ### 2. Singularity
 ```commandline

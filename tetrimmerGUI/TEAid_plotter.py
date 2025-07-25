@@ -57,7 +57,8 @@ def con_generater(input_file, output_dir, threshold=0.8, ambiguous='N'):
 #####################################################################################################
 # Code block: genome blast
 #####################################################################################################
-def teaid_genome_blast(input_file, genome_file, output_dir, e_value, num_threads=1):
+def teaid_genome_blast(input_file, genome_file, output_dir, e_value, num_threads=1,
+                       use_system_blast=False):
     # input_file: fasta file contain only one sequence
     # Used global variable: os_type
 
@@ -73,7 +74,7 @@ def teaid_genome_blast(input_file, genome_file, output_dir, e_value, num_threads
         return False
 
     # Check genome blast database availability
-    blast_database = check_database(genome_file, os_type=os_type)
+    blast_database = check_database(genome_file, os_type=os_type, use_system_blast = use_system_blast)
 
     # Check if makeblastdb is correctly installed
     if blast_database == 'makeblastdb_not_found':
@@ -97,6 +98,7 @@ def teaid_genome_blast(input_file, genome_file, output_dir, e_value, num_threads
         e_value=e_value,
         os_type=os_type,
         num_threads=num_threads,
+        use_system_blast=use_system_blast
     )
 
     if genome_blast_out == 'blastn_not_found':
@@ -125,7 +127,7 @@ def teaid_genome_blast(input_file, genome_file, output_dir, e_value, num_threads
 #####################################################################################################
 # Code block: self blast
 #####################################################################################################
-def self_blast(input_file, output_dir):
+def self_blast(input_file, output_dir, use_system_blast=False):
     # input_file: fasta file contain only one sequence
     # Used global variable: os_type
 
@@ -136,7 +138,8 @@ def self_blast(input_file, output_dir):
     os.makedirs(output_dir_self_blast, exist_ok=True)
 
     # Build blast database
-    blast_database = check_database(input_file, output_dir_self_blast, os_type=os_type)
+    blast_database = check_database(input_file, output_dir_self_blast, os_type=os_type,
+                                    use_system_blast=use_system_blast)
 
     # Check if makeblastdb is correctly installed
     if blast_database == 'makeblastdb_not_found':
@@ -159,6 +162,7 @@ def self_blast(input_file, output_dir):
         e_value=0.05,
         self_blast=True,
         os_type=os_type,
+        use_system_blast=use_system_blast
     )
 
     if self_blast_out == 'blastn_not_found':
@@ -788,6 +792,7 @@ def teaid_plotter(
     prepared_cdd=None,
     e_value=1e-40,
     num_threads=5,
+    use_system_blast = False
 ):
     # Used global variable: os_type
 
@@ -819,7 +824,7 @@ def teaid_plotter(
 
     # Perform genome blast
     genome_blast_out = teaid_genome_blast(
-        con_seq, genome_file, output_dir, e_value, num_threads=num_threads
+        con_seq, genome_file, output_dir, e_value, num_threads=num_threads, use_system_blast=use_system_blast
     )
 
     if genome_blast_out:
@@ -859,7 +864,7 @@ def teaid_plotter(
         coverage_max = 10
 
     # Perform self blast
-    dotplot_blast = self_blast(con_seq, output_dir)
+    dotplot_blast = self_blast(con_seq, output_dir, use_system_blast=use_system_blast)
 
     if dotplot_blast:
         # self blast dot plot
@@ -880,6 +885,7 @@ def teaid_plotter(
             e_value=0.01,
             os_type=os_type,
             num_threads=5,
+            use_system_blast=use_system_blast
         )
 
         if rpstblastn_out:

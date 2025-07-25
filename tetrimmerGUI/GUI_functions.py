@@ -30,11 +30,13 @@ special_character = {
 def check_cmd_in_path(cmd):
     cmd_path = shutil.which(cmd)
     if cmd_path:
-        logging.info(f"{cmd} is available at: {cmd_path}")
+        #logging.info(f"{cmd} is available at: {cmd_path}")
+        return True
     else:
-        logging.error(f"{cmd} is not available in the system's PATH")
+        #logging.error(f"{cmd} is not available in the system's PATH")
         # Raise error if tool is not available
-        raise FileNotFoundError
+        #raise FileNotFoundError
+        return False
 
 def decompress_gzip(file_path):
     decompressed_file = file_path.rstrip('.gz')
@@ -92,7 +94,12 @@ def separate_sequences(input_file, output_dir):
                 SeqIO.write(record, output_file, 'fasta')
 
 
-def check_database(genome_file, output_dir=None, os_type='Darwin'):
+def check_database(
+        genome_file,
+        output_dir=None,
+        os_type='Darwin',
+        use_system_blast=False
+):
     #script_dir = get_original_file_path()
     #blast_dir = os.path.join(script_dir, 'blast')
 
@@ -112,17 +119,18 @@ def check_database(genome_file, output_dir=None, os_type='Darwin'):
         try:
 
             # Check if the makeblastdb command is available in PATH
-            check_cmd_in_path('makeblastdb')
-
-            # Make makeblastdb command to create a BLAST database
-            makeblastdb_cmd = f'makeblastdb -in {genome_file} -dbtype nucl -out {database_path}'
-
-            if os_type == "Linux":
-                makeblastdb_cmd = f"{os.path.join(blast_dir, 'makeblastdb_linux')} -in {genome_file} -dbtype nucl -out {database_path}"
-            elif os_type == "Darwin":
-                makeblastdb_cmd = f"{os.path.join(blast_dir, 'makeblastdb_mac')} -in {genome_file} -dbtype nucl -out {database_path}"
+            # Use the user system makeblastdb when it exists, otherwise use the build-in version
+            if use_system_blast and check_cmd_in_path('makeblastdb'):
+                # Make makeblastdb command to create a BLAST database
+                makeblastdb_cmd = f'makeblastdb -in {genome_file} -dbtype nucl -out {database_path}'
             else:
-                makeblastdb_cmd = f"{os.path.join(blast_dir, 'makeblastdb.exe')} -in {genome_file} -dbtype nucl -out {database_path}"
+
+                if os_type == "Linux":
+                    makeblastdb_cmd = f"{os.path.join(blast_dir, 'makeblastdb_linux')} -in {genome_file} -dbtype nucl -out {database_path}"
+                elif os_type == "Darwin":
+                    makeblastdb_cmd = f"{os.path.join(blast_dir, 'makeblastdb_mac')} -in {genome_file} -dbtype nucl -out {database_path}"
+                else:
+                    makeblastdb_cmd = f"{os.path.join(blast_dir, 'makeblastdb.exe')} -in {genome_file} -dbtype nucl -out {database_path}"
 
             subprocess.run(
                 makeblastdb_cmd,
@@ -161,6 +169,7 @@ def blast(
     self_blast=False,
     os_type='Darwin',
     num_threads=1,
+    use_system_blast=False
 ):
     script_dir = get_original_file_path()
     blast_dir = os.path.join(script_dir, 'blast')
@@ -175,14 +184,16 @@ def blast(
     )
 
     # Check if the blastn command is available in PATH
-    check_cmd_in_path('blastn')
-
-    if os_type == "Linux":
-        blastn = os.path.join(blast_dir, "blastn_linux")
-    elif os_type == "Darwin":
-        blastn = os.path.join(blast_dir, "blastn_mac")
+    # Use the user system blastn when it exists, otherwise use the build-in version
+    if use_system_blast and check_cmd_in_path('blastn'):
+        blastn = "blastn"
     else:
-        blastn = os.path.join(blast_dir, "blastn.exe")
+        if os_type == "Linux":
+            blastn = os.path.join(blast_dir, "blastn_linux")
+        elif os_type == "Darwin":
+            blastn = os.path.join(blast_dir, "blastn_mac")
+        else:
+            blastn = os.path.join(blast_dir, "blastn.exe")
 
     # -outfmt 6 use "\t" as deliminator. -outfmt 10 use "," as deliminator
     blast_cmd = [
@@ -526,7 +537,7 @@ def check_and_download(directory, check_pattern, filename, url):
     # Check if the cdd database is already downloaded but not unzipped
     if os.path.isfile(os.path.join(directory, filename)) and not os.path.isfile(check_pattern_file_path):
         logging.info(
-            '\n CDD database is found but not unzipped. Unzipping......'
+            'CDD database is found but not unzipped. Unzipping......'
         )
 
         # Unzipping using tarfile
@@ -543,7 +554,7 @@ def check_and_download(directory, check_pattern, filename, url):
     # If cdd database was not found, download it
     if not os.path.isfile(check_pattern_file_path) and not os.path.isfile(os.path.join(directory, filename)):
         logging.warning(
-            '\n CDD database not found. Downloading... This might take some time. Please be patient.\n'
+            'CDD database not found. Downloading... This might take some time. Please be patient.\n'
         )
 
         # Check if the URL is valid
@@ -556,7 +567,11 @@ def check_and_download(directory, check_pattern, filename, url):
             requests.exceptions.ConnectionError,
         ) as e:
             logging.error(
-                f'\nFailed to reach the server at {url} for downloading cdd database. {e}\n'
+                f'Failed to reach the server at {url} for downloading cdd database. {e}\n'
+            )
+            logging.info(
+                'You can download the CDD database by yourself and refer to your database by '
+                'the option --cdd_dir.'
             )
             return False
 
@@ -628,13 +643,10 @@ def check_cdd_index_files(directory):
     if not missing_files:
         return True
     else:
-        logging.error(
-            f'CDD index files are missing in the provided directory. The following files are missing: {missing_files}'
-        )
         return False
 
 
-def prepare_cdd_database(cdd_database_dir, os_type='Darwin'):
+def prepare_cdd_database(cdd_database_dir, os_type='Darwin', use_system_blast = False):
     # The downloaded database zipped name is cdd_tetrimmer.tar.gz
     # The name of cdd_database_dir is cdd_database, it is stored under TEtrimmerGUI path
     # Inside cdd_tetrimmer there should have a file called Cdd.cn, generate index file based that.
@@ -645,33 +657,35 @@ def prepare_cdd_database(cdd_database_dir, os_type='Darwin'):
     global prepared_cdd_g
 
     cdd_url = 'https://ftp.ncbi.nlm.nih.gov/pub/mmdb/cdd/cdd.tar.gz'
-    #cdd_pn_path = os.path.join(cdd_database_dir, 'Cdd.pn')
+    cdd_pn_path = os.path.join(cdd_database_dir, 'Cdd.pn')
 
     try:
         # Check if CDD database downloads and unzipped in target dir
         if check_and_download(cdd_database_dir, r'Cdd.pn', r'Cdd.tar.gz', cdd_url):
             # Create index file for cdd database
-            #script_dir = get_original_file_path()
+            script_dir = get_original_file_path()
+            blast_dir = os.path.join(script_dir, "blast")
 
-            # Check if the makeprofiledb command is available in PATH
-            check_cmd_in_path('makeprofiledb')
+            # Use the user system makeprofiledb when it exists, otherwise use the build-in version
+            if use_system_blast and check_cmd_in_path('makeprofiledb'):
+                makeprofiledb = "makeprofiledb"
+            else:
+                if os_type == "Linux":
+                    makeprofiledb = os.path.join(blast_dir, "makeprofiledb_linux")
+                elif os_type == "Darwin":
+                    makeprofiledb = os.path.join(blast_dir, "makeprofiledb_mac")
+                else:
+                    makeprofiledb = os.path.join(blast_dir, "makeprofiledb.exe")
 
             makeprofiledb_cmd = [
-                'makeprofiledb',
-                '-in',
-                'Cdd.pn',
-                '-out',
-                'cdd_profile',
-                '-threshold',
-                str(9.82),
-                '-scale',
-                str(100.0),
-                '-dbtype',
-                'rps',
-            ]
-
+                str(makeprofiledb),
+                "-in", cdd_pn_path,
+                "-out", os.path.join(cdd_database_dir, "cdd_profile"),
+                "-threshold", str(9.82),
+                "-scale", str(100.0),
+                "-dbtype", "rps"]
             try:
-                logging.warning(
+                logging.info(
                     'CDD database index file not found. Making it ...... This can take around 10 mins.'
                 )
 
@@ -709,7 +723,7 @@ def prepare_cdd_database(cdd_database_dir, os_type='Darwin'):
             return False
 
     except Exception as e:
-        logging.error(f'\nDownloading CDD database failed with error {e}')
+        logging.error(f'Prepare CDD database failed with error {e}')
         return False
 
 
@@ -720,6 +734,7 @@ def rpstblastn(
     e_value=0.01,
     os_type='Darwin',
     num_threads=20,
+    use_system_blast = False
 ):
     script_dir = get_original_file_path()
     blast_dir = os.path.join(script_dir, 'blast')
@@ -730,14 +745,16 @@ def rpstblastn(
     )
 
     # Check if the rpstblastn command is available in PATH
-    check_cmd_in_path('rpstblastn')
-
-    if os_type == "Linux":
-        rpstblastn = os.path.join(blast_dir, "rpstblastn_linux")
-    elif os_type == "Darwin":
-        rpstblastn = os.path.join(blast_dir, "rpstblastn_mac")
+    # Use the user system rpstblastn when it exists, otherwise use the build-in version
+    if use_system_blast and check_cmd_in_path('rpstblastn'):
+        rpstblastn = "rpstblastn"
     else:
-        rpstblastn = os.path.join(blast_dir, "rpstblastn.exe")
+        if os_type == "Linux":
+            rpstblastn = os.path.join(blast_dir, "rpstblastn_linux")
+        elif os_type == "Darwin":
+            rpstblastn = os.path.join(blast_dir, "rpstblastn_mac")
+        else:
+            rpstblastn = os.path.join(blast_dir, "rpstblastn.exe")
 
     # -outfmt 6 use "\t" as deliminator.
     rpsblast_cmd = [
@@ -804,6 +821,7 @@ class CustomFormatter(logging.Formatter):
 
     # ANSI escape codes for terminal colors
     grey = "\x1b[38;21m"
+    black = "\x1b[30m"
     blue = "\x1b[38;5;39m"
     orange = "\x1b[38;5;214m"
     red = "\x1b[38;5;196m"
@@ -822,7 +840,7 @@ class CustomFormatter(logging.Formatter):
         # Color and plain format mappings
         self.color_formats = {
             logging.DEBUG: self.grey + self.detailed_fmt + self.reset,
-            logging.INFO: self.blue + self.simple_fmt + self.reset,
+            logging.INFO: self.black + self.simple_fmt + self.reset,
             logging.WARNING: self.orange + self.simple_fmt + self.reset,
             logging.ERROR: self.red + self.detailed_fmt + self.reset,
             logging.CRITICAL: self.bold_red + self.detailed_fmt + self.reset,

@@ -56,7 +56,7 @@ with open(config_path, 'r') as config_file:
                    \\__|   \\________| \\____/ \\__|      \\__|\\__| \\__| \\__|\\__| \\__| \\__| \\_______|\\__|
 
 
-                Version: 1.6.0
+                Version: 1.5.1
 
                 Github: https://github.com/qjiangzhao/TEtrimmer
 
@@ -182,7 +182,6 @@ with open(config_path, 'r') as config_file:
     is_flag=True,
     help='Reduce running time at the cost of lower accuracy and specificity.',
 )
-
 @click.option(
     '--pfam_dir',
     '-pd',
@@ -365,7 +364,7 @@ with open(config_path, 'r') as config_file:
     type=str,
     help='Log level. [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
 )
-@click.version_option("1.4.1", prog_name='TEtrimmer')
+@click.version_option("1.5.1", prog_name='TEtrimmer')
 def main(
     input_file,
     genome_file,

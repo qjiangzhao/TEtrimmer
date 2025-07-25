@@ -1,8 +1,15 @@
 ## Update history
-** October.17.2024
+**TEtrimmer v1.5.1 Released Jul.25.2025**
+
+Merged with Adam Taranto pull request https://github.com/adamtaranto
+
+Many thanks for your contribution ;)
+
+**October.17.2024**
+
 Add --curatedlib option
 
-** October.11.2024
+**October.11.2024**
 
 Update CIAilgn (whole MSA) plot
 
