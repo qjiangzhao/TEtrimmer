@@ -1137,9 +1137,9 @@ def find_boundary_and_crop(
             tb_content = traceback.format_exc()
             f.write(f'\nMSA plot failed for {seq_name} with error:\n{e}')
             f.write('\n' + tb_content + '\n\n')
-        logging.error(f'\nMSA plot failed {seq_name} with error:\n{e}')
+        logging.error(f'MSA plot failed {seq_name} with error:\n{e}')
         logging.warning(
-            '\nMSA plots are only used to evaluate TEtrimmer and will not affect the final TE consensus library.'
+            'MSA plots are only used to evaluate TEtrimmer and will not affect the final TE consensus library.'
             " For traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder\n"
         )
 
@@ -1157,7 +1157,7 @@ def find_boundary_and_crop(
         # Run TE_aid. If low_copy is 'True'
         # The low_copy will only affect it to keep self blast result from TEAid.
         # it is Ture, TE_aid_object.run will check the terminal repeat based on the self blast output of TEAid
-        # Otherwise, it use the terminal repeat result "found_match_crop"
+        # Otherwise, it uses the terminal repeat result "found_match_crop"
         if not found_match_crop:
             TE_aid_object = TEAid(
                 orf_cons,

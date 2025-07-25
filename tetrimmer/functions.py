@@ -1,5 +1,4 @@
 import gzip
-import logging
 import os
 import os.path
 import random
@@ -7,6 +6,8 @@ import shutil
 import subprocess
 import traceback
 import warnings
+import logging
+import sys
 
 import click
 import numpy as np
@@ -196,8 +197,8 @@ def blast(
         )
 
         try:
-            logging.info(f'Running BLAST for {input_file_n}')
-            logging.info(f'BLAST command: {blast_cmd}')
+            #logging.info(f'Running BLAST for {input_file_n}')
+            #logging.info(f'BLAST command: {blast_cmd}')
 
             subprocess.run(
                 blast_cmd,
@@ -465,8 +466,8 @@ def extract_fasta(
     bed_cmd = f'bedtools slop -s -i {input_file} -g {genome_file}.length -l {left_ex} -r {right_ex} > {bed_out_flank_file_dup}'
 
     try:
-        logging.info(f'Running bedtools slop for {input_file_n}')
-        logging.info(f'bedtools slop command: {bed_cmd}')
+        #logging.info(f'Running bedtools slop for {input_file_n}')
+        #logging.info(f'bedtools slop command: {bed_cmd}')
         subprocess.run(
             bed_cmd,
             shell=True,
@@ -1452,7 +1453,6 @@ def select_gaps_block_with_similarity_check_test_old(input_file,
         return False
 
 
-
 def select_gaps_block_with_similarity_check(
     input_file: str,
     simi_check_gap_thre: float = 0.3,
@@ -1727,33 +1727,23 @@ def cd_hit_est(
     """
     command = [
         'cd-hit-est',
-        '-i',
-        input_file,
-        '-o',
-        output_file,
-        '-c',
-        str(identity_thr),
-        '-aL',
-        str(aL),
-        '-aS',
-        str(aS),
+        '-i', input_file,
+        '-o', output_file,
+        '-c', str(identity_thr),
+        '-aL', str(aL),
+        '-aS', str(aS),
         '-M',
         '0',
-        '-T',
-        str(thread),
-        '-l',
-        '30',
-        '-d',
-        '0',
-        '-s',
-        str(s),
-        '-sc',
-        '1',
+        '-T', str(thread),
+        '-l', '30',
+        '-d', '0',
+        '-s', str(s),
+        '-sc', '1',
     ]
 
     try:
-        logging.info(f'Running cd-hit-est for {os.path.basename(input_file)}')
-        logging.info(f'Command: {" ".join(command)}')
+        #logging.info(f'Running cd-hit-est for {os.path.basename(input_file)}')
+        #logging.info(f'Command: {" ".join(command)}')
 
         subprocess.run(
             command,
@@ -2938,24 +2928,24 @@ def scale_single_page_pdf(input_pdf_path: str, output_pdf_path: str, scale_ratio
     Returns:
         str: The path to the output PDF file.
     """
-    logging.info(f"Reading input PDF file: {input_pdf_path}")
+    #logging.info(f"Reading input PDF file: {input_pdf_path}")
     pdf_reader = PdfReader(input_pdf_path)
     pdf_writer = PdfWriter()
 
     # Get the first (and only) page
     page = pdf_reader.pages[0]
-    logging.info(f"Scaling the page by a ratio of {scale_ratio}")
+    #logging.info(f"Scaling the page by a ratio of {scale_ratio}")
     page.scale_by(scale_ratio)  # Scale the page
 
     # Add the scaled page to the PDF writer
     pdf_writer.add_page(page)
 
     # Write the scaled page to the output PDF file
-    logging.info(f"Writing the scaled page to the output PDF file: {output_pdf_path}")
+    #logging.info(f"Writing the scaled page to the output PDF file: {output_pdf_path}")
     with open(output_pdf_path, 'wb') as out_file:
         pdf_writer.write(out_file)
 
-    logging.info(f"PDF scaling complete. Output saved to: {output_pdf_path}")
+    #logging.info(f"PDF scaling complete. Output saved to: {output_pdf_path}")
     return output_pdf_path
 
 
@@ -3127,3 +3117,136 @@ def modify_fasta_headers(bed_file_path, fasta_file_path):
         SeqIO.write(modified_records, output_file, 'fasta')
 
     return output_fasta_path
+
+
+def check_tools(required_tools=[], optional_tools=[]):
+    """
+    Check if required and optional tools are available on the system's PATH.
+
+    Args:
+        required_tools (list): List of required tool names.
+        optional_tools (list): List of optional tool names.
+
+    Raises:
+        RuntimeError: If any required tool is not found.
+    """
+    missing_required_tools = []
+
+    def print_message(tool, path, color_code):
+        """
+        Print a message to stderr with the tool name and path in the specified color.
+
+        Args:
+            tool (str): The name of the tool.
+            path (str): The path to the tool.
+            color_code (str): The ANSI color code for the message.
+        """
+        tool_padded = tool.ljust(15)
+        if path:
+            message = f'{color_code}{tool_padded}\t{path}\033[0m'
+        else:
+            message = f'{color_code}{tool_padded}\tNOT FOUND\033[0m'
+        print(message, file=sys.stderr)
+
+    # Check required tools
+    print('Checking for dependencies:')
+    for tool in required_tools:
+        path = shutil.which(tool)
+        if path:
+            print_message(tool, path, '\033[92m')  # Green
+        else:
+            print_message(tool, None, '\033[91m')  # Red
+            missing_required_tools.append(tool)
+
+    # Check optional tools
+    for tool in optional_tools:
+        path = shutil.which(tool)
+        if path:
+            print_message(tool, path, '\033[92m')  # Green
+        else:
+            print_message(tool, None, '\033[93m')  # Yellow
+
+    # Raise error if any required tool is missing
+    if missing_required_tools:
+        error_message = 'ERROR: Some required tools could not be found: ' + ', '.join(
+            missing_required_tools
+        )
+        logging.error(error_message)
+        raise RuntimeError(
+            'Missing required tools: ' + ', '.join(missing_required_tools)
+        )
+
+
+class CustomFormatter(logging.Formatter):
+    """
+    Custom logging formatter with optional color and per-level formatting.
+    """
+
+    # ANSI escape codes for terminal colors
+    grey = "\x1b[38;21m"
+    black = "\x1b[30m"
+    blue = "\x1b[38;5;39m"
+    orange = "\x1b[38;5;214m"
+    red = "\x1b[38;5;196m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+
+    def __init__(self, use_color=True):
+        super().__init__()
+        self.use_color = use_color
+        self.datefmt = "%H:%M:%S"  # Short timestamp format
+
+        # Two format styles
+        self.simple_fmt = "%(asctime)s | %(levelname)s | %(message)s"
+        self.detailed_fmt = "%(asctime)s | %(levelname)s | %(module)s | %(funcName)s | %(lineno)d | %(message)s"
+
+        # Color and plain format mappings
+        self.color_formats = {
+            logging.DEBUG: self.grey + self.detailed_fmt + self.reset,
+            logging.INFO: self.black + self.simple_fmt + self.reset,
+            logging.WARNING: self.orange + self.simple_fmt + self.reset,
+            logging.ERROR: self.red + self.detailed_fmt + self.reset,
+            logging.CRITICAL: self.bold_red + self.detailed_fmt + self.reset,
+        }
+
+        self.plain_formats = {
+            logging.DEBUG: self.detailed_fmt,
+            logging.INFO: self.simple_fmt,
+            logging.WARNING: self.simple_fmt,
+            logging.ERROR: self.detailed_fmt,
+            logging.CRITICAL: self.detailed_fmt,
+        }
+
+    def format(self, record):
+        formats = self.color_formats if self.use_color else self.plain_formats
+        log_fmt = formats.get(record.levelno)
+        formatter = logging.Formatter(log_fmt, datefmt=self.datefmt)
+        return formatter.format(record)
+
+
+def init_logging(loglevel="DEBUG", logfile=None):
+    """
+    Initialize logging with colored console output and optional file logging.
+
+    Parameters:
+    - loglevel: str (e.g., "DEBUG", "INFO")
+    - logfile: str or None (if provided, logs will also be written to file)
+    """
+    numeric_level = getattr(logging, loglevel.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f"Invalid log level: {loglevel}")
+
+    # Console handler (with color)
+    handler_console = logging.StreamHandler(sys.stderr)
+    handler_console.setFormatter(CustomFormatter(use_color=True))
+
+    handlers = [handler_console]
+
+    # Optional file handler (no color)
+    if logfile is not None:
+        handler_file = logging.FileHandler(logfile)
+        handler_file.setFormatter(CustomFormatter(use_color=False))
+        handlers.append(handler_file)
+
+    logging.basicConfig(level=numeric_level, handlers=handlers)
+

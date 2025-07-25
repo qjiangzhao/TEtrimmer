@@ -44,13 +44,22 @@ from crop_end_divergence import crop_end_div
 from crop_end_gap import crop_end_gap
 from remove_gap import remove_gaps_with_similarity_check
 
-from GUI_functions import separate_sequences, blast, fasta_header_to_bed, extend_bed_regions, \
-    extract_fasta_from_bed, check_database, process_bed_lines, prepare_cdd_database, \
-    run_func_in_thread, check_cdd_index_files
+from GUI_functions import (
+    separate_sequences,
+    blast,
+    fasta_header_to_bed,
+    extend_bed_regions,
+    extract_fasta_from_bed,
+    check_database,
+    process_bed_lines,
+    prepare_cdd_database,
+    run_func_in_thread,
+    check_cdd_index_files,
+    init_logging,
+    decompress_gzip
+)
 from cialign_plot import drawMiniAlignment
 
-from checks import check_tools
-from logs import init_logging
 
 #####################################################################################################
 # Code block: make Aliveiw available to be used
@@ -223,12 +232,16 @@ def proof_curation(
     #
     # If genome_file is gzipped make a copy of the genome file and unzip it
     # Check if the genome file is gzipped
-    is_gzipped = genome_file.endswith('.gz')
+    if genome_file is not None:
+        is_gzipped = genome_file.endswith('.gz')
 
-    if is_gzipped:
-        decompressed_genome_file = decompress_gzip(genome_file)
+        if is_gzipped:
+            decompressed_genome_file = decompress_gzip(genome_file)
+        else:
+            decompressed_genome_file = genome_file
     else:
         decompressed_genome_file = genome_file
+
 
     # Declare global variables for paths
     # consensus_lib_g is the file contain other consensus sequences

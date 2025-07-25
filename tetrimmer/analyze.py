@@ -34,6 +34,7 @@ from functions import (
     repeatmasker,
     repeatmasker_output_classify,
     update_low_copy_cons_file,
+    init_logging
 )
 from MSAcluster import clean_and_cluster_MSA
 from orfdomain import PlotPfam, prepare_pfam_database
@@ -161,8 +162,7 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
         if search_type == 'blast':
             blast_database_file = output_database_path + '.nin'
             if not os.path.isfile(blast_database_file):
-                logging.info(f"Pre-built blast database not found at: {output_database_path}")
-
+                #logging.info(f"Pre-built blast database not found at: {output_database_path}")
                 try:
                     makeblastdb_cmd = (
                         f'makeblastdb -in {genome_file} -dbtype nucl -out {output_database_path} '
@@ -272,7 +272,9 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
                 exit(1)
 
             except subprocess.CalledProcessError as e:
-                logging.error(f'\nsamtools faidx failed with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
+                logging.error(
+                    f'samtools faidx failed with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n'
+                    f'You can use samtools faidx <genome_file> -o <genome_file>.fai to generate index file.')
                 exit(1)
 
     except Exception as e:
@@ -311,7 +313,9 @@ def printProgressBar(
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + '-' * (length - filledLength)
     # click.echo(f'\r{prefix} |{bar}| {iteration}/{total} = {percent}% {suffix}', nl=False)
-    click.echo(f'{prefix} |{bar}| {iteration}/{total} = {percent}% {suffix}', nl=True)
+    #click.echo(f'{prefix} |{bar}| {iteration}/{total} = {percent}% {suffix}', nl=True)
+
+    logging.info(f'{prefix} |{bar}| {iteration}/{total} = {percent}% {suffix}')
     # print(f'{prefix} |{bar}| {iteration}/{total} = {percent}% {suffix}', end='\n', flush=True)
 
     # Print New Line on Complete
@@ -491,7 +495,7 @@ def repeatmasker_classification(
             if reclassified_dict:
                 logging.info(
                     f'\n{len(reclassified_dict)} TE elements were re-classified by the '
-                    f'final classification module.'
+                    f'final classification module.\n'
                 )
 
                 # Update final consensus file
@@ -516,7 +520,7 @@ def repeatmasker_classification(
 
             else:
                 logging.info(
-                    '0 TE elements were re-classified by the final classification module.'
+                    '0 TE elements were re-classified by the final classification module.\n'
                 )
 
     else:
@@ -704,7 +708,7 @@ def merge_cons(
         if hmm:
             remove_files_with_start_pattern(hmm_dir, missing_ids)
     """
-    logging.info('\nSequence de-duplication process complete.\n')
+    logging.info('Sequence de-duplication process complete.\n')
     return sequence_info
 
 
@@ -921,6 +925,8 @@ def analyze_sequence(
     database_dir,
     blast_database_path,
     mmseqs_database_dir,
+    loglevel,
+    logfile
 ):
 
     #####################################################################################################
@@ -928,6 +934,7 @@ def analyze_sequence(
     #####################################################################################################
 
     try:
+        init_logging(loglevel=loglevel, logfile=logfile)
         # Get query fasta file path
         seq_name = seq_obj.get_seq_name()
         seq_type = seq_obj.get_old_TE_type()
@@ -1022,7 +1029,7 @@ def analyze_sequence(
     try:
         # Check if BLAST hit number is exactly 0. If so, skip this sequence
         if blast_hits_count == 0:
-            logging.warning(f'\n{seq_name} is skipped due to blast hit number is 0\n')
+            logging.info(f'{seq_name} is skipped due to blast hit number is 0')
             handle_sequence_skipped(
                 seq_obj,
                 progress_file,
@@ -1075,8 +1082,8 @@ def analyze_sequence(
                 )
             else:
                 logging.info(
-                    f'\n{seq_name} was skipped because the BLAST hit number is smaller than {min_seq_num} '
-                    f'and check_low_copy is {check_low_copy}.\n'
+                    f'{seq_name} was skipped because the BLAST hit number is smaller than {min_seq_num} '
+                    f'and check_low_copy is {check_low_copy}.'
                 )
 
                 # handle_sequence_skipped will update skipped status
@@ -1222,7 +1229,7 @@ def analyze_sequence(
                 )
 
             else:
-                logging.warning(
+                logging.info(
                     f'\n{seq_name} was skipped because the sequence number in each cluster was smaller '
                     f'than {min_seq_num} and check_low_copy is {check_low_copy}.\n'
                 )
@@ -1351,7 +1358,7 @@ def analyze_sequence(
                         skip_proof_dir=skipped_dir,
                         orf_plot=input_orf_domain_plot,
                     )
-                    logging.warning(
+                    logging.info(
                         f'\n{seq_name} was skipped because sequence is too short and check_low_copy is {check_low_copy}.\n'
                     )
                 return
@@ -1513,9 +1520,7 @@ def create_dir(
     ########################################
     perfect_proof = os.path.join(proof_curation_dir, 'Annotations_perfect')
     good_proof = os.path.join(proof_curation_dir, 'Annotations_good')
-    intermediate_proof = os.path.join(
-        proof_curation_dir, 'Annotations_check_recommended'
-    )
+    intermediate_proof = os.path.join(proof_curation_dir, 'Annotations_check_recommended')
     need_check_proof = os.path.join(proof_curation_dir, 'Annotations_check_required')
     os.makedirs(perfect_proof, exist_ok=True)
     os.makedirs(good_proof, exist_ok=True)

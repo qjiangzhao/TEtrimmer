@@ -795,3 +795,76 @@ def run_func_in_thread(func, *args, **kwargs):
     thread = threading.Thread(target=func, args=args, kwargs=kwargs)
     thread.start()
     return thread  # Optionally return the thread for monitoring
+
+
+class CustomFormatter(logging.Formatter):
+    """
+    Custom logging formatter with optional color and per-level formatting.
+    """
+
+    # ANSI escape codes for terminal colors
+    grey = "\x1b[38;21m"
+    blue = "\x1b[38;5;39m"
+    orange = "\x1b[38;5;214m"
+    red = "\x1b[38;5;196m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+
+    def __init__(self, use_color=True):
+        super().__init__()
+        self.use_color = use_color
+        self.datefmt = "%H:%M:%S"  # Short timestamp format
+
+        # Two format styles
+        self.simple_fmt = "%(asctime)s | %(levelname)s | %(message)s"
+        self.detailed_fmt = "%(asctime)s | %(levelname)s | %(module)s | %(funcName)s | %(lineno)d | %(message)s"
+
+        # Color and plain format mappings
+        self.color_formats = {
+            logging.DEBUG: self.grey + self.detailed_fmt + self.reset,
+            logging.INFO: self.blue + self.simple_fmt + self.reset,
+            logging.WARNING: self.orange + self.simple_fmt + self.reset,
+            logging.ERROR: self.red + self.detailed_fmt + self.reset,
+            logging.CRITICAL: self.bold_red + self.detailed_fmt + self.reset,
+        }
+
+        self.plain_formats = {
+            logging.DEBUG: self.detailed_fmt,
+            logging.INFO: self.simple_fmt,
+            logging.WARNING: self.simple_fmt,
+            logging.ERROR: self.detailed_fmt,
+            logging.CRITICAL: self.detailed_fmt,
+        }
+
+    def format(self, record):
+        formats = self.color_formats if self.use_color else self.plain_formats
+        log_fmt = formats.get(record.levelno)
+        formatter = logging.Formatter(log_fmt, datefmt=self.datefmt)
+        return formatter.format(record)
+
+
+def init_logging(loglevel="DEBUG", logfile=None):
+    """
+    Initialize logging with colored console output and optional file logging.
+
+    Parameters:
+    - loglevel: str (e.g., "DEBUG", "INFO")
+    - logfile: str or None (if provided, logs will also be written to file)
+    """
+    numeric_level = getattr(logging, loglevel.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f"Invalid log level: {loglevel}")
+
+    # Console handler (with color)
+    handler_console = logging.StreamHandler(sys.stderr)
+    handler_console.setFormatter(CustomFormatter(use_color=True))
+
+    handlers = [handler_console]
+
+    # Optional file handler (no color)
+    if logfile is not None:
+        handler_file = logging.FileHandler(logfile)
+        handler_file.setFormatter(CustomFormatter(use_color=False))
+        handlers.append(handler_file)
+
+    logging.basicConfig(level=numeric_level, handlers=handlers)

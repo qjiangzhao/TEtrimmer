@@ -13,14 +13,14 @@ from Bio import BiopythonDeprecationWarning
 
 #from .._version import __version__
 
-from checks import check_tools
-from logs import init_logging
 import analyze
 from functions import (
     cd_hit_est,
     decompress_gzip,
     eliminate_curatedlib_by_repeatmasker,
-    repeatmasker
+    repeatmasker,
+    check_tools,
+    init_logging
 )
 
 # Suppress all deprecation warnings
@@ -56,7 +56,7 @@ with open(config_path, 'r') as config_file:
                    \\__|   \\________| \\____/ \\__|      \\__|\\__| \\__| \\__|\\__| \\__| \\__| \\_______|\\__|
 
 
-                Version: 
+                Version: 1.6.0
 
                 Github: https://github.com/qjiangzhao/TEtrimmer
 
@@ -230,12 +230,12 @@ with open(config_path, 'r') as config_file:
 )
 @click.option(
     '--max_cluster_num',
-    default=2,
+    default=5,
     type=int,
     help='The maximum number of clusters assigned in each multiple sequence alignment. '
     'Each multiple sequence alignment can be grouped into different clusters based on alignment patterns '
     'WARNING: using a larger number will potentially result in more accurate consensus results but will '
-    'significantly increase the running time. We do not recommend increasing this value to over 5. Default: 2',
+    'also increase the running time. Default: 5',
 )
 @click.option(
     '--ext_thr',
@@ -309,6 +309,7 @@ with open(config_path, 'r') as config_file:
 @click.option(
     '--start_patterns',
     type=str,
+    default = 'TG',
     help='LTR elements always start with a conserved sequence pattern. TEtrimmer searches the '
     'beginning of the consensus sequence for these patterns. If the pattern is not found, '
     'TEtrimmer will extend the search of <--start_patterns> to up to 15 nucleotides from the '
@@ -320,6 +321,7 @@ with open(config_path, 'r') as config_file:
 @click.option(
     '--end_patterns',
     type=str,
+    default = 'CA',
     help='LTR elements always end with a conserved sequence pattern. TEtrimmer searches the '
     'end of the consensus sequence for these patterns. If the pattern is not found, '
     'TEtrimmer will extend the search of <--end_patterns> to up to 15 nucleotides from the '
@@ -411,7 +413,20 @@ def main(
     engine = 'blast'
 
     # Check for required programs.
-    required_tools = ['bedtools','samtools', 'cd-hit-est', 'ps2pdf', 'polydot', 'mafft', 'iqtree', 'getorf', 'hmmsearch','pfam_scan.pl']
+    required_tools = [
+        'bedtools',
+        'samtools',
+        'cd-hit-est',
+        'ps2pdf',
+        'polydot',
+        'mafft',
+        'iqtree',
+        'getorf',
+        'hmmsearch',
+        'pfam_scan.pl',
+        'repeatmasker',
+        'repeatmodeler'
+    ]
     optional_tools = ['blastn', 'makeblastdb', 'mmseqs']
 
     if engine == 'blast':
@@ -422,7 +437,7 @@ def main(
         required_tools.append('mmseqs')
         optional_tools = ['blastn','makeblastdb']
 
-    check_tools(required_tools=required_tools, optional_tools=optional_tools)
+    check_tools(required_tools=required_tools)
 
     # Set the log file path
     if not logfile:
@@ -439,7 +454,7 @@ def main(
     plot_skip = True
     fast_mode = True
     start_time = datetime.now()
-    logging.info(f'TEtrimmer started at {start_time.strftime("%Y-%m-%d %H:%M:%S")}.')
+    logging.info(f'TEtrimmer started at {start_time.strftime("%Y-%m-%d %H:%M:%S")}.\n')
 
     #####################################################################################################
     # Code block: File ends
@@ -498,123 +513,112 @@ def main(
     # Define the default values for the parameters
     default_values = preset_config.get(preset, {})
 
-
-
-    # Log the preset being loaded
-    logging.info(f'Loading default values for mode: {preset}')
-
-    default_report = 'Preset values:\n'
-
-    for key, value in default_values.items():
-        default_report += f'{key}: {value}\n'
-
-    # Log the default values
-    logging.info(default_report)
-
-    # String to collect user-updated variables
-    updated_vars = ''
-
     # Update the given parameters with default values where user input is None
     if cons_thr is None:
         cons_thr = default_values.get('cons_thr')
-    else:
-        updated_vars += f'cons_thr updated to {cons_thr}\n'
 
     if max_msa_lines is None:
         max_msa_lines = default_values.get('max_msa_lines')
-    else:
-        updated_vars += f'max_msa_lines updated to {max_msa_lines}\n'
 
     if top_msa_lines is None:
         top_msa_lines = default_values.get('top_msa_lines')
-    else:
-        updated_vars += f'top_msa_lines updated to {top_msa_lines}\n'
 
     if min_seq_num is None:
         min_seq_num = default_values.get('min_seq_num')
         if min_seq_num < 10:
             min_seq_num = 10
-    else:
-        updated_vars += f'min_seq_num updated to {min_seq_num}\n'
 
     if min_blast_len is None:
         min_blast_len = default_values.get('min_blast_len')
-    else:
-        updated_vars += f'min_blast_len updated to {min_blast_len}\n'
 
     if ext_thr is None:
         ext_thr = default_values.get('ext_thr')
-    else:
-        updated_vars += f'ext_thr updated to {ext_thr}\n'
 
     if ext_step is None:
         ext_step = default_values.get('ext_step')
-    else:
-        updated_vars += f'ext_step updated to {ext_step}\n'
 
     if max_ext is None:
         max_ext = default_values.get('max_ext')
-    else:
-        updated_vars += f'max_ext updated to {max_ext}\n'
 
     if gap_thr is None:
         gap_thr = default_values.get('gap_thr')
-    else:
-        updated_vars += f'gap_thr updated to {gap_thr}\n'
 
     if gap_nul_thr is None:
         gap_nul_thr = default_values.get('gap_nul_thr')
-    else:
-        updated_vars += f'gap_nul_thr updated to {gap_nul_thr}\n'
 
     if crop_end_div_thr is None:
         crop_end_div_thr = default_values.get('crop_end_div_thr')
-    else:
-        updated_vars += f'crop_end_div_thr updated to {crop_end_div_thr}\n'
 
     if crop_end_div_win is None:
         crop_end_div_win = default_values.get('crop_end_div_win')
-    else:
-        updated_vars += f'crop_end_div_win updated to {crop_end_div_win}\n'
 
     if crop_end_gap_thr is None:
         crop_end_gap_thr = default_values.get('crop_end_gap_thr')
-    else:
-        updated_vars += f'crop_end_gap_thr updated to {crop_end_gap_thr}\n'
 
     if crop_end_gap_win is None:
         crop_end_gap_win = default_values.get('crop_end_gap_win')
-    else:
-        updated_vars += f'crop_end_gap_win updated to {crop_end_gap_win}\n'
 
     if poly_len is None:
         poly_len = default_values.get("poly_len")
 
     if start_patterns is None:
         start_patterns = default_values.get('start_patterns')
-    else:
-        updated_vars += f'start_patterns updated to {start_patterns}\n'
 
     if end_patterns is None:
         end_patterns = default_values.get('end_patterns')
-    else:
-        updated_vars += f'end_patterns updated to {end_patterns}\n'
 
     if mini_orf is None:
         mini_orf = default_values.get('mini_orf')
-    else:
-        updated_vars += f'mini_orf updated to {mini_orf}\n'
 
     if ext_check_win is None:
         ext_check_win = default_values.get('ext_check_win')
-    else:
-        updated_vars += f'ext_check_win updated to {ext_check_win}\n'
 
-    # Log all user-updated variables
-    if updated_vars:
-        logging.info('User-updated variables:\n' + updated_vars)
-    else:
-        logging.info('No user-updated variables.')
+    # Log all used parameters
+    parameters = {
+        "input_file": input_file,
+        "genome_file": genome_file,
+        "output_dir": output_dir,
+        "continue_analysis": continue_analysis,
+        "pfam_dir": pfam_dir,
+        "min_blast_len": min_blast_len,
+        "num_threads": num_threads,
+        "max_msa_lines": max_msa_lines,
+        "top_msa_lines": top_msa_lines,
+        "min_seq_num": min_seq_num,
+        "max_cluster_num": max_cluster_num,
+        "cons_thr": cons_thr,
+        "ext_thr": ext_thr,
+        "ext_step": ext_step,
+        "max_ext": max_ext,
+        "gap_thr": gap_thr,
+        "gap_nul_thr": gap_nul_thr,
+        "crop_end_div_thr": crop_end_div_thr,
+        "crop_end_div_win": crop_end_div_win,
+        "crop_end_gap_thr": crop_end_gap_thr,
+        "crop_end_gap_win": crop_end_gap_win,
+        "start_patterns": start_patterns,
+        "end_patterns": end_patterns,
+        "mini_orf": mini_orf,
+        "preset": preset,
+        "ext_check_win": ext_check_win,
+        "dedup": dedup,
+        "genome_anno": genome_anno,
+        "hmm": hmm,
+        "debug": debug,
+        "fast_mode": fast_mode,
+        "classify_unknown": classify_unknown,
+        "classify_all": classify_all,
+        "curatedlib": curatedlib,
+        "poly_patterns": poly_patterns,
+        "poly_len": poly_len,
+        "define_perfect": define_perfect,
+        "logfile": logfile,
+        "loglevel": loglevel,
+    }
+
+    logging.info("TEtrimmer parameters:")
+    for key, value in parameters.items():
+        logging.info(f"  {key}: {value}")
 
     #####################################################################################################
     # Code block: Define input file, output directory, genome
@@ -665,15 +669,13 @@ def main(
     except Exception:
         return
 
-
-
     #####################################################################################################
     # Code block: Remove duplications in input file if required, generate single FASTA file and check BLAST database
     #####################################################################################################
 
     # Generate single files when continue_analysis is false
     if not continue_analysis:
-        # When --curatedlib is not None, check is the provided file exist.
+        # When --curatedlib is not None, check if the provided file exist.
         if curatedlib is not None:
             if os.path.isfile(curatedlib):
                 logging.info(
@@ -753,6 +755,8 @@ def main(
 
         # Check if BLAST database and genome length files are available, otherwise create these in the
         # same dir as the genome or the output directory specified by the user
+        # Set idx_dir to None, the genome blast database files will be stored in the same directory with the
+        # genome file. This is required because the TE-Aid package needs those files
         (
             mmseqs_database_dir,
             database_dir,
@@ -760,14 +764,18 @@ def main(
             length_file,
             fai_file,
         ) = analyze.check_database(
-            decompressed_genome_file, idx_dir=output_dir, search_type=engine
+            decompressed_genome_file, idx_dir=None, search_type=engine
         )
 
         blast_database_path = os.path.join(database_dir, database_name)
 
         # Initial call to print 0% progress
         analyze.printProgressBar(
-            0, single_fasta_n, prefix='Progress:', suffix='Complete', length=50
+            0,
+            single_fasta_n,
+            prefix='Progress:',
+            suffix='Complete',
+            length=50
         )
 
     else:
@@ -854,6 +862,8 @@ def main(
             database_dir,
             blast_database_path,
             mmseqs_database_dir,
+            loglevel,
+            logfile
         )
         for seq in seq_list
     ]
@@ -879,7 +889,7 @@ def main(
             f'All sequences have been analysed!\n'
             f'In the analysed sequences {skipped_count} are skipped. Note: not all skipped sequences can have '
             f"TE Aid plot in the 'TEtrimmer_for_proof_curation' folder.\n"
-            f'In the analysed sequences {low_copy_count} are identified as low copy TE.'
+            f'In the analysed sequences {low_copy_count} are identified as low copy TE.\n'
         )
 
     else:
@@ -903,7 +913,7 @@ def main(
     try:
         if 0.3 <= classified_pro < 0.99:
             logging.info(
-                '\nTEtrimmer is doing the final classification. It uses the classified TE to classify '
+                'TEtrimmer is doing the final classification. It uses the classified TE to classify '
                 'Unknown elements.'
             )
             analyze.repeatmasker_classification(
@@ -924,11 +934,11 @@ def main(
             )
         elif classified_pro >= 0.99:
             logging.warning(
-                "More than 99% TE are classified, TEtrimmer won't classify 'Unknown' TE by classified TE."
+                "More than 99% TE are classified, TEtrimmer won't classify 'Unknown' TE by classified TE.\n"
             )
         elif classified_pro < 0.3:
             logging.warning(
-                "Less than 30% TE are classified, TEtrimmer won't classify 'Unknown' TE by classified TE."
+                "Less than 30% TE are classified, TEtrimmer won't classify 'Unknown' TE by classified TE.\n"
             )
 
     except Exception as e:
@@ -1122,7 +1132,7 @@ def main(
         final=True,
     )
     logging.info(
-        f'\nTEtrimmer analysis finished at {start_time.strftime("%Y-%m-%d %H:%M:%S")}.\n'
+        f'TEtrimmer analysis finished at {start_time.strftime("%Y-%m-%d %H:%M:%S")}.'
     )
     logging.info(f'TEtrimmer runtime was {duration_without_microseconds}.')
 

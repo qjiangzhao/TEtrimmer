@@ -31,7 +31,7 @@ def check_self_alignment(
         if_low_copy=True,
     )
     TE_aid_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'TE-Aid-master'
+        os.path.dirname(os.path.abspath(__file__)), 'TE-Aid-master_test'
     )
 
     # At least 2 lines need to meet the requirement
@@ -168,16 +168,11 @@ class TEAid:
 
         command = [
             TE_aid,
-            '-q',
-            self.input_file,
-            '-g',
-            self.genome_file,
-            '-o',
-            TE_aid_output_dir,
-            '-m',
-            str(self.min_orf),
-            '-f',
-            str(self.full_length_threshold),
+            '-q', self.input_file,
+            '-g', self.genome_file,
+            '-o', TE_aid_output_dir,
+            '-m', str(self.min_orf),
+            '-f', str(self.full_length_threshold),
         ]
 
         # If it is low copy element, add '-t' option to keep self-BLAST file from TE-Aid file
@@ -187,9 +182,6 @@ class TEAid:
             command.extend(['-TM'])
 
         try:
-            logging.info(f'Running TE-Aid for {os.path.basename(self.input_file)}')
-            logging.debug(f'Command: {" ".join(command)}')
-
             subprocess.run(
                 command,
                 check=True,
