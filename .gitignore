@@ -1,15 +1,8 @@
 # Mac stuff
 .DS_Store
 
-# Versioning
-src/TEtrimmer/_version.py
-
 # Ignore .idea
 .idea
-
-# Ignore database dirs at any level of repo
-pfam_database
-**/pfam_database
 
 # Ignore test files
 tests/test_genome.fasta.fai
@@ -22,7 +15,6 @@ tests/test_genome.fasta.not
 tests/test_genome.fasta.nsq
 tests/test_genome.fasta.ntf
 tests/test_genome.fasta.nto
-
 
 # Ignore database
 pfam_database/
