@@ -34,11 +34,6 @@ achieving manual curation-level TE consensus libraries easily.
 
 [![TEtrimmerFlowchart](docs/TEtrimmerFlowchart_video.png)](https://www.youtube.com/watch?v=PgKw76gmzl8&t=17s&ab_channel=ZhaoJiang)
 
-
-## Manual
-For detailed instructions, including installation steps, usage options, example outputs, and more, 
-please refer to [TEtrimmerv1.4.0Manual.pdf](https://github.com/qjiangzhao/TEtrimmer/blob/main/docs/TEtrimmerv1.4.0Manual.pdf) 
-
 ## Installation 
 TEtrimmer can be installed by 1. Conda, 2. Singularity, or 3. Docker. 
 
@@ -48,7 +43,7 @@ We highly recommend installation with `mamba`, as it is much faster.
 
 ```commandline
 # Create new conda environment
-conda create --name TEtrimmer
+conda create --name TEtrimmer python=3.10 samtools=1.22.1
 
 # Install mamba 
 conda install -c conda-forge mamba 
@@ -176,7 +171,7 @@ TEtrimmer --help
 # To see all options 
 python <path to TEtrimmer>/TEtrimmer.py --help
 ```
-- Download the test files [test_input.fa](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_input.fa) and [test_genome.fasta](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_genome.fasta).
+- Download the test files [test_input.fa](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_input.fa) and [test_genome.fa](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_genome.fa).
 
 ```commandline
 TEtrimmer --input_file <path to test_input.fa> \
@@ -423,6 +418,19 @@ Options:
                                   patterns in a comma-separated list, like: CA,TA,GA (no spaces; the
                                   order of patterns determines the priority for the search). Default:
                                   CA
+                                  
+  --poly_patterns TEXT            The 3' end of LINE and SINE elements often contains characteristic sequences such as
+                                  poly(A), poly(T), or short tandem repeats. TEtrimmer identifies the presence of
+                                  those feature sequences to help to define the 3' end boundary of LINE or SINE
+                                  elements. You can provide multiple end patterns in a comma-separate list, like:
+                                  A,T,TA (No space; the order of patterns determines the priority for the search).
+                                  Default: A
+                                  
+  --poly_len INTEGER              Define the minimum length requirement of the poly pattern from the parameter
+                                  --poly_patterns. Default: 10
+                                  
+  --define_perfect INTEGER        Define the minimum copy number that the output TE consensus sequence can be
+                                  evaluated as "Perfect". Default: 30
 
   --help                          Show this message and exit.
 ```
@@ -440,14 +448,27 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 ```
 
 ## Update history
-** June.06.2025
+**TEtrimmer v1.5.1 Released Jul.25.2025**
+
+Merged with Adam Taranto pull request https://github.com/adamtaranto
+Many thanks for your contribution ;)
+
+Add logging system
+
+Add --poly_patterns --poly_len options to TEtrimmer
+
+Add --use_system_sequence_viewer --use_system_blast options to TEtrimmerGUI
+
+**June.06.2025**
+
 change pfam_scan.pl e-value to 1e-2
 Increase default number of --max_cluster_num to 5
 
-** October.17.2024
+**October.17.2024**
+
 Add --curatedlib option
 
-** October.11.2024
+**October.11.2024**
 
 Update CIAilgn (whole MSA) plot
 
@@ -469,4 +490,8 @@ can help identifying TE boundaries.
 ## Citation
 Qian, J., Xue, H., Ou, S., Storer, J., Fürtauer, L., Wildermuth, M. C., Kusch, S., & Panstruga, R. bioRxiv (2024) https://doi.org/10.1101/2024.06.27.600963
 TEtrimmer: A novel tool to automate the manual curation of transposable elements.
+
+You should also cite components of the TEtrimmer workflow, such as TE-Aid, CIAlign, bedtools, cd-hit ......
+
+TE-Aid Goubert, C., Craig, R.J., Bilat, A.F. et al. A beginner’s guide to manual curation of transposable elements. Mobile DNA 13, 7 (2022). https://doi.org/10.1186/s13100-021-00259-7
 

@@ -274,7 +274,8 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
             except subprocess.CalledProcessError as e:
                 logging.error(
                     f'samtools faidx failed with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n'
-                    f'You can use samtools faidx <genome_file> -o <genome_file>.fai to generate index file.')
+                    f'You can use samtools faidx <genome_file> -o <genome_file>.fai to generate index file. '
+                    f'Place the <genome_file>.fai in the same folder with your genome and run TEtrimmer again.')
                 exit(1)
 
     except Exception as e:
@@ -724,7 +725,7 @@ def cluster_proof_anno_file(
     intermediate_proof,
     need_check_proof,
 ):
-    # Load fast file to a dictionary, key is record.id, value is record project
+    # Load fasta file to a dictionary, key is record.id, value is record project
     # When separate_name is true, the key of the dictionary will be the sequence name separated by '#'
     final_con_file_no_low_copy_dict = fasta_file_to_dict(
         final_con_file_no_low_copy, separate_name=True

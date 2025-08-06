@@ -5,6 +5,16 @@
 .idea
 
 # Ignore test files
+tests/test_genome.fa.fai
+tests/test_genome.fa.length
+tests/test_genome.fa.ndb
+tests/test_genome.fa.nhr
+tests/test_genome.fa.nin
+tests/test_genome.fa.njs
+tests/test_genome.fa.not
+tests/test_genome.fa.nsq
+tests/test_genome.fa.ntf
+tests/test_genome.fa.nto
 
 # Ignore database
 pfam_database/

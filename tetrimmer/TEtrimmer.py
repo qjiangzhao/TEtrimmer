@@ -501,7 +501,7 @@ def main(
     )
     # Change permissions of the directory and all its content to 755
     # 755 in octal corresponds to rwxr-xr-x
-    change_permission = analyze.change_permissions_recursive(TE_aid_path, 0o755)
+    change_permission = analyze.change_permissions_recursive(TE_aid_path, 0o775)
     if not change_permission:
         pass
 
