@@ -48,16 +48,14 @@ def check_progress_file(progress_file_path):
     df = pd.read_csv(progress_file_path)
 
     # Calculate skipped and low copy element number
-    skipped_count = df[df['status'].str.strip().str.lower() == 'skipped'].shape[0]
-    low_copy_count = df[
-        df['low_copy'].astype(str).str.strip().str.lower() == 'true'
-    ].shape[0]
-    unknown_n = df[df['reclassified_type'].str.contains('Unknown', na=False)].shape[0]
-    classifid_n = df[df['reclassified_type'].str.contains('/', na=False)].shape[0]
+    skipped_count = df[df['status'].astype(str).str.strip().str.lower() == 'skipped'].shape[0]
+    low_copy_count = df[df['low_copy'].astype(str).str.strip().str.lower() == 'true'].shape[0]
+    unknown_n = df[df['output_TE_type'].astype(str).str.contains('Unknown')].shape[0]
+    classified_n = df[(df['output_TE_type'].astype(str) != 'Unknown')].shape[0]
 
     # Calculate classified proportion
-    if classifid_n != 0 and unknown_n != 0:
-        classified_pro = classifid_n / (unknown_n + classifid_n)
+    if classified_n != 0 and unknown_n != 0:
+        classified_pro = classified_n / (unknown_n + classified_n)
     else:
         classified_pro = (
             0  # Set a default value (or any other value deemed appropriate)
@@ -401,7 +399,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                 # Write original and modified names to the mapping file
                 mapping_file.write(f'{record.id}\t{sanitized_id}\n')
 
-                # Define output file name
+                # Define output file name. Each output file contains one input fasta sequence
                 output_filename = os.path.join(output_dir, f'{sanitized_id}.fasta')
                 seq_obj = SeqObject(
                     str(sanitized_id), str(output_filename), len(record.seq), te_type
@@ -562,17 +560,15 @@ def merge_cons(
     # Create a dictionary with sequence names as keys
     sequence_info = {}
     for _index, row in progress_df.iterrows():
-        sequence_name = row['consensus_name']
+        sequence_name = row['output_name']
         evaluation = (
             row['evaluation'] if pd.notna(row['evaluation']) else 'Unknown'
         )  # Default value for NaN
         te_type = (
-            row['reclassified_type']
-            if pd.notna(row['reclassified_type'])
-            else 'Unknown'
+            row['output_TE_type'] if pd.notna(row['output_TE_type']) else 'Unknown'
         )
         length = (
-            row['cons_length'] if pd.notna(row['cons_length']) else 0
+            row['output_length'] if pd.notna(row['output_length']) else 0
         )  # Default value for NaN
         sequence_info[sequence_name] = {
             'evaluation': evaluation,
@@ -1301,11 +1297,12 @@ def analyze_sequence(
                         blast_database_path=blast_database_path,
                         mmseqs_database_dir=mmseqs_database_dir
                     )
+
                 except Exception:
                     return
 
                 if not find_boundary_result:
-                    continue
+                    all_inner_skipped = True
                 elif find_boundary_result:
                     all_inner_skipped = False
 
@@ -1379,6 +1376,7 @@ def analyze_sequence(
         return
 
     # After all processing is done, change status to 'process' and write the file name to the progress file
+
     seq_obj.update_status('processed', progress_file)
 
     # If analysis of this sequence has been completed, remove all files contain sequence name
@@ -1536,11 +1534,31 @@ def create_dir(
     ##########################################################
     # Check and create progress_file if it does not exist yet
     ##########################################################
+    # old header
+    #'input_name,consensus_name,blast_hit_n,cons_MSA_seq_n,cons_full_blast_n,input_length,cons_length,'
+    #'input_TE_type,reclassified_type,terminal_repeat,low_copy,evaluation,status\n'
+
     if not os.path.exists(progress_file):
         with open(progress_file, 'a') as f:
             f.write(
-                'input_name,consensus_name,blast_hit_n,cons_MSA_seq_n,cons_full_blast_n,input_length,cons_length,'
-                'input_TE_type,reclassified_type,terminal_repeat,low_copy,evaluation,status\n'
+                'input_name,'
+                'output_name,'
+                'input_blast_n,'
+                'input_full_blast_n,'
+                'output_blast_n,'
+                'output_full_blast_n,'
+                'output_genome_per,'
+                'output_MSA_seq_n,'
+                'input_length,'
+                'output_length,'
+                'input_TE_type,'
+                'output_TE_type,'
+                'input_terminal_repeat,'
+                'output_terminal_repeat,'
+                'low_copy,'
+                'TSD,'
+                'evaluation,'
+                'status\n'
             )
 
     ########################################################################################################

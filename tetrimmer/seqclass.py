@@ -1,3 +1,6 @@
+import traceback
+import logging
+
 class SeqObject:
     """
     Create object for each input sequence.
@@ -48,32 +51,56 @@ class SeqObject:
 
     # update_status function will write object information to progress file to be used when the analysis is complete
     def update_status(self, new_status, progress_file):
-        self.status = new_status
-        with open(progress_file, 'a') as f:
-            # "input_name,consensus_name, blast_hit_n, cons_MSA_seq_n, cons_full_blast_n, input_length, cons_length, "
-            # "input_TE_type, reclassified_type, cons_flank_repeat, evaluation, low_copy, status\n"
-            if len(self.consi_obj_list) > 0:
-                for consi_obj in self.consi_obj_list:
-                    f.write(
-                        f'{str(self.name)},{str(consi_obj.consensus_name)},'  # name
-                        f'{str(self.blast_hit_n)},{str(int(consi_obj.new_TE_MSA_seq_n))},'  # sequence number
-                        f'{str(consi_obj.new_TE_blast_full_length_n)},'  # blast full length number
-                        f'{str(self.old_length)},{str(consi_obj.new_length)},'  # sequence length
-                        f'{str(self.old_TE_type)},{str(consi_obj.get_TE_type_for_file())},'  # TE type
-                        f'{str(consi_obj.new_TE_terminal_repeat)},{str(self.low_copy)},'
-                        f'{str(consi_obj.get_evaluation())},{str(self.status)}\n'
-                    )  # Evaluation
+        try:
+            self.status = new_status
+            with open(progress_file, 'a') as f:
+                if len(self.consi_obj_list) > 0:
+                    for consi_obj in self.consi_obj_list:
+                        f.write(
+                            f'{str(self.name)},'  # input_name
+                            f'{str(consi_obj.consensus_name)},'  # output_name
+                            f'{str(self.blast_hit_n)},'  # input_blast_n
+                            f'{str(self.old_blast_full_n)},'  # input_full_blast_n
+                            f'{str(consi_obj.cons_blast_n)},'  # output_blast_n
+                            f'{str(consi_obj.new_TE_blast_full_length_n)},'  # output_full_blast_n
+                            f'{str(consi_obj.cons_genome_percentage)},'  # output_genome_per
+                            f'{str(int(consi_obj.new_TE_MSA_seq_n))},'  # output_MSA_seq_n
+                            f'{str(self.old_length)},'  # input_length
+                            f'{str(consi_obj.new_length)},'  # output_length
+                            f'{str(self.old_TE_type)},'  # input_TE_type
+                            f'{str(consi_obj.get_TE_type_for_file())},'  # output_TE_type
+                            f'{str(self.old_terminal_repeat)},'  # input_terminal_repeat
+                            f'{str(consi_obj.new_TE_terminal_repeat)},'  # output_terminal_repeat
+                            f'{str(self.low_copy)},'  # low_copy
+                            f'{str(consi_obj.cons_tsd)},'  # TSD
+                            f'{str(consi_obj.get_evaluation())},'  # evaluation
+                            f'{str(self.status)}\n'  # status
+                        )
 
-            else:
-                f.write(
-                    f'{str(self.name)},{str(self.name)},'  # name
-                    f'{str(self.blast_hit_n)},NaN,'
-                    f'{str(self.old_blast_full_n)},'
-                    f'{str(self.old_length)},{str(self.old_length)},'  # sequence length
-                    f'{str(self.old_TE_type)},{str(self.old_TE_type)},'  # TE type
-                    f'{str(self.old_terminal_repeat)},{str(self.low_copy)},'
-                    f'NaN,{str(self.status)}\n'
-                )
+                else:
+                    f.write(
+                        f'{str(self.name)},'  # input_name
+                        f'{str(self.name)},'  # output_name
+                        f'{str(self.blast_hit_n)},'  # input_blast_n
+                        f'{str(self.old_blast_full_n)},'  # input_full_blast_n
+                        f'{str(self.blast_hit_n)},'  # output_blast_n
+                        f'{str(self.old_blast_full_n)},'  # output_full_blast_n
+                        f'NaN,'  # output_genome_per
+                        f'NaN,'  # output_MSA_seq_n
+                        f'{str(self.old_length)},'  # input_length
+                        f'{str(self.old_length)},'  # output_length
+                        f'{str(self.old_TE_type)},'  # input_TE_type
+                        f'{str(self.old_TE_type)},'  # output_TE_type
+                        f'{str(self.old_terminal_repeat)},'  # input_terminal_repeat
+                        f'{str(self.old_terminal_repeat)},'  # output_terminal_repeat
+                        f'{str(self.low_copy)},'  # low_copy
+                        f'NaN,'  # TSD
+                        f'NaN,'  # evaluation
+                        f'{str(self.status)}\n'  # status
+                    )
+        except Exception as e:
+            tb_content = traceback.format_exc()
+            logging.error(f'seqclass error:\n{e}\n{tb_content}\n')
 
     def update_low_copy(self, check_blast, found_match):
         if check_blast and found_match:
@@ -102,6 +129,9 @@ class ConsensusObject:
         self.cons_seq = 'NaN'
         self.cons_pfam = False
         self.cons_evaluation = 'Need_check'
+        self.cons_tsd = 'False'
+        self.cons_genome_percentage = 'NaN'
+        self.cons_blast_n = 'NaN'
 
     def set_new_length(self, new_length):
         self.new_length = int(new_length)
@@ -117,6 +147,10 @@ class ConsensusObject:
     def set_new_terminal_repeat(self, terminal_repeat):
         self.new_TE_terminal_repeat = terminal_repeat
 
+    # Store number of full-length BLAST hits
+    def set_blast_full_n(self, blast_full_length_n):
+        self.new_TE_blast_full_length_n = int(blast_full_length_n)
+
     # Store consensus sequence to object
     def set_cons_seq(self, cons_seq):
         self.cons_seq = cons_seq
@@ -127,6 +161,25 @@ class ConsensusObject:
     def set_cons_evaluation(self, level):
         self.cons_evaluation = str(level)
 
+    def set_tsd(self, if_tsd):
+        self.cons_tsd = if_tsd
+
+    def set_cons_genome_percentage(self, genome_per):
+        self.cons_genome_percentage = genome_per
+
+    def set_cons_blast_n(self, cons_blast_n):
+        self.cons_blast_n = cons_blast_n
+
+    # Defining get functions
+    def get_tsd(self):
+        return self.cons_tsd
+
+    def get_cons_genome_percentage(self):
+        return self.cons_genome_percentage
+
+    def get_cons_blast_n(self):
+        return self.cons_blast_n
+
     def get_evaluation(self):
         return self.cons_evaluation
 
@@ -135,10 +188,6 @@ class ConsensusObject:
 
     def get_new_TE_type(self):
         return self.new_TE_type
-
-    # Store number of full-length BLAST hits
-    def set_blast_full_n(self, blast_full_length_n):
-        self.new_TE_blast_full_length_n = int(blast_full_length_n)
 
     def set_proof_curation_file(self):
         proof_TE_type = self.new_TE_type.replace('/', '__')

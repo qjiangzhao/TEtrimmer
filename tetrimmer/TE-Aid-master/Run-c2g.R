@@ -60,8 +60,6 @@ par(mar = c(6, 5, 4 + 4, 2) + 0.5)
 # Set layout for a 2x2 plot
 par(mfrow = c(1, 4))
 
-title(main = pdf_title, outer = TRUE, line = -3, cex.main = 3)
-
 print("R: ploting genome blastn results and computing coverage...")
 
 consensus2genome(query 		=	query,
@@ -87,5 +85,7 @@ blastdotplot(query  =  query,
              os     =  osize,
              tables =  tables,
              output =  output)
+
+title(main = pdf_title, outer = TRUE, line = -3, cex.main = 3)
 
 dev.off()

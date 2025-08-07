@@ -182,13 +182,23 @@ class TEAid:
             command.extend(['-TM'])
 
         try:
-            subprocess.run(
+
+            te_aid_result = subprocess.run(
                 command,
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
             )
+
+            if te_aid_result.stderr:
+                if self.error_file is not None:
+                    with open(self.error_file, 'a') as f:
+                        f.write(
+                            f'\nTE Aid error for {os.path.basename(self.input_file)} with error \n '
+                            f'{te_aid_result.stderr}'
+                        )
+
         except subprocess.CalledProcessError as e:
             if self.error_file is not None:
                 with open(self.error_file, 'a') as f:

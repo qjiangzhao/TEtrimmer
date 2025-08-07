@@ -1977,9 +1977,9 @@ def repeatmasker_output_classify(
 
     # Iterate over each row in progress_df
     for index, row in progress_df.iterrows():
-        consensus_name = row['consensus_name']
-        cons_length = row['cons_length']
-        cons_type = row['reclassified_type']
+        consensus_name = row['output_name']
+        cons_length = row['output_length']
+        cons_type = row['output_TE_type']
 
         # Check if consensus_name exists in max_cov_dict and compute the ratio
         if consensus_name in max_cov_dict:
@@ -1994,7 +1994,7 @@ def repeatmasker_output_classify(
                 ]['repeat_class'].iloc[0]
 
                 # Modify the reclassified_type column in progress_df
-                progress_df.at[index, 'reclassified_type'] = repeat_class
+                progress_df.at[index, 'output_TE_type'] = repeat_class
 
                 # Update the dictionary with the new reclassified_type
                 reclassified_dict[consensus_name] = repeat_class
