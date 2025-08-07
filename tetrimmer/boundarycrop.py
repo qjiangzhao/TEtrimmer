@@ -1168,7 +1168,8 @@ def find_boundary_and_crop(
                 error_file=error_files,
                 TE_aid_dir=TE_aid_path,
             )
-            TE_aid_plot, found_match = TE_aid_object.run(low_copy=True)
+            TE_aid_plot = TE_aid_object.run()
+            found_match = TE_aid_object.teaid_check_termina_repeat()
         else:
             # low_copy=False will prevent self-BLAST and instead check for terminal repeats
             TE_aid_object = TEAid(
@@ -1181,14 +1182,12 @@ def find_boundary_and_crop(
                 TE_aid_dir=TE_aid_path,
             )
 
-            # found_match returns 'False' in this case
-            TE_aid_plot, found_match = TE_aid_object.run(low_copy=False)
-
-            # Assign found_match_crop ("LTR" or "TIR") to found_match for further analysis
-            found_match = found_match_crop
+            TE_aid_plot = TE_aid_object.run()
+            found_match = TE_aid_object.teaid_check_termina_repeat()
 
         # Run TE_aid to plot the query sequence, if required. Because one query file can return multiple
         # clusters, TE-Aid will check if a TE-Aid plot has been generated before.
+        # Set low_
         if plot_query:
             query_file = seq_obj.get_input_fasta()
             TE_aid_object_query = TEAid(
@@ -1200,9 +1199,17 @@ def find_boundary_and_crop(
                 error_file=error_files,
                 TE_aid_dir=TE_aid_path,
             )
-            TE_aid_plot_query, found_match_query = TE_aid_object_query.run(
-                low_copy=False, label=False
-            )
+            TE_aid_plot_query = TE_aid_object_query.run(label=False)
+
+            found_match_query = TE_aid_object_query.teaid_check_termina_repeat()
+
+            all_blast_hit_n_query, full_blast_query_n = TE_aid_object_query.check_blast_full_n(seq_obj, check_query=True)
+
+            # Update input sequence terminal repeat information
+            seq_obj.set_old_terminal_repeat(found_match_query)
+
+            # Update input sequence full length blast number
+            seq_obj.set_old_blast_full_n(full_blast_query_n)
         else:
             TE_aid_plot_query = None
     except Exception as e:
@@ -1345,8 +1352,11 @@ def find_boundary_and_crop(
 
         # Store full length sequence number from BLAST search into consi_obj
         # check_blast_full_n is a function in TE_Aid class. TEtrimmer will use the blast result of TE Aid
-        blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj, engine=engine)
+        all_blast_hit_n_con, blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj, check_query= False, engine=engine)
+
+        consi_obj.set_cons_blast_n(all_blast_hit_n_con)
         consi_obj.set_blast_full_n(blast_full_length_n)
+
 
         # Store PFAM predictions to consi_obj
         if if_pfam_domain:

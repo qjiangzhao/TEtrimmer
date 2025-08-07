@@ -3250,3 +3250,41 @@ def init_logging(loglevel="DEBUG", logfile=None):
 
     logging.basicConfig(level=numeric_level, handlers=handlers)
 
+
+def check_blast_full_length(
+    seq_obj,
+    blast_out_file,
+    identity=80,
+    coverage=0.9,
+    min_hit_length=100,
+    te_aid_blast=False,
+    check_query=True,
+):
+    if not file_exists_and_not_empty(blast_out_file):
+        return 0
+
+    # The TE-Aid BLAST output file has a header
+    if te_aid_blast:
+        df = pd.read_csv(blast_out_file, sep=r'\s+', skiprows=1, header=None)
+    else:
+        df = pd.read_csv(blast_out_file, sep=r'\s+', header=None)
+
+    # Extract sequence length
+    if check_query:
+        seq_length = seq_obj.old_length
+    else:
+        # If "if_low_copy" is 'False', the sequence is not a low copy element. seq_obj is consi_obj (see "seqclass.py").
+        seq_length = seq_obj.new_length
+
+    identity_condition = df[2] > identity
+    coverage_condition = df[3] / seq_length >= coverage
+    length_condition = df[3] > min_hit_length
+
+    # Filter the DataFrame
+    filtered_df = df[identity_condition & coverage_condition & length_condition]
+    blast_full_length_n = filtered_df.shape[0]
+
+    # Total hits (raw lines in BLAST output)
+    all_blast_hit_n = df.shape[0]
+
+    return all_blast_hit_n, blast_full_length_n

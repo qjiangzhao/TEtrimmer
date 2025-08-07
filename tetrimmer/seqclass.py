@@ -91,8 +91,8 @@ class SeqObject:
                         f'{str(self.old_length)},'  # output_length
                         f'{str(self.old_TE_type)},'  # input_TE_type
                         f'{str(self.old_TE_type)},'  # output_TE_type
-                        f'{str(self.old_terminal_repeat)},'  # input_terminal_repeat
-                        f'{str(self.old_terminal_repeat)},'  # output_terminal_repeat
+                        f'NaN,'  # input_terminal_repeat
+                        f'NaN,'  # output_terminal_repeat
                         f'{str(self.low_copy)},'  # low_copy
                         f'NaN,'  # TSD
                         f'NaN,'  # evaluation
