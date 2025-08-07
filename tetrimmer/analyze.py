@@ -1555,6 +1555,7 @@ def create_dir(
                 'output_MSA_seq_n,'
                 'input_length,'
                 'output_length,'
+                'in_out_identify,'
                 'input_TE_type,'
                 'output_TE_type,'
                 'input_terminal_repeat,'

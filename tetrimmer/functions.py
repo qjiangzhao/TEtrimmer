@@ -15,7 +15,7 @@ import pandas as pd
 import pandas.errors
 
 from Bio import AlignIO, BiopythonDeprecationWarning, SeqIO
-from Bio.Align import AlignInfo, MultipleSeqAlignment
+from Bio.Align import AlignInfo, MultipleSeqAlignment, PairwiseAligner
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter
@@ -2757,20 +2757,13 @@ def dotplot(sequence1, sequence2, output_dir):
     # Define command for dotmatcher
     dotmatcher_command = [
         'dotmatcher',
-        '-asequence',
-        sequence2,
-        '-bsequence',
-        sequence1,
-        '-windowsize',
-        '25',
-        '-threshold',
-        '50',
-        '-gtitle',
-        'Dotplot',
-        '-gxtitle',
-        'TE consensus after TEtrimmer (bp)',
-        '-gytitle',
-        'TE consensus before TEtrimmer (bp)',
+        '-asequence', sequence2,
+        '-bsequence', sequence1,
+        '-windowsize', '25',
+        '-threshold', '50',
+        '-gtitle', 'Dotplot',
+        '-gxtitle', 'TE consensus after TEtrimmer (bp)',
+        '-gytitle', 'TE consensus before TEtrimmer (bp)',
         '-graph',
         'ps',
         '-goutfile',
@@ -3288,3 +3281,65 @@ def check_blast_full_length(
     all_blast_hit_n = df.shape[0]
 
     return all_blast_hit_n, blast_full_length_n
+
+
+def pairwise_seqs_align(
+    sequence1: str,
+    sequence2: str,
+    match_score: float = 2.0,
+    mismatch_score: float = -1.0,
+    gap_open: float = -1.0,
+    gap_extend: float = -0.5,
+    seq1_is_file = True,
+    seq2_is_file = True
+):
+    # 1) set up the aligner
+    aligner = PairwiseAligner()
+    aligner.mode = "local"
+    aligner.match_score = match_score
+    aligner.mismatch_score = mismatch_score
+    aligner.open_gap_score = gap_open
+    aligner.extend_gap_score = gap_extend
+
+    # 2) get the top alignment
+    if seq1_is_file:
+        record1 = SeqIO.read(sequence1, "fasta")
+        seq1 = str(record1.seq).upper()
+    else:
+        seq1 = str(sequence1).upper()
+
+    if seq2_is_file:
+        record2 = SeqIO.read(sequence2, "fasta")
+        seq2 = str(record2.seq).upper()
+    else:
+        seq2 = str(sequence2).upper()
+    best_aln = aligner.align(seq1, seq2)[0]
+
+    # 3) extract the *gapped* aligned sequences
+    aln_seq1, aln_seq2 = best_aln[0], best_aln[1]
+
+    # 4) tally matches, total columns, and coverage
+    matches = 0
+    total_cols = len(aln_seq1)
+    covered1 = set()
+    covered2 = set()
+
+    # walk through every column in the gapped alignment
+    idx1 = idx2 = 0
+    for a, b in zip(aln_seq1, aln_seq2):
+        if a != "-":
+            covered1.add(idx1)
+            idx1 += 1
+        if b != "-":
+            covered2.add(idx2)
+            idx2 += 1
+        # count a match only if both are non-gaps and identical
+        if a == b and a != "-":
+            matches += 1
+
+    # 5) compute statistics
+    identity_pct = matches / total_cols * 100 if total_cols else 0.0
+    coverage1_pct = len(covered1) / len(seq1) * 100 if seq1 else 0.0
+    coverage2_pct = len(covered2) / len(seq2) * 100 if seq2 else 0.0
+
+    return identity_pct, coverage1_pct, coverage2_pct

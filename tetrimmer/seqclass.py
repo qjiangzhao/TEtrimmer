@@ -67,6 +67,7 @@ class SeqObject:
                             f'{str(int(consi_obj.new_TE_MSA_seq_n))},'  # output_MSA_seq_n
                             f'{str(self.old_length)},'  # input_length
                             f'{str(consi_obj.new_length)},'  # output_length
+                            f'{str(consi_obj.in_out_identity)},'  # in_out_identity
                             f'{str(self.old_TE_type)},'  # input_TE_type
                             f'{str(consi_obj.get_TE_type_for_file())},'  # output_TE_type
                             f'{str(self.old_terminal_repeat)},'  # input_terminal_repeat
@@ -89,6 +90,7 @@ class SeqObject:
                         f'NaN,'  # output_MSA_seq_n
                         f'{str(self.old_length)},'  # input_length
                         f'{str(self.old_length)},'  # output_length
+                        f'NaN,'  # in_out_identity
                         f'{str(self.old_TE_type)},'  # input_TE_type
                         f'{str(self.old_TE_type)},'  # output_TE_type
                         f'NaN,'  # input_terminal_repeat
@@ -132,6 +134,7 @@ class ConsensusObject:
         self.cons_tsd = 'False'
         self.cons_genome_percentage = 'NaN'
         self.cons_blast_n = 'NaN'
+        self.in_out_identity = 'NaN'
 
     def set_new_length(self, new_length):
         self.new_length = int(new_length)
@@ -169,6 +172,9 @@ class ConsensusObject:
 
     def set_cons_blast_n(self, cons_blast_n):
         self.cons_blast_n = cons_blast_n
+
+    def set_in_out_identity(self, in_out_identity):
+        self.in_out_identity = in_out_identity
 
     # Defining get functions
     def get_tsd(self):

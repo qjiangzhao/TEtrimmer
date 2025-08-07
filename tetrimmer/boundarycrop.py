@@ -33,6 +33,7 @@ from functions import (
     select_star_to_end,
     select_start_end_and_join,
     select_window_columns,
+    pairwise_seqs_align
 )
 from MSAcluster import CleanAndSelectColumn, clean_and_cluster_MSA, process_msa
 
@@ -1101,6 +1102,7 @@ def find_boundary_and_crop(
         logging.error(f'\nORF or PFAM prediction failed for {seq_name} with error:\n{e}\n{tb_content}\n')
         raise Exception from e
 
+
     #####################################################################################################
     # Code block: Plot multiple sequence alignment.
     #####################################################################################################
@@ -1334,6 +1336,36 @@ def find_boundary_and_crop(
             cropped_boundary_MSA, threshold=cons_threshold
         )
         sequence = str(final_con).upper()
+
+        #####################################################################################################
+        # Code block: Calculate input and output sequence identity and coverage
+        #####################################################################################################
+
+        try:
+            if reverse_complement:
+                input_output_identity, coverage_input_seq, coverage_output_seq = pairwise_seqs_align(
+                    seq_file_reverse_c,
+                    sequence,
+                    seq2_is_file=False
+                )
+            else:
+                input_output_identity, coverage_input_seq, coverage_output_seq = pairwise_seqs_align(
+                    seq_file,
+                    sequence,
+                    seq2_is_file=False
+                )
+
+            consi_obj.set_in_out_identity(str(f'{int(round(input_output_identity)):02d}-{int(round(coverage_input_seq)):02d}-{int(round(coverage_output_seq)):02d}'))
+
+        except Exception as e:
+            # dotplot is not mandatory; skip if any error occurred
+            with open(error_files, 'a') as f:
+                # Get the traceback content as a string
+                tb_content = traceback.format_exc()
+                f.write(f'\nInput and output sequence pairwise alignment failed for {seq_name} with error:\n{e}')
+                f.write('\n' + tb_content + '\n\n')
+            logging.error(f'\nInput and output sequence pairwise alignment failed for {seq_name} with error:\n{e}'
+                          f'\n' + tb_content + '\n\n')
 
         # Storing consensus sequence length into consi_obj
         consi_obj.set_new_length(len(sequence))
