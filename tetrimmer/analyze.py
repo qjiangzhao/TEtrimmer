@@ -532,7 +532,7 @@ def repeatmasker_classification(
 def merge_cons(
     classification_dir,
     final_con_file,
-    progress_file,
+    sequence_info,
     cd_hit_est_final_merged,
     num_threads,
 ):
@@ -553,28 +553,6 @@ def merge_cons(
         s=0,
         thread=num_threads,
     )
-
-    # Read progress file
-    progress_df = pd.read_csv(progress_file)
-
-    # Create a dictionary with sequence names as keys
-    sequence_info = {}
-    for _index, row in progress_df.iterrows():
-        sequence_name = row['output_name']
-        evaluation = (
-            row['evaluation'] if pd.notna(row['evaluation']) else 'Unknown'
-        )  # Default value for NaN
-        te_type = (
-            row['output_TE_type'] if pd.notna(row['output_TE_type']) else 'Unknown'
-        )
-        length = (
-            row['output_length'] if pd.notna(row['output_length']) else 0
-        )  # Default value for NaN
-        sequence_info[sequence_name] = {
-            'evaluation': evaluation,
-            'type': te_type,
-            'length': length,
-        }
 
     # Parse cd-hit-est result, clusters is a dictionary, the key is cluster number, value is a list
     # contain all sequence names in this cluster
@@ -715,11 +693,12 @@ def cluster_proof_anno_file(
     continue_analysis,
     cluster_proof_anno_dir,
     num_threads,
-    sequence_info,
-    perfect_proof,
-    good_proof,
-    intermediate_proof,
-    need_check_proof,
+    summary_sequence_info,
+    perfect_proof,  # directory
+    good_proof,  # directory
+    intermediate_proof,  # directory
+    need_check_proof,  # directory
+    genome_length
 ):
     # Load fasta file to a dictionary, key is record.id, value is record project
     # When separate_name is true, the key of the dictionary will be the sequence name separated by '#'
@@ -737,7 +716,7 @@ def cluster_proof_anno_file(
     final_con_file_no_low_copy_cd_out = f'{final_con_file_no_low_copy}_cd.fa'
     final_con_file_no_low_copy_clstr = f'{final_con_file_no_low_copy_cd_out}.clstr'
 
-    # Round 1 merge only requires that the alignment coverage for the shorter sequence is greater than 0.9
+    # Merge sequences that the alignment coverage for the shorter sequence is greater than 0.9
     # and the similarity is greater than 0.9
     cd_hit_est(
         final_con_file_no_low_copy,
@@ -748,18 +727,36 @@ def cluster_proof_anno_file(
         s=0,
         thread=num_threads,
     )
+
+    # detailed_clusters_proof_anno is a dictionary. The key is the cluster number and value is nested list
     clusters_proof_anno, detailed_clusters_proof_anno = parse_cd_hit_est_result(
         final_con_file_no_low_copy_clstr
     )
 
-    for (
-        cluster_name_proof_anno,
-        seq_info_proof_anno,
-    ) in detailed_clusters_proof_anno.items():
+    detailed_clusters_max_cov_nested_list = compute_cluster_cov_weights(
+        detailed_clusters_proof_anno,
+        summary_sequence_info,
+        genome_length
+    )
+
+    cluster_n = 1
+
+    for (te_genome_cov, te_evaluation, te_type, seq_info_proof_anno) in detailed_clusters_max_cov_nested_list:
+
+        if te_genome_cov >= 0.0001:  # ≥ 0.01%
+            te_genome_cov_str = f"{te_genome_cov * 100:.2f}%"
+        else:
+            te_genome_cov_str = f"{te_genome_cov * 100:.2e}%"  # scientific notation in %
+
+        cluster_folder_name = f'Cluster{cluster_n}_{te_evaluation}_{te_type}_{te_genome_cov_str}'
+
         # Create cluster folder
-        cluster_folder = os.path.join(cluster_proof_anno_dir, cluster_name_proof_anno)
+        cluster_folder = os.path.join(cluster_proof_anno_dir, cluster_folder_name)
         os.makedirs(cluster_folder, exist_ok=True)
 
+        cluster_n += 1
+
+        # Get sequence number in this cluster
         seq_info_proof_anno_len = len(seq_info_proof_anno)
 
         cluster_record_list = []
@@ -783,7 +780,9 @@ def cluster_proof_anno_file(
             # Copy sequence files into cluster folder
             # if not, set evaluation_level to "Need_check". The "get" method will return the default value
             # when the key does not exist.
-            evaluation_level = sequence_info.get(
+            # summary_sequence_info is a dictionary. The key is the output sequence name the values contains sequence
+            # length ......
+            evaluation_level = summary_sequence_info.get(
                 seq_name_proof_anno, {'evaluation': 'Need_check'}
             )['evaluation']
 
@@ -849,18 +848,149 @@ def cluster_proof_anno_file(
         if len(cluster_record_list) > 1:
             # Define and write cluster fasta file a
             cluster_fasta = os.path.join(
-                multi_dotplot_dir, f'{cluster_name_proof_anno}.fa'
+                multi_dotplot_dir, f'{cluster_folder_name}.fa'
             )
             SeqIO.write(cluster_record_list, cluster_fasta, 'fasta')
 
             # Do multiple sequence dotplot
             multi_dotplot_pdf = multi_seq_dotplot(
-                cluster_fasta, multi_dotplot_dir, cluster_name_proof_anno
+                cluster_fasta, multi_dotplot_dir, cluster_folder_name
             )
 
             # Move muti_dotplot_pdf to proof curation cluster folder
             if os.path.isfile(multi_dotplot_pdf):
                 shutil.copy(multi_dotplot_pdf, cluster_folder)
+
+
+def compute_cluster_cov_weights(detailed_clusters_proof_anno, summary_sequence_info, genome_length):
+    if genome_length is None or genome_length <= 0:
+        raise ValueError("genome_length must be a positive number.")
+
+    """
+    detailed_clusters_proof_anno could looks like
+     "Cluster198": [
+        ("5965", "scaffold_23_3352139..3358595", "99.55%", "+"),
+        ("5966", "scaffold_23_1868463..1880051_01", "99.53%", "+"),
+        ("5972", "scaffold_25_1053723..1064724", "99.45%", "+"),
+        ("5962", "scaffold_29_441223..447627", "99.53%", "+"),
+        ("5977", "scaffold_32_604726..610694", "99.20%", "+"),
+        ("5969", "scaffold_8_5853353..5859876", "99.51%", "+"),
+        ("5969", "scaffold_8_5853353..5859876_01", "99.53%", "+"),
+        ("5970", "TE_00000565_INT", "99.51%", "+"),
+        ("5982", "TE_00000545_LTR", "standard", "+")
+    ],
+    "Cluster199": [
+        ("6040", "TE_00000432_LTR", "99.80%", "+"),
+        ("6038", "TE_00000431_LTR", "99.77%", "+"),
+        ("6042", "TE_00000430_LTR", "99.81%", "+")
+    ]
+    }
+    """
+
+    largest_by_cluster = {}  # cluster -> dict with largest cov for each cluster
+    for cluster_name, seq_list in detailed_clusters_proof_anno.items():
+        max_cov = 0.0
+        seq_evaluation_level_list = []
+
+        # set initial cluster_te_type
+        cluster_te_type = "Unknown"
+
+        for seq_length, seq_name, seq_per, seq_direction in seq_list:
+            cov_len = summary_sequence_info.get(seq_name, {}).get('output_genome_cov_len', 0)
+            seq_evaluation_level = summary_sequence_info.get(seq_name, {}).get('evaluation', 'Need_check')
+            seq_te_type = summary_sequence_info.get(seq_name, {}).get('output_TE_type', 'Unknown')
+
+            # Add evaluation levels and TE type to list
+            seq_evaluation_level_list.append(seq_evaluation_level)
+
+            try:
+                cov = float(cov_len) / float(genome_length)
+            except Exception:
+                cov = 0.0  # fall back if cov_len is weird
+
+            if cov > max_cov:
+                # Use the TE type of sequence that has highest cov to represent the entire cluster
+                cluster_te_type = seq_te_type
+                max_cov = cov
+        # TE classification contain /, convert to _
+        cluster_te_type = cluster_te_type.replace("/", "_")
+
+        if "Perfect" in seq_evaluation_level_list:
+            best_seq_evaluation_level = "Perfect"
+        elif "Good" in seq_evaluation_level_list:
+            best_seq_evaluation_level = "Good"
+        elif "Reco_check" in seq_evaluation_level_list:
+            best_seq_evaluation_level = "Reco_check"
+        else:
+            best_seq_evaluation_level = "Need_check"
+
+        # dictionary to store the largest genome coverage number for each cluster
+        # and the best sequence evaluation level
+        largest_by_cluster[cluster_name] = [max_cov, best_seq_evaluation_level, cluster_te_type]
+
+    # Sum all largest values
+    total_largest = sum(max_cov for max_cov, _, _ in largest_by_cluster.values()) or 0.0
+
+    # Compute proportion for each cluster and sort
+
+    # Store max_cov_share and cluster information to a nested list
+    detailed_clusters_max_cov_nested_list = []
+
+    # list_item is a list contain [max_cov, best_seq_evaluation_level]
+    for cluster_name, list_item in largest_by_cluster.items():
+        max_cov_share = (list_item[0] / total_largest) if total_largest > 0 else 0.0
+        detailed_clusters_max_cov_nested_list.append(
+            [
+                max_cov_share,
+                list_item[1],
+                list_item[2],
+                detailed_clusters_proof_anno[cluster_name]
+            ]
+        )
+
+    # Sort by TE genome coverage
+    detailed_clusters_max_cov_nested_list.sort(key=lambda element: element[0], reverse=True)
+
+    """
+    detailed_clusters_max_cov_nested_list could look like
+    [
+        0.46, "Perfect", LTR_Gypsy
+        [
+            ("6040", "TE_00000432_LTR", "99.80%", "+", "Perfect"),
+            ("6038", "TE_00000431_LTR", "99.77%", "+", "Good"),
+            ("6042", "TE_00000430_LTR", "99.81%", "+", "Perfect")
+        ]
+    ],
+    [
+        0.32, "Good", DNA/TIR
+        [
+            ("5965", "scaffold_23_3352139..3358595", "99.55%", "+", "Need_check"),
+            ("5966", "scaffold_23_1868463..1880051_01", "99.53%", "+", "Need_check"),
+            ("5972", "scaffold_25_1053723..1064724", "99.45%", "+", "Need_check"),
+        ]
+    ]
+    """
+
+    # Accumulate and calculate the relationship between cluster number and genome coverage
+    # for instance, this can let use to know how many cluster they need to do manual curation to cover the 90% TE
+    # regions in the genome
+    # regions in the genome
+    thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
+    threshold_crossings = {}
+    cumulative_max_cov_share_sum = 0.0
+
+    for idx, (genome_cov, eval_level, te_type, cluster_data) in enumerate(detailed_clusters_max_cov_nested_list, start=1):
+        cumulative_max_cov_share_sum += genome_cov
+        last_logged_t = None
+        for t in thresholds:
+            if t not in threshold_crossings and cumulative_max_cov_share_sum >= t:
+                threshold_crossings[t] = idx  # position where threshold is reached
+                last_logged_t = t  # remember the highest crossed in this step
+        if last_logged_t is not None:
+            logging.info(
+                f"Check clusters 1–{idx} to cover {last_logged_t * 100:.0f}% of identifiable TEs in the genome.")
+
+    return detailed_clusters_max_cov_nested_list
 
 
 #####################################################################################################

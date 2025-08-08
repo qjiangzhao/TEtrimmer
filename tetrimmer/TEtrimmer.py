@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 import traceback
+import pandas as pd
 import warnings
 from datetime import datetime, timedelta
 
@@ -821,7 +822,6 @@ def main(
     #####################################################################################################
     # Code block: Calculate genome length
     #####################################################################################################
-    """
     try:
         genome_length = get_genome_length(decompressed_genome_file)
     
@@ -836,7 +836,6 @@ def main(
             'Failed to calculate genome length. This will only affect one column of the Summary.txt'
         )
         genome_length = None
-    """
 
     #####################################################################################################
     # Code block: Enable multiple threads
@@ -1006,6 +1005,56 @@ def main(
         pass
 
     #####################################################################################################
+    # Code block: Read sequence information from the Summary.txt file
+    #####################################################################################################
+    try:
+        # Read progress file
+        progress_df = pd.read_csv(progress_file)
+
+        # Create a dictionary with sequence names as keys
+        summary_sequence_info = {}
+
+        # Sequence_info directory will contain detailed information for each sequence
+        for _index, row in progress_df.iterrows():
+            sequence_name = row['output_name']
+            evaluation = (
+                row['evaluation'] if pd.notna(row['evaluation']) else 'Unknown'
+            )  # Default value for NaN
+            te_type = (
+                row['output_TE_type'] if pd.notna(row['output_TE_type']) else 'Unknown'
+            )
+            length = (
+                row['output_length'] if pd.notna(row['output_length']) else 0
+            )  # Default value for NaN
+
+            output_genome_cov_len = (
+                row['output_genome_cov_len'] if pd.notna(row['output_genome_cov_len']) else 0
+            )
+
+            output_te_type = (
+                row['output_TE_type'] if pd.notna(row['output_TE_type']) else 0
+            )
+
+            summary_sequence_info[sequence_name] = {
+                'evaluation': evaluation,
+                'te_type': te_type,
+                'length': length,
+                'output_genome_cov_len': output_genome_cov_len,
+                'output_TE_type' : output_te_type
+            }
+
+    except Exception as e:
+
+        with open(error_files, 'a') as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write('\nFinal read Summary.txt file error.\n')
+            f.write(tb_content + '\n')
+        logging.error(
+            f'The final reading Summary.txt file failed.\n Error: {e} \n {tb_content}\n'
+        )
+        exit(1)
+    #####################################################################################################
     # Code block: Merge consensus_file to remove output duplications
     #####################################################################################################
 
@@ -1020,10 +1069,10 @@ def main(
             'TEtrimmer is removing sequence duplications. This might take long time when many sequences'
             'are included into the final consensus library. Please be patient!'
         )
-        sequence_info = analyze.merge_cons(
+        analyze.merge_cons(
             classification_dir,
             final_con_file,
-            progress_file,
+            summary_sequence_info,
             cd_hit_est_final_merged,
             num_threads,
         )  # Do first round of CD-HIT-EST
@@ -1043,7 +1092,7 @@ def main(
             "You can choose to ignore CD-HIT-EST error. For traceback output, please refer to 'error_file.txt' "
             "in the 'Multiple_sequence_alignment' directory.\n"
         )
-        exit(1) # Note: sequence_info is not defined if the final CD-HIT-EST merge step fails
+        exit(1)
 
     #####################################################################################################
     # Code block: Cluster proof curation files
@@ -1064,11 +1113,12 @@ def main(
             continue_analysis,
             cluster_proof_anno_dir,
             num_threads,
-            sequence_info,
+            summary_sequence_info,
             perfect_proof,
             good_proof,
             intermediate_proof,
             need_check_proof,
+            genome_length
         )
 
         # clear remove_files_with_start_pattern folder

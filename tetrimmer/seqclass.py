@@ -146,7 +146,7 @@ class ConsensusObject:
         self.cons_seq = 'NaN'
         self.cons_pfam = False
         self.cons_evaluation = 'Need_check'
-        self.cons_tsd = 'False'
+        self.cons_tsd = 'NaN'
         self.output_genome_cov_len = 'NaN'
         self.cons_blast_n = 'NaN'
         self.in_out_identity = 'NaN'
