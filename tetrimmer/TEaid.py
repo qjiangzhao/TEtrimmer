@@ -5,7 +5,7 @@ import subprocess
 from functions import blast, check_terminal_repeat, check_blast_full_length, file_exists_and_not_empty
 
 
-def full_blast_and_terminal_check_plus_teaid_plotting(
+def low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
     seq_obj,
     seq_file,
     output_dir,
@@ -15,9 +15,7 @@ def full_blast_and_terminal_check_plus_teaid_plotting(
     blast_hits_count,
     blast_out_file,
 ):
-    """
-    "plot_skip" uses TE-Aid to plot the skipped query sequences.
-    """
+
     all_blast_hit_n, blast_full_length_n = check_blast_full_length(
         seq_obj,
         blast_out_file,

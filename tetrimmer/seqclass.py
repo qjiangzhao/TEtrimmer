@@ -15,7 +15,7 @@ class SeqObject:
         self.consi_obj_list = []  # an input sequence can result in multiple consensus sequences
         self.blast_hit_n = 0
         self.status = 'unprocessed'  # "unprocessed", "processed", "skipped"
-        self.old_terminal_repeat = 'False'
+        self.old_terminal_repeat = 'NaN'
         self.old_blast_full_n = 'NaN'
 
     def get_seq_name(self):
@@ -49,12 +49,21 @@ class SeqObject:
         self.consi_obj_list.append(consi_obj)
         return consi_obj
 
+    def update_low_copy(self, check_blast, found_match):
+        if check_blast and found_match:
+            self.low_copy = True
+        return self.low_copy
+
+    def update_blast_hit_n(self, blast_hit_n):
+        self.blast_hit_n = blast_hit_n
+
+
     # update_status function will write object information to progress file to be used when the analysis is complete
     def update_status(self, new_status, progress_file):
         try:
             self.status = new_status
             with open(progress_file, 'a') as f:
-                if len(self.consi_obj_list) > 0:
+                if len(self.consi_obj_list) > 0:  # This doesn't include skipped and low_copy instances
                     for consi_obj in self.consi_obj_list:
                         f.write(
                             f'{str(self.name)},'  # input_name
@@ -67,7 +76,9 @@ class SeqObject:
                             f'{str(int(consi_obj.new_TE_MSA_seq_n))},'  # output_MSA_seq_n
                             f'{str(self.old_length)},'  # input_length
                             f'{str(consi_obj.new_length)},'  # output_length
-                            f'{str(consi_obj.in_out_identity)},'  # in_out_identity
+                            f'{str(consi_obj.in_out_identity)},'  # identity
+                            f'{str(consi_obj.input_coverage)},'  #  input_coverage
+                            f'{str(consi_obj.output_coverage)},'  # output_coverage
                             f'{str(self.old_TE_type)},'  # input_TE_type
                             f'{str(consi_obj.get_TE_type_for_file())},'  # output_TE_type
                             f'{str(self.old_terminal_repeat)},'  # input_terminal_repeat
@@ -90,10 +101,12 @@ class SeqObject:
                         f'NaN,'  # output_MSA_seq_n
                         f'{str(self.old_length)},'  # input_length
                         f'{str(self.old_length)},'  # output_length
-                        f'NaN,'  # in_out_identity
+                        f'NaN,'  # identity
+                        f'NaN,'  #  input_coverage
+                        f'NaN,'  # output_coverage
                         f'{str(self.old_TE_type)},'  # input_TE_type
                         f'{str(self.old_TE_type)},'  # output_TE_type
-                        f'NaN,'  # input_terminal_repeat
+                        f'{str(self.old_terminal_repeat)},'  # input_terminal_repeat
                         f'NaN,'  # output_terminal_repeat
                         f'{str(self.low_copy)},'  # low_copy
                         f'NaN,'  # TSD
@@ -104,13 +117,6 @@ class SeqObject:
             tb_content = traceback.format_exc()
             logging.error(f'seqclass error:\n{e}\n{tb_content}\n')
 
-    def update_low_copy(self, check_blast, found_match):
-        if check_blast and found_match:
-            self.low_copy = True
-        return self.low_copy
-
-    def update_blast_hit_n(self, blast_hit_n):
-        self.blast_hit_n = blast_hit_n
 
 
 class ConsensusObject:
@@ -135,6 +141,8 @@ class ConsensusObject:
         self.cons_genome_percentage = 'NaN'
         self.cons_blast_n = 'NaN'
         self.in_out_identity = 'NaN'
+        self.input_coverage = 'NaN'
+        self.output_coverage = 'NaN'
 
     def set_new_length(self, new_length):
         self.new_length = int(new_length)
@@ -175,6 +183,13 @@ class ConsensusObject:
 
     def set_in_out_identity(self, in_out_identity):
         self.in_out_identity = in_out_identity
+
+    def set_input_coverage(self, input_coverage):
+        self.input_coverage = input_coverage
+
+    def set_output_coverage(self, output_coverage):
+        self.output_coverage = output_coverage
+
 
     # Defining get functions
     def get_tsd(self):

@@ -3342,4 +3342,4 @@ def pairwise_seqs_align(
     coverage1_pct = len(covered1) / len(seq1) * 100 if seq1 else 0.0
     coverage2_pct = len(covered2) / len(seq2) * 100 if seq2 else 0.0
 
-    return identity_pct, coverage1_pct, coverage2_pct
+    return round(identity_pct, 2), round(coverage1_pct, 2), round(coverage2_pct, 2)

@@ -1355,7 +1355,9 @@ def find_boundary_and_crop(
                     seq2_is_file=False
                 )
 
-            consi_obj.set_in_out_identity(str(f'{int(round(input_output_identity)):02d}-{int(round(coverage_input_seq)):02d}-{int(round(coverage_output_seq)):02d}'))
+            consi_obj.set_in_out_identity(input_output_identity)
+            consi_obj.set_input_coverage(coverage_input_seq)
+            consi_obj.set_output_coverage(coverage_output_seq)
 
         except Exception as e:
             # dotplot is not mandatory; skip if any error occurred

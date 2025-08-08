@@ -39,7 +39,7 @@ from functions import (
 from MSAcluster import clean_and_cluster_MSA
 from orfdomain import PlotPfam, prepare_pfam_database
 from seqclass import SeqObject
-from TEaid import full_blast_and_terminal_check_plus_teaid_plotting
+from TEaid import low_copy_full_blast_and_terminal_check_plus_teaid_plotting
 
 
 # Define a function to check the progress file, which will be used to continue analysis if program exited prematurely
@@ -1047,7 +1047,7 @@ def analyze_sequence(
         # Check if BLAST hit number is smaller than "min_seq_num"; do not include "min_seq_num"
         elif blast_hits_count != 0 and blast_hits_count < min_seq_num:
             check_low_copy, blast_full_length_n, found_match, TE_aid_plot = (
-                full_blast_and_terminal_check_plus_teaid_plotting(
+                low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
                     seq_obj,
                     seq_file,
                     MSA_dir,
@@ -1195,7 +1195,7 @@ def analyze_sequence(
         # cluster_false means too few sequences were found in clusters from MSA (all_cluster_size < 10); TEtrimmer will skip this sequence.
         if cluster_MSA_result is False:
             check_low_copy, blast_full_length_n, found_match, TE_aid_plot = (
-                full_blast_and_terminal_check_plus_teaid_plotting(
+                low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
                     seq_obj,
                     seq_file,
                     MSA_dir,
@@ -1314,7 +1314,7 @@ def analyze_sequence(
             # Check the flag after the loop. If all inner clusters were skipped, write the progress file.
             if all_inner_skipped:
                 check_low_copy, blast_full_length_n, found_match, TE_aid_plot = (
-                    full_blast_and_terminal_check_plus_teaid_plotting(
+                    low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
                         seq_obj,
                         seq_file,
                         MSA_dir,
@@ -1555,7 +1555,9 @@ def create_dir(
                 'output_MSA_seq_n,'
                 'input_length,'
                 'output_length,'
-                'in_out_identify,'
+                'identify,'
+                'input_coverage,'
+                'output_coverage,'
                 'input_TE_type,'
                 'output_TE_type,'
                 'input_terminal_repeat,'
