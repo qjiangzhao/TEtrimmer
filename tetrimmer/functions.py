@@ -191,7 +191,7 @@ def blast(
         # Modify the blast command to include the specified task
         blast_cmd = (
             f'blastn -max_target_seqs 10000 -task {task} -query {input_file} -db {blast_database_path} '
-            f'-outfmt "6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand evalue qcovhsp" '
+            f'-outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send sstrand evalue qcovhsp" '
             f'-evalue 1e-40 -qcov_hsp_perc 15 | '
             f'awk -v ml={min_length} \'BEGIN{{OFS="\\t"}} $4 > ml {{print $0}}\' >> {blast_out_file}'
         )
@@ -256,8 +256,8 @@ def blast(
         if search_type == 'blast':
             bed_cmd = (
                 f'awk \'BEGIN{{OFS="\\t"; counter=0}} !/^#/ {{counter+=1; '
-                f'if ($10~/plus/){{print $2, $8, $9, counter, $3, "+", $4, $1}} '
-                f'else {{print $2, $9, $8, counter, $3, "-", $4, $1}}}}\' < {blast_out_file} > {bed_out_file}'
+                f'if ($11~/plus/){{print $2, $9, $10, counter, $3, "+", $4, $1}} '
+                f'else {{print $2, $10, $9, counter, $3, "-", $4, $1}}}}\' < {blast_out_file} > {bed_out_file}'
             )
         elif search_type == 'mmseqs':
             bed_cmd = (
