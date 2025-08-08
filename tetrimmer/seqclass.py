@@ -17,6 +17,8 @@ class SeqObject:
         self.status = 'unprocessed'  # "unprocessed", "processed", "skipped"
         self.old_terminal_repeat = 'NaN'
         self.old_blast_full_n = 'NaN'
+        self.genome_length = 'NaN'
+        self.input_genome_cov_len = 'NaN'
 
     def get_seq_name(self):
         return self.name
@@ -30,11 +32,16 @@ class SeqObject:
     def get_input_fasta(self):
         return self.input_fasta
 
+
     def set_old_terminal_repeat(self, terminal_repeat):
         self.old_terminal_repeat = terminal_repeat
 
     def set_old_blast_full_n(self, blast_full_length_n):
         self.old_blast_full_n = blast_full_length_n
+
+    def set_input_genome_cov_len(self, input_genome_cov_len):
+        self.input_genome_cov_len = input_genome_cov_len
+
 
     def check_unknown(self):
         if 'unknown' in self.old_TE_type.lower():
@@ -72,7 +79,8 @@ class SeqObject:
                             f'{str(self.old_blast_full_n)},'  # input_full_blast_n
                             f'{str(consi_obj.cons_blast_n)},'  # output_blast_n
                             f'{str(consi_obj.new_TE_blast_full_length_n)},'  # output_full_blast_n
-                            f'{str(consi_obj.cons_genome_percentage)},'  # output_genome_per
+                            f'{str(self.input_genome_cov_len)},'  # input_genome_cov_len
+                            f'{str(consi_obj.output_genome_cov_len)},'  # output_genome_cov_len
                             f'{str(int(consi_obj.new_TE_MSA_seq_n))},'  # output_MSA_seq_n
                             f'{str(self.old_length)},'  # input_length
                             f'{str(consi_obj.new_length)},'  # output_length
@@ -97,7 +105,8 @@ class SeqObject:
                         f'{str(self.old_blast_full_n)},'  # input_full_blast_n
                         f'{str(self.blast_hit_n)},'  # output_blast_n
                         f'{str(self.old_blast_full_n)},'  # output_full_blast_n
-                        f'NaN,'  # output_genome_per
+                        f'{str(self.input_genome_cov_len)},'  # input_genome_cov_len
+                        f'NaN,'  # output_genome_cov_len
                         f'NaN,'  # output_MSA_seq_n
                         f'{str(self.old_length)},'  # input_length
                         f'{str(self.old_length)},'  # output_length
@@ -138,7 +147,7 @@ class ConsensusObject:
         self.cons_pfam = False
         self.cons_evaluation = 'Need_check'
         self.cons_tsd = 'False'
-        self.cons_genome_percentage = 'NaN'
+        self.output_genome_cov_len = 'NaN'
         self.cons_blast_n = 'NaN'
         self.in_out_identity = 'NaN'
         self.input_coverage = 'NaN'
@@ -175,8 +184,8 @@ class ConsensusObject:
     def set_tsd(self, if_tsd):
         self.cons_tsd = if_tsd
 
-    def set_cons_genome_percentage(self, genome_per):
-        self.cons_genome_percentage = genome_per
+    def set_output_genome_cov_len(self, output_genome_cov_len):
+        self.output_genome_cov_len = output_genome_cov_len
 
     def set_cons_blast_n(self, cons_blast_n):
         self.cons_blast_n = cons_blast_n
@@ -194,9 +203,6 @@ class ConsensusObject:
     # Defining get functions
     def get_tsd(self):
         return self.cons_tsd
-
-    def get_cons_genome_percentage(self):
-        return self.cons_genome_percentage
 
     def get_cons_blast_n(self):
         return self.cons_blast_n

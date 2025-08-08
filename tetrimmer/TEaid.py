@@ -1,8 +1,15 @@
 import logging
 import os
 import subprocess
+import traceback
 
-from functions import blast, check_terminal_repeat, check_blast_full_length, file_exists_and_not_empty
+from functions import (
+    blast,
+    check_terminal_repeat,
+    check_blast_full_length,
+    sum_non_overlapping_lengths,
+    file_exists_and_not_empty
+)
 
 
 def low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
@@ -15,7 +22,7 @@ def low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
     blast_hits_count,
     blast_out_file,
 ):
-
+    # Check full length blast for the input sequence
     all_blast_hit_n, blast_full_length_n = check_blast_full_length(
         seq_obj,
         blast_out_file,
@@ -25,6 +32,13 @@ def low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
         te_aid_blast=False,
         check_query=True
     )
+
+    try:
+        # Calculate input TE genome coverate length
+        te_genome_coverage_len = sum_non_overlapping_lengths(blast_out_file, te_aid_blast=False)
+
+    except Exception as e:
+        te_genome_coverage_len = 'NaN'
 
     TE_aid_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), 'TE-Aid-master_test'
@@ -51,6 +65,8 @@ def low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
 
     # Update input sequence terminal repeat information
     seq_obj.set_old_terminal_repeat(found_match)
+
+    seq_obj.set_input_genome_cov_len(te_genome_coverage_len)
 
     return check_low_copy, blast_full_length_n, found_match, TE_aid_plot
 
@@ -192,7 +208,7 @@ class TEAid:
 
         te_aid_blast_file = os.path.join(self.TE_aid_output_dir, 'blastn.txt')
 
-        # If blast.txt file was found, use the TE-Aid output directly. Otherwise, do BLAST search. This may save resources.
+        # If blast.txt file was found, use the TE-Aid output directly. Otherwise, do BLAST search.
         if os.path.exists(te_aid_blast_file):
             all_blast_hit_n, full_length_n = check_blast_full_length(
                 seq_obj,
@@ -219,3 +235,34 @@ class TEAid:
             )
 
         return all_blast_hit_n, full_length_n
+
+    #####################################################################################################
+    # Code block: Calculate genome coverage length for each TE
+    #####################################################################################################
+    def te_genome_coverage(self):
+
+        # query_check determine to use the query input sequence or use TEtrimmer processed sequence for the
+        # full length blast number calculation
+
+        te_aid_blast_file = os.path.join(self.TE_aid_output_dir, 'blastn.txt')
+
+        # If blast.txt file was found, use the TE-Aid output directly. Otherwise, do BLAST search.
+        if os.path.exists(te_aid_blast_file):
+            try:
+                te_genome_coverage_len = sum_non_overlapping_lengths(te_aid_blast_file, te_aid_blast=True)
+            except Exception:
+                te_genome_coverage_len = 'NaN'
+
+        else:
+            try:
+                bed_out_file, blast_hits_count, blast_out_file = blast(
+                    self.input_file, self.genome_file, self.blast_database_path,
+                    self.mmseqs_database_dir, self.output_dir
+                )
+
+                te_genome_coverage_len = sum_non_overlapping_lengths(blast_out_file, te_aid_blast=False)
+
+            except Exception:
+                te_genome_coverage_len = 'NaN'
+
+        return te_genome_coverage_len

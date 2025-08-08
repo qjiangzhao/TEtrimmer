@@ -20,7 +20,8 @@ from functions import (
     eliminate_curatedlib_by_repeatmasker,
     repeatmasker,
     check_tools,
-    init_logging
+    init_logging,
+    get_genome_length
 )
 
 # Suppress all deprecation warnings
@@ -789,6 +790,18 @@ def main(
         else:
             logging.info('TEtrimmer will continue analysis based on previous results.')
 
+            (
+                mmseqs_database_dir,
+                database_dir,
+                database_name,
+                length_file,
+                fai_file,
+            ) = analyze.check_database(
+                decompressed_genome_file, idx_dir=None, search_type=engine
+            )
+
+            blast_database_path = os.path.join(database_dir, database_name)
+
             # Create seq_list, which contains sequence objects using the single FASTA files.
             seq_list, single_fasta_n = analyze.separate_sequences(
                 input_file, single_file_dir, continue_analysis=True
@@ -804,6 +817,26 @@ def main(
             logging.warning(
                 f'{single_fasta_n - len(seq_list)} sequences have been processed previously.'
             )
+
+    #####################################################################################################
+    # Code block: Calculate genome length
+    #####################################################################################################
+    """
+    try:
+        genome_length = get_genome_length(decompressed_genome_file)
+    
+    except Exception as e:
+        with open(error_files, 'a') as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write('\nFailed to calculate genome length file.\n')
+            f.write(tb_content + '\n\n')
+        logging.warning(
+            'This does not affect the final TE consensus sequences '
+            'Failed to calculate genome length. This will only affect one column of the Summary.txt'
+        )
+        genome_length = None
+    """
 
     #####################################################################################################
     # Code block: Enable multiple threads

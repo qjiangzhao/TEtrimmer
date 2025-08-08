@@ -1207,11 +1207,17 @@ def find_boundary_and_crop(
 
             all_blast_hit_n_query, full_blast_query_n = TE_aid_object_query.check_blast_full_n(seq_obj, check_query=True)
 
+            input_te_genome_cov_len = TE_aid_object_query.te_genome_coverage()
+
             # Update input sequence terminal repeat information
             seq_obj.set_old_terminal_repeat(found_match_query)
 
             # Update input sequence full length blast number
             seq_obj.set_old_blast_full_n(full_blast_query_n)
+
+            # Update input sequence genome coverate length number
+            seq_obj.set_input_genome_cov_len(input_te_genome_cov_len)
+
         else:
             TE_aid_plot_query = None
     except Exception as e:
@@ -1387,10 +1393,12 @@ def find_boundary_and_crop(
         # Store full length sequence number from BLAST search into consi_obj
         # check_blast_full_n is a function in TE_Aid class. TEtrimmer will use the blast result of TE Aid
         all_blast_hit_n_con, blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj, check_query= False, engine=engine)
+        output_genome_cov_len = TE_aid_object.te_genome_coverage()
 
+        # Set output sequence object informations
         consi_obj.set_cons_blast_n(all_blast_hit_n_con)
         consi_obj.set_blast_full_n(blast_full_length_n)
-
+        consi_obj.set_output_genome_cov_len(output_genome_cov_len)
 
         # Store PFAM predictions to consi_obj
         if if_pfam_domain:

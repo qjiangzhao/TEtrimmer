@@ -164,6 +164,9 @@ def blast(
 ):
     """
     Runs BLAST calling a specified task type and saves the results as a BED file.
+    Functions that used blast result
+    sum_non_overlapping_lengths
+    check_blast_full_length
 
     :param seq_file: str, path to input FASTA file
     :param genome_file: str, path to genome FASTA file
@@ -3293,6 +3296,7 @@ def pairwise_seqs_align(
     seq1_is_file = True,
     seq2_is_file = True
 ):
+    # Function to calculate the input and output sequence identity
     # 1) set up the aligner
     aligner = PairwiseAligner()
     aligner.mode = "local"
@@ -3343,3 +3347,55 @@ def pairwise_seqs_align(
     coverage2_pct = len(covered2) / len(seq2) * 100 if seq2 else 0.0
 
     return round(identity_pct, 2), round(coverage1_pct, 2), round(coverage2_pct, 2)
+
+
+def sum_non_overlapping_lengths(blast_file, te_aid_blast=False, pident_min=80, evalue_max=1e-40):
+    """
+    Sum covered length on the subject genome with these rules:
+      - Only hits with pident >= pident_min
+      - Merge overlaps within the same sseqid AND the same strand
+      - Plus-vs-minus overlaps are allowed (counted separately)
+    """
+    try:
+        cols = [
+            "qseqid", "sseqid", "pident", "length", "mismatch", "gapopen",
+            "qstart", "qend", "sstart", "send", "sstrand", "evalue", "qcovhsp"
+        ]
+
+        if te_aid_blast:
+            df = pd.read_csv(blast_file, sep=r'\s+', names=cols, skiprows=1)
+        else:
+            df = pd.read_csv(blast_file, sep=r'\s+', names=cols)
+
+        # Filter by pident and evalue
+        df = df[(df["pident"] >= pident_min) & (df["evalue"] <= evalue_max)].copy()
+
+        # Normalize intervals to start < end (strand-agnostic coordinates)
+        df["start"] = df[["sstart", "send"]].min(axis=1)
+        df["end"]   = df[["sstart", "send"]].max(axis=1)
+
+        total_length = 0
+
+        # Merge overlaps per (sseqid, sstrand) so plus and minus are independent
+        for (scaffold, strand), group in df.groupby(["sseqid", "sstrand"]):
+            intervals = sorted(zip(group["start"], group["end"]))
+            merged = []
+            for start, end in intervals:
+                if not merged or start > merged[-1][1]:
+                    merged.append([start, end])
+                else:
+                    merged[-1][1] = max(merged[-1][1], end)
+            total_length += sum(end - start for start, end in merged)
+
+        return total_length
+
+    except Exception as e:
+        logging.warning(
+            f'TE genome coverage length calculation failed. This does not affect the final TE library '
+            f'but only the summary.txt file.\n'
+        )
+        raise
+
+def get_genome_length(fasta_file):
+    total_length = sum(len(record.seq) for record in SeqIO.parse(fasta_file, "fasta"))
+    return total_length
