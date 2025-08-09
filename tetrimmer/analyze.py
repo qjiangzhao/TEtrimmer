@@ -975,7 +975,7 @@ def compute_cluster_cov_weights(detailed_clusters_proof_anno, summary_sequence_i
     # for instance, this can let use to know how many cluster they need to do manual curation to cover the 90% TE
     # regions in the genome
     # regions in the genome
-    thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
+    thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1]
     threshold_crossings = {}
     cumulative_max_cov_share_sum = 0.0
 

@@ -250,6 +250,18 @@ TEtrimmer --input_file <TE_consensus_library.fa> \
 - 📄**TEtrimmer_consensus.fasta** - *TE consensus library file before de-duplication.*
 - 📄**TEtrimmer_consensus_merged.fasta** - *TE consensus library file after de-duplication.*
 
+**Example Summary.txt**
+
+| input_name           | output_name          | input_blast_n | input_full_blast_n | output_blast_n | output_full_blast_n | input_genome_cov_len | output_genome_cov_len | output_MSA_seq_n | input_length | output_length | identify | input_coverage | output_coverage | input_TE_type      | output_TE_type     | input_terminal_repeat | output_terminal_repeat | low_copy | TSD  | evaluation  | status    |
+|----------------------|----------------------|---------------|--------------------|----------------|---------------------|----------------------|-----------------------|------------------|--------------|---------------|----------|----------------|-----------------|--------------------|--------------------|-----------------------|-----------------------|----------|------|-------------|-----------|
+| rnd_6_family_3291    | rnd_6_family_3291    | 0             | NaN                | 0              | NaN                 | NaN                  | NaN                   | NaN              | 447          | 447           | NaN      | NaN            | NaN             | Unknown            | Unknown            | NaN                   | NaN                   | False    | NaN  | NaN         | skipped   |
+| rnd_6_family_2561    | rnd_6_family_2561    | 16            | 1                  | 18             | 7                   | 27446                | 27531                 | 16               | 2508         | 2209          | 92.29    | 89.11          | 100.0           | Unknown            | Unknown            | False                 | False                 | False    | NaN  | Need_check  | processed |
+| rnd_1_family_587     | rnd_1_family_587_01  | 41            | 0                  | 20             | 9                   | 0                    | 36069                 | 12               | 771          | 2853          | 64.75    | 99.87          | 27.13           | LTR/Copia          | LTR/Copia          | False                 | False                 | False    | NaN  | Need_check  | processed |
+| rnd_1_family_188     | rnd_1_family_188     | 118           | 21                 | 52             | 38                  | 169054               | 64568                 | 46               | 6453         | 1413          | 59.79    | 26.47          | 100.0           | LTR/Gypsy          | LTR/Gypsy          | LTR                   | False                 | False    | NaN  | Reco_check  | processed |
+| rnd_1_family_188     | rnd_1_family_188_01  | 118           | 21                 | 160            | 21                  | 169054               | 169187                | 24               | 6453         | 6467          | 94.54    | 100.0          | 100.0           | LTR/Gypsy          | LTR/Gypsy          | LTR                   | LTR                   | False    | NaN  | Perfect     | processed |
+| rnd_1_family_188     | rnd_1_family_188_02  | 118           | 21                 | 20             | 13                  | 169054               | 23921                 | 13               | 6453         | 1523          | 58.54    | 27.89          | 100.0           | LTR/Gypsy          | LTR/Gypsy          | LTR                   | False                 | False    | NaN  | Need_check  | processed |
+| rnd_1_family_588     | rnd_1_family_588     | 534           | 502                | 687            | 417                 | 155378               | 1649064               | 86               | 306          | 3214          | 100.0    | 100.0          | 9.52            | DNA/MULE-MuDR      | DNA/MULE-MuDR      | False                 | False                 | False    | NaN  | Reco_check  | processed |
+
 
 ## Optional! But recommended! Manual inspection of TEtrimmer outputs by provided TEtrimmerGUI. 
 You can use the TEtrimmerGUI tool to inspect and improve TEtrimmer generated TE consensus library. 
@@ -448,6 +460,13 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 ```
 
 ## Update history
+**Aug.09.2025**
+
+Improved summary report table.
+
+Sort cluster by TE genome coverage percentage. Provide information how many cluster users need to curated to cover
+90% of identifiable TEs in the genome.
+
 **TEtrimmer v1.5.1 Released Jul.25.2025**
 
 Merged with Adam Taranto pull request https://github.com/adamtaranto
