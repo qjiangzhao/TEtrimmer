@@ -1693,8 +1693,10 @@ def create_dir(
                 'output_TE_type,'
                 'input_terminal_repeat,'
                 'output_terminal_repeat,'
-                'low_copy,'
                 'TSD,'
+                'start_pattern,'
+                'end_pattern,'
+                'low_copy,'
                 'evaluation,'
                 'status\n'
             )

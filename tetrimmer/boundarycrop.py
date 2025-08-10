@@ -12,7 +12,7 @@ from boundaryclass import CropEnd, CropEndByGap, DefineBoundary
 # Local imports
 from functions import (
     align_sequences,
-    check_and_update,
+    check_strat_and_end_patterns,
     check_terminal_repeat,
     classify_single,
     con_generater,
@@ -584,11 +584,42 @@ def find_boundary_and_crop(
     :param min_orf: int, set minimum ORF length for ORF prediction. Default: 200
 
     """
+    #####################################################################################################
+    # Code block: Define consensus sequence object
+    #####################################################################################################
+    try:
+        seq_name = seq_obj.name
+        seq_file = seq_obj.get_input_fasta()  # Return full file path
+
+        # Define unique sequence names
+        # Because seq_obj.create_consi_obj() is generated after the unique name definition, len(seq_obj.consi_obj_list)
+        # is the appended number for the unique name.
+        consi_n = len(seq_obj.consi_obj_list)
+
+        if consi_n > 0:
+            uniq_seq_name = f'{seq_name}_{consi_n:02}'
+        else:
+            uniq_seq_name = seq_name
+
+        # Create consensus object
+        consi_obj = seq_obj.create_consi_obj(uniq_seq_name)
+
+    except Exception as e:
+        with open(error_files, 'a') as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(f'\nCreate consensus sequence object failed for {seq_name} with error:\n{e}')
+            f.write('\n' + tb_content + '\n\n')
+        logging.error(f'\nCreate consensus sequence object failed for {seq_name} with error:\n{e}\n{tb_content}\n')
+        raise Exception from e
+
+
+    #####################################################################################################
+    # Code block: Get extended MSA
+    #####################################################################################################
 
     # Check if this is a LINE element, if so decrease the ext_threshold number,
     # because LINE have high divergence at the 5' end
-    seq_name = seq_obj.name
-    seq_file = seq_obj.get_input_fasta()  # Return full file path
     if 'LINE' in seq_obj.old_TE_type:
         ext_threshold = ext_threshold - 0.1
 
@@ -626,6 +657,7 @@ def find_boundary_and_crop(
 
                 # Add the key-value pair to the dictionary
                 bed_dict[key] = value_list
+
         except Exception as e:
             with open(error_files, 'a') as f:
                 # Get the traceback content as a string
@@ -635,13 +667,10 @@ def find_boundary_and_crop(
                 )
                 f.write('\n' + tb_content + '\n\n')
             logging.error(
-                f"\nStart and end patterns like 'TGT' or 'ACA' definition failed for {seq_name} with error \n{e}"
+                f"\nFind boundary bed_file reading failed for {seq_name} with error:\n{e}"
             )
-            logging.warning(
-                '\nThis error will not affect the final result significantly, you can choose to ignore it. '
-                "For traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n"
-            )
-            pass
+
+            raise Exception from e
 
         #####################################################################################################
         # Code block: Define length of extensions on left and right sides of the MSA and define the boundary
@@ -823,21 +852,35 @@ def find_boundary_and_crop(
             if "LTR" in seq_obj.old_TE_type:  # Check if file name contains "LTR"
 
                 # Generate consensus sequences
-                consensus_seq = con_generater_no_file(
+                ltr_consensus_seq = con_generater_no_file(
                     cropped_alignment_output_file_g, threshold=0.7, ambiguous='X'
                 )
 
                 # Convert consensus_seq to list
-                consensus_seq = list(consensus_seq)
+                ltr_consensus_seq_list = list(ltr_consensus_seq)
 
-                # Four variables will be returned
-                start_matched, end_matched, check_start, check_end = check_and_update(
-                    consensus_seq,
+                # start_matched and end_matched are boolen values
+                # start_matched_pattern and end_matched_pattern are string
+                (
+                    start_matched,
+                    end_matched,
+                    start_matched_pattern,
+                    end_matched_pattern,
+                    check_start,
+                    check_end
+                 ) = check_strat_and_end_patterns(
+                    ltr_consensus_seq_list,
                     start=cropped_boundary.start_post,
                     end=cropped_boundary.end_post,
                     start_patterns=start_patterns,
                     end_patterns=end_patterns,
                 )
+
+                # Update  start and end pattern for the consensus sequence object
+                if start_matched:
+                    consi_obj.set_start_pattern_content(start_matched_pattern)
+                if end_matched:
+                    consi_obj.set_end_pattern_content(end_matched_pattern)
 
                 # If the new start or end positions are different from previous MSA, replace with the new
                 # start or end position in the cropped_boundary object and generate the new MSA file
@@ -868,7 +911,76 @@ def find_boundary_and_crop(
         )
 
     #####################################################################################################
-    # Code block: Generate MSA for CIAlign plot
+    # Code block: For Helitrons, check if the boundary start and end with
+    #####################################################################################################
+    try:
+        helitron_start_patterns = "ATC"
+        helitorn_end_patterns = "CTAGT"
+
+        if "helitron" in seq_obj.old_TE_type.lower():  # Check if file name contains "Helitron or helitron"
+
+            # Generate consensus sequences
+            ltr_consensus_seq = con_generater_no_file(
+                cropped_alignment_output_file_g, threshold=0.7, ambiguous='X'
+            )
+
+            # Convert consensus_seq to list
+            helitron_consensus_seq_list = list(ltr_consensus_seq)
+
+            # start_matched and end_matched are boolen values
+            # start_matched_pattern and end_matched_pattern are string
+            (
+                start_matched,
+                end_matched,
+                start_matched_pattern,
+                end_matched_pattern,
+                check_start,
+                check_end
+            ) = check_strat_and_end_patterns(
+                helitron_consensus_seq_list,
+                start=cropped_boundary.start_post,
+                end=cropped_boundary.end_post,
+                start_patterns=helitron_start_patterns,
+                end_patterns=helitorn_end_patterns,
+                check_helitron=True
+            )
+
+            # Update  start and end pattern for the consensus sequence object
+            if start_matched:
+                consi_obj.set_start_pattern_content(start_matched_pattern)
+            if end_matched:
+                consi_obj.set_end_pattern_content(end_matched_pattern)
+
+            # If the new start or end positions are different from previous MSA, replace with the new
+            # start or end position in the cropped_boundary object and generate the new MSA file
+            if (
+                    cropped_boundary.start_post != check_start
+                    or cropped_boundary.end_post != check_end
+            ):
+                cropped_boundary.start_post = check_start
+                cropped_boundary.end_post = check_end
+                # Generate the new MSA file based on new start and end positions
+                cropped_boundary_MSA = cropped_boundary.crop_MSA(
+                    output_dir, crop_extension=0
+                )
+    except Exception as e:
+        with open(error_files, 'a') as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(
+                f'\nStart and end pattern definition failed for {seq_name} with error \n{e}\n'
+            )
+            f.write('\n' + tb_content + '\n\n')
+        logging.error(
+            f"\nStart and end patterns like 'TGT' or 'ACA' definition failed for {seq_name} with error \n{e}"
+        )
+        logging.warning(
+            '\nThis error will not affect the final result significantly, you can choose to ignore it. '
+            "For traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n"
+        )
+
+    #####################################################################################################
+    # Code block: Generate MSA for CIAlign plot (entire MSA plotting)
     #####################################################################################################
     try:
         # Add 300 columns to the left of start point
@@ -909,7 +1021,7 @@ def find_boundary_and_crop(
         )
 
         #####################################################################################################
-        # Code block: Concatenate beginning and end part of MSA and plotting
+        # Code block: Concatenate beginning and end part of MSA and plot after ORF prediction
         #####################################################################################################
 
         # "sequence_len" represent the length of the final cropped MSA
@@ -1321,19 +1433,6 @@ def find_boundary_and_crop(
         final_classified_con_file = os.path.join(
             classification_dir, 'temp_TEtrimmer_classified_consensus.fasta'
         )
-
-        # Define unique sequence names
-        # Because seq_obj.create_consi_obj() is generated after the unique name definition, len(seq_obj.consi_obj_list)
-        # is the appended number for the unique name.
-        consi_n = len(seq_obj.consi_obj_list)
-
-        if consi_n > 0:
-            uniq_seq_name = f'{seq_name}_{consi_n:02}'
-        else:
-            uniq_seq_name = seq_name
-
-        # Create consensus object
-        consi_obj = seq_obj.create_consi_obj(uniq_seq_name)
 
         # Generate final consensus sequence
         # Compared with initial consensus, the final consensus sequence can have a different orientation.

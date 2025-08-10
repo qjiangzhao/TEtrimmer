@@ -91,8 +91,10 @@ class SeqObject:
                             f'{str(consi_obj.get_TE_type_for_file())},'  # output_TE_type
                             f'{str(self.old_terminal_repeat)},'  # input_terminal_repeat
                             f'{str(consi_obj.new_TE_terminal_repeat)},'  # output_terminal_repeat
-                            f'{str(self.low_copy)},'  # low_copy
                             f'{str(consi_obj.cons_tsd)},'  # TSD
+                            f'{str(consi_obj.start_pattern_content)},'  # start_pattern
+                            f'{str(consi_obj.end_pattern_content)},'  # end_pattern
+                            f'{str(self.low_copy)},'  # low_copy
                             f'{str(consi_obj.get_evaluation())},'  # evaluation
                             f'{str(self.status)}\n'  # status
                         )
@@ -117,8 +119,10 @@ class SeqObject:
                         f'{str(self.old_TE_type)},'  # output_TE_type
                         f'{str(self.old_terminal_repeat)},'  # input_terminal_repeat
                         f'NaN,'  # output_terminal_repeat
-                        f'{str(self.low_copy)},'  # low_copy
                         f'NaN,'  # TSD
+                        f'NaN,'  # start_pattern
+                        f'NaN,'  # end_pattern
+                        f'{str(self.low_copy)},'  # low_copy
                         f'NaN,'  # evaluation
                         f'{str(self.status)}\n'  # status
                     )
@@ -152,6 +156,8 @@ class ConsensusObject:
         self.in_out_identity = 'NaN'
         self.input_coverage = 'NaN'
         self.output_coverage = 'NaN'
+        self.start_pattern_content = 'NaN'
+        self.end_pattern_content = 'NaN'
 
     def set_new_length(self, new_length):
         self.new_length = int(new_length)
@@ -198,6 +204,12 @@ class ConsensusObject:
 
     def set_output_coverage(self, output_coverage):
         self.output_coverage = output_coverage
+
+    def set_start_pattern_content(self, start_pattern_content):
+        self.start_pattern_content = start_pattern_content
+
+    def set_end_pattern_content(self, end_pattern_content):
+        self.end_pattern_content = end_pattern_content
 
 
     # Defining get functions
