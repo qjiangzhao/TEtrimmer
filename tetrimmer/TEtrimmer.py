@@ -1067,7 +1067,8 @@ def main(
                 'length': length,
                 'output_genome_cov_len': output_genome_cov_len,
                 'output_TE_type' : output_te_type,
-                'cluster' : 'NaN'  # Define cluster key, which will be used to write cluster number back to the summary
+                'cluster' : 'NaN',  # Define cluster key, which will be used to write cluster number back to the summary
+                'cluster_identity' : 'NaN'
             }
 
     except Exception as e:
@@ -1157,7 +1158,7 @@ def main(
             tb_content = traceback.format_exc()
             f.write('\nFinal clustering of proof curation files failed.\n')
             f.write(tb_content + '\n\n')
-        logging.error(f'Final clustering of proof curation files failed with error: \n{e}')
+        logging.error(f'Final clustering of proof curation files failed with error: {e}')
         logging.error('\n' + tb_content + '')
         logging.warning(
             'This does not affect the final TE consensus sequences. But this can heavily complicate the '
@@ -1166,7 +1167,7 @@ def main(
         )
 
     #####################################################################################################
-    # Code block: Write summary_sequence_info cluster information into the Summary.txt file and sort
+    # Code block: Write summary_sequence_info cluster information into the Summary.txt file
     #####################################################################################################
 
     try:
@@ -1179,20 +1180,18 @@ def main(
             if info.get('cluster') is not None
         }
 
+        cluster_identity_map = {
+            name: info.get('cluster_identity')
+            for name, info in summary_sequence_info.items()
+            if info.get('cluster_identity') is not None
+        }
+
         # Only overwrite where the mapping has a non-null value
         new_clusters = progress_df['output_name'].map(cluster_map)
         progress_df['cluster'] = new_clusters.fillna(progress_df['cluster'])
 
-        # Extract numeric part for sorting (Cluster1 -> 1, etc.)
-        cluster_num = progress_df['cluster'].astype(str).str.extract(r'Cluster(\d+)', expand=False).astype(float)
-
-        # Sort by numeric cluster, then by cluster string, then by output_name
-        progress_df = (
-            progress_df
-            .assign(_cluster_num=cluster_num)
-            .sort_values(by=['_cluster_num', 'cluster', 'output_name'], na_position='last')
-            .drop(columns=['_cluster_num'])
-        )
+        new_clusters_identity = progress_df['output_name'].map(cluster_identity_map)
+        progress_df['cluster_identity'] = new_clusters_identity.fillna(progress_df['cluster'])
 
         progress_df.to_csv(progress_file, index=False)
 

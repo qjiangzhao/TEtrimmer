@@ -757,15 +757,6 @@ def cluster_proof_anno_file(
         cluster_folder = os.path.join(cluster_proof_anno_dir, cluster_folder_name)
         os.makedirs(cluster_folder, exist_ok=True)
 
-        # Update summary_sequence_info cluster key
-        try:
-            summary_sequence_info[seq_name_proof_anno]['cluster'] = f'Cluster{cluster_n}'
-        except Exception:
-            logging.warning(f'Add cluster to Summary.txt failed for sequence {seq_name_proof_anno}\n'
-                            f'This do not affect the final TE library but only the Summery.txt cluster column.\n')
-
-        cluster_n += 1
-
         # Get sequence number in this cluster
         seq_info_proof_anno_len = len(seq_info_proof_anno)
 
@@ -786,6 +777,18 @@ def cluster_proof_anno_file(
                 seq_direction_proof_anno = seq_info_proof_anno[i][3]
             except Exception:
                 seq_direction_proof_anno = None
+
+            # Update summary_sequence_info cluster key with cluster number and cluster_identity
+            try:
+
+                summary_sequence_info[seq_name_proof_anno]['cluster'] = f'Cluster{cluster_n}'
+                summary_sequence_info[seq_name_proof_anno]['cluster_identity'] = seq_per_proof_anno
+
+            except Exception:
+                logging.warning(f'Add cluster to Summary.txt failed for sequence {seq_name_proof_anno}\n'
+                                f'This do not affect the final TE library but only the Summery.txt cluster column.\n')
+
+
 
             # Copy sequence files into cluster folder
             # if not, set evaluation_level to "Need_check". The "get" method will return the default value
@@ -858,18 +861,21 @@ def cluster_proof_anno_file(
         if len(cluster_record_list) > 1:
             # Define and write cluster fasta file a
             cluster_fasta = os.path.join(
-                multi_dotplot_dir, f'{cluster_folder_name}.fa'
+                multi_dotplot_dir, f'Cluster{cluster_n}.fa'
             )
+            # Write all sequence from one cluster to a single fasta file
             SeqIO.write(cluster_record_list, cluster_fasta, 'fasta')
 
             # Do multiple sequence dotplot
             multi_dotplot_pdf = multi_seq_dotplot(
-                cluster_fasta, multi_dotplot_dir, cluster_folder_name
+                cluster_fasta, multi_dotplot_dir, f'Cluster{cluster_n}'
             )
 
             # Move muti_dotplot_pdf to proof curation cluster folder
             if os.path.isfile(multi_dotplot_pdf):
                 shutil.copy(multi_dotplot_pdf, cluster_folder)
+
+        cluster_n += 1
 
     return summary_sequence_info
 
@@ -1393,8 +1399,8 @@ def analyze_sequence(
 
             else:
                 logging.info(
-                    f'\n{seq_name} was skipped because the sequence number in each cluster was smaller '
-                    f'than {min_seq_num} and check_low_copy is {check_low_copy}.\n'
+                    f'{seq_name} was skipped because the sequence number in each cluster was smaller '
+                    f'than {min_seq_num} and check_low_copy is {check_low_copy}.'
                 )
                 handle_sequence_skipped(
                     seq_obj,
@@ -1524,7 +1530,7 @@ def analyze_sequence(
                         orf_plot=input_orf_domain_plot,
                     )
                     logging.info(
-                        f'\n{seq_name} was skipped because sequence is too short and check_low_copy is {check_low_copy}.\n'
+                        f'{seq_name} was skipped because sequence is too short and check_low_copy is {check_low_copy}.'
                     )
                 return
 
@@ -1719,7 +1725,7 @@ def create_dir(
                 'output_MSA_seq_n,'
                 'input_length,'
                 'output_length,'
-                'identify,'
+                'in_out_identify,'
                 'input_coverage,'
                 'output_coverage,'
                 'input_TE_type,'
@@ -1732,6 +1738,7 @@ def create_dir(
                 'low_copy,'
                 'evaluation,'
                 'cluster,'
+                'cluster_identity,'
                 'status\n'
             )
 

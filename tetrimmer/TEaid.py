@@ -41,7 +41,7 @@ def low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
         te_genome_coverage_len = 'NaN'
 
     TE_aid_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'TE-Aid-master_test'
+        os.path.dirname(os.path.abspath(__file__)), 'TE-Aid-master'
     )
     # At least 2 lines need to meet the requirement
     if blast_full_length_n >= 1:
@@ -113,9 +113,7 @@ class TEAid:
 
         # Check if TE-Aid exists
         if not os.path.exists(TE_aid):
-            raise FileNotFoundError(
-                f'The TE-Aid executable at {TE_aid} does not exist.'
-            )
+            raise FileNotFoundError(f'The TE-Aid executable at {TE_aid} does not exist.')
 
         # TE-Aid will create plot with end name c2g.pdf
         final_pdf_file = os.path.join(

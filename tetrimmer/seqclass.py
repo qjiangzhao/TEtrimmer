@@ -84,7 +84,7 @@ class SeqObject:
                             f'{str(int(consi_obj.new_TE_MSA_seq_n))},'  # output_MSA_seq_n
                             f'{str(self.old_length)},'  # input_length
                             f'{str(consi_obj.new_length)},'  # output_length
-                            f'{str(consi_obj.in_out_identity)},'  # identity
+                            f'{str(consi_obj.in_out_identity)},'  # in_out_identity
                             f'{str(consi_obj.input_coverage)},'  #  input_coverage
                             f'{str(consi_obj.output_coverage)},'  # output_coverage
                             f'{str(self.old_TE_type)},'  # input_TE_type
@@ -97,6 +97,7 @@ class SeqObject:
                             f'{str(self.low_copy)},'  # low_copy
                             f'{str(consi_obj.get_evaluation())},'  # evaluation
                             f'NaN,'  # cluster  this will be updated after the final clustering step
+                            f'NaN,'  # cluster_identity cluster  this will be updated after the final clustering step
                             f'{str(self.status)}\n'  # status
                         )
 
@@ -113,7 +114,7 @@ class SeqObject:
                         f'NaN,'  # output_MSA_seq_n
                         f'{str(self.old_length)},'  # input_length
                         f'{str(self.old_length)},'  # output_length
-                        f'NaN,'  # identity
+                        f'NaN,'  # in_out_identity
                         f'NaN,'  #  input_coverage
                         f'NaN,'  # output_coverage
                         f'{str(self.old_TE_type)},'  # input_TE_type
@@ -126,6 +127,7 @@ class SeqObject:
                         f'{str(self.low_copy)},'  # low_copy
                         f'NaN,'  # evaluation
                         f'NaN,'  # cluster  this will be updated after the final clustering step
+                        f'NaN,'  # cluster_identity cluster  this will be updated after the final clustering step
                         f'{str(self.status)}\n'  # status
                     )
         except Exception as e:

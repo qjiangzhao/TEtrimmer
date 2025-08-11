@@ -460,6 +460,13 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 ```
 
 ## Update history
+**Aug.11.2025**
+Add "helitorn_start_patterns" and "helitron_end_patterns" options. 
+Add function to check Helitron element start and end patterns.
+Integrate cluster number and cluster identity into the Summary.txt file.
+Fixed multiple sequence dotplot bug.
+Fixed skipped element TE-Aid bug.
+
 **Aug.09.2025**
 
 Improved summary report table.
