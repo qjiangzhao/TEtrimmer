@@ -2430,6 +2430,7 @@ def handle_sequence_skipped(
 
     try:
         seq_obj.update_status('skipped', progress_file)
+
         if plot_skip and skip_proof_dir is not None:
             if te_aid_plot is not None or orf_plot is not None:
                 merge_pdfs(
@@ -2449,7 +2450,7 @@ def handle_sequence_skipped(
             remove_files_with_start_pattern(MSA_dir, f'{seq_name}.fasta')
             remove_files_with_start_pattern(classification_dir, f'{seq_name}.fasta')
     except Exception as e:
-        click.echo(
+        logging.error(
             f'\nAn error occurred while handling skipped sequence {seq_name}:\n {e}\n'
         )
 
@@ -2740,37 +2741,6 @@ def file_exists_and_not_empty(file_path):
         return False
 
 
-def merge_pdfs_old(output_dir, output_file_n, *pdfs):
-    """
-    Merge PDF files into one single PDF file.
-    The order in which file paths are provided in <*pdfs> defines the order of plots in the final single PDF file.
-
-    """
-    merger = PdfMerger()
-    valid_pdf_count = 0  # Counter to keep track of valid PDFs added
-    try:
-        # Iterate over the list of file paths
-        for pdf in pdfs:
-            # Check if the file exists and is not empty before appending
-            if pdf is not None and os.path.exists(pdf) and os.path.getsize(pdf) > 0:
-                # Append PDF files
-                merger.append(pdf)
-                valid_pdf_count += 1
-    except Exception:
-        raise Exception
-
-    if valid_pdf_count > 0:
-        merged_pdf_path = os.path.join(
-            output_dir, os.path.join(output_dir, f'{output_file_n}_me.pdf')
-        )
-        merger.write(merged_pdf_path)
-        merger.close()
-        return merged_pdf_path
-
-    if valid_pdf_count == 0:
-        merger.close()
-        raise Exception
-
 
 def merge_pdfs(output_dir, output_file_name, *pdfs):
     """
@@ -2778,7 +2748,6 @@ def merge_pdfs(output_dir, output_file_name, *pdfs):
     The order in which file paths are provided in <*pdfs> defines the order of pages in the final single PDF file.
 
     """
-
     merger = PdfMerger()
 
     try:
@@ -2799,7 +2768,7 @@ def merge_pdfs(output_dir, output_file_name, *pdfs):
 
             return merged_pdf_path
         else:
-            raise ValueError("No valid PDFs were provided for merging.")
+            logging.info(f'Sequence {output_file_name} does not have report plot.')
 
     except Exception as e:
         raise RuntimeError(f"An error occurred while merging PDFs: {e}")
