@@ -46,6 +46,8 @@ def low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
     # At least 2 lines need to meet the requirement
     if blast_full_length_n >= 1:
         check_blast = True
+    else:
+        check_blast = False
 
     # Check self-alignment of terminal repeats
     TE_aid_object = TEAid(seq_file, output_dir, genome_file, blast_database_path,

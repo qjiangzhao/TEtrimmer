@@ -393,8 +393,10 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                 else:
                     logging.warning(f"Duplicated seq_name {sanitized_id} during separate_sequences.")
                     id_list.append(sanitized_id)
+                    old_sanitized_id = sanitized_id
                     count = id_list.count(sanitized_id)
                     sanitized_id = f'{sanitized_id}_n{count}'
+                    logging.warning(f"{old_sanitized_id} was renamed to {sanitized_id}.")
 
                 # Write original and modified names to the mapping file
                 mapping_file.write(f'{record.id}\t{sanitized_id}\n')

@@ -81,7 +81,7 @@ class SeqObject:
                             f'{str(consi_obj.new_TE_blast_full_length_n)},'  # output_full_blast_n
                             f'{str(self.input_genome_cov_len)},'  # input_genome_cov_len
                             f'{str(consi_obj.output_genome_cov_len)},'  # output_genome_cov_len
-                            f'{str(int(consi_obj.new_TE_MSA_seq_n))},'  # output_MSA_seq_n
+                            f'{str(consi_obj.new_TE_MSA_seq_n)},'  # output_MSA_seq_n
                             f'{str(self.old_length)},'  # input_length
                             f'{str(consi_obj.new_length)},'  # output_length
                             f'{str(consi_obj.in_out_identity)},'  # in_out_identity
