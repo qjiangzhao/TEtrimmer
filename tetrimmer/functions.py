@@ -73,9 +73,18 @@ def con_generater(input_file, output_dir, threshold=0.8, ambiguous='N'):
     return output_file
 
 
-def check_strat_and_end_patterns(consensus_seq, start, end, start_patterns, end_patterns, check_helitron=False):
+def check_strat_and_end_patterns(
+        consensus_seq,
+        start,
+        end,
+        start_patterns,
+        end_patterns,
+        check_helitron=False,
+        sliding_win_check=True
+):
     """
     Check if start and end of the MSA are equal to the given patterns
+    sliding_win_check = True will try to find the pattern from -15 to +15
     """
     # Ensure all patterns are uppercase
     start_patterns = (
@@ -100,6 +109,7 @@ def check_strat_and_end_patterns(consensus_seq, start, end, start_patterns, end_
                 break
             else:
                 start_matched = False
+                start_matched_pattern = False
     else:
         start_matched = False
 
@@ -110,41 +120,43 @@ def check_strat_and_end_patterns(consensus_seq, start, end, start_patterns, end_
                 break
             else:
                 end_matched = False
+                end_matchec_pattern = False
     else:
         end_matched = False
 
-    # If exact position matching fails, try sliding window approach
-    if not start_matched and start_patterns is not None:
-        for start_pattern in start_patterns:
-            start_window = consensus_seq[max(0, start - 15) : start + 15]
-            for i in range(len(start_window) - len(start_pattern) + 1):
-                if start_window[i : i + len(start_pattern)] == list(start_pattern):
-                    # renew start position, for helitron 'A' is not the right left boundary
-                    if check_helitron and list(start_pattern)[0] == 'A':
-                        start = max(0, start - 15) + i + 1
-                    else:
-                        start = max(0, start - 15) + i
-                    # Covert start_matched to True when find pattern in the sliding window
-                    start_matched = True
-                    start_matched_pattern = start_pattern
-                    break
-            break
+    if sliding_win_check:
+        # If exact position matching fails, try sliding window approach
+        if not start_matched and start_patterns is not None:
+            for start_pattern in start_patterns:
+                start_window = consensus_seq[max(0, start - 15) : start + 15]
+                for i in range(len(start_window) - len(start_pattern) + 1):
+                    if start_window[i : i + len(start_pattern)] == list(start_pattern):
+                        # renew start position, for helitron 'A' is not the right left boundary
+                        if check_helitron and list(start_pattern)[0] == 'A':
+                            start = max(0, start - 15) + i + 1
+                        else:
+                            start = max(0, start - 15) + i
+                        # Covert start_matched to True when find pattern in the sliding window
+                        start_matched = True
+                        start_matched_pattern = start_pattern
+                        break
+                break
 
-    if not end_matched and end_patterns is not None:
-        for end_pattern in end_patterns:
-            end_window = consensus_seq[max(0, end - 15) : end + 15]
-            for i in reversed(range(len(end_window) - len(end_pattern) + 1)):
-                if end_window[i : i + len(end_pattern)] == list(end_pattern):
-                    # renew end position, for helitron 'T' is not the correct right boundary
-                    if check_helitron and list(end_pattern)[-1]== 'T':
-                        end = max(0, end - 15) + i + len(end_pattern) - 1
-                    else:
-                        end = max(0, end - 15) + i + len(end_pattern)
-                    # Covert end_matched to True when find pattern in the sliding window
-                    end_matched = True
-                    end_matchec_pattern = end_pattern
-                    break
-            break
+        if not end_matched and end_patterns is not None:
+            for end_pattern in end_patterns:
+                end_window = consensus_seq[max(0, end - 15) : end + 15]
+                for i in reversed(range(len(end_window) - len(end_pattern) + 1)):
+                    if end_window[i : i + len(end_pattern)] == list(end_pattern):
+                        # renew end position, for helitron 'T' is not the correct right boundary
+                        if check_helitron and list(end_pattern)[-1]== 'T':
+                            end = max(0, end - 15) + i + len(end_pattern) - 1
+                        else:
+                            end = max(0, end - 15) + i + len(end_pattern)
+                        # Covert end_matched to True when find pattern in the sliding window
+                        end_matched = True
+                        end_matchec_pattern = end_pattern
+                        break
+                break
     # start_matched_pattern could be 'NaN' or the pattern
     return start_matched, end_matched, start_matched_pattern, end_matchec_pattern, start, end
 

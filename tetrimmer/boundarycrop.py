@@ -547,8 +547,10 @@ def find_boundary_and_crop(
     crop_end_win=40,
     crop_end_gap_thr=0.1,
     crop_end_gap_win=150,
-    start_patterns=None,
-    end_patterns=None,
+    ltr_start_patterns=None,
+    ltr_end_patterns=None,
+    helitron_start_patterns=None,
+    helitron_end_patterns=None,
     mini_orf=200,
     define_boundary_win=150,
     fast_mode=False,
@@ -579,8 +581,8 @@ def find_boundary_and_crop(
     :param gap_nul_thr: float, set nucleotide proportion threshold to decide if the column should be removed. Default: 0.07
     :param crop_end_gap_thr: float, set gap threshold to crop end by gap. Default: 0.05
     :param crop_end_gap_win: int, set window size used to crop end by gap. Default: 300.
-    :param start_patterns: str, patterns to check for start points. Default: None
-    :param end_patterns: str, patterns to check for end points. Default: None
+    :param ltr_start_patterns: str, patterns to check for start points. Default: None
+    :param ltr_end_patterns: str, patterns to check for end points. Default: None
     :param min_orf: int, set minimum ORF length for ORF prediction. Default: 200
 
     """
@@ -844,56 +846,56 @@ def find_boundary_and_crop(
 
         # If both start and end patterns are 'None', and found_match_crop is 'False' (no terminal repeat found),
         # skip this block, because terminal repeats can precisely define the start and end points of TEs.
-        if (
-            start_patterns is not None
-            or end_patterns is not None
-            and not found_match_crop
-        ):
-            if "LTR" in seq_obj.old_TE_type:  # Check if file name contains "LTR"
+        if "LTR" in seq_obj.old_TE_type:  # Check if file name contains "LTR"
 
-                # Generate consensus sequences
-                ltr_consensus_seq = con_generater_no_file(
-                    cropped_alignment_output_file_g, threshold=0.7, ambiguous='X'
+            if found_match_crop:
+                sliding_win_check_for_start_end_pattern = False
+            else:
+                sliding_win_check_for_start_end_pattern = True
+
+            # Generate consensus sequences
+            ltr_consensus_seq = con_generater_no_file(
+                cropped_alignment_output_file_g, threshold=0.7, ambiguous='X'
+            )
+
+            # Convert consensus_seq to list
+            ltr_consensus_seq_list = list(ltr_consensus_seq)
+
+            # start_matched and end_matched are boolen values
+            # start_matched_pattern and end_matched_pattern are string
+            (
+                start_matched,
+                end_matched,
+                start_matched_pattern,
+                end_matched_pattern,
+                check_start,
+                check_end
+             ) = check_strat_and_end_patterns(
+                ltr_consensus_seq_list,
+                start=cropped_boundary.start_post,
+                end=cropped_boundary.end_post,
+                start_patterns=ltr_start_patterns,
+                end_patterns=ltr_end_patterns,
+                check_helitron=False,
+                sliding_win_check=sliding_win_check_for_start_end_pattern
+            )
+
+            # Update  start and end pattern for the consensus sequence object
+            consi_obj.set_start_pattern_content(start_matched_pattern)
+            consi_obj.set_end_pattern_content(end_matched_pattern)
+
+            # If the new start or end positions are different from previous MSA, replace with the new
+            # start or end position in the cropped_boundary object and generate the new MSA file
+            if (
+                cropped_boundary.start_post != check_start
+                or cropped_boundary.end_post != check_end
+            ):
+                cropped_boundary.start_post = check_start
+                cropped_boundary.end_post = check_end
+                # Generate the new MSA file based on new start and end positions
+                cropped_boundary_MSA = cropped_boundary.crop_MSA(
+                    output_dir, crop_extension=0
                 )
-
-                # Convert consensus_seq to list
-                ltr_consensus_seq_list = list(ltr_consensus_seq)
-
-                # start_matched and end_matched are boolen values
-                # start_matched_pattern and end_matched_pattern are string
-                (
-                    start_matched,
-                    end_matched,
-                    start_matched_pattern,
-                    end_matched_pattern,
-                    check_start,
-                    check_end
-                 ) = check_strat_and_end_patterns(
-                    ltr_consensus_seq_list,
-                    start=cropped_boundary.start_post,
-                    end=cropped_boundary.end_post,
-                    start_patterns=start_patterns,
-                    end_patterns=end_patterns,
-                )
-
-                # Update  start and end pattern for the consensus sequence object
-                if start_matched:
-                    consi_obj.set_start_pattern_content(start_matched_pattern)
-                if end_matched:
-                    consi_obj.set_end_pattern_content(end_matched_pattern)
-
-                # If the new start or end positions are different from previous MSA, replace with the new
-                # start or end position in the cropped_boundary object and generate the new MSA file
-                if (
-                    cropped_boundary.start_post != check_start
-                    or cropped_boundary.end_post != check_end
-                ):
-                    cropped_boundary.start_post = check_start
-                    cropped_boundary.end_post = check_end
-                    # Generate the new MSA file based on new start and end positions
-                    cropped_boundary_MSA = cropped_boundary.crop_MSA(
-                        output_dir, crop_extension=0
-                    )
     except Exception as e:
         with open(error_files, 'a') as f:
             # Get the traceback content as a string
@@ -914,9 +916,6 @@ def find_boundary_and_crop(
     # Code block: For Helitrons, check if the boundary start and end with
     #####################################################################################################
     try:
-        helitron_start_patterns = "ATC"
-        helitorn_end_patterns = "CTAGT"
-
         if "helitron" in seq_obj.old_TE_type.lower():  # Check if file name contains "Helitron or helitron"
 
             # Generate consensus sequences
@@ -941,15 +940,13 @@ def find_boundary_and_crop(
                 start=cropped_boundary.start_post,
                 end=cropped_boundary.end_post,
                 start_patterns=helitron_start_patterns,
-                end_patterns=helitorn_end_patterns,
+                end_patterns=helitron_end_patterns,
                 check_helitron=True
             )
 
             # Update  start and end pattern for the consensus sequence object
-            if start_matched:
-                consi_obj.set_start_pattern_content(start_matched_pattern)
-            if end_matched:
-                consi_obj.set_end_pattern_content(end_matched_pattern)
+            consi_obj.set_start_pattern_content(start_matched_pattern)
+            consi_obj.set_end_pattern_content(end_matched_pattern)
 
             # If the new start or end positions are different from previous MSA, replace with the new
             # start or end position in the cropped_boundary object and generate the new MSA file

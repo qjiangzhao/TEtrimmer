@@ -308,28 +308,54 @@ with open(config_path, 'r') as config_file:
     help='Define window size used to crop end by gap. Used with the <--crop_end_gap_thr> option. Default: 250',
 )
 @click.option(
-    '--start_patterns',
+    '--ltr_start_patterns',
     type=str,
     default = 'TG',
     help='LTR elements always start with a conserved sequence pattern. TEtrimmer searches the '
     'beginning of the consensus sequence for these patterns. If the pattern is not found, '
-    'TEtrimmer will extend the search of <--start_patterns> to up to 15 nucleotides from the '
+    'TEtrimmer will extend the search of <--ltr_start_patterns> from -15 to +15 nucleotides of the '
     'beginning of the consensus sequence and redefine the start of the consensus sequence '
     'if the pattern is found. Note: The user can provide multiple LTR start patterns in a '
     'comma-separated list, like: TG,TA,TC (no spaces; the order of patterns determines '
     'the priority for the search). Default: TG',
 )
 @click.option(
-    '--end_patterns',
+    '--ltr_end_patterns',
     type=str,
     default = 'CA',
     help='LTR elements always end with a conserved sequence pattern. TEtrimmer searches the '
     'end of the consensus sequence for these patterns. If the pattern is not found, '
-    'TEtrimmer will extend the search of <--end_patterns> to up to 15 nucleotides from the '
+    'TEtrimmer will extend the search of <--ltr_end_patterns> from -15 to +15 nucleotides of the '
     'end of the consensus sequence and redefine the end of the consensus sequence '
     'if the pattern is found. Note: The user can provide multiple LTR end patterns in a '
     'comma-separated list, like: CA,TA,GA (no spaces; the order of patterns determines '
     'the priority for the search). Default: CA',
+)
+@click.option(
+    '--helitron_start_patterns',
+    type=str,
+    default = 'ATC',
+    help='Helitron elements could start with a conserved sequence pattern. TEtrimmer searches the '
+    'beginning of the consensus sequence for these patterns. If the pattern is not found, '
+    'TEtrimmer will extend the search of <--helitron_start_patterns> from -15 to +15 nucleotides of the '
+    'beginning of the consensus sequence and redefine the start of the consensus sequence '
+    'if the pattern is found. Note: The user can provide multiple Helitron start patterns in a '
+    'comma-separated list, like: ATC,ATT (no spaces; the order of patterns determines '
+    'the priority for the search). If the identified pattern begins with the nucleotide "A", '
+    'this "A" will be removed from the final consensus sequence. Default: ATC',
+)
+@click.option(
+    '--helitron_end_patterns',
+    type=str,
+    default = 'CTAAT，CTAGT，CTGAT，CTGGT',
+    help='LTR elements always end with a conserved sequence pattern. TEtrimmer searches the '
+    'end of the consensus sequence for these patterns. If the pattern is not found, '
+    'TEtrimmer will extend the search of <--helitron_end_patterns> from -15 to +15 nucleotides of the '
+    'end of the consensus sequence and redefine the end of the consensus sequence '
+    'if the pattern is found. Note: The user can provide multiple Helitron end patterns in a '
+    'comma-separated list, like: CTAAT，CTAGT，CTGAT (no spaces; the order of patterns determines '
+    'the priority for the search). If the identified pattern end with the nucleotide "T", '
+    'this "T" will be removed from the final consensus sequence.Default:CTAAT，CTAGT，CTGAT，CTGGT (CTRRT)',
 )
 @click.option(
     '--poly_patterns',
@@ -389,8 +415,10 @@ def main(
     crop_end_div_win,
     crop_end_gap_thr,
     crop_end_gap_win,
-    start_patterns,
-    end_patterns,
+    ltr_start_patterns,
+    ltr_end_patterns,
+    helitron_start_patterns,
+    helitron_end_patterns,
     mini_orf,
     preset,
     ext_check_win,
@@ -562,12 +590,6 @@ def main(
     if poly_len is None:
         poly_len = default_values.get("poly_len")
 
-    if start_patterns is None:
-        start_patterns = default_values.get('start_patterns')
-
-    if end_patterns is None:
-        end_patterns = default_values.get('end_patterns')
-
     if mini_orf is None:
         mini_orf = default_values.get('mini_orf')
 
@@ -597,8 +619,10 @@ def main(
         "crop_end_div_win": crop_end_div_win,
         "crop_end_gap_thr": crop_end_gap_thr,
         "crop_end_gap_win": crop_end_gap_win,
-        "start_patterns": start_patterns,
-        "end_patterns": end_patterns,
+        "ltr_start_patterns": ltr_start_patterns,
+        "ltr_end_patterns": ltr_end_patterns,
+        "helitron_start_patterns":helitron_start_patterns,
+        "helitron_end_patterns":helitron_end_patterns,
         "mini_orf": mini_orf,
         "preset": preset,
         "ext_check_win": ext_check_win,
@@ -862,8 +886,10 @@ def main(
             crop_end_div_win,
             crop_end_gap_thr,
             crop_end_gap_win,
-            start_patterns,
-            end_patterns,
+            ltr_start_patterns,
+            ltr_end_patterns,
+            helitron_start_patterns,
+            helitron_end_patterns,
             output_dir,
             pfam_dir,
             mini_orf,
