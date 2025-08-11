@@ -3314,7 +3314,7 @@ def check_blast_full_length(
     check_query=True,
 ):
     if not file_exists_and_not_empty(blast_out_file):
-        return 0
+        return 0, 0
 
     # The TE-Aid BLAST output file has a header
     if te_aid_blast:
