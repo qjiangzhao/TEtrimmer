@@ -1066,7 +1066,8 @@ def main(
                 'te_type': te_type,
                 'length': length,
                 'output_genome_cov_len': output_genome_cov_len,
-                'output_TE_type' : output_te_type
+                'output_TE_type' : output_te_type,
+                'cluster' : 'NaN'  # Define cluster key, which will be used to write cluster number back to the summary
             }
 
     except Exception as e:
@@ -1133,7 +1134,7 @@ def main(
             classification_dir, 'Multiple_sequence_dotplot'
         )
         os.makedirs(multi_dotplot_dir, exist_ok=True)
-        analyze.cluster_proof_anno_file(
+        summary_sequence_info = analyze.cluster_proof_anno_file(
             multi_dotplot_dir,
             final_con_file_no_low_copy,
             continue_analysis,
@@ -1146,7 +1147,6 @@ def main(
             need_check_proof,
             genome_length
         )
-
         # clear remove_files_with_start_pattern folder
         if not debug and os.path.exists(multi_dotplot_dir):
             shutil.rmtree(multi_dotplot_dir)
@@ -1163,6 +1163,48 @@ def main(
             'This does not affect the final TE consensus sequences. But this can heavily complicate the '
             "TE proof curation. If you don't plan to do proof curation, you can choose to ignore "
             'this error.\n'
+        )
+
+    #####################################################################################################
+    # Code block: Write summary_sequence_info cluster information into the Summary.txt file and sort
+    #####################################################################################################
+
+    try:
+        # Don’t automatically treat certain strings (like NaN, NULL, N/A, NA) as missing values — just read them as literal text
+        progress_df = pd.read_csv(progress_file, keep_default_na=False)
+
+        cluster_map = {
+            name: info.get('cluster')
+            for name, info in summary_sequence_info.items()
+            if info.get('cluster') is not None
+        }
+
+        # Only overwrite where the mapping has a non-null value
+        new_clusters = progress_df['output_name'].map(cluster_map)
+        progress_df['cluster'] = new_clusters.fillna(progress_df['cluster'])
+
+        # Extract numeric part for sorting (Cluster1 -> 1, etc.)
+        cluster_num = progress_df['cluster'].astype(str).str.extract(r'Cluster(\d+)', expand=False).astype(float)
+
+        # Sort by numeric cluster, then by cluster string, then by output_name
+        progress_df = (
+            progress_df
+            .assign(_cluster_num=cluster_num)
+            .sort_values(by=['_cluster_num', 'cluster', 'output_name'], na_position='last')
+            .drop(columns=['_cluster_num'])
+        )
+
+        progress_df.to_csv(progress_file, index=False)
+
+    except Exception as e:
+
+        with open(error_files, 'a') as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write('\nFinal write cluster number to Summary.txt file error.\n')
+            f.write(tb_content + '\n')
+        logging.warning(
+            f'Final write cluster number to Summary.txt file failed.\n Error: {e} \n {tb_content}\n'
         )
 
     #####################################################################################################

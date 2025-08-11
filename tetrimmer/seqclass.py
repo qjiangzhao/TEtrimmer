@@ -96,6 +96,7 @@ class SeqObject:
                             f'{str(consi_obj.end_pattern_content)},'  # end_pattern
                             f'{str(self.low_copy)},'  # low_copy
                             f'{str(consi_obj.get_evaluation())},'  # evaluation
+                            f'NaN,'  # cluster  this will be updated after the final clustering step
                             f'{str(self.status)}\n'  # status
                         )
 
@@ -124,6 +125,7 @@ class SeqObject:
                         f'NaN,'  # end_pattern
                         f'{str(self.low_copy)},'  # low_copy
                         f'NaN,'  # evaluation
+                        f'NaN,'  # cluster  this will be updated after the final clustering step
                         f'{str(self.status)}\n'  # status
                     )
         except Exception as e:

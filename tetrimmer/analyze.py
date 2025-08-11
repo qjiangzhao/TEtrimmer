@@ -554,8 +554,8 @@ def merge_cons(
         thread=num_threads,
     )
 
-    # Parse cd-hit-est result, clusters is a dictionary, the key is cluster number, value is a list
-    # contain all sequence names in this cluster
+    # clusters The key is cluster name, the values are sequence names in this cluster (list)
+    # detailed_clusters Key: cluster name, Value: list of tuples (sequence length, sequence name, percentage, seq direction)
     clusters, detailed_clusters = parse_cd_hit_est_result(
         cd_hit_merge_output_round1_clstr
     )
@@ -729,6 +729,8 @@ def cluster_proof_anno_file(
     )
 
     # detailed_clusters_proof_anno is a dictionary. The key is the cluster number and value is nested list
+    # contains sequences in each cluster and the information for each sequences
+    # Key: cluster name, Value: list of tuples (sequence length, sequence name, percentage, seq direction)
     clusters_proof_anno, detailed_clusters_proof_anno = parse_cd_hit_est_result(
         final_con_file_no_low_copy_clstr
     )
@@ -743,6 +745,7 @@ def cluster_proof_anno_file(
 
     for (te_genome_cov, te_evaluation, te_type, seq_info_proof_anno) in detailed_clusters_max_cov_nested_list:
 
+        # Percentage number could be very small, convert to scientific manner
         if te_genome_cov >= 0.0001:  # ≥ 0.01%
             te_genome_cov_str = f"{te_genome_cov * 100:.2f}%"
         else:
@@ -753,6 +756,13 @@ def cluster_proof_anno_file(
         # Create cluster folder
         cluster_folder = os.path.join(cluster_proof_anno_dir, cluster_folder_name)
         os.makedirs(cluster_folder, exist_ok=True)
+
+        # Update summary_sequence_info cluster key
+        try:
+            summary_sequence_info[seq_name_proof_anno]['cluster'] = f'Cluster{cluster_n}'
+        except Exception:
+            logging.warning(f'Add cluster to Summary.txt failed for sequence {seq_name_proof_anno}\n'
+                            f'This do not affect the final TE library but only the Summery.txt cluster column.\n')
 
         cluster_n += 1
 
@@ -861,6 +871,8 @@ def cluster_proof_anno_file(
             if os.path.isfile(multi_dotplot_pdf):
                 shutil.copy(multi_dotplot_pdf, cluster_folder)
 
+    return summary_sequence_info
+
 
 def compute_cluster_cov_weights(detailed_clusters_proof_anno, summary_sequence_info, genome_length):
     if genome_length is None or genome_length <= 0:
@@ -868,22 +880,27 @@ def compute_cluster_cov_weights(detailed_clusters_proof_anno, summary_sequence_i
 
     """
     detailed_clusters_proof_anno could looks like
-     "Cluster198": [
-        ("5965", "scaffold_23_3352139..3358595", "99.55%", "+"),
-        ("5966", "scaffold_23_1868463..1880051_01", "99.53%", "+"),
-        ("5972", "scaffold_25_1053723..1064724", "99.45%", "+"),
-        ("5962", "scaffold_29_441223..447627", "99.53%", "+"),
-        ("5977", "scaffold_32_604726..610694", "99.20%", "+"),
-        ("5969", "scaffold_8_5853353..5859876", "99.51%", "+"),
-        ("5969", "scaffold_8_5853353..5859876_01", "99.53%", "+"),
-        ("5970", "TE_00000565_INT", "99.51%", "+"),
-        ("5982", "TE_00000545_LTR", "standard", "+")
-    ],
-    "Cluster199": [
-        ("6040", "TE_00000432_LTR", "99.80%", "+"),
-        ("6038", "TE_00000431_LTR", "99.77%", "+"),
-        ("6042", "TE_00000430_LTR", "99.81%", "+")
-    ]
+    
+     detailed_clusters_proof_anno = {
+        "Cluster0": [
+            ("4770", "TE_00000650_INT",     "standard", "+"),
+            ("4770", "TE_00000650_INT_01",  "100.00%",  "+"),
+        ],
+        "Cluster1": [
+            ("5028", "TE_00000657_INT_01",  "standard", "+"),
+            ("5028", "LTRRT_1328_01",       "99.94%",   "+"),
+        ],
+        "Cluster2": [
+            ("3605", "TE_00000657_INT",     "90.65%",   "+"),
+            ("3656", "LTRRT_1328",          "standard", "+"),
+        ],
+        "Cluster3": [
+            ("5335", "TE_00000658_INT",     "standard", "+"),
+            ("5331", "TE_00000658_INT_01",  "99.72%",   "+"),
+        ],
+        "Cluster4": [
+            ("5112", "scaffold_4_860061..865175", "standard", "+"),
+        ],
     }
     """
 
@@ -931,9 +948,8 @@ def compute_cluster_cov_weights(detailed_clusters_proof_anno, summary_sequence_i
     # Sum all largest values
     total_largest = sum(max_cov for max_cov, _, _ in largest_by_cluster.values()) or 0.0
 
-    # Compute proportion for each cluster and sort
-
-    # Store max_cov_share and cluster information to a nested list
+    # Compute proportion for each cluster and
+    # store max_cov_share and cluster information to a nested list
     detailed_clusters_max_cov_nested_list = []
 
     # list_item is a list contain [max_cov, best_seq_evaluation_level]
@@ -953,22 +969,30 @@ def compute_cluster_cov_weights(detailed_clusters_proof_anno, summary_sequence_i
 
     """
     detailed_clusters_max_cov_nested_list could look like
-    [
-        0.46, "Perfect", LTR_Gypsy
-        [
-            ("6040", "TE_00000432_LTR", "99.80%", "+", "Perfect"),
-            ("6038", "TE_00000431_LTR", "99.77%", "+", "Good"),
-            ("6042", "TE_00000430_LTR", "99.81%", "+", "Perfect")
-        ]
-    ],
-    [
-        0.32, "Good", DNA/TIR
-        [
-            ("5965", "scaffold_23_3352139..3358595", "99.55%", "+", "Need_check"),
-            ("5966", "scaffold_23_1868463..1880051_01", "99.53%", "+", "Need_check"),
-            ("5972", "scaffold_25_1053723..1064724", "99.45%", "+", "Need_check"),
-        ]
-    ]
+    
+    detailed_clusters_max_cov_nested_list = [
+    # [max_cov_share, best_eval_level, cluster_te_type, cluster_data]
+    [0.5310, "Perfect",   "LTR_Gypsy", [
+        ("5335", "TE_00000658_INT",    "standard", "+"),
+        ("5331", "TE_00000658_INT_01", "99.72%",   "+"),
+    ]],
+    [0.2212, "Perfect",   "LTR_Copia", [
+        ("3605", "TE_00000657_INT",    "90.65%",   "+"),
+        ("3656", "LTRRT_1328",         "standard", "+"),
+    ]],
+    [0.1327, "Good",      "Unknown", [
+        ("4770", "TE_00000650_INT",    "standard", "+"),
+        ("4770", "TE_00000650_INT_01", "100.00%",  "+"),
+    ]],
+    [0.0708, "Good",      "LTR_Copia", [
+        ("5028", "TE_00000657_INT_01", "standard", "+"),
+        ("5028", "LTRRT_1328_01",      "99.94%",   "+"),
+    ]],
+    [0.0442, "Need_check","Unknown", [
+        ("5112", "scaffold_4_860061..865175", "standard", "+"),
+    ]],
+]
+
     """
 
     # Accumulate and calculate the relationship between cluster number and genome coverage
@@ -988,7 +1012,13 @@ def compute_cluster_cov_weights(detailed_clusters_proof_anno, summary_sequence_i
                 last_logged_t = t  # remember the highest crossed in this step
         if last_logged_t is not None:
             logging.info(
-                f"Check clusters 1–{idx} to cover {last_logged_t * 100:.0f}% of identifiable TEs in the genome.")
+                f"Check clusters 1–{idx} to cover {last_logged_t * 100:.0f}% of identifiable TEs in the genome by "
+                f"the TEtrimmer output TE consensus library.")
+
+    logging.info(
+        "Note: Coverage percentages are library-limited (TEtrimmer consensus library); interpret as genome-wide "
+        "only if the input TE library is comprehensive."
+    )
 
     return detailed_clusters_max_cov_nested_list
 
@@ -996,7 +1026,6 @@ def compute_cluster_cov_weights(detailed_clusters_proof_anno, summary_sequence_i
 #####################################################################################################
 # Code block: Define analyze_sequence function
 #####################################################################################################
-
 
 def analyze_sequence_helper(params):
     return analyze_sequence(*params)
@@ -1702,6 +1731,7 @@ def create_dir(
                 'end_pattern,'
                 'low_copy,'
                 'evaluation,'
+                'cluster,'
                 'status\n'
             )
 

@@ -1791,7 +1791,7 @@ def cd_hit_est(
 
 def parse_cd_hit_est_result(input_file):
     clusters = {}  # The key is cluster name, the values are sequence names in this cluster (list)
-    detailed_clusters = {}  # Key: cluster name, Value: list of tuples (sequence length, sequence name, percentage)
+    detailed_clusters = {}  # Key: cluster name, Value: list of tuples (sequence length, sequence name, percentage, seq direction)
     current_cluster = []
     current_detailed_cluster = []
     cluster_name = None  # Initialize cluster_name to None
@@ -1812,16 +1812,20 @@ def parse_cd_hit_est_result(input_file):
             else:
                 """
                 This is an example of part of cd-hit-est output
-                >Cluster 198
-                0	5965nt, >scaffold_23_3352139..3358595#scaffold_23:3352139..3358595... at +/99.55%
-                1	5966nt, >scaffold_23_1868463..1880051_01#scaffold_23:1868463..1880051... at +/99.53%
-                2	5972nt, >scaffold_25_1053723..1064724#scaffold_25:1053723..1064724... at +/99.45%
-                3	5962nt, >scaffold_29_441223..447627#scaffold_29:441223..447627... at +/99.53%
-                4	5977nt, >scaffold_32_604726..610694#scaffold_32:604726..610694... at +/99.20%
-                5	5969nt, >scaffold_8_5853353..5859876#scaffold_8:5853353..5859876... at +/99.51%
-                6	5969nt, >scaffold_8_5853353..5859876_01#scaffold_8:5853353..5859876... at +/99.53%
-                7	5970nt, >TE_00000565_INT#TE_00000565_INT... at +/99.51%
-                8	5982nt, >TE_00000545_LTR#TE_00000545_LTR... *
+                >Cluster 0
+                0	4770nt, >TE_00000650_INT#LTR/Copia... *
+                1	4770nt, >TE_00000650_INT_01#LTR/Copia... at +/100.00%
+                >Cluster 1
+                0	5028nt, >TE_00000657_INT_01#LTR/Copia... *
+                1	5028nt, >LTRRT_1328_01#LTR/Copia... at +/99.94%
+                >Cluster 2
+                0	3605nt, >TE_00000657_INT#LTR/Copia... at +/90.65%
+                1	3656nt, >LTRRT_1328#LTR/Copia... *
+                >Cluster 3
+                0	5335nt, >TE_00000658_INT#LTR/Gypsy... *
+                1	5331nt, >TE_00000658_INT_01#LTR/Gypsy... at +/99.72%
+                >Cluster 4
+                0	5112nt, >scaffold_4_860061..865175#LTR/Copia... *
                 """
                 seq_name = line.split('>')[1].split('...')[0].split('#')[0].strip()
                 try:
@@ -1849,6 +1853,39 @@ def parse_cd_hit_est_result(input_file):
         if current_cluster:
             clusters[cluster_name] = current_cluster
             detailed_clusters[cluster_name] = current_detailed_cluster
+    """
+    Examples of clusters and detailed_clusters
+    
+    clusters = {
+    "Cluster0": ["TE_00000650_INT", "TE_00000650_INT_01"],
+    "Cluster1": ["TE_00000657_INT_01", "LTRRT_1328_01"],
+    "Cluster2": ["TE_00000657_INT", "LTRRT_1328"],
+    "Cluster3": ["TE_00000658_INT", "TE_00000658_INT_01"],
+    "Cluster4": ["scaffold_4_860061..865175"],
+    }
+
+    detailed_clusters = {
+        "Cluster0": [
+            ("4770", "TE_00000650_INT",     "standard", "+"),
+            ("4770", "TE_00000650_INT_01",  "100.00%",  "+"),
+        ],
+        "Cluster1": [
+            ("5028", "TE_00000657_INT_01",  "standard", "+"),
+            ("5028", "LTRRT_1328_01",       "99.94%",   "+"),
+        ],
+        "Cluster2": [
+            ("3605", "TE_00000657_INT",     "90.65%",   "+"),
+            ("3656", "LTRRT_1328",          "standard", "+"),
+        ],
+        "Cluster3": [
+            ("5335", "TE_00000658_INT",     "standard", "+"),
+            ("5331", "TE_00000658_INT_01",  "99.72%",   "+"),
+        ],
+        "Cluster4": [
+            ("5112", "scaffold_4_860061..865175", "standard", "+"),
+        ],
+    }
+    """
     return clusters, detailed_clusters
 
 
