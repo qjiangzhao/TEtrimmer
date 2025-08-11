@@ -184,7 +184,7 @@ if os_type == "Windows":
     type=str,
     help='Log level. [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
 )
-@click.version_option("1.5.1", prog_name='TEtrimmerGUI')
+@click.version_option("1.5.2", prog_name='TEtrimmerGUI')
 def proof_curation(
     te_trimmer_proof_curation_dir,
     output_dir,
