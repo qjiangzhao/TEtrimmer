@@ -453,8 +453,8 @@ def main(
         'getorf',
         'hmmsearch',
         'pfam_scan.pl',
-        'repeatmasker',
-        'repeatmodeler'
+        'RepeatMasker',
+        'RepeatModeler'
     ]
     optional_tools = ['blastn', 'makeblastdb', 'mmseqs']
 
