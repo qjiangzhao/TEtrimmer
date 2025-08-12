@@ -513,6 +513,7 @@ def clean_and_cluster_MSA(
             simi_check_gap_thre=0.4,
             similarity_threshold=0.85,
             min_nucleotide=5,
+            return_map=False,
         )
     else:
         fasta_out_flank_mafft_file_gap_filter = input_msa

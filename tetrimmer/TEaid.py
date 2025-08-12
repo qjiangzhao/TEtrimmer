@@ -109,7 +109,7 @@ class TEAid:
         self.TE_aid_output_dir = os.path.join(self.output_dir, f'{os.path.basename(self.input_file)}_TEaid')
         os.makedirs(self.TE_aid_output_dir, exist_ok=True)
 
-    def run(self, label=True):
+    def run(self, title="after", v_x_line_1=0, v_x_line_2=0):
         # Define TE-Aid software executable path
         TE_aid = os.path.join(self.TE_aid_dir, 'TE-Aid')
 
@@ -135,11 +135,12 @@ class TEAid:
             '-o', self.TE_aid_output_dir,
             '-m', str(self.min_orf),
             '-f', str(self.full_length_threshold),
-            '-T'  # keep self-BLAST file from TE-Aid file
-        ]
+            '-v_x_line_1', str(v_x_line_1),
+            '-v_x_line_2', str(v_x_line_2),
+            '-title', str(title),
+            '-T'  # keep self-BLAST file from TE-Aid file,
 
-        if label:
-            command.extend(['-TM'])
+        ]
 
         try:
             te_aid_result = subprocess.run(
@@ -192,8 +193,6 @@ class TEAid:
             self.input_file,
             self.TE_aid_output_dir,
             teaid_blast_out=blast_out,
-            TIR_adj=30,
-            LTR_adj=50,
         )
 
         return found_match

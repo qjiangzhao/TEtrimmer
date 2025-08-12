@@ -73,7 +73,7 @@ def con_generater(input_file, output_dir, threshold=0.8, ambiguous='N'):
     return output_file
 
 
-def check_strat_and_end_patterns(
+def check_start_and_end_patterns(
         consensus_seq,
         start,
         end,
@@ -1590,7 +1590,6 @@ def select_gaps_block_with_similarity_check(
     return final
 
 
-
 # Select MSA columns according to the provided start and end position
 def select_star_to_end(input_file, output_dir, start, end):
     alignment = AlignIO.read(input_file, 'fasta')
@@ -1607,7 +1606,7 @@ def select_star_to_end(input_file, output_dir, start, end):
     output_file = os.path.join(output_dir, f'{os.path.basename(input_file)}_se.fa')
     AlignIO.write(select_alignment_object, output_file, 'fasta')
 
-    return output_file
+    return output_file, start, end
 
 
 def select_start_end_and_join(input_file, output_dir, start, end, window_size=50):
@@ -2650,8 +2649,18 @@ def check_terminal_repeat(
     if df.empty:
         return None, None, False
 
+    """
+    The blast result could look like:
+    qseqid	qstart	qend	sstart	send
+    rnd_1_family_588.fasta	83	3894	83	3894
+    rnd_1_family_588.fasta	789	1474	604	83
+    rnd_1_family_588.fasta	83	604	1474	789
+    rnd_1_family_588.fasta	3821	3853	688	656
+    rnd_1_family_588.fasta	656	688	3853	3821
+    """
+
     df_LTR = df[
-        (df.iloc[:, 2] - df.iloc[:, 1] >= 150)
+        (df.iloc[:, 2] - df.iloc[:, 1] >= 150)  # The minilength of LTR is 150bp
         & (df.iloc[:, 1] != df.iloc[:, 3])
         & (df.iloc[:, 2] != df.iloc[:, 4])
         & (df.iloc[:, 3] < df.iloc[:, 4])
@@ -2972,51 +2981,6 @@ def scale_single_page_pdf(input_pdf_path: str, output_pdf_path: str, scale_ratio
 
 
 # Function used to find and return poly A end position
-def find_poly_a_end_position_old(input_file, poly_patterns="A", min_length=10):
-
-    try:
-        # Read input file and get sequence length
-        record = SeqIO.read(input_file, 'fasta')
-        seq_length = len(record)
-        seq_mid_position = seq_length // 2
-        patterns = [pattern.upper() for pattern in poly_patterns.split(',')] if poly_patterns else None
-
-        reverse_sequence = record[::-1].upper()
-        poly_a_length = 0
-        interruption_allowed = True  # Allow for one non 'A' interruption
-
-        for i, nucleotide in enumerate(reverse_sequence):
-            # Only check the second half of the sequence
-            if i < seq_mid_position:
-                if nucleotide == 'A':
-                    poly_a_length += 1
-                elif interruption_allowed and 5 <= poly_a_length < min_length:
-                    # Allow for one interruption if we have encountered at least 5 'A's
-                    interruption_allowed = (
-                        False  # Use up the allowance for interruption
-                    )
-                    poly_a_length += 1  # Count the interruption as an 'A'
-                else:
-                    if poly_a_length >= min_length:
-                        # Correctly calculate the end position in the original orientation
-                        return seq_length - i - 1 + poly_a_length
-                    poly_a_length = 0  # Reset counter if sequence is interrupted
-                    interruption_allowed = (
-                        True  # Reset the allowance for an interruption
-                    )
-        return None  # No poly A sequence found or does not meet the minimum length requirement
-    except Exception as e:
-        logging.error(
-            f'\nPoly A detection failed for {os.path.basename(input_file)} with error:\n{e}'
-        )
-        logging.warning(
-            '\n'
-            + 'This is will not affect the result too much, you can choose ignore this error.'
-            + '\n'
-        )
-        return None
-
-
 def find_poly_a_end_position(input_file, poly_patterns="A", min_length=10):
     try:
         # Read input file

@@ -26,24 +26,28 @@ selfdb		=	as.character(Args[14]) # bool
 blastp      =   as.character(Args[15]) # includes orfs position
 osize		=	as.numeric(Args[16])
 wdir        =   as.character(Args[17]) # from the shell: path to running directory
-tm          =   as.character(Args[18])
-tables      =   as.character(Args[19])
+title       =   as.character(Args[18])
+v_x_line_1  =   as.character(Args[19])
+v_x_line_2  =   as.character(Args[20])
+tables      =   as.character(Args[21])
 
 source(paste(wdir, "/", "consensus2genome.R", sep = ""))
 source(paste(wdir, "/", "blastndotplot.R", sep = ""))
 
 library(grid)
-# Set the default title
-pdf_title <- "Default Title"
 
 # Calculate the length of the sequence by calling the getlength.sh script
 sequence_length <- as.numeric(system(paste(wdir,"/getlength.sh ", query, sep = ""), intern = TRUE))
 
+# Set the default title
+pdf_title <- paste("TE consensus", as.character(sequence_length), "bp")
 
 # Check the value of tm and update the title accordingly
-if (tm) {
+if (title == "after") {
   pdf_title <- paste("After TEtrimmer", as.character(sequence_length), "bp")
-} else {
+} else if (title == "extend") {
+  pdf_title <- "After TEtrimmer Blue lines are boundaries"
+} else if (title == "before"){
   pdf_title <- paste("Before TEtrimmer", as.character(sequence_length), "bp")
 }
 
@@ -70,7 +74,9 @@ consensus2genome(query 		=	query,
                  full_alpha	=	full_alpha,
                  auto_y 	=	autoy,
                  bins       =   wdir,
-                 output     =   output
+                 output     =   output,
+                 v_x_line_1 = v_x_line_1,
+                 v_x_line_2 = v_x_line_2
 #                 ,
 #                 cover		=	cover,
 #                 cov_thresh	=	drops

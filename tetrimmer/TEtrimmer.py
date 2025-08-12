@@ -516,10 +516,11 @@ def main(
     # _gr.fa gap remove. Remove sequences that contain too many gaps from MSA.
     # ps.pdf pdf file converted from ps format
     # su.pdf scale up pdf file
-    # rc.fa reverse complement fasta file
+    # _rc.fa reverse complement fasta file
     # cd.fa cd-hit-est output file
     # fasta_rc reverse complementary fasta file
     # _nm.fa fasta header name modified
+    #_ob100.fa out boundary 100 bp
 
     #####################################################################################################
     # Code block: Change permissions of Aliview and TE_Aid

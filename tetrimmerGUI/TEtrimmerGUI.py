@@ -778,14 +778,14 @@ def proof_curation(
                     input_file = os.path.join(source_dir, input_fasta_n)
                     output_file = os.path.join(output_dir_g, f'{input_fasta_n}_Div.fa')
 
-                    logging.info('\nCropDiv is running ......')
+                    logging.info('CropDiv is running ......')
                     crop_end_div(
                         input_file,
                         output_file,
                         threshold=crop_div_thr_g,
                         window_size=crop_div_win_g,
                     )
-                    logging.info('\nCropDiv is finished.')
+                    logging.info('CropDiv is finished.')
 
                     # if os_type == "Darwin":
                     #     button.config(fg='red')  # Change button text color under macOS system
@@ -846,14 +846,14 @@ def proof_curation(
                     input_file = os.path.join(source_dir, input_fasta_n)
                     output_file = os.path.join(output_dir_g, f'{input_fasta_n}_Gap.fa')
 
-                    logging.info('\nCropGap is running ......')
+                    logging.info('CropGap is running ......')
                     crop_end_gap(
                         input_file,
                         output_file,
                         gap_threshold=crop_gap_thr_g,
                         window_size=crop_gap_win_g,
                     )
-                    logging.info('\nCropGap is finished.')
+                    logging.info('CropGap is finished.')
 
                     # if os_type == "Darwin":
                     #     button.config(fg='red')  # Change button text color under macOS system
@@ -914,7 +914,7 @@ def proof_curation(
                     input_file = os.path.join(source_dir, input_fasta_n)
                     output_file = os.path.join(output_dir_g, f"{input_fasta_n}_Col.fa")
 
-                    logging.info('\nCleanCol is running ......')
+                    logging.info('CleanCol is running ......')
                     remove_gaps_with_similarity_check(
                         input_file,
                         output_file,
@@ -923,7 +923,7 @@ def proof_curation(
                         similarity_thr=similarity_thr_g,
                         min_nucleotide=min_nucleotide_g,
                     )
-                    logging.info('\nCleanCol is finished.')
+                    logging.info('CleanCol is finished.')
 
                     # if os_type == "Darwin":
                     #     button.config(fg='red')  # Change button text color under macOS system

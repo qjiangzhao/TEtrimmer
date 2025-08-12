@@ -316,7 +316,7 @@ class DefineBoundary:
         check_window=200,
         max_X=0.25,
         if_con_generater=True,
-        extension_stop_num=150,
+        extension_buffer=150,
         end_position=None,
     ):
         self.threshold = threshold
@@ -334,7 +334,7 @@ class DefineBoundary:
         self.left_ext = False
         self.if_continue = True
         self.cut_seqs = []
-        self.extension_stop_num = extension_stop_num
+        self.extension_buffer = extension_buffer
         self.end_position = end_position
         if (
             if_con_generater
@@ -436,11 +436,11 @@ class DefineBoundary:
     def extension_check(self):
         # Check if the start position is smaller than the end position.
         if self.start_post < self.end_post:
-            if self.start_post <= self.extension_stop_num:
+            if self.start_post <= self.extension_buffer:
                 # print("Needs additional extension on the left side of the MSA")
                 self.left_ext = True
 
-            if self.end_post >= len(self.consensus_seq) - self.extension_stop_num:
+            if self.end_post >= len(self.consensus_seq) - self.extension_buffer:
                 # print("Needs additional extension on the right side of the MSA")
                 self.right_ext = True
         else:

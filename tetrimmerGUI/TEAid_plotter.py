@@ -800,7 +800,7 @@ def teaid_plotter(
 
     run_succeed = True
 
-    logging.info(f'\nTEAid running:{os.path.basename(input_file)}')
+    logging.info(f'TEAid running:{os.path.basename(input_file)}')
 
     try:
         # Generate consensus sequence
@@ -1088,6 +1088,6 @@ def teaid_plotter(
     )
     pio.write_html(fig, file=output_html_path, auto_open=True)
 
-    logging.info(f'\nTEAid finished: {os.path.basename(input_file)}.')
+    logging.info(f'TEAid finished: {os.path.basename(input_file)}.')
     # fig.show()
     return run_succeed

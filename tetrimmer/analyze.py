@@ -1106,12 +1106,16 @@ def analyze_sequence(
         seq_type = seq_obj.get_old_TE_type()
         seq_file = seq_obj.get_input_fasta()  # Return complete file path
 
+        # extension_buffer is used in class DefineBoundary
+        extension_buffer = 300
+
         # Since DNA element are significantly shorter than LTR and LINE elements, adjust default parameters
         if 'DNA' in seq_type:
             ex_step = 500
             max_extension = 7000
             crop_end_gap_win = 100
             check_extension_win = 50
+            extension_buffer = 200
 
         # The average length of SINE elements is around 500 bp, adjust default parameters
         if 'SINE' in seq_type:
@@ -1120,19 +1124,22 @@ def analyze_sequence(
             min_blast_len = 80
             min_blast_len = min(min_blast_len, 50)
             check_extension_win = 50
+            extension_buffer = 100
 
         if "Helitron" in seq_type or "helitron" in seq_type:
             ex_step = 500
             max_extension = 7000
             crop_end_gap_win = 100
             check_extension_win = 50
+            extension_buffer = 150
 
         if 'MITE' in seq_type:
-            ex_step = 100
-            max_extension = 500
+            ex_step = 150
+            max_extension = 1000
             min_blast_len = min(min_blast_len, 50)
             crop_end_gap_win = 40
             check_extension_win = 50
+            extension_buffer = 80
 
         # run BLAST search for each FASTA file and return a BED file absolute path
         bed_out_file_dup, blast_hits_count, blast_out_file = blast(
@@ -1453,6 +1460,7 @@ def analyze_sequence(
                         ex_step_size=ex_step,
                         max_extension=max_extension,
                         gap_threshold=gap_thr,
+                        extension_buffer=extension_buffer,
                         gap_nul_thr=gap_nul_thr,
                         crop_end_thr=crop_end_thr,
                         crop_end_win=crop_end_win,

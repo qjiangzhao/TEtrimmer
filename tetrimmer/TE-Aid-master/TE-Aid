@@ -74,7 +74,9 @@ WARNING: This is a development version, please report bugs to goubert.clement@gm
 
     -D | --emboss-dotmatcher      Produce a dotplot with EMBOSS dotmatcher
 
-    -TM | --tetrimmer             Add different title to final plot to show if it is after TE Trimmer analysis
+    -title | --title              Add different title to final plot to show if it is after TE Trimmer analysis. Set to "after", "extend", "before"
+    -v_x_line_1 |                 Add red vertical line at given x axis position
+    -v_x_line_2 |                 Add red vertical line at given x axis position
 
 HEREDOC
 } 
@@ -148,7 +150,7 @@ while (( "$#" )); do
         MINORF=$2
         shift 2
       fi
-      ;; 
+      ;;
     -h | --help)
 	    usage
 	    exit 1
@@ -159,7 +161,25 @@ while (( "$#" )); do
   	    shift 2  
   	  fi
       ;;
-# boolean flags         	
+    -v_x_line_1 | --vertical_x_line_1)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        VERTICAL_X_1=$2
+        shift 2
+      fi
+      ;;
+    -v_x_line_2 | --vertical_x_line_2)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        VERTICAL_X_2=$2
+        shift 2
+      fi
+      ;;
+    -title | --title)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        TITLE=$2
+        shift 2
+      fi
+       ;;
+
     -t | --tables)
         TABLES=TRUE
         shift
@@ -170,10 +190,6 @@ while (( "$#" )); do
        ;;
     -D | --emboss-dotmatcher)
         DOTMA=TRUE
-        shift
-       ;;
-    -TM | --tetrimmer)
-        TETRIMMER=TRUE
         shift
        ;;
     -*|--*=) # unsupported flags
@@ -208,7 +224,6 @@ MINORF="${MINORF:-400}"
 TABLES="${TABLES:-FALSE}"
 ALLTAB="${ALLTAB:-FALSE}"
 DOTMA="${DOTMA:-FALSE}"
-TETRIMMER="${TETRIMMER:-FALSE}"
 
 # param check
 echo "query:                         $QUERY"
@@ -310,9 +325,9 @@ fi
 # run R script with user-defined parameters
 if [ $ALLTAB == "TRUE" ]
   then
-  Rscript $DIR/Run-c2g.R $QUERY $GENOME $EVALUE $FL $ALPHA $FULL_ALPHA $AUTO_Y $OUTPUT $OUTPUT/TE.db $OUTPUT/orftetable $MINORF $DIR $TETRIMMER $ALLTAB
+  Rscript $DIR/Run-c2g.R $QUERY $GENOME $EVALUE $FL $ALPHA $FULL_ALPHA $AUTO_Y $OUTPUT $OUTPUT/TE.db $OUTPUT/orftetable $MINORF $DIR $TITLE $VERTICAL_X_1 $VERTICAL_X_2 $ALLTAB
   else
-  Rscript $DIR/Run-c2g.R $QUERY $GENOME $EVALUE $FL $ALPHA $FULL_ALPHA $AUTO_Y $OUTPUT $OUTPUT/TE.db $OUTPUT/orftetable $MINORF $DIR $TETRIMMER $TABLES
+  Rscript $DIR/Run-c2g.R $QUERY $GENOME $EVALUE $FL $ALPHA $FULL_ALPHA $AUTO_Y $OUTPUT $OUTPUT/TE.db $OUTPUT/orftetable $MINORF $DIR $TITLE $VERTICAL_X_1 $VERTICAL_X_2 $TABLES
 fi
 
 # clean-up

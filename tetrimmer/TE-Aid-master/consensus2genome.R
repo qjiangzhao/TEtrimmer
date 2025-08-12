@@ -21,7 +21,7 @@
 
 
 
-consensus2genome=function(query=NULL, db=NULL, evalue=10e-8, FL_thresh=0.9, alpha=0.3, full_alpha=1, auto_y=T, bins=NULL, output = NULL){
+consensus2genome=function(query=NULL, db=NULL, evalue=10e-8, FL_thresh=0.9, alpha=0.3, full_alpha=1, auto_y=T, bins=NULL, output = NULL, v_x_line_1 = 0, v_x_line_2 = 0){
   if(is.null(query)){print('query not specified')}
   if(is.null(db)){print('db not specified')}
   #perform the blast
@@ -39,6 +39,16 @@ consensus2genome=function(query=NULL, db=NULL, evalue=10e-8, FL_thresh=0.9, alph
   if(auto_y == T){
     #par(mar=c(2,2,2,2))
     plot(range(0, cons_len), range(0, max(100-blast$V3)), type = "n", main=paste("TE: ", as.character(blast[1,1]), "\n size: ", as.character(cons_len), "bp; fragments: ", as.character(length(blast$V1)), "; full length: ", as.character(length(full$V1))," (>=",as.character(as.numeric(FL_thresh)*cons_len),"bp)", sep = ""), cex.main = 2, xlab = "TE consensus (bp)", ylab = "divergence to consensus (%)", cex.lab = 2, cex.axis = 1.5)
+
+    # add vertical red line
+    if (v_x_line_1 > 0){
+      abline(v = v_x_line_1, col = "blue", lwd = 2)
+    }
+
+    if (v_x_line_2 > 0){
+      abline(v = v_x_line_2, col = "blue", lwd = 2)
+    }
+
     for(i in 1:length(blast$V1)){
       segments(blast$V7[i], 100-blast$V3[i], blast$V8[i], 100-blast$V3[i], col=rgb(0,0,0,alpha=alpha))
     }
@@ -72,7 +82,16 @@ for(i in 1:length(blast$V1)){
       as.data.frame(covM)->covMT
       covMT$bp=rownames(covMT)
       plot(covM, type = "l", main = "", xlab = "TE consensus genomic coverage plot (bp)", ylab = "coverage (bp)", cex.lab = 2, cex.axis = 1.5)
-     } # removator function
-    
+
+      # add vertical red line
+      if (v_x_line_1 > 0){
+        abline(v = v_x_line_1, col = "blue", lwd = 2)
+      }
+
+      if (v_x_line_2 > 0){
+        abline(v = v_x_line_2, col = "blue", lwd = 2)
+      }
+    } # removator function
+
     removator(colSums(coverage)) # makes the second graph
 }# whole funtion
