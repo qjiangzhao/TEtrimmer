@@ -46,7 +46,7 @@ pdf_title <- paste("TE consensus", as.character(sequence_length), "bp")
 if (title == "after") {
   pdf_title <- paste("After TEtrimmer", as.character(sequence_length), "bp")
 } else if (title == "extend") {
-  pdf_title <- "After TEtrimmer Blue lines are boundaries"
+  pdf_title <- "After TEtrimmer Extended plot Blue lines are boundaries"
 } else if (title == "before"){
   pdf_title <- paste("Before TEtrimmer", as.character(sequence_length), "bp")
 }

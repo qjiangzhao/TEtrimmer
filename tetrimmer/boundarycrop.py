@@ -1165,7 +1165,6 @@ def find_boundary_and_crop(
                     )
 
                     # Reverse-complement MSA files
-                    cropped_boundary_MSA_rc_path = os.path.join()
                     cropped_boundary_MSA = reverse_complement_seq_file(
                         input_file=cropped_boundary_MSA,
                         output_file=f'{cropped_boundary_MSA}_rc.fa',

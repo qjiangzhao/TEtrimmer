@@ -52,7 +52,7 @@ def low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
     # Check self-alignment of terminal repeats
     TE_aid_object = TEAid(seq_file, output_dir, genome_file, blast_database_path,
         mmseqs_database_dir, TE_aid_dir=TE_aid_path)
-    TE_aid_plot = TE_aid_object.run(label=False)
+    TE_aid_plot = TE_aid_object.run(title="before")
     found_match = TE_aid_object.teaid_check_termina_repeat()
 
     # Convert found_match to True when LTR or TIR is found
