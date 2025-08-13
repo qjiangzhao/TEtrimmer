@@ -184,7 +184,7 @@ if os_type == "Windows":
     type=str,
     help='Log level. [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
 )
-@click.version_option("1.5.3", prog_name='TEtrimmerGUI')
+@click.version_option("1.5.4", prog_name='TEtrimmerGUI')
 def proof_curation(
     te_trimmer_proof_curation_dir,
     output_dir,
@@ -372,7 +372,7 @@ def proof_curation(
 
     # Initialize Tk window
     root = Tk()
-    root.title(f'TEtrimmer Proof Curation Tool 1.5.3')
+    root.title(f'TEtrimmer Proof Curation Tool 1.5.4')
     # width * height
     if os_type == 'Windows':
         root.geometry('1000x800')
