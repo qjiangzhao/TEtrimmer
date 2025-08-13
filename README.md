@@ -478,7 +478,7 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 ```
 
 ## Update history
-**TEtrimmer v1.5.3 Released Aug.11.2025**
+**TEtrimmer v1.5.4 Released Aug.11.2025**
 Add out boundary TE-Aid plot to the final report file.
 Improved TE-Aid plots, strat 0 from the beginning of x-axis. 
 
