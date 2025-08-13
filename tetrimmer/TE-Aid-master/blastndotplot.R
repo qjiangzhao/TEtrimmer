@@ -36,7 +36,8 @@ blastdotplot=function(query = NULL, db = NULL, blast = NULL, os = NULL, tables =
        ylab = "TE consensus self dotplot (bp)",
        xlab = "TE consensus self dotplot (bp)",
        cex.lab = 2,
-       cex.axis = 1.5
+       cex.axis = 1.5,
+       xaxs = "i", yaxs = "i"
        )
     for(i in 1:length(bl$V1)){
       if(bl$V5[i] > bl$V4[i]){
@@ -58,7 +59,8 @@ blastdotplot=function(query = NULL, db = NULL, blast = NULL, os = NULL, tables =
        xlab = "TE consensus structure and protein hits (bp)",
        ylab = "",
        cex.lab = 2,
-       cex.axis = 1.5
+       cex.axis = 1.5,
+       xaxs = "i", yaxs = "i"
   )
   for(i in seq(1:length(bl$V1))){
     if(bl$V4[i] > bl$V2[i]){

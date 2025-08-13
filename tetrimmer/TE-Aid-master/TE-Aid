@@ -337,7 +337,7 @@ if [ $ALLTAB == "TRUE" ]
   echo -e "orf_start\torf_end\thit_TE_prot\tTE_Class\thit_start\thit_end\tstrand\tcolor" > header
   cat header $OUTPUT/orftetable > $OUTPUT/$TENAME.orftable.txt #&>/dev/null
   rm header
-  rm $OUTPUT/orftetable
+  #rm $OUTPUT/orftetable
   mv $OUTPUT/TE.self-blast.txt $OUTPUT/$TENAME.self-blast.pairs.txt
   mv $OUTPUT/TE.blastp.out $OUTPUT/$TENAME.blastp.out
   rm $OUTPUT/TE.orfs.R

@@ -38,7 +38,7 @@ consensus2genome=function(query=NULL, db=NULL, evalue=10e-8, FL_thresh=0.9, alph
   #graph
   if(auto_y == T){
     #par(mar=c(2,2,2,2))
-    plot(range(0, cons_len), range(0, max(100-blast$V3)), type = "n", main=paste("TE: ", as.character(blast[1,1]), "\n size: ", as.character(cons_len), "bp; fragments: ", as.character(length(blast$V1)), "; full length: ", as.character(length(full$V1))," (>=",as.character(as.numeric(FL_thresh)*cons_len),"bp)", sep = ""), cex.main = 2, xlab = "TE consensus (bp)", ylab = "divergence to consensus (%)", cex.lab = 2, cex.axis = 1.5)
+    plot(range(0, cons_len), range(0, max(100-blast$V3)), type = "n", main=paste("TE: ", as.character(blast[1,1]), "\n size: ", as.character(cons_len), "bp; fragments: ", as.character(length(blast$V1)), "; full length: ", as.character(length(full$V1))," (>=",as.character(as.numeric(FL_thresh)*cons_len),"bp)", sep = ""), cex.main = 2, xlab = "TE consensus (bp)", ylab = "divergence to consensus (%)", xaxs = "i", yaxs = "i", cex.lab = 2, cex.axis = 1.5)
 
     # add vertical red line
     if (v_x_line_1 > 0){
@@ -81,7 +81,7 @@ for(i in 1:length(blast$V1)){
     removator<-function(covM){
       as.data.frame(covM)->covMT
       covMT$bp=rownames(covMT)
-      plot(covM, type = "l", main = "", xlab = "TE consensus genomic coverage plot (bp)", ylab = "coverage (bp)", cex.lab = 2, cex.axis = 1.5)
+      plot(covM, type = "l", main = "", xaxs = "i", yaxs = "i",  xlab = "TE consensus genomic coverage plot (bp)", ylab = "coverage (bp)", cex.lab = 2, cex.axis = 1.5)
 
       # add vertical red line
       if (v_x_line_1 > 0){
