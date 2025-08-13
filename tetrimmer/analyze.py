@@ -1110,15 +1110,23 @@ def analyze_sequence(
         extension_buffer = 300
 
         # Since DNA element are significantly shorter than LTR and LINE elements, adjust default parameters
-        if 'DNA' in seq_type:
+        if seq_type.startswith("DNA"):
             ex_step = 500
             max_extension = 7000
             crop_end_gap_win = 100
             check_extension_win = 50
             extension_buffer = 200
 
+        if 'MITE' in seq_type:
+            ex_step = 150
+            max_extension = 1000
+            min_blast_len = min(min_blast_len, 50)
+            crop_end_gap_win = 40
+            check_extension_win = 50
+            extension_buffer = 80
+
         # The average length of SINE elements is around 500 bp, adjust default parameters
-        if 'SINE' in seq_type:
+        if seq_type.startswith("SINE"):
             ex_step = 200
             max_extension = 1400
             min_blast_len = 80
@@ -1132,14 +1140,6 @@ def analyze_sequence(
             crop_end_gap_win = 100
             check_extension_win = 50
             extension_buffer = 150
-
-        if 'MITE' in seq_type:
-            ex_step = 150
-            max_extension = 1000
-            min_blast_len = min(min_blast_len, 50)
-            crop_end_gap_win = 40
-            check_extension_win = 50
-            extension_buffer = 80
 
         # run BLAST search for each FASTA file and return a BED file absolute path
         bed_out_file_dup, blast_hits_count, blast_out_file = blast(

@@ -332,7 +332,14 @@ def final_MSA(
     )
 
     # Check terminal repeats
-    if found_match_crop in ("LTR", "TIR"):  # found_match_crop could be "LTR" "TIR", or False
+    # Penelope DIRS and CACTA can't use LTR or TIR to define the boundary
+    if (
+            found_match_crop in ("LTR", "TIR") and
+            "Penelope" not in seq_obj.old_TE_type.lower() and
+            not seq_obj.old_TE_type.startswith("PLE") and
+            "CACTA" not in seq_obj.old_TE_type and
+            "DIRS" not in seq_obj.old_TE_type
+    ):  # found_match_crop could be "LTR" "TIR", or False
         # Check LTRs first
         if LTR_boundary is not None:
             left = LTR_boundary[0]
@@ -425,7 +432,6 @@ def final_MSA(
 
     # If LTR or TIR are not found
     else:
-
         # Generate consensus sequence, use low threshold to reduce number of N's in the consensus sequence
         # Use more stringent threshold for poly A identification when terminal is not found.
         bed_fasta_mafft_gap_sim_cp_con_stringent = con_generater(
@@ -434,7 +440,7 @@ def final_MSA(
 
         # Check if poly A can be found from the sequence and return the last A position
         # poly_a will be None if not found
-        if "LINE" in seq_obj.old_TE_type or "SINE" in seq_obj.old_TE_type:
+        if seq_obj.old_TE_type.startswith("LINE") or seq_obj.old_TE_type.startswith("SINE"):
 
             # Poly_a will be None if poly A is not found
             poly_a = find_poly_a_end_position(bed_fasta_mafft_gap_sim_cp_con_stringent, poly_patterns=poly_patterns,
@@ -461,7 +467,7 @@ def final_MSA(
 
             # For LINE elements bed_fasta_mafft_boundary_crop will be changed. Copy alignment to another variable
 
-            if "LINE" in seq_obj.old_TE_type:
+            if seq_obj.old_TE_type.startswith("LINE"):
 
                 # For highly divergent regions, more gaps can be found. According to this feature, remove
                 # high-divergence regions. This function is very useful for dealing with LINE elements.
@@ -638,7 +644,7 @@ def find_boundary_and_crop(
 
     # Check if this is a LINE element, if so decrease the ext_threshold number,
     # because LINE have high divergence at the 5' end
-    if 'LINE' in seq_obj.old_TE_type:
+    if seq_obj.old_TE_type.startswith("LINE"):
         ext_threshold = ext_threshold - 0.1
 
     msa_loop_n = 1
@@ -862,7 +868,7 @@ def find_boundary_and_crop(
 
         # If both start and end patterns are 'None', and found_match_crop is 'False' (no terminal repeat found),
         # skip this block, because terminal repeats can precisely define the start and end points of TEs.
-        if "LTR" in seq_obj.old_TE_type:  # Check if file name contains "LTR"
+        if seq_obj.old_TE_type.startswith("LTR"):  # Check if file name contains "LTR"
 
             if found_match_crop in ("LTR", "TIR"):
                 sliding_win_check_for_start_end_pattern = False
