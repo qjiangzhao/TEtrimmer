@@ -58,7 +58,7 @@ with open(config_path, 'r') as config_file:
                    \\__|   \\________| \\____/ \\__|      \\__|\\__| \\__| \\__|\\__| \\__| \\__| \\_______|\\__|
 
 
-                Version: 1.5.2
+                Version: 1.5.3
 
                 Github: https://github.com/qjiangzhao/TEtrimmer
 
@@ -392,7 +392,7 @@ with open(config_path, 'r') as config_file:
     type=str,
     help='Log level. [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
 )
-@click.version_option("1.5.2", prog_name='TEtrimmer')
+@click.version_option("1.5.3", prog_name='TEtrimmer')
 def main(
     input_file,
     genome_file,

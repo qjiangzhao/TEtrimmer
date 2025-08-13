@@ -252,15 +252,17 @@ TEtrimmer --input_file <TE_consensus_library.fa> \
 
 **Example Summary.txt**
 
-| input_name           | output_name          | input_blast_n | input_full_blast_n | output_blast_n | output_full_blast_n | input_genome_cov_len | output_genome_cov_len | output_MSA_seq_n | input_length | output_length | identify | input_coverage | output_coverage | input_TE_type      | output_TE_type     | input_terminal_repeat | output_terminal_repeat | low_copy | TSD  | evaluation  | status    |
-|----------------------|----------------------|---------------|--------------------|----------------|---------------------|----------------------|-----------------------|------------------|--------------|---------------|----------|----------------|-----------------|--------------------|--------------------|-----------------------|-----------------------|----------|------|-------------|-----------|
-| rnd_6_family_3291    | rnd_6_family_3291    | 0             | NaN                | 0              | NaN                 | NaN                  | NaN                   | NaN              | 447          | 447           | NaN      | NaN            | NaN             | Unknown            | Unknown            | NaN                   | NaN                   | False    | NaN  | NaN         | skipped   |
-| rnd_6_family_2561    | rnd_6_family_2561    | 16            | 1                  | 18             | 7                   | 27446                | 27531                 | 16               | 2508         | 2209          | 92.29    | 89.11          | 100.0           | Unknown            | Unknown            | False                 | False                 | False    | NaN  | Need_check  | processed |
-| rnd_1_family_587     | rnd_1_family_587_01  | 41            | 0                  | 20             | 9                   | 0                    | 36069                 | 12               | 771          | 2853          | 64.75    | 99.87          | 27.13           | LTR/Copia          | LTR/Copia          | False                 | False                 | False    | NaN  | Need_check  | processed |
-| rnd_1_family_188     | rnd_1_family_188     | 118           | 21                 | 52             | 38                  | 169054               | 64568                 | 46               | 6453         | 1413          | 59.79    | 26.47          | 100.0           | LTR/Gypsy          | LTR/Gypsy          | LTR                   | False                 | False    | NaN  | Reco_check  | processed |
-| rnd_1_family_188     | rnd_1_family_188_01  | 118           | 21                 | 160            | 21                  | 169054               | 169187                | 24               | 6453         | 6467          | 94.54    | 100.0          | 100.0           | LTR/Gypsy          | LTR/Gypsy          | LTR                   | LTR                   | False    | NaN  | Perfect     | processed |
-| rnd_1_family_188     | rnd_1_family_188_02  | 118           | 21                 | 20             | 13                  | 169054               | 23921                 | 13               | 6453         | 1523          | 58.54    | 27.89          | 100.0           | LTR/Gypsy          | LTR/Gypsy          | LTR                   | False                 | False    | NaN  | Need_check  | processed |
-| rnd_1_family_588     | rnd_1_family_588     | 534           | 502                | 687            | 417                 | 155378               | 1649064               | 86               | 306          | 3214          | 100.0    | 100.0          | 9.52            | DNA/MULE-MuDR      | DNA/MULE-MuDR      | False                 | False                 | False    | NaN  | Reco_check  | processed |
+| input_name                | output_name               |   input_blast_n |   input_full_blast_n |   output_blast_n |   output_full_blast_n |   input_genome_cov_len |   output_genome_cov_len |   output_MSA_seq_n |   input_length |   output_length |   in_out_identify |   input_coverage |   output_coverage | input_TE_type   | output_TE_type   | input_terminal_repeat   | output_terminal_repeat   |   TSD | start_pattern   | end_pattern   | low_copy   | evaluation   | cluster   | cluster_identity   | status    |
+|:--------------------------|:--------------------------|----------------:|---------------------:|-----------------:|----------------------:|-----------------------:|------------------------:|-------------------:|---------------:|----------------:|------------------:|-----------------:|------------------:|:----------------|:-----------------|:------------------------|:-------------------------|------:|:----------------|:--------------|:-----------|:-------------|:----------|:-------------------|:----------|
+| TE_00000661               | TE_00000661               |            1845 |                    0 |             2945 |                   945 |                 448202 |                 1228079 |                 11 |           4055 |             690 |             82.65 |            16.84 |            100    | DNA/DTM         | DNA/DTM          | FALSE                   | FALSE                    |   nan | nan             | nan           | False      | Need_check   | Cluster1  | standard           | processed |
+| TE_00000661               | TE_00000661_01            |            1845 |                    0 |             3302 |                  1148 |                 448202 |                 1343913 |                 18 |           4055 |             679 |             84.12 |            16.94 |            100    | DNA/DTM         | DNA/DTM          | FALSE                   | FALSE                    |   nan | nan             | nan           | False      | Need_check   | Cluster1  | 93.67%             | processed |
+| TE_00000663_INT           | TE_00000663_INT           |             158 |                   47 |              407 |                    41 |                 189303 |                  443240 |                 69 |           2814 |            6339 |             93.61 |           100    |             46.05 | LTR/Gypsy       | LTR/Gypsy        | FALSE                   | LTR                      |   nan | TG              | CA            | False      | Perfect      | Cluster11 | standard           | processed |
+| TE_00000654_INT           | TE_00000654_INT           |              64 |                    1 |              656 |                    20 |                  26794 |                  359392 |                 56 |            996 |            5081 |             83.21 |           100    |             21.14 | LTR/Gypsy       | LTR/Gypsy        | FALSE                   | LTR                      |   nan | TG              | CA            | False      | Perfect      | Cluster12 | standard           | processed |
+| TE_00000653_INT           | TE_00000653_INT_01        |              65 |                   22 |              858 |                     8 |                  55147 |                  351333 |                 17 |           1775 |            5127 |             79.1  |            99.94 |             34.45 | LTR/Copia       | LTR/Copia        | FALSE                   | LTR                      |   nan | TG              | CA            | False      | Good         | Cluster13 | standard           | processed |
+| TE_00000648_INT           | TE_00000648_INT           |              55 |                    0 |              736 |                    27 |                  77711 |                  350046 |                 49 |           1839 |            5859 |             91.39 |            99.95 |             33.01 | LTR/Gypsy       | LTR/Gypsy        | FALSE                   | LTR                      |   nan | TG              | CA            | False      | Perfect      | Cluster14 | standard           | processed |
+| TE_00000653_INT           | TE_00000653_INT           |              65 |                   22 |              862 |                    17 |                  55147 |                  308295 |                 31 |           1775 |            5063 |            100    |           100    |             35.06 | LTR/Copia       | LTR/Copia        | FALSE                   | LTR                      |   nan | TG              | CA            | False      | Perfect      | Cluster15 | standard           | processed |
+| TE_00000664_INT           | TE_00000664_INT           |              64 |                   15 |             1011 |                     0 |                  31612 |                  290126 |                 22 |           1357 |            8009 |             95.11 |           100    |             17.59 | LTR/Gypsy       | LTR/Gypsy        | FALSE                   | LTR                      |   nan | FALSE           | FALSE         | False      | Need_check   | Cluster17 | standard           | processed |
+| TE_00000659_INT           | TE_00000659_INT_01        |             907 |                    0 |              468 |                    17 |                 216634 |                  288770 |                 26 |           5156 |            5553 |             60.69 |            99.88 |             93.64 | LTR/unknown     | LTR/unknown      | FALSE                   | LTR                      |   nan | TG              | CA            | False      | Good         | Cluster18 | standard           | processed |
 
 
 ## Optional! But recommended! Manual inspection of TEtrimmer outputs by provided TEtrimmerGUI. 
@@ -411,25 +413,41 @@ Options:
   --crop_end_gap_win INTEGER      Define window size used to crop end by gap. Used with the
                                   <--crop_end_gap_thr> option. Default: 250
 
-  --start_patterns TEXT           LTR elements always start with a conserved sequence pattern.
-                                  TEtrimmer searches the beginning of the consensus sequence for these
-                                  patterns. If the pattern is not found, TEtrimmer will extend the
-                                  search of <--start_patterns> to up to 15 nucleotides from the
-                                  beginning of the consensus sequence and redefine the start of the
-                                  consensus sequence if the pattern is found. Note: The user can
-                                  provide multiple LTR start patterns in a comma-separated list, like:
-                                  TG,TA,TC (no spaces; the order of patterns determines the priority
-                                  for the search). Default: TG
-
-  --end_patterns TEXT             LTR elements always end with a conserved sequence pattern. TEtrimmer
-                                  searches the end of the consensus sequence for these patterns. If the
-                                  pattern is not found, TEtrimmer will extend the search of
-                                  <--end_patterns> to up to 15 nucleotides from the end of the
-                                  consensus sequence and redefine the end of the consensus sequence if
-                                  the pattern is found. Note: The user can provide multiple LTR end
-                                  patterns in a comma-separated list, like: CA,TA,GA (no spaces; the
-                                  order of patterns determines the priority for the search). Default:
-                                  CA
+  --ltr_start_patterns TEXT       LTR elements always start with a conserved sequence pattern. TEtrimmer searches the
+                                  beginning of the consensus sequence for these patterns. If the pattern is not found,
+                                  TEtrimmer will extend the search of <--ltr_start_patterns> from -15 to +15
+                                  nucleotides of the beginning of the consensus sequence and redefine the start of the
+                                  consensus sequence if the pattern is found. Note: The user can provide multiple LTR
+                                  start patterns in a comma-separated list, like: TG,TA,TC (no spaces; the order of
+                                  patterns determines the priority for the search). Default: TG
+                                  
+  --ltr_end_patterns TEXT         LTR elements always end with a conserved sequence pattern. TEtrimmer searches the
+                                  end of the consensus sequence for these patterns. If the pattern is not found,
+                                  TEtrimmer will extend the search of <--ltr_end_patterns> from -15 to +15 nucleotides
+                                  of the end of the consensus sequence and redefine the end of the consensus sequence
+                                  if the pattern is found. Note: The user can provide multiple LTR end patterns in a
+                                  comma-separated list, like: CA,TA,GA (no spaces; the order of patterns determines
+                                  the priority for the search). Default: CA
+                                  
+  --helitron_start_patterns TEXT  Helitron elements could start with a conserved sequence pattern. TEtrimmer searches
+                                  the beginning of the consensus sequence for these patterns. If the pattern is not
+                                  found, TEtrimmer will extend the search of <--helitron_start_patterns> from -15 to
+                                  +15 nucleotides of the beginning of the consensus sequence and redefine the start of
+                                  the consensus sequence if the pattern is found. Note: The user can provide multiple
+                                  Helitron start patterns in a comma-separated list, like: ATC,ATT (no spaces; the
+                                  order of patterns determines the priority for the search). If the identified pattern
+                                  begins with the nucleotide "A", this "A" will be removed from the final consensus
+                                  sequence. Default: ATC
+                                  
+  --helitron_end_patterns TEXT    LTR elements always end with a conserved sequence pattern. TEtrimmer searches the
+                                  end of the consensus sequence for these patterns. If the pattern is not found,
+                                  TEtrimmer will extend the search of <--helitron_end_patterns> from -15 to +15
+                                  nucleotides of the end of the consensus sequence and redefine the end of the
+                                  consensus sequence if the pattern is found. Note: The user can provide multiple
+                                  Helitron end patterns in a comma-separated list, like: CTAAT，CTAGT，CTGAT (no spaces;
+                                  the order of patterns determines the priority for the search). If the identified
+                                  pattern end with the nucleotide "T", this "T" will be removed from the final
+                                  consensus sequence.Default:CTAAT，CTAGT，CTGAT，CTGGT (CTRRT)
                                   
   --poly_patterns TEXT            The 3' end of LINE and SINE elements often contains characteristic sequences such as
                                   poly(A), poly(T), or short tandem repeats. TEtrimmer identifies the presence of
@@ -460,6 +478,10 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 ```
 
 ## Update history
+**TEtrimmer v1.5.3 Released Aug.11.2025**
+Add out boundary TE-Aid plot to the final report file.
+Improved TE-Aid plots, strat 0 from the beginning of x-axis. 
+
 **Aug.11.2025**
 Add "helitorn_start_patterns" and "helitron_end_patterns" options. 
 Add function to check Helitron element start and end patterns.
