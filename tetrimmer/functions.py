@@ -20,6 +20,8 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 
+import pyhmmer
+
 # Suppress all deprecation warnings
 warnings.filterwarnings('ignore', category=BiopythonDeprecationWarning)
 
@@ -308,6 +310,45 @@ def blast(
             seq_obj.update_blast_hit_n(blast_hits_count)
 
     return bed_out_file, blast_hits_count, blast_out_file
+
+
+def blast_to_database(seq_file, genome_file, output_dir, search_type="blast", task="blastn", seq_obj=None):
+    """
+    Runs BLAST calling a specified task type and saves the results as a BED file.
+
+    :param seq_file: str, path to input FASTA file
+    :param genome_file: str, path to genome FASTA file
+    :param output_dir: str, prefix for output files
+    :param min_length: int, minimum alignment length. Default: 150
+    :param task: str, BLAST task type ("blastn", "dc-megablast", etc.). Default: "blastn"
+    :param seq_obj: object (optional), sequence object to update with BLAST hits
+    :return: tuple, output BED file name and BLAST hit count for each sequence
+    """
+    input_file = seq_file
+    input_file_n = os.path.basename(input_file)
+    blast_hits_count = 0
+    bed_out_file = None
+    # define blast outfile
+    blast_out_file = os.path.join(output_dir, f"{os.path.basename(input_file)}.b")
+
+    if search_type == "blast":
+        # Modify the blast command to include the specified task
+        blast_cmd = (f"blastn -max_target_seqs 10000 -task {task} -query {input_file} -db {genome_file} -out {blast_out_file} " 
+                     f"-outfmt \"6 qseqid sseqid pident length mismatch qstart qend sstart send sstrand evalue qcovhsp\" ")
+        try:
+            subprocess.run(blast_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        except FileNotFoundError:
+            logging.error("'blastn' command not found. Please ensure 'blastn' is installed correctly.")
+            raise Exception
+
+        except subprocess.CalledProcessError as e:
+            logging.error(f"\nBLAST failed for {input_file_n} with error code {e.returncode}")
+            logging.error(f"\n{e.stdout}")
+            logging.error(f"\n{e.stderr}\n")
+            raise Exception
+
+    return blast_out_file
 
 
 def check_bed_uniqueness(output_dir, bed_file):
@@ -633,6 +674,86 @@ def align_sequences(input_file, output_dir):
     return fasta_out_flank_mafft_file
 
 
+def align_sequences_new(input_file, output_dir):
+    """
+    Aligns FASTA sequences using MAFFT
+
+    :param input_file: str, input file path
+    :param output_dir: str, output file directory
+    :return: absolute path for multiple sequence alignment file
+    """
+    input_file_n = os.path.basename(input_file)
+    fasta_out_flank_mafft_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_aln.fa")
+
+    # Read the top 5 sequences and determine if any are longer than 10000 bp
+    long_sequences = False
+    with open(input_file, "r") as f:
+        for i, record in enumerate(SeqIO.parse(f, "fasta")):
+            if len(record.seq) > 10000:
+                long_sequences = True
+                break
+            if i >= 10:  # Only check the top 10 sequences
+                break
+
+
+    # Construct the command as a list of strings
+    #mafft_cmd = ["mafft", "--quiet", "--nuc", "--retree", "1", input_file]
+    famsa_cmd = ["famsa", '-t', '1', input_file, fasta_out_flank_mafft_file]
+
+    # If any of the top 5 sequences are longer than 10000, add --memsave to save memory
+    #if long_sequences:
+    #	mafft_cmd.insert(1, "--memsave")  # Insert after 'mafft'
+
+    try:
+        # Execute the command
+        #result = subprocess.run(mafft_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(famsa_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    except FileNotFoundError:
+        
+        raise Exception
+
+    except subprocess.CalledProcessError as e:
+        
+
+        if "Killed" in error_message and "disttbfast" in error_message and "memopt" in error_message:
+            pass
+        raise Exception
+
+    #Match mafft style with famsa
+    fasta_to_lowercase(fasta_out_flank_mafft_file)
+
+    # Write the output to the file
+    #with open(fasta_out_flank_mafft_file, 'w') as f:
+    #	f.write(result.stdout)
+
+    return fasta_out_flank_mafft_file
+
+
+def fasta_to_lowercase(output_file):
+    sequences = list(SeqIO.parse(output_file, "fasta"))
+    for seq in sequences:
+        seq.seq = seq.seq.lower()
+    SeqIO.write(sequences, output_file, "fasta")
+
+def famsa_align(input_file, output_dir):
+    output_file = os.path.join(output_dir, f"{os.path.basename(input_file)}_famsa_aln.fa")
+    famsa_cmd = ["famsa", '-t', '1', input_file, output_file]
+    # Execute MUSCLE
+    result = subprocess.run(famsa_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    if result.returncode != 0:
+        return False
+        # raise Exception(f"MUSCLE command failed with error: {os.path.basename(input_file)}\n{result.stderr.decode('utf-8')}")
+    # Convert the sequences in the output file to lowercase
+
+    #Wait why do we want these lowercase?
+    #This should also be a function.
+    fasta_to_lowercase(output_file)
+
+    return output_file
+
+
 def muscle_align(input_file, output_dir, ite_times=4):
     output_file = os.path.join(output_dir, f'{os.path.basename(input_file)}_maln.fa')
     muscle_cmd = [
@@ -740,7 +861,7 @@ def calc_conservation(col):
     return max_count / total_nucleotides
 
 
-def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
+def generate_hmm_from_msa_old(input_msa_file, output_hmm_file, error_file):
     """
     Generate HMM profiles using hmmbuild on a multiple sequence alignment file.
 
@@ -775,6 +896,47 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
         logging.warning(
             '\nThis hmm error will not affect the final TE consensus library, you can ignore it.'
             "\nFor traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n")
+
+
+def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
+    """
+    Generate HMM profiles using hmmbuild on a multiple sequence alignment file.
+
+    :param input_msa_file: path to the multiple sequence alignment file (in FASTA or Stockholm format)
+    :param output_hmm_file: path to the output HMM file
+    """
+
+    # Construct the command as a list
+    #cmd = ["hmmbuild", "--dna", output_hmm_file, input_msa_file]
+
+    hmmname = os.path.basename(output_hmm_file)
+    hmmname = hmmname.encode(encoding = "ascii")
+
+    try:
+        # Execute the command
+
+        alphabet = pyhmmer.easel.Alphabet.dna()
+        builder = pyhmmer.plan7.Builder(alphabet)
+        background = pyhmmer.plan7.Background(alphabet)
+        #subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        with pyhmmer.easel.MSAFile(file = input_msa_file, format = "afa", alphabet = alphabet) as fh:
+            msa = fh.read()
+            msa.name = hmmname
+
+        hmm, _, _ = builder.build_msa(msa.digitize(alphabet), background)
+
+        with open(output_hmm_file, "wb") as out:
+            hmm.write(out)
+
+
+
+
+    except FileNotFoundError:
+        pass
+
+    except subprocess.CalledProcessError as e:
+        pass
+
 
 
 def reverse_complement_seq_file(input_file, output_file):

@@ -1035,8 +1035,53 @@ def compute_cluster_cov_weights(detailed_clusters_proof_anno, summary_sequence_i
 # Code block: Define analyze_sequence function
 #####################################################################################################
 
-def analyze_sequence_helper(params):
+def analyze_sequence_helper_old(params):
     return analyze_sequence(*params)
+
+def analyze_sequence_helper_old2(my_id, queue, send_and_wait):
+    while True:
+        next_analyze_sequence_params = queue.get()
+
+        #The worker is totally done.
+        if next_analyze_sequence_params == "STOP":
+            print(my_id, "finished processing")
+            break
+
+        print(next_analyze_sequence_params[0].name, "started...")
+        next_analyze_sequence_params.append(my_id)
+        next_analyze_sequence_params.append(send_and_wait)
+
+        #print(my_id, next_analyze_sequence_params)
+
+        analyze_sequence(*next_analyze_sequence_params)
+
+        print(next_analyze_sequence_params[0].name, "complete!")
+
+        send_and_wait((my_id, (my_id, "done",), "TASK_COMPLETE",))
+
+def analyze_sequence_helper(my_id, queue, send_and_wait):
+    while True:
+        params = queue.get()
+
+        if params == "STOP":
+            print(my_id, "finished processing")
+            break
+
+        # params may be a tuple or list; don't mutate it.
+        name = getattr(params[0], "name", str(params[0]))
+        print(name, "started...")
+
+        try:
+            # Pass worker context at the end without modifying params
+            analyze_sequence(*params, my_id, send_and_wait)
+            print(name, "complete!")
+            # Tell main to schedule the next task
+            send_and_wait((my_id, (my_id, "done"), "TASK_COMPLETE"))
+        except Exception as e:
+            # Optional: report errors back to main (so it can log and keep going)
+            import traceback
+            tb = traceback.format_exc()
+            send_and_wait((my_id, (name, str(e), tb), "TASK_ERROR"))
 
 def analyze_sequence(
     seq_obj,
@@ -1092,7 +1137,10 @@ def analyze_sequence(
     blast_database_path,
     mmseqs_database_dir,
     loglevel,
-    logfile
+    logfile,
+    worker_id,
+    send_wait
+
 ):
 
     #####################################################################################################
@@ -1184,7 +1232,12 @@ def analyze_sequence(
         # "run_getorf()" function will return 'True' if any ORF was detected. Otherwise, it will return 'False'.
         if input_orf_pfam_obj.run_getorf():
             # "run_pfam_scan()" will return 'True' if any PFAM domains were found. Otherwise, it will return 'False'.
-            _pfam_scan_result = input_orf_pfam_obj.run_pfam_scan()
+            #_pfam_scan_result = input_orf_pfam_obj.run_pfam_scan()
+            hmmscan_please = (worker_id, (input_orf_pfam_obj.output_orf_file_name_modified, input_orf_pfam_obj.output_pfam_file_modified), "HMMscan",)
+            res_set = send_wait(hmmscan_please)
+
+            pfam_result_file, if_pfam_domain = res_set[0], res_set[1]
+
             input_orf_domain_plot = input_orf_pfam_obj.orf_domain_plot()
 
     except Exception as e:
@@ -1479,7 +1532,9 @@ def analyze_sequence(
                         cluster_msa=fasta_out_flank_mafft_gap_rm_nm,
                         perfect_seq_num = perfect_seq_num,
                         blast_database_path=blast_database_path,
-                        mmseqs_database_dir=mmseqs_database_dir
+                        mmseqs_database_dir=mmseqs_database_dir,
+                        worker_id=worker_id,
+                        send_wait=send_wait,
                     )
 
                 except Exception:

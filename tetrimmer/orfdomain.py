@@ -210,7 +210,9 @@ class PlotPfam:
         self.after_tetrimmer = after_tetrimmer
         self.output_orf_file_name_modified = None
         self.output_orf_file_name_modified_table = None
-        self.output_pfam_file_modified = None
+        self.output_pfam_file_modified = os.path.join(
+            self.output_dir, f'{self.input_file_n}_orfm_pfm.txt'
+        )
 
     def run_getorf(self):
         """
@@ -304,9 +306,6 @@ class PlotPfam:
         # Define output file name and the modified PFAM output file name.
         output_pfam_file = os.path.join(
             self.output_dir, f'{self.input_file_n}_orfm_pf.txt'
-        )
-        self.output_pfam_file_modified = os.path.join(
-            self.output_dir, f'{self.input_file_n}_orfm_pfm.txt'
         )
 
         # Delete the output file if it already exists

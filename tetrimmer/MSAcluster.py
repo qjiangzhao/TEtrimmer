@@ -17,6 +17,7 @@ from functions import (
     align_sequences,
     filter_out_big_gap_seq,
     muscle_align,
+    famsa_align,
     remove_gaps_with_similarity_check,
     select_gaps_block_with_similarity_check,
 )
@@ -491,6 +492,7 @@ def clean_and_cluster_MSA(
 
     # When the input file is after multiple sequence alignment, don't do multiple sequence alignment again here
     if input_msa is None:
+
         # Align_sequences will return the absolute file path of alignment file
         if fast_mode:
             muscle_ite_times = 2
@@ -504,6 +506,9 @@ def clean_and_cluster_MSA(
         # When muscle goes wrong, use mafft
         if not fasta_out_flank_mafft_file:
             fasta_out_flank_mafft_file = align_sequences(input_file, output_dir)
+
+
+        #fasta_out_flank_mafft_file = famsa_align(input_file, output_dir)
 
         # Remove gaps. Return absolute path for gap removed alignment file
         fasta_out_flank_mafft_file_gap_filter = remove_gaps_with_similarity_check(

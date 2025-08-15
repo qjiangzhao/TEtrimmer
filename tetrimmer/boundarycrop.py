@@ -581,6 +581,8 @@ def find_boundary_and_crop(
     debug=False,
     cluster_msa=None,
     perfect_seq_num=30,
+    worker_id=None,
+    send_wait=None,
     blast_database_path=None,
     mmseqs_database_dir=None,
 ):
@@ -1155,7 +1157,10 @@ def find_boundary_and_crop(
         reverse_complement = False
         if orf_domain_plot_object.run_getorf():
             # run_pfam_scan() will return 'True' if any PFAM domain is found. Otherwise, it will return 'False'.
-            if_pfam_domain, pfam_result_file = orf_domain_plot_object.run_pfam_scan()
+            #if_pfam_domain, pfam_result_file = orf_domain_plot_object.run_pfam_scan()
+            hmmscan_please = (worker_id, (orf_domain_plot_object.output_orf_file_name_modified, orf_domain_plot_object.output_pfam_file_modified), "HMMscan",)
+            res_set = send_wait(hmmscan_please)
+            pfam_result_file, if_pfam_domain = res_set[0], res_set[1]
 
             if if_pfam_domain:
                 # determine_sequence_direction() will return 'True' if the direction of MSA and match are identical.
@@ -1255,15 +1260,19 @@ def find_boundary_and_crop(
                     )
                     if orf_domain_plot_object.run_getorf():
                         # "run_pfam_scan() will return 'True' if any PFAM domains were found. Otherwise, it will return 'False'
-                        if_pfam_domain, pfam_result_file = (
-                            orf_domain_plot_object.run_pfam_scan()
-                        )
+                        #if_pfam_domain, pfam_result_file = orf_domain_plot_object.run_pfam_scan()
+
+                        hmmscan_please = (worker_id, (orf_domain_plot_object.output_orf_file_name_modified, orf_domain_plot_object.output_pfam_file_modified), "HMMscan",)
+                        res_set = send_wait(hmmscan_please)
+                        pfam_result_file, if_pfam_domain = res_set[0], res_set[1]
+                        
                         if if_pfam_domain:
                             orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
-
+                
             else:
                 # If only ORFs but no PFAM domain were found, plot ORFs
                 orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
+
     except Exception as e:
         with open(error_files, 'a') as f:
             # Get the traceback content as a string

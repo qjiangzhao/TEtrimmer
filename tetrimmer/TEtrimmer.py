@@ -1,3 +1,29 @@
+# --- BEGIN HOTFIX: redirect old parallel_pipe imports to the new module ---
+import sys, importlib, types, shutil
+from pathlib import Path
+
+# Best-effort: clear stale bytecode before imports (prevents old module from being loaded from cache)
+try:
+    for p in Path(__file__).parent.glob('**/__pycache__'):
+        shutil.rmtree(p, ignore_errors=True)
+except Exception:
+    pass
+
+# Compatibility shim: if anything imports tetrimmer.parallel_pipe_old,
+# give it the symbols from tetrimmer.parallel_pipe instead.
+try:
+    pp = importlib.import_module('tetrimmer.parallel_pipe')
+    shim = types.ModuleType('tetrimmer.parallel_pipe_old')
+    for name in dir(pp):
+        setattr(shim, name, getattr(pp, name))
+    sys.modules['tetrimmer.parallel_pipe_old'] = shim
+except Exception:
+    # If this fails, we keep going; normal imports will raise if truly missing.
+    pass
+# --- END HOTFIX ---
+
+
+
 # Standard library imports
 import concurrent.futures
 import json
@@ -24,6 +50,9 @@ from functions import (
     init_logging,
     get_genome_length
 )
+
+from parallel_pipe import ChattyParallelProcessor
+from pyhmmer_manager import pyhmmer_manager
 
 # Suppress all deprecation warnings
 warnings.filterwarnings('ignore', category=BiopythonDeprecationWarning)
@@ -927,8 +956,43 @@ def main(
     ]
 
     # Using a ProcessPoolExecutor to run the function in parallel
-    with concurrent.futures.ProcessPoolExecutor(max_workers=num_threads) as executor:
-        executor.map(analyze.analyze_sequence_helper, analyze_sequence_params)
+    #with concurrent.futures.ProcessPoolExecutor(max_workers=num_threads) as executor:
+    #    executor.map(analyze.analyze_sequence_helper, analyze_sequence_params)
+
+    '''
+    It's worth considering here - run BLAST as the first step and see which sequences actually need processing, proceed to process only those.
+    '''
+
+    #find pfam files
+    pfam_database = os.path.join(pfam_dir, "Pfam-A.hmm")
+    pfam_dat_file = os.path.join(pfam_dir, "Pfam-A.hmm.dat")
+
+    #Load the pyhmmer manager
+    pyhm = pyhmmer_manager(pfam_database, pfam_dat_file)
+    pyhm.prepare()
+
+    run_fnc = {"HMMscan":pyhm.run}
+
+    paraproc = ChattyParallelProcessor(
+        num_workers = num_threads,
+        task_func_dict = run_fnc,
+        worker_task = analyze.analyze_sequence_helper,
+        args = analyze_sequence_params
+    )
+
+    #ChattyParallelProcessor(num_workers=20, task_func_dict = tfd, worker_task=worker_task, args = long_args)
+    try:
+        paraproc.run()
+    except KeyboardInterrupt:
+        paraproc.shutdown()
+
+    #input_orfs = analyzer_object.input_orf_pfam_obj.output_orf_file_name_modified
+    #output_pfam_search = analyzer_object.input_orf_pfam_obj.output_pfam_file_modified
+
+    #These should be passed back to the analyzer_architecht and then
+    #the architecht should be added to a new list to replace the old.
+    #analyzer_object.pfam_output, analyzer_object.domains_detected = pyhm.run(input_orfs, output_pfam_search)
+
 
     #####################################################################################################
     # Code block: Check if all sequences are finished
