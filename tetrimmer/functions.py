@@ -3189,7 +3189,8 @@ class CustomFormatter(logging.Formatter):
         # Color and plain format mappings
         self.color_formats = {
             logging.DEBUG: self.grey + self.detailed_fmt + self.reset,
-            logging.INFO: self.black + self.simple_fmt + self.reset,
+            #logging.INFO: self.black + self.simple_fmt + self.reset,
+            logging.INFO: self.simple_fmt + self.reset,
             logging.WARNING: self.orange + self.simple_fmt + self.reset,
             logging.ERROR: self.red + self.detailed_fmt + self.reset,
             logging.CRITICAL: self.bold_red + self.detailed_fmt + self.reset,
