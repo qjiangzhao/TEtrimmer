@@ -347,7 +347,7 @@ with open(config_path, 'r') as config_file:
 @click.option(
     '--helitron_end_patterns',
     type=str,
-    default = 'CTAAT，CTAGT，CTGAT，CTGGT',
+    default = 'CTAAT,CTAGT,CTGAT,CTGGT',
     help='LTR elements always end with a conserved sequence pattern. TEtrimmer searches the '
     'end of the consensus sequence for these patterns. If the pattern is not found, '
     'TEtrimmer will extend the search of <--helitron_end_patterns> from -15 to +15 nucleotides of the '
@@ -390,7 +390,7 @@ with open(config_path, 'r') as config_file:
     '-ll',
     default='INFO',
     type=str,
-    help='Log level. [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
+    help='Log level. [INFO, WARNING, ERROR, CRITICAL]',
 )
 @click.version_option("1.5.4", prog_name='TEtrimmer')
 def main(
