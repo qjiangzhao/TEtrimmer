@@ -1388,7 +1388,7 @@ def find_boundary_and_crop(
         out_boundary_msa_for_teaid_cons = con_generater(
             out_boundary_msa_for_teaid,
             output_dir,
-            threshold=0.6, ambiguous='N'
+            threshold=0.3, ambiguous='N'
         )
 
         TE_aid_object_out_boundary_msa = TEAid(
