@@ -13,23 +13,23 @@
 
 
 
-Args 		=	commandArgs()
-query		=	as.character(Args[6])
-database	=	as.character(Args[7])
-evalue		=	as.numeric(Args[8])
-FLthresh 	=	as.numeric(Args[9])
-alpha 		=	as.numeric(Args[10])
-full_alpha  =	as.numeric(Args[11])
-autoy		=	as.character(Args[12]) # TRUE or numeric value for y max
-output		=	as.character(Args[13])
-selfdb		=	as.character(Args[14]) # bool 
-blastp      =   as.character(Args[15]) # includes orfs position
-osize		=	as.numeric(Args[16])
-wdir        =   as.character(Args[17]) # from the shell: path to running directory
-title       =   as.character(Args[18])
-v_x_line_1  =   as.character(Args[19])
-v_x_line_2  =   as.character(Args[20])
-tables      =   as.character(Args[21])
+Args 		=	commandArgs(trailingOnly = TRUE)
+query		=	as.character(Args[1])
+database	=	as.character(Args[2])
+evalue		=	as.numeric(Args[3])
+FLthresh 	=	as.numeric(Args[4])
+alpha 		=	as.numeric(Args[5])
+full_alpha  =	as.numeric(Args[6])
+autoy		=	as.character(Args[7]) # TRUE or numeric value for y max
+output		=	as.character(Args[8])
+selfdb		=	as.character(Args[9]) # bool
+blastp      =   as.character(Args[10]) # includes orfs position
+osize		=	as.numeric(Args[11])
+wdir        =   as.character(Args[12]) # from the shell: path to running directory
+title       =   as.character(Args[13])
+v_x_line_1  =   as.character(Args[14])
+v_x_line_2  =   as.character(Args[15])
+tables      =   as.character(Args[16])
 
 source(paste(wdir, "/", "consensus2genome.R", sep = ""))
 source(paste(wdir, "/", "blastndotplot.R", sep = ""))

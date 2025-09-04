@@ -10,7 +10,13 @@ blastdotplot=function(query = NULL, db = NULL, blast = NULL, os = NULL, tables =
   bl=bl[order(bl$V2, decreasing = F),]
   
   # test if there are orf detected; will later store in orf if TRUE
-  test<-try(read.table(as.character(blast)), T)
+  if (exists("blast") && file.exists(as.character(blast))) {
+  test <- try(read.table(as.character(blast)), silent = TRUE)
+  }
+  else {
+  test <- FALSE
+  }
+
   # test if there are TE prot detected; will later store in prot if TRUE
   #test2<-try(read.table(as.character(blast)), T)
 
