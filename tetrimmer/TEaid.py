@@ -34,7 +34,7 @@ def low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
     )
 
     try:
-        # Calculate input TE genome coverate length
+        # Calculate input TE genome coverage length
         te_genome_coverage_len = sum_non_overlapping_lengths(blast_out_file, te_aid_blast=False)
 
     except Exception as e:

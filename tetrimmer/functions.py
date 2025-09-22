@@ -1001,6 +1001,7 @@ def remove_gaps_with_similarity_check(
     # if len(MSA_mafft) < 5:
     # raise ValueError("Number of sequences is less than 5. Cannot remove gaps.")
 
+    # Use range to start the index from 0
     for col_idx in range(MSA_mafft.get_alignment_length()):
         col = MSA_mafft[:, col_idx]
         gap_count = col.count('-')

@@ -153,6 +153,8 @@ We evaluated the runtime performance of TEtrimmer on genomes of four organisms, 
 using a compute node allocated via SLURM with 48 CPU cores (Intel Xeon 8468 Sapphire) and 140 GB of RAM. 
 Runtime and output size were recorded for each repetition, and the mean and standard deviation were calculated across the three runs.
 
+**TEtrimmer exhibits a considerably longer runtime when executed on the Windows WSL system.**
+
 |                   |                    | **EDTA as input for TEtrimmer** |              |                         | **RepeatMaster2 as input for TEtrimmer** |              |                         |
 |-------------------|--------------------|---------------------------------|--------------|-------------------------|------------------------------------------|--------------|-------------------------|
 | Species           | Genome size (Mbp)  | Input TE number                 | Runtime (h)  | Output folder size (GB) | Input TE number                          | Runtime (h)  | Output folder size (GB) |

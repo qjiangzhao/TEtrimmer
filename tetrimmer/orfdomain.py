@@ -29,7 +29,7 @@ def check_and_download(directory, filename, url):
     # If PFAM database was not found, download it
     if not os.path.isfile(file_path):
         logging.warning(
-            f'\n{filename} not found. Downloading... This might take some time. Please be patient.\n'
+            f'{filename} not found. Downloading... This might take some time. Please be patient.\n'
         )
 
         # Check if the URL is valid
@@ -38,7 +38,7 @@ def check_and_download(directory, filename, url):
             response.raise_for_status()  # Raise an exception if the GET request was unsuccessful
         except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError):
             logging.error(
-                f'\nFailed to reach the server at {url} for downloading PFAM database.\n'
+                f'Failed to reach the server at {url} for downloading PFAM database.\n'
             )
             return False
 
@@ -56,7 +56,7 @@ def check_and_download(directory, filename, url):
             # Delete gz file after extraction
             os.remove(gz_file_path)
             logging.info(
-                f'\n{filename} is downloaded and unzipped. Pfam database was stored in \n'
+                f'{filename} is downloaded and unzipped. Pfam database was stored in \n'
                 f'{directory}\n'
             )
         except Exception:

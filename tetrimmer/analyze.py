@@ -246,9 +246,7 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
         fai_file = genome_file + '.fai'
 
         if not os.path.isfile(fai_file):
-            logging.info(
-                f'Creating genome index with samtools: {fai_file}'
-            )
+
             faidx_cmd = f'samtools faidx {genome_file} -o {fai_file}'
 
             logging.info(f'Creating genome index with samtools: {faidx_cmd}')

@@ -305,8 +305,8 @@ def final_MSA(
     )
 
     # Remove gaps by similarity check
-    bed_fasta_mafft_gap_sim = remove_gaps_with_similarity_check(
-        bed_fasta_mafft_with_gap_column_clean, output_dir, return_map=False,
+    bed_fasta_mafft_gap_sim, column_mapping_initial = remove_gaps_with_similarity_check(
+        bed_fasta_mafft_with_gap_column_clean, output_dir, return_map=True,
     )
 
     # Crop end before terminal check, use loose threshold to avoid overhead cropping
@@ -1378,7 +1378,7 @@ def find_boundary_and_crop(
             # Update input sequence full length blast number
             seq_obj.set_old_blast_full_n(full_blast_query_n)
 
-            # Update input sequence genome coverate length number
+            # Update input sequence genome coverage length number
             seq_obj.set_input_genome_cov_len(input_te_genome_cov_len)
 
         else:
