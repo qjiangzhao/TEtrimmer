@@ -188,17 +188,13 @@ class CropEnd:
 
 
 class CropEndByGap:
-    def __init__(self, input_file, gap_threshold=0.05, window_size=300):
+    def __init__(self, input_file, gap_threshold=0.05, window_size=300, crop_left=True, crop_right=True):
         self.input_file = input_file  # Path to the multiple sequence alignment file
-        self.alignment = AlignIO.read(
-            self.input_file, 'fasta'
-        )  # Read the alignment file in FASTA format
-        self.gap_threshold = (
-            gap_threshold  # Threshold for gap proportion. Default is 0.05
-        )
-        self.window_size = (
-            window_size  # The size of the window to check for gaps. Default is 50
-        )
+        self.alignment = AlignIO.read(self.input_file, 'fasta')  # Read the alignment file in FASTA format
+        self.gap_threshold = gap_threshold  # Threshold for gap proportion. Default is 0.05
+        self.window_size = window_size  # The size of the window to check for gaps. Default is 50
+        self.crop_left = crop_left
+        self.crop_right = crop_right
 
         # Initialize a dictionary to hold the start and end positions of each sequence
         self.position_dict = {record.id: [0, 0] for record in self.alignment}
@@ -212,38 +208,37 @@ class CropEndByGap:
             len_seq = len(seq_str)  # Get the length of the sequence
 
             # Find the start position
-            for i in range(
-                len_seq - self.window_size + 1
-            ):  # Loop through the sequence using a sliding window
-                window = seq_str[
-                    i : i + self.window_size
-                ]  # Get the subsequence in the window
-                gap_proportion = (
-                    window.count('-') / self.window_size
-                )  # Calculate the gap proportion in the window
+            if self.crop_left:
+                start_position = 0
+                for i in range(len_seq - self.window_size + 1):  # Loop through the sequence using a sliding window
+                    window = seq_str[i: i + self.window_size]  # Get the subsequence in the window
+                    gap_proportion = window.count('-') / self.window_size  # Calculate the gap proportion in the window
 
-                # If the gap proportion is less than or equal to the threshold, set this position as the start position
-                # and break the loop
-                if gap_proportion <= self.gap_threshold:
-                    self.position_dict[record.id][0] = i
-                    break
+                    # If the gap proportion is less than or equal to the threshold, set this position as
+                    # the start position of the sliding window and break the loop
+                    if gap_proportion <= self.gap_threshold:
+                        start_position = i
+                        break
+                self.position_dict[record.id][0] = start_position
+            # don't crop the left position when self.crop_left is false
+            else:
+                self.position_dict[record.id][0] = 0
 
             # Find the end position (similar to finding the start position, but from the end of the sequence)
-            for i in range(len_seq - 1, self.window_size - 2, -1):
-                window = seq_str[i - self.window_size + 1 : i + 1]
-                gap_proportion = window.count('-') / self.window_size
-                if gap_proportion <= self.gap_threshold:
-                    end_position = i + 1  # Note: add 1 to make the position 1-indexed
-
-                    # Ensure end position is not smaller than the start position
-                    if end_position <= self.position_dict[record.id][0]:
-                        self.position_dict[record.id][1] = self.position_dict[
-                            record.id
-                        ][0]
-                    else:
-                        self.position_dict[record.id][1] = end_position
-
-                    break
+            if self.crop_right:
+                end_position = len_seq
+                for i in range(len_seq - 1, self.window_size - 2, -1):
+                    window = seq_str[i - self.window_size + 1: i + 1]
+                    gap_proportion = window.count('-') / self.window_size
+                    if gap_proportion <= self.gap_threshold:
+                        end_position = i + 1  # Note: add 1 to make the position 1-indexed
+                        break
+                # Ensure end >= start
+                if end_position <= self.position_dict[record.id][0]:
+                    end_position = self.position_dict[record.id][0]
+                self.position_dict[record.id][1] = end_position
+            else:
+                self.position_dict[record.id][1] = len_seq
 
     # New method to find sequences with cropped region > 90% of the alignment length
     def find_large_crops(self):
@@ -317,7 +312,7 @@ class DefineBoundary:
         max_X=0.25,
         if_con_generater=True,
         extension_buffer=150,
-        end_position=None,
+        polyA_position=None,
     ):
         self.threshold = threshold
         self.input_file = input_file
@@ -335,7 +330,7 @@ class DefineBoundary:
         self.if_continue = True
         self.cut_seqs = []
         self.extension_buffer = extension_buffer
-        self.end_position = end_position
+        self.polyA_position = polyA_position
         if (
             if_con_generater
         ):  # Default to use standard consensus sequence generation method
@@ -412,8 +407,8 @@ class DefineBoundary:
         if self.start_post is None:
             self.start_post = len(self.consensus_seq)
 
-        if self.end_position is not None:
-            self.end_post = self.end_position
+        if self.polyA_position is not None:
+            self.end_post = self.polyA_position
         else:
             # Check the end position
             for i, letter in reversed(list(enumerate(self.consensus_seq))):
@@ -453,12 +448,19 @@ class DefineBoundary:
 
         # Ensure the start position is within the sequence range
         start_col = max(self.start_post - crop_extension, 0)
+
         # Ensure the end position is within the sequence range
-        end_col = min(self.end_post + crop_extension, MSA_len)
+        if self.polyA_position is not None:
+            end_col = self.end_post
+        else:
+            end_col = min(self.end_post + crop_extension, MSA_len)
+
         # Select the window columns from the alignment
         selected_alignment = self.alignment[:, start_col:end_col]
+
         # Create a new MultipleSeqAlignment object using the selected alignment
         selected_alignment = MultipleSeqAlignment(selected_alignment)
+
         # Write the cut MSA to a file
         output_file = os.path.join(
             output_dir, f'{os.path.basename(self.input_file)}_bc.fa'

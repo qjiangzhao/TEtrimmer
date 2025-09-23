@@ -300,9 +300,7 @@ def final_MSA(
     bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(
         bed_fasta_mafft_with_gap, threshold=0.01
     )
-    bed_fasta_mafft_with_gap_column_clean = (
-        bed_fasta_mafft_with_gap_column_clean_object.clean_column(output_dir)
-    )
+    bed_fasta_mafft_with_gap_column_clean = bed_fasta_mafft_with_gap_column_clean_object.clean_column(output_dir)
 
     # Remove gaps by similarity check
     bed_fasta_mafft_gap_sim, column_mapping_initial = remove_gaps_with_similarity_check(
@@ -314,9 +312,7 @@ def final_MSA(
         bed_fasta_mafft_gap_sim, threshold=20, window_size=40
     )
     bed_fasta_mafft_gap_sim_cp_object.crop_alignment()
-    bed_fasta_mafft_gap_sim_cp = bed_fasta_mafft_gap_sim_cp_object.write_to_file(
-        output_dir
-    )
+    bed_fasta_mafft_gap_sim_cp = bed_fasta_mafft_gap_sim_cp_object.write_to_file(output_dir)
 
     # Generate consensus sequence, use low threshold to reduce number of N's in the consensus sequence
     bed_fasta_mafft_gap_sim_cp_con = con_generater(
@@ -454,27 +450,29 @@ def final_MSA(
             check_window=define_boundary_win,
             max_X=0.2,  # in fact check 'N' not 'X'
             if_con_generater=False,
-            end_position=poly_a,
+            polyA_position=poly_a,
         )
         # when if_continue is false, it means the start position is greater than end position
         if bed_boundary.if_continue:
-
-            bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(
-                output_dir, crop_extension=500
-            )
-
+            # crop_extension will be 0 for the right end of MSA when poly-A is identified
+            bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=500)
             bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_boundary_crop
 
             # For LINE elements bed_fasta_mafft_boundary_crop will be changed. Copy alignment to another variable
-
             if seq_obj.old_TE_type.startswith("LINE"):
-
                 # For highly divergent regions, more gaps can be found. According to this feature, remove
                 # high-divergence regions. This function is very useful for dealing with LINE elements.
+                # don't crop the right ends of the MSA when poly A was found for the LINE element
+                if poly_a is not None:
+                    crop_right = False
+                else:
+                    crop_right = True
+
                 cropped_MSA_by_gap_object = CropEndByGap(
                     bed_fasta_mafft_boundary_crop,
                     gap_threshold=crop_end_gap_thr,
                     window_size=crop_end_gap_win,
+                    crop_right=crop_right
                 )
                 cropped_alignment_line = cropped_MSA_by_gap_object.crop_alignment()
                 bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap_object.write_to_file(
@@ -514,7 +512,8 @@ def final_MSA(
         cropped_boundary,  # the DefineBoundary project
         column_mapping, # a dictionary. The key the MSA column position after boundary definition, the value is the column number of bed_fasta_mafft_boundary_crop_for_select
         bed_fasta_mafft_boundary_crop_for_select, # the raw MSA before boundary definition
-        found_match_crop  # can be False, LTR, or TIR
+        found_match_crop,  # can be False, LTR, or TIR
+        bed_fasta_mafft_with_gap
     )
 
 
@@ -784,6 +783,7 @@ def find_boundary_and_crop(
                     column_mapping,
                     bed_fasta_mafft_boundary_crop_for_select,
                     found_match_crop,
+                    bed_fasta_mafft_with_gap
                 ) = final_msa_result
 
         except Exception as e:
@@ -1190,6 +1190,14 @@ def find_boundary_and_crop(
                         input_file=bed_fasta_mafft_boundary_crop_for_select,
                         output_file=f'{bed_fasta_mafft_boundary_crop_for_select}_rc.fa',
                     )
+
+                    # bed_fasta_mafft_with_gap is used as raw for the manual curation in the new version
+                    # because this is before the gappy column cleaning and all the TSD information is kept
+                    bed_fasta_mafft_with_gap = reverse_complement_seq_file(
+                        input_file=bed_fasta_mafft_with_gap,
+                        output_file=f'{bed_fasta_mafft_with_gap}_rc.fa',
+                    )
+
                     # out_boundary_msa_for_teaid will be used for TEAid plot for the out boundary MSA
                     out_boundary_msa_for_teaid = reverse_complement_seq_file(
                         input_file=out_boundary_msa_for_teaid,
@@ -1702,6 +1710,7 @@ def find_boundary_and_crop(
         # modify fasta_out_flank_mafft_gap_rm fasta header based on the bed file, this can allow the
         # extension function in the final GUI.
         # For example: change 1(+) to scaffold_1:23256-24757(+)
+        # The new header will allow the "Extend" function button in the TEtrimmerGUI
         cropped_boundary_MSA_nm = modify_fasta_headers(
             bed_out_flank_file, cropped_boundary_MSA
         )
@@ -1709,12 +1718,16 @@ def find_boundary_and_crop(
             bed_out_flank_file, bed_fasta_mafft_boundary_crop_for_select
         )
 
+        bed_fasta_mafft_with_gap_nm = modify_fasta_headers(
+            bed_out_flank_file, bed_fasta_mafft_with_gap
+        )
+
         # Define file name for inspection file
         file_copy_pattern = [
             (merged_pdf_path, str(consi_obj.proof_pdf)),
             (cropped_boundary_MSA_nm, str(consi_obj.proof_fasta)),
-            (bed_fasta_mafft_boundary_crop_for_select_nm, str(consi_obj.proof_raw)),
-            (cluster_msa, str(consi_obj.proof_cluster)),
+            (bed_fasta_mafft_with_gap_nm, str(consi_obj.proof_raw)),
+            (cluster_msa, str(consi_obj.proof_cluster))
         ]
 
         files_moved_successfully = True

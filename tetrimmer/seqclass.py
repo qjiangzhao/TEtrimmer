@@ -142,6 +142,7 @@ class ConsensusObject:
         self.consensus_name = str(consensus_name)
         self.proof_curation_file = 'None'
         self.hmm_file = 'None'
+        self.proof_tsd = 'None'
         self.proof_pdf = 'None'
         self.proof_fasta = 'None'
         self.proof_raw = 'None'
@@ -238,6 +239,7 @@ class ConsensusObject:
         self.proof_fasta = f'{self.consensus_name}#{proof_TE_type}.fa'
         self.proof_raw = f'{self.consensus_name}#{proof_TE_type}.raw.fa'
         self.proof_cluster = f'{self.consensus_name}#{proof_TE_type}.cluster.fa'
+        #self.proof_tsd = f'{self.consensus_name}#{proof_TE_type}.tsd.fa'
 
     def set_hmm_file(self):
         proof_TE_type = self.new_TE_type.replace('/', '__')
