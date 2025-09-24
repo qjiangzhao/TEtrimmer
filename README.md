@@ -482,6 +482,10 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 ```
 
 ## Update history
+**Sep.23.2025**
+Fixed LINE poly end bug.
+Change the manual check raw file to the MSA before gappy column cleaning
+
 **TEtrimmer v1.5.4 Released Aug.11.2025**
 Add out boundary TE-Aid plot to the final report file.
 Improved TE-Aid plots, strat 0 from the beginning of x-axis. 

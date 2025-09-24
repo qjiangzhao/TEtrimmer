@@ -42,6 +42,7 @@ with open(config_path, 'r') as config_file:
 # Code block: Main functions of TEtrimmer
 #####################################################################################################
 
+TEtrimmer_version = "1.5.4"
 
 @click.command(
     context_settings={'max_content_width': 120},
@@ -58,7 +59,7 @@ with open(config_path, 'r') as config_file:
                    \\__|   \\________| \\____/ \\__|      \\__|\\__| \\__| \\__|\\__| \\__| \\__| \\_______|\\__|
 
 
-                Version: 1.5.4
+                Version: {TEtrimmer_version}
 
                 Github: https://github.com/qjiangzhao/TEtrimmer
 
@@ -392,7 +393,7 @@ with open(config_path, 'r') as config_file:
     type=str,
     help='Log level. [INFO, WARNING, ERROR, CRITICAL]',
 )
-@click.version_option("1.5.4", prog_name='TEtrimmer')
+@click.version_option(TEtrimmer_version, prog_name='TEtrimmer')
 def main(
     input_file,
     genome_file,
@@ -483,7 +484,7 @@ def main(
     plot_skip = True
     fast_mode = True
     start_time = datetime.now()
-    logging.info(f'TEtrimmer started at {start_time.strftime("%Y-%m-%d %H:%M:%S")}.\n')
+    logging.info(f'TEtrimmer {TEtrimmer_version} started at {start_time.strftime("%Y-%m-%d %H:%M:%S")}.\n')
 
     #####################################################################################################
     # Code block: File ends
