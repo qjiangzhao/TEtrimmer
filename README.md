@@ -97,7 +97,9 @@ Here is the provided [TEtrimmer_env.yml](./TEtrimmer_env.yml)
 ### 2. Singularity
 ```commandline
 # Download and generate TEtrimmer "sif" file
-singularity pull docker://quay.io/biocontainers/tetrimmer:1.4.0--hdfd78af_0
+singularity pull docker://quay.io/biocontainers/tetrimmer:1.5.4--hdfd78af_0
+
+# Other versions of the docker image can be found from https://quay.io/repository/biocontainers/tetrimmer?tab=tags
 
 # Run TEtrimmer based on sif file 
 # If <your_path_to_store_PFAM_database> doesn't contain PFAM database
@@ -136,11 +138,19 @@ python TEtrimmer_cloned/TEtrimmer.py \
 --pfam_dir /pfam \
 -t 20 --classify_all
 
+
+# You might get the following erro when run TEtrimmer v1.5.4 with the dokcer image:
+
+TE Aid error for <your_sequence> with error /TEtrimmer/TE-Aid-master/TE-Aid: line 288: join: command not found
+rm: can't remove 'header': No such file or directory
+
+# This won't affect your final results. I will fix this in the next version.
+
 ```
 ### 3. Docker 
 ```commandline
 # Download TEtrimmer docker image
-docker pull quay.io/biocontainers/tetrimmer:1.4.0--hdfd78af_0
+docker pull quay.io/biocontainers/tetrimmer:1.5.4--hdfd78af_0
 docker run -it --name TEtrimmer -v <bind_your_path>:/data quay.io/biocontainers/tetrimmer:1.4.0--hdfd78af_0
 # Then you can run TEtrimmer inside TEtrimmer container
 # Please note: Run TEtrimmer via Docker is relatively slower than Conda and Singularity. 
@@ -155,13 +165,13 @@ Runtime and output size were recorded for each repetition, and the mean and stan
 
 **TEtrimmer exhibits a considerably longer runtime when executed on the Windows WSL system.**
 
-|                   |                    | **EDTA as input for TEtrimmer** |              |                         | **RepeatMaster2 as input for TEtrimmer** |              |                         |
-|-------------------|--------------------|---------------------------------|--------------|-------------------------|------------------------------------------|--------------|-------------------------|
-| Species           | Genome size (Mbp)  | Input TE number                 | Runtime (h)  | Output folder size (GB) | Input TE number                          | Runtime (h)  | Output folder size (GB) |
-| *B. hordei*       | 124                | 996                             | 0.92 ± 0.049 | 2.30                    | 818                                      | 0.83 ± 0.040 | 2.10                    |
-| *D. melanogaster* | 144                | 819                             | 0.66 ± 0.067 | 0.92                    | 480                                      | 0.66 ± 0.046 | 0.96                    |
-| *D. rerio*        | 1,679              | 8,631                           | 4.95 ± 0.225 | 15.10                   | 3,504                                    | 2.32 ± 0.066 | 5.50                    |
-| *O. sativa*       | 373                | 10,404                          | 3.30 ± 0.200 | 7.30                    | 2,334                                    | 1.31 ± 0.090 | 2.50                    |
+|                   |                    | **EDTA as input for TEtrimmer** |              |                         | **RepeatModeler2 as input for TEtrimmer** |              |                         |
+|-------------------|--------------------|---------------------------------|--------------|-------------------------|-------------------------------------------|--------------|-------------------------|
+| Species           | Genome size (Mbp)  | Input TE number                 | Runtime (h)  | Output folder size (GB) | Input TE number                           | Runtime (h)  | Output folder size (GB) |
+| *B. hordei*       | 124                | 996                             | 0.92 ± 0.049 | 2.30                    | 818                                       | 0.83 ± 0.040 | 2.10                    |
+| *D. melanogaster* | 144                | 819                             | 0.66 ± 0.067 | 0.92                    | 480                                       | 0.66 ± 0.046 | 0.96                    |
+| *D. rerio*        | 1,679              | 8,631                           | 4.95 ± 0.225 | 15.10                   | 3,504                                     | 2.32 ± 0.066 | 5.50                    |
+| *O. sativa*       | 373                | 10,404                          | 3.30 ± 0.200 | 7.30                    | 2,334                                     | 1.31 ± 0.090 | 2.50                    |
 
 
 
@@ -544,10 +554,14 @@ Integrated "Extend", "TEAid", and MSA cleaning buttons into TEtrimmer GUI. "TEAi
 can help identifying TE boundaries.
 
 ## Citation
-Qian, J., Xue, H., Ou, S., Storer, J., Fürtauer, L., Wildermuth, M. C., Kusch, S., & Panstruga, R. bioRxiv (2024) https://doi.org/10.1101/2024.06.27.600963
-TEtrimmer: A novel tool to automate the manual curation of transposable elements.
 
-You should also cite components of the TEtrimmer workflow, such as TE-Aid, CIAlign, bedtools, cd-hit ......
+Qian, J., Xue, H., Ou, S., Mann, L., Storer, J., Fürtauer, L., Heitkam, T., Wildermuth, M. C., Kusch, S., & Panstruga, R. (2025). TEtrimmer: A tool to automate the manual curation of transposable elements. Nature Communications, 16(1), 8429. https://doi.org/10.1038/s41467-025-63889-y
 
-TE-Aid Goubert, C., Craig, R.J., Bilat, A.F. et al. A beginner’s guide to manual curation of transposable elements. Mobile DNA 13, 7 (2022). https://doi.org/10.1186/s13100-021-00259-7
+You should also cite components of the TEtrimmer workflow, such as TE-Aid, CIAlign, bedtools, blast, cd-hit, emboss, hmmer, mafft, pfam_scan, repeatmasker, samtools, repeatmodeler, iqtree......
+
+TE-Aid 
+Goubert, C., Craig, R. J., Bilat, A. F., Peona, V., Vogan, A. A., & Protasio, A. V. (2022). A beginner’s guide to manual curation of transposable elements. Mobile DNA, 13(1), 7. https://doi.org/10.1186/s13100-021-00259-7
+
+
+
 
