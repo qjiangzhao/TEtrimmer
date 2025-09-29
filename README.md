@@ -109,7 +109,7 @@ singularity exec --writable-tmpfs \
 --bind <your_path_contain_genome_file>:/genome \
 --bind <your_path_contain_input_TE_library_file>:/input \
 --bind <your_output_path>:/output \
---bind <your_path_to_store_PFAM_database>:/pfam \  
+--bind <your_path_to_store_PFAM_database>:/pfam \
 <your_path_contain_sif_file>/tetrimmer_1.4.0--hdfd78af_0.sif \
 TEtrimmer \
 -i /input/<TE_library_name.fasta> \
@@ -129,7 +129,7 @@ singularity exec --writable-tmpfs \
 --bind <your_path_contain_genome_file>:/genome \
 --bind <your_path_contain_input_TE_library_file>:/input \
 --bind <your_output_path>:/output \
---bind <your_path_to_store_PFAM_database>:/pfam \  
+--bind <your_path_to_store_PFAM_database>:/pfam \
 <your_path_contain_sif_file>/tetrimmer_1.4.0--hdfd78af_0.sif \
 python TEtrimmer_cloned/TEtrimmer.py \
 -i /input/<TE_library_name.fasta> \
