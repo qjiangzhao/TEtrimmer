@@ -1,1 +1,0 @@
-rnd_6_family_2561.fasta.b.bed_uf.bed_g_1.bed_fm_1.bed_0_0_bcln.fa_aln.fa_cl.fa_gs.fa.fa	rnd_6_family_2561.fasta.b.bed_uf.bed_g_1.bed_fm_1.bed_0_0_bcln.fa_aln.fa_cl.fa_gs.fa.fa	100.000	3755	0	0	1	3755	1	3755	plus	0.0	6332

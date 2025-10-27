@@ -1,1 +1,0 @@
-rnd_1_family_188.fasta.b.bed_uf.bed_g_1.bed_fm_1.bed_0_0_bcln.fa_aln.fa_cl.fa_gs.fa.fa	rnd_1_family_188.fasta.b.bed_uf.bed_g_1.bed_fm_1.bed_0_0_bcln.fa_aln.fa_cl.fa_gs.fa.fa	100.000	2625	0	0	1	2625	1	2625	plus	0.0	4590
