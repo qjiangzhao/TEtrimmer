@@ -3,10 +3,12 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from Bio import AlignIO, BiopythonDeprecationWarning
+from Bio import AlignIO, BiopythonDeprecationWarning, SeqIO
 from Bio.Align import AlignInfo, MultipleSeqAlignment
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+
+from functions import blast
 
 # Suppress all deprecation warnings
 warnings.filterwarnings('ignore', category=BiopythonDeprecationWarning)
@@ -102,6 +104,7 @@ class CropEnd:
         for index, row in self.df.iterrows():
             if self.crop_l:
                 # Find start position
+                # len() is 1 based not 0 based, add 1 for the indexing
                 for i in range(len(row) - self.window_size + 1):
                     window = row[i : i + self.window_size]
                     if window.sum() > self.threshold:
@@ -118,7 +121,7 @@ class CropEnd:
                     if window.sum() > self.threshold:
                         self.position_dict[index][1] = (
                             i + 1
-                        )  # add 1 to make the position 1-indexed
+                        )  # add 1 because the indexing in Python don't include the stop position
                         break
             else:
                 # Set the end position to the end of the alignment if crop_r is not used
@@ -393,15 +396,14 @@ class DefineBoundary:
     def boundary_position(self):
         # Check the start position
         for i, letter in enumerate(self.consensus_seq):
-            if letter in self.nucl:
-                if i + self.check_window <= len(self.consensus_seq):
-                    Xnum = self.consensus_seq[i : i + self.check_window].count(
-                        self.ambiguous
-                    )
-                    # Check if the number of ambiguous sites is smaller than 30% of check_window
-                    if Xnum <= (self.max_X * self.check_window):
-                        self.start_post = i
-                        break
+            if i + self.check_window <= len(self.consensus_seq):
+                Xnum = self.consensus_seq[i : i + self.check_window].count(
+                    self.ambiguous
+                )
+                # Check if the number of ambiguous sites is smaller than 30% of check_window
+                if Xnum <= (self.max_X * self.check_window):
+                    self.start_post = i
+                    break
 
         # Set start_post to the sequence length if it is not defined
         if self.start_post is None:
@@ -412,16 +414,15 @@ class DefineBoundary:
         else:
             # Check the end position
             for i, letter in reversed(list(enumerate(self.consensus_seq))):
-                if letter in self.nucl:
-                    i = i + 1
-                    if i - self.check_window >= 0:
-                        Xnum = self.consensus_seq[i - self.check_window : i].count(
-                            self.ambiguous
-                        )
-                        # Check if the number of ambiguous sites is smaller than 10% of check_window
-                        if Xnum <= (self.max_X * self.check_window):
-                            self.end_post = i
-                            break
+                i = i + 1
+                if i - self.check_window >= 0:
+                    Xnum = self.consensus_seq[i - self.check_window : i].count(
+                        self.ambiguous
+                    )
+                    # Check if the number of ambiguous sites is smaller than 10% of check_window
+                    if Xnum <= (self.max_X * self.check_window):
+                        self.end_post = i
+                        break
 
         # Set end_post to 1 if it is not defined
         if self.end_post is None:
@@ -469,3 +470,112 @@ class DefineBoundary:
         with open(output_file, 'w') as f:
             AlignIO.write(selected_alignment, f, 'fasta')
         return output_file
+
+
+class GenomeBlastCoverage:
+    def __init__(
+            self,
+            input_file,
+            blast_database_path,
+            output_dir
+    ):
+        self.input_file = input_file
+        self.blast_database_path = blast_database_path
+        self.output_dir = output_dir
+        self.coverage_list = None
+        self.start_point = None
+        self.end_point = None
+
+    def calculate_blast_coverage(self):
+        """
+        The .b.bed is expected to have these columns (no header):
+          1 sseqid   2 sstart  3 send  4 hit_id  5 pident  6 strand
+          7 alnlen   8 qseqid  9 qstart 10 qend
+        qstart/qend are 1-based, inclusive.
+        """
+
+        # Perform blast search and generate the bed file
+        bed_file, blast_hits_count, blast_out_file = blast(
+            self.input_file,
+            self.blast_database_path,
+            self.output_dir,
+            min_length=50,
+            blast_qcov_hsp_perc=1,
+            evalue='1e-8'  # Use less stringent blast
+        )
+
+        # Calculate input fasta sequence length
+        record = SeqIO.read(self.input_file, "fasta")  # raises if 0 or >1 records
+        query_length = len(record.seq)
+
+        if query_length <= 0:
+            return []
+
+        # Read the BED; only need qstart and qend
+        col_names = [
+            "sseqid", "sstart", "send", "hit_id", "pident", "strand",
+            "alnlen", "qseqid", "qstart", "qend"
+        ]
+        df = pd.read_csv(bed_file, sep="\t", header=None, names=col_names, comment="#")
+
+        # No HSPs -> zero coverage everywhere
+        if df.empty:
+            return [0] * query_length
+
+        # Normalize to (start <= end) and clip to query bounds [1, query_length]
+        # The qstart and qend are 1 based not 0 based
+        qstart = df["qstart"].clip(lower=1, upper=query_length).astype(int).to_numpy()
+        qend = df["qend"].clip(lower=1, upper=query_length).astype(int).to_numpy()
+
+        # Build the difference array (length+1 so we can subtract at 'end')
+        diff = np.zeros(query_length + 1, dtype=int)
+        for s, e in zip(qstart, qend):
+            diff[s - 1] += 1  # convert to 0-based
+            diff[e] -= 1  # inclusive end -> subtract at e
+
+        # Cumulative sum yields per-position coverage
+        # Example to understand cumsum
+        # a = np.array([2, 3, 5, -1])
+        # np.cumsum(a)         # -> array([ 2,  5, 10,  9])
+        coverage = np.cumsum(diff[:-1])  # drop the extra tail cell
+        self.coverage_list = coverage.tolist()
+
+        return self.coverage_list
+
+
+    def find_boundary_blast_coverage(self, window_size=20, threshold=100, left_begin=None, right_begin=None):
+        cov_len = len(self.coverage_list)
+
+        # Find start position (from left to right)
+        for i in range(cov_len - window_size + 1):
+            if left_begin is not None and i < left_begin:
+                continue
+
+            window = self.coverage_list[i: i + window_size]
+            window_sum = sum(window)
+            if window_sum > threshold:
+                for j, k in enumerate(window):
+                    if k >= 5:
+                        self.start_point = i + j
+                        break
+                if self.start_point is not None:
+                    break
+
+        # Find end position (from right to left)
+        for i in range(cov_len - 1, window_size - 2, -1):  # window_size - 2 to include last full window
+            if right_begin is not None and i > right_begin:
+                continue
+
+            window = self.coverage_list[i - window_size + 1: i + 1]
+            window_sum = sum(window)
+            if window_sum > threshold:
+                for j in range(window_size - 1, -1, -1):  # loop right to left in window
+                    if window[j] >= 5:
+                        self.end_point = i - (window_size - 1 - j) + 1  # +1 to make it exclusive
+                        break
+                if self.end_point is not None:
+                    break
+
+        return self.start_point, self.end_point
+
+

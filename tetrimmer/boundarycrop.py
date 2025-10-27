@@ -4,11 +4,11 @@ import shutil
 import traceback
 
 import pandas as pd
-from Bio import AlignIO
+from Bio import AlignIO, SeqIO
 from matplotlib.pyplot import title
 
 import cialign
-from boundaryclass import CropEnd, CropEndByGap, DefineBoundary
+from boundaryclass import CropEnd, CropEndByGap, DefineBoundary, GenomeBlastCoverage
 
 # Local imports
 from functions import (
@@ -31,7 +31,7 @@ from functions import (
     remove_gaps_with_similarity_check,
     reverse_complement_seq_file,
     scale_single_page_pdf,
-    select_star_to_end,
+    select_start_to_end,
     select_start_end_and_join,
     select_window_columns,
     pairwise_seqs_align
@@ -42,7 +42,9 @@ from orfdomain import PlotPfam, determine_sequence_direction
 from TEaid import TEAid
 
 
-def long_bed(input_file, output_dir):
+def reset_bed(input_file, output_dir):
+    # This function will prepare bed file ready for the left and right side extension
+
     # calculate alignment length in column 6
     df = pd.read_csv(input_file, sep='\t', header=None)
 
@@ -124,7 +126,7 @@ def extend_end(
     # while ignoring the shorter ones.
     # long_bed function won't do length selection
     # It generates the proper bed file for left and right extension.
-    reset_left_long_bed, reset_right_long_bed = long_bed(input_file, output_dir)
+    reset_left_long_bed, reset_right_long_bed = reset_bed(input_file, output_dir)
 
     # adjust is the overlap region length between adjacent extended MSAs.
     adjust = ex_step_size / 10
@@ -195,6 +197,8 @@ def extend_end(
             gap_threshold=crop_end_gap_thr,
             window_size=crop_end_gap_win,
         )
+        # if the crop_end_by_gap removed more than 90% of the aligned sequences, this sequence ID will be stored in
+        # large_crop_ids
         large_crop_ids, remain_n, remain_ids = bed_fasta_mafft_object.find_large_crops()
         cropped_alignment = bed_fasta_mafft_object.crop_alignment()
         bed_fasta_mafft_cop_end_gap = bed_fasta_mafft_object.write_to_file(
@@ -231,6 +235,7 @@ def extend_end(
                         bed_dic[i][0] = matching_rows.iloc[0, 1]
 
         # If the remaining sequences that need further extension are fewer than 5, stop the extension
+        # bed_boundary.if_continue will be false if the extension is enough
         if not bed_boundary.if_continue or remain_n < 5:
             break
         elif bed_boundary.if_continue:
@@ -261,12 +266,14 @@ def extend_end(
                     reset_right_long_bed, sep='\t', index=False, header=None
                 )
             ite += 1
+    # if_ex will be true if the extension stopped due to reach to the maximum extension limitation
+    return bed_dic, ex_total, if_ex
 
-    return bed_dic, ex_total
 
-
+# fianl_MSA aims to provide the boundaries
 def final_MSA(
     bed_final_MSA,
+    MSA_seq_n,
     genome_file,
     output_dir,
     gap_nul_thr,
@@ -279,7 +286,8 @@ def final_MSA(
     crop_end_win,
     seq_obj,
     poly_patterns, 
-    poly_len
+    poly_len,
+    blast_database_path
 ):
 
     bed_fasta, bed_out_flank_file = extract_fasta(
@@ -307,223 +315,286 @@ def final_MSA(
         bed_fasta_mafft_with_gap_column_clean, output_dir, return_map=True,
     )
 
+    # bed_fasta_mafft_boundary_crop_for_select is used to see the regions beyond the defined boundaries
+    bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_gap_sim
+
+    #####################################################################################################
+    # Code block: Generate consensus sequences
+    #####################################################################################################
+
+    # Generate consensus sequence before end cropping to perform genome blast coverage calculation
+    # this function will write the consensus sequence to a file
+    bed_fasta_mafft_gap_sim_con_02 = con_generater(bed_fasta_mafft_gap_sim, output_dir, threshold=0.2, ambiguous='N')
+
     # Crop end before terminal check, use loose threshold to avoid overhead cropping
-    bed_fasta_mafft_gap_sim_cp_object = CropEnd(
-        bed_fasta_mafft_gap_sim, threshold=20, window_size=40
-    )
+    bed_fasta_mafft_gap_sim_cp_object = CropEnd(bed_fasta_mafft_gap_sim, threshold=20, window_size=40)
     bed_fasta_mafft_gap_sim_cp_object.crop_alignment()
     bed_fasta_mafft_gap_sim_cp = bed_fasta_mafft_gap_sim_cp_object.write_to_file(output_dir)
 
     # Generate consensus sequence, use low threshold to reduce number of N's in the consensus sequence
-    bed_fasta_mafft_gap_sim_cp_con = con_generater(
+    # Use more stringent threshold for poly A identification when terminal is not found.
+    bed_fasta_mafft_gap_sim_cp_con_08 = con_generater(
+        bed_fasta_mafft_gap_sim_cp, output_dir, threshold=0.8, ambiguous='N'
+    )
+
+    # read sequence and convert to plain upper-case string
+    bed_fasta_mafft_gap_sim_cp_con_08_record = SeqIO.read(bed_fasta_mafft_gap_sim_cp_con_08, "fasta")
+    bed_fasta_mafft_gap_sim_cp_con_08_seq = str(bed_fasta_mafft_gap_sim_cp_con_08_record.seq).upper()
+    bed_fasta_mafft_gap_sim_cp_con_08_len = len(bed_fasta_mafft_gap_sim_cp_con_08_seq)
+
+    # helper: clip coordinates so they stay inside the sequence
+    def clip_con(start, stop, seq, seq_len):
+        """
+        Return seq[a:b] but keep 0 ≤ a ≤ b ≤ len(seq)
+        """
+        start = max(0, start)
+        stop = min(seq_len, stop)
+        return seq[start:stop]
+
+    # Generate consensus sequence, use low threshold to reduce number of N's in the consensus sequence
+    # for LTR/TIR checking
+    bed_fasta_mafft_gap_sim_cp_con_045 = con_generater(
         bed_fasta_mafft_gap_sim_cp, output_dir, threshold=0.45, ambiguous='N'
     )
 
-    # Check terminal repeats
-    # Define the output folder to store the temporary BLAST database
-    check_terminal_repeat_output = f'{bed_fasta_mafft_gap_sim_cp_con}_tem'
+    #####################################################################################################
+    # Code block: Define boundary by the genome blast coverage
+    #####################################################################################################
 
-    LTR_boundary, TIR_boundary, found_match_crop = check_terminal_repeat(
-        bed_fasta_mafft_gap_sim_cp_con, check_terminal_repeat_output
+    # Calculate the genome blast coverage list
+    bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
+        bed_fasta_mafft_gap_sim_con_02,
+        blast_database_path,
+        output_dir
     )
 
-    # Check terminal repeats
-    # Penelope DIRS and CACTA can't use LTR or TIR to define the boundary
-    if (
-            found_match_crop in ("LTR", "TIR") and
-            "Penelope" not in seq_obj.old_TE_type.lower() and
-            not seq_obj.old_TE_type.startswith("PLE") and
-            "CACTA" not in seq_obj.old_TE_type and
-            "DIRS" not in seq_obj.old_TE_type
-    ):  # found_match_crop could be "LTR" "TIR", or False
-        # Check LTRs first
-        if LTR_boundary is not None:
-            left = LTR_boundary[0]
-            right = LTR_boundary[1]
-        else:
-            left = TIR_boundary[0]
-            right = TIR_boundary[1]
+    bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
+    start_posit_cov, end_posit_cov = bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
 
-        # Extract MSA based on terminal repeat boundary
-        bed_fasta_mafft_gap_sim_selected, check_termial_start, check_terminal_end = select_star_to_end(
-            bed_fasta_mafft_gap_sim_cp, output_dir, left, right
-        )
-
-        # Define the threshold use for cropping end by similarity to make sure the ends of the MSA are not totally removed
-        # because the boundary of the MSA has been defined.
-        start_pro_mean, end_pro_mean = define_crop_end_simi_thr(
-            bed_fasta_mafft_gap_sim_selected
-        )
-
-        if start_pro_mean < crop_end_win * 0.8:
-            # Set crop_end_sim_thr to be smaller than pro_mean to avoid overcropping.
-            start_pro_mean = int(start_pro_mean) - 3
-        else:
-            start_pro_mean = crop_end_win * 0.7
-
-        # Because the divergence for the start and end parts of the MSA can be different, crop separately.
-        if end_pro_mean < crop_end_win * 0.8:
-            end_pro_mean = int(end_pro_mean) - 3
-        else:
-            end_pro_mean = crop_end_win * 0.7
-
-        # Crop end by similarity to clean MSA for left side
-        bed_fasta_mafft_gap_sim_selected_cp_object_left = CropEnd(
-            bed_fasta_mafft_gap_sim_selected,
-            threshold=start_pro_mean,
-            window_size=40,
-            crop_l=True,
-            crop_r=False,
-        )
-        bed_fasta_mafft_gap_sim_selected_cp_object_left.crop_alignment()
-        bed_fasta_mafft_gap_sim_selected_cp_left = (
-            bed_fasta_mafft_gap_sim_selected_cp_object_left.write_to_file(output_dir)
-        )
-
-        # Crop end by similarity to clean MSA for right side
-        bed_fasta_mafft_gap_sim_selected_cp_object_right = CropEnd(
-            bed_fasta_mafft_gap_sim_selected_cp_left,
-            threshold=end_pro_mean,
-            window_size=40,
-            crop_l=False,
-            crop_r=True,
-        )
-        bed_fasta_mafft_gap_sim_selected_cp_object_right.crop_alignment()
-        bed_fasta_mafft_gap_sim_selected_cp = (
-            bed_fasta_mafft_gap_sim_selected_cp_object_right.write_to_file(output_dir)
-        )
-
-        # Remove gaps by similarity again
-        bed_fasta_mafft_gap_sim_selected_cp_g, column_mapping = (
-            remove_gaps_with_similarity_check(
-                bed_fasta_mafft_gap_sim_selected_cp, output_dir, return_map=True
-            )
-        )
-
-        # Modify the dictionary to correspond with bed_fasta_mafft_gap_sim
-        for key in column_mapping:
-            column_mapping[key] += left
-
+    def print_horizontal(lst, cols=8, max_width=20):
         """
-        # Crop end by gap to make final MSA look better
-        bed_fasta_mafft_gap_sim_selected_cp_g_cpg = CropEndByGap(bed_fasta_mafft_gap_sim_selected_cp_g,
-                                                                 gap_threshold=crop_end_gap_thr,
-                                                                 window_size=crop_end_gap_win)
+        Print list horizontally in 'cols' columns.
+        Each line is prefixed with the index of its first element.
+        Elements are truncated to max_width chars for readability.
         """
-        # Set max_X to 1, this will make sure this part won't cut any beginning and end columns. Because
-        # the boundary has been defined by terminal repeat. The reason to do DefineBoundary is cropped_boundary
-        # and cropped_boundary_MSA are required for the further analysis
-        # max_X is the proportion of X, the maximum number is 1
-        cropped_boundary = DefineBoundary(
-            bed_fasta_mafft_gap_sim_selected_cp_g,
-            threshold=0.8,
-            check_window=4,
-            max_X=1,
-        )
-        cropped_boundary_MSA = cropped_boundary.crop_MSA(output_dir, crop_extension=0)
+        n = len(lst)
+        if n == 0:
+            print("[empty]")
+            return
 
-        # Assign to different name of variables to be compatible with result when terminal repeats are not found
-        cropped_alignment_output_file_g = bed_fasta_mafft_gap_sim_selected_cp_g
-        bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_gap_sim
+        # width for the left label like "[123]:"
+        label_w = len(str(n - 1)) + 3
 
-    # If LTR or TIR are not found
-    else:
-        # Generate consensus sequence, use low threshold to reduce number of N's in the consensus sequence
-        # Use more stringent threshold for poly A identification when terminal is not found.
-        bed_fasta_mafft_gap_sim_cp_con_stringent = con_generater(
-            bed_fasta_mafft_gap_sim_cp, output_dir, threshold=0.7, ambiguous='N'
-        )
+        def short(x):
+            s = str(x)
+            return s if len(s) <= max_width else s[:max_width - 1] + "…"
 
-        # Check if poly A can be found from the sequence and return the last A position
-        # poly_a will be None if not found
-        if seq_obj.old_TE_type.startswith("LINE") or seq_obj.old_TE_type.startswith("SINE"):
+        for start in range(0, n, cols):
+            end = min(start + cols, n)
+            row = [short(lst[i]) for i in range(start, end)]
+            print(f"[{start}]".ljust(label_w), "  ".join(row))
 
-            # Poly_a will be None if poly A is not found
-            poly_a = find_poly_a_end_position(bed_fasta_mafft_gap_sim_cp_con_stringent, poly_patterns=poly_patterns,
-                                              min_length=poly_len)
-        else:
-            poly_a = None
+    # usage
+    #print_horizontal(bed_fasta_mafft_gap_sim_con_coverage_obj.coverage_list, cols=20, max_width=25)
 
-        bed_boundary = DefineBoundary(
+    #####################################################################################################
+    # Code block: TE boundary definition by MSA conservation
+    #####################################################################################################
+
+    # For LINE elements bed_fasta_mafft_boundary_crop will be changed. Copy alignment to another variable
+    if seq_obj.old_TE_type.startswith("LINE"):
+        # For highly divergent regions, more gaps can be found. According to this feature, remove
+        # high-divergence regions. This function is very useful for dealing with LINE elements.
+        # don't crop the right ends of the MSA when poly A was found for the LINE element
+
+        cropped_MSA_by_gap_object = CropEndByGap(
             bed_fasta_mafft_gap_sim_cp,
-            threshold=ext_threshold,
-            check_window=define_boundary_win,
-            max_X=0.2,  # in fact check 'N' not 'X'
-            if_con_generater=False,
-            polyA_position=poly_a,
+            gap_threshold=crop_end_gap_thr,
+            window_size=crop_end_gap_win
         )
-        # when if_continue is false, it means the start position is greater than end position
-        if bed_boundary.if_continue:
-            # crop_extension will be 0 for the right end of MSA when poly-A is identified
-            bed_fasta_mafft_boundary_crop = bed_boundary.crop_MSA(output_dir, crop_extension=500)
-            bed_fasta_mafft_boundary_crop_for_select = bed_fasta_mafft_boundary_crop
+        cropped_alignment_line = cropped_MSA_by_gap_object.crop_alignment()
+        bed_fasta_mafft_gap_sim_cp = cropped_MSA_by_gap_object.write_to_file(
+            output_dir, cropped_alignment_line
+        )
 
-            # For LINE elements bed_fasta_mafft_boundary_crop will be changed. Copy alignment to another variable
-            if seq_obj.old_TE_type.startswith("LINE"):
-                # For highly divergent regions, more gaps can be found. According to this feature, remove
-                # high-divergence regions. This function is very useful for dealing with LINE elements.
-                # don't crop the right ends of the MSA when poly A was found for the LINE element
-                if poly_a is not None:
-                    crop_right = False
-                else:
-                    crop_right = True
+    # Gaps are removed again after processing with CropEnd
+    # column_mapping build relation between bed_fasta_mafft_gap_sim_cp and cropped_alignment_output_file_g
+    # bed_fasta_mafft_gap_sim_cp shares the same column coordinate like bed_fasta_mafft_boundary_crop_for_select
+    cropped_MSA_output_file, cropped_MSA_output_file_gs, column_mapping_MSA = crop_end_and_remove_gap(
+        bed_fasta_mafft_gap_sim_cp,
+        output_dir,
+        crop_end_threshold=crop_end_thr,
+        window_size=crop_end_win,
+        gap_threshold=0.8
+    )
 
-                cropped_MSA_by_gap_object = CropEndByGap(
-                    bed_fasta_mafft_boundary_crop,
-                    gap_threshold=crop_end_gap_thr,
-                    window_size=crop_end_gap_win,
-                    crop_right=crop_right
-                )
-                cropped_alignment_line = cropped_MSA_by_gap_object.crop_alignment()
-                bed_fasta_mafft_boundary_crop = cropped_MSA_by_gap_object.write_to_file(
-                    output_dir, cropped_alignment_line
-                )
+    # This means the sequence length after gap removal is shorter than 50
+    if not cropped_MSA_output_file_gs:
+        return False
 
-            # Gaps are removed again after processing with CropEnd
-            # column_mapping build relation between bed_fasta_mafft_boundary_crop and cropped_alignment_output_file_g
-            cropped_alignment_output_file_g, column_mapping = crop_end_and_remove_gap(
-                bed_fasta_mafft_boundary_crop,
-                output_dir,
-                crop_end_threshold=crop_end_thr,
-                window_size=crop_end_win,
-                gap_threshold=0.8,
-            )
+    # Use DefineBoundary to define start position.
+    cropped_boundary_obj_MSA = DefineBoundary(
+        cropped_MSA_output_file_gs,
+        threshold=0.8,
+        check_window=4,
+        max_X=0
+    )
 
-            # This means the sequence length after gap removal is shorter than 50
-            if not cropped_alignment_output_file_g:
-                return False
+    start_posit_MSA = column_mapping_MSA[cropped_boundary_obj_MSA.start_post]
+    end_posit_MSA = column_mapping_MSA[cropped_boundary_obj_MSA.end_post]
 
-            # CropEnd cannot define the final boundary. Use DefineBoundary again to define start position.
-            cropped_boundary = DefineBoundary(
-                cropped_alignment_output_file_g, threshold=0.8, check_window=4, max_X=0
-            )
-            cropped_boundary_MSA = cropped_boundary.crop_MSA(
-                output_dir, crop_extension=0
-            )
+    #####################################################################################################
+    # Code block: TE right boundary definition by poly-A
+    #####################################################################################################
 
+    # Check if poly A can be found from the sequence and return the last A position
+    # poly_a will be None if not found
+    if seq_obj.old_TE_type.startswith("LINE") or seq_obj.old_TE_type.startswith("SINE"):
+
+        # Poly_a will be None if poly A is not found
+        poly_a = find_poly_a_end_position(bed_fasta_mafft_gap_sim_cp_con_08,
+                                          poly_patterns=poly_patterns,
+                                          min_length=poly_len)
+
+        # right 100-nt window of the poly-A tail
+        poly_a_beyond_right_window = clip_con(poly_a, poly_a + 100,
+                                              bed_fasta_mafft_gap_sim_cp_con_08_seq,
+                                              bed_fasta_mafft_gap_sim_cp_con_08_len
+                                              )
+        poly_a_beyond_right_window_Ns = poly_a_beyond_right_window.count('N')
+
+        # When the N number is too less, mean the beyond region is still conserved.
+        if poly_a_beyond_right_window < 50:
+            poly_a = None
+    else:
+        poly_a = None
+
+    #####################################################################################################
+    # Code block: TE boundary definition by LTR TIR
+    #####################################################################################################
+
+    # Check terminal repeats
+    # Define the output folder to store the temporary BLAST database
+    check_terminal_repeat_output = f'{bed_fasta_mafft_gap_sim_cp_con_045}_tem'
+
+    LTR_boundary, TIR_boundary, found_match_crop = check_terminal_repeat(
+        bed_fasta_mafft_gap_sim_cp_con_045, check_terminal_repeat_output
+    )
+
+    left_posit_repeat = None
+    right_posit_repeat = None
+
+    # Check terminal repeats
+    if LTR_boundary is not None and len(LTR_boundary) == 2:
+        left_posit_repeat, right_posit_repeat = LTR_boundary
+    elif TIR_boundary is not None and len(TIR_boundary) == 2:
+        left_posit_repeat, right_posit_repeat = TIR_boundary
+
+    # Check the MSA conservation beyond the defined boundaries
+    if left_posit_repeat is not None and right_posit_repeat is not None:
+
+        # left 100-nt window
+        beyond_left_window = clip_con(left_posit_repeat - 100, left_posit_repeat,
+                               bed_fasta_mafft_gap_sim_cp_con_08_seq,
+                               bed_fasta_mafft_gap_sim_cp_con_08_len)
+        beyond_left_Ns = beyond_left_window.count('N')
+
+        # right 100-nt window
+        beyond_right_window = clip_con(right_posit_repeat, right_posit_repeat + 100,
+                                       bed_fasta_mafft_gap_sim_cp_con_08_seq,
+                                       bed_fasta_mafft_gap_sim_cp_con_08_len
+                                       )
+        beyond_right_Ns = beyond_right_window.count('N')
+
+        # When the N number is too less, mean the beyond region is still conserved.
+        if beyond_left_Ns < 50 and beyond_right_Ns < 50:
+            left_posit_repeat = None
+            right_posit_repeat = None
+
+    #####################################################################################################
+    # Code block: Evaluate boundary result and choose the final_start and final_end
+    #####################################################################################################
+
+    if left_posit_repeat is not None and right_posit_repeat is not None:
+        final_start = left_posit_repeat
+        final_end = right_posit_repeat
+
+    elif poly_a is None:
+        if MSA_seq_n >= 25:
+            final_start = start_posit_MSA
+            final_end = end_posit_MSA
         else:
-            return False
+            final_start = start_posit_cov
+            final_end = end_posit_cov
+
+    elif poly_a is not None:
+        final_end = poly_a
+
+        if MSA_seq_n >= 25:
+            final_start = start_posit_MSA
+        else:
+            final_start = start_posit_cov
+    else:
+        final_start = start_posit_MSA
+        final_end = end_posit_MSA
+
+    #####################################################################################################
+    # Code block: Slice the MSA
+    #####################################################################################################
+    # Extract MSA based on the defined start and end position
+    bed_fasta_mafft_gap_sim_final_start_to_end, not_use_a, not_use_b = select_start_to_end(
+        cropped_MSA_output_file,  # This file share the same column index with bed_fasta_mafft_gap_sim
+        output_dir,
+        final_start,
+        final_end
+    )
+
+
+
+    '''
+    Y: mean the difference isn't larger than 20. 
+    N: mean the difference is larger than 20.
+    Only compare with LTR/TIR boundaries when it is found. Otherwise, compare coverage_blast and MSA_conservation 
+    boundaries.
+    
+    When comparing to LTR/TIR both the left and right boundaries should reach the requirement (difference < 20)
+    When comparing the coverage_blast and MSA_conservation, compare the left and right boundaries separately.
+    Decide the boundary based on the MSA sequence number.
+    
+    For the poly-tail information, compare when it is not None. Compare the right boundary from coverage_blast and 
+    MSA_conservation, if the distance difference with the poly-tail is smaller than 30 use the poly-tail as the right
+    boundary, for this don't consider the MSA sequence number.
+    
+    LTR/TIR     Coverage_blast      MSA_conservation    Poly-tail       others       Final choise       full_len_b      Evaluation
+    Found       Y                   Y                   Not consider                 LTR/TIR             >=2            Good
+    Found       Y                   N                   Not consider                 LTR/TIR             >=2            Intermediate
+    Found       N                   Y                   Not consider                 LTR/TIR             >=2            Intermediate
+    Found       N                   N                   Not consider                 LTR/TIR                            Need_check   
+    Not_found   Y                   Y                                   MSA>=25      MSA_conservation    >=2            Intermediate   
+    Not_found   Y                   Y                                   MSA<25       Coverage_blast      >=2            Intermediate
+    Not_found   N                   N                                   MSA>=25      MSA_conservation                   Need_check   
+    Not_found   N                   N                                   MSA<25       Coverage_blast                     Need_check 
+    '''
 
     return (
-        # the column_mapping: key cropped_alignment_output_file_g value bed_fasta_mafft_boundary_crop_for_select (bed_fasta_mafft_boundary_crop)
         bed_out_flank_file,  # the bed file after MSA extension
-        cropped_boundary_MSA,  # the final MSA file after boundary definition
-        cropped_alignment_output_file_g,  # the MSA before the small sliding window check
-        cropped_boundary,  # the DefineBoundary project
-        column_mapping, # a dictionary. The key the MSA column position after boundary definition, the value is the column number of bed_fasta_mafft_boundary_crop_for_select
+        bed_fasta_mafft_gap_sim_final_start_to_end,  # the final MSA file after boundary definition
         bed_fasta_mafft_boundary_crop_for_select, # the raw MSA before boundary definition
         found_match_crop,  # can be False, LTR, or TIR
-        bed_fasta_mafft_with_gap
+        bed_fasta_mafft_with_gap,
+        final_start,
+        final_end,
+        bed_fasta_mafft_gap_sim_cp_con_08_len
     )
 
 
 def crop_end_and_remove_gap(
-    input_file, output_dir, crop_end_threshold=0.8, window_size=20, gap_threshold=0.8
+    input_file, output_dir, crop_end_threshold=0.8, window_size=20, gap_threshold=0.8, crop_r=True
 ):
     # window_size means the checked nucleotide number each time
     # threshold means the nucleotide proportion in window_size must greater than INT
     CropEnd_thres = crop_end_threshold * window_size
-    cropped_MSA = CropEnd(input_file, threshold=CropEnd_thres, window_size=window_size)
+    cropped_MSA = CropEnd(input_file, threshold=CropEnd_thres, window_size=window_size, crop_r=crop_r)
     cropped_MSA.crop_alignment()
 
     # write_to_file() function will return absolute cropped alignment file
@@ -532,11 +603,11 @@ def crop_end_and_remove_gap(
     # Remove gaps again after the CropEnd step
     # "column_mapping" is a dictionary; the key is gap removed MSA index, the value is the corresponding original
     # MSA index
-    cropped_alignment_output_file_g, column_mapping = remove_gaps_with_similarity_check(
+    cropped_MSA_output_file_gs, column_mapping = remove_gaps_with_similarity_check(
         cropped_MSA_output_file, output_dir, return_map=True
     )
 
-    return cropped_alignment_output_file_g, column_mapping
+    return cropped_MSA_output_file, cropped_MSA_output_file_gs, column_mapping
 
 
 def find_boundary_and_crop(
@@ -554,6 +625,7 @@ def find_boundary_and_crop(
     final_con_file,
     final_con_file_no_low_copy,
     proof_curation_dir,
+    more_extension_dir,
     hmm_dir,
     poly_patterns, 
     poly_len,    
@@ -659,6 +731,9 @@ def find_boundary_and_crop(
             # Read BED file and build dictionary to store sequence position
             df = pd.read_csv(bed_file, sep='\t', header=None)
 
+            # df_row shows the MSA sequence number, which will be used in the final_MSA function
+            df_row_n = df.shape[0]
+
             # Initialize an empty dictionary to store the desired key-value pairs
             bed_dict = {}
 
@@ -700,7 +775,8 @@ def find_boundary_and_crop(
         #####################################################################################################
         try:
             # Extend MSA left end
-            left_bed_dic, left_ex_total = extend_end(
+            # left_ext_to_max will be true if the extension stopped due to reach to the maximum extension limitation
+            left_bed_dic, left_ex_total, left_ext_to_max = extend_end(
                 max_extension,
                 ex_step_size,
                 'left',
@@ -716,7 +792,7 @@ def find_boundary_and_crop(
             )
 
             # Extend MSA right end
-            final_bed_dic, right_ex_total = extend_end(
+            final_bed_dic, right_ex_total, right_ext_to_max = extend_end(
                 max_extension,
                 ex_step_size,
                 'right',
@@ -754,6 +830,7 @@ def find_boundary_and_crop(
 
             final_msa_result = final_MSA(
                 bed_final_MSA,
+                df_row_n,
                 genome_file,
                 output_dir,
                 gap_nul_thr,
@@ -766,7 +843,8 @@ def find_boundary_and_crop(
                 crop_end_win,
                 seq_obj,
                 poly_patterns,
-                poly_len
+                poly_len,
+                blast_database_path
             )
 
             # Check if final_msa_result returned 'False', indicating an error or specific condition
@@ -778,12 +856,12 @@ def find_boundary_and_crop(
                 (
                     bed_out_flank_file,
                     cropped_boundary_MSA,
-                    cropped_alignment_output_file_g,
-                    cropped_boundary,
-                    column_mapping,
                     bed_fasta_mafft_boundary_crop_for_select,
                     found_match_crop,
-                    bed_fasta_mafft_with_gap
+                    bed_fasta_mafft_with_gap,
+                    final_start,
+                    final_end,
+                    MSA_length
                 ) = final_msa_result
 
         except Exception as e:
@@ -820,11 +898,12 @@ def find_boundary_and_crop(
                 else:
                     cluster_bed_files_list, fasta_out_flank_mafft_gap_rm = final_msa_consistency
 
-                # If the clustered MSA contains only 1 element, check if the BED file has the same line number as the original file
+                # If the clustered MSA contains only 1 element
                 if len(cluster_bed_files_list) == 1:
                     df_new = pd.read_csv(cluster_bed_files_list[0], sep='\t', header=None)
 
-                    if len(df) == len(df_new):
+                    # Check if only less than 2 sequence was eliminated
+                    if len(df_new) >= len(df) - 2:
                         break
                     else:
                         bed_file = cluster_bed_files_list[0]
@@ -865,7 +944,6 @@ def find_boundary_and_crop(
         #####################################################################################################
         # Code block: For LTR elements, check if the cropped MSA starts with given patterns like TGA ACA
         #####################################################################################################
-
         # If both start and end patterns are 'None', and found_match_crop is 'False' (no terminal repeat found),
         # skip this block, because terminal repeats can precisely define the start and end points of TEs.
         if seq_obj.old_TE_type.startswith("LTR"):  # Check if file name contains "LTR"
@@ -876,9 +954,9 @@ def find_boundary_and_crop(
                 sliding_win_check_for_start_end_pattern = True
 
             # Generate consensus sequences
-            # use cropped_alignment_output_file_g rather cropped_boundary_MSA
+            # use bed_fasta_mafft_boundary_crop_for_select rather cropped_boundary_MSA
             ltr_consensus_seq = con_generater_no_file(
-                cropped_alignment_output_file_g, threshold=0.7, ambiguous='N'
+                bed_fasta_mafft_boundary_crop_for_select, threshold=0.7, ambiguous='N'
             )
 
             # Convert consensus_seq to list
@@ -895,8 +973,8 @@ def find_boundary_and_crop(
                 check_end
              ) = check_start_and_end_patterns(
                 ltr_consensus_seq_list,
-                start=cropped_boundary.start_post,
-                end=cropped_boundary.end_post,
+                start=final_start,
+                end=final_end,
                 start_patterns=ltr_start_patterns,
                 end_patterns=ltr_end_patterns,
                 check_helitron=False,
@@ -910,15 +988,12 @@ def find_boundary_and_crop(
             # If the new start or end positions are different from previous MSA, replace with the new
             # start or end position in the cropped_boundary object and generate the new MSA file
             if (
-                cropped_boundary.start_post != check_start
-                or cropped_boundary.end_post != check_end
+                final_start != check_start
+                or final_end != check_end
             ):
-                cropped_boundary.start_post = check_start
-                cropped_boundary.end_post = check_end
-                # Generate the new MSA file based on new start and end positions
-                cropped_boundary_MSA = cropped_boundary.crop_MSA(
-                    output_dir, crop_extension=0
-                )
+                final_start = check_start
+                final_end = check_end
+
     except Exception as e:
         with open(error_files, 'a') as f:
             # Get the traceback content as a string
@@ -939,12 +1014,13 @@ def find_boundary_and_crop(
     # Code block: For Helitrons, check if the boundary start and end patterns
     #####################################################################################################
     try:
+
         if "helitron" in seq_obj.old_TE_type.lower():  # Check if file name contains "Helitron or helitron"
 
             # Generate consensus sequences
-            # use cropped_alignment_output_file_g rather cropped_boundary_MSA
+            # use bed_fasta_mafft_boundary_crop_for_select rather cropped_boundary_MSA
             helitron_consensus_seq = con_generater_no_file(
-                cropped_alignment_output_file_g, threshold=0.7, ambiguous='N'
+                bed_fasta_mafft_boundary_crop_for_select, threshold=0.7, ambiguous='N'
             )
 
             # Convert consensus_seq to list
@@ -961,8 +1037,8 @@ def find_boundary_and_crop(
                 check_end
             ) = check_start_and_end_patterns(
                 helitron_consensus_seq_list,
-                start=cropped_boundary.start_post,
-                end=cropped_boundary.end_post,
+                start=final_start,
+                end=final_end,
                 start_patterns=helitron_start_patterns,
                 end_patterns=helitron_end_patterns,
                 check_helitron=True
@@ -975,15 +1051,12 @@ def find_boundary_and_crop(
             # If the new start or end positions are different from previous MSA, replace with the new
             # start or end position in the cropped_boundary object and generate the new MSA file
             if (
-                    cropped_boundary.start_post != check_start
-                    or cropped_boundary.end_post != check_end
+                    final_start != check_start
+                    or final_end != check_end
             ):
-                cropped_boundary.start_post = check_start
-                cropped_boundary.end_post = check_end
-                # Generate the new MSA file based on new start and end positions
-                cropped_boundary_MSA = cropped_boundary.crop_MSA(
-                    output_dir, crop_extension=0
-                )
+                final_start = check_start
+                final_end = check_end
+
     except Exception as e:
         with open(error_files, 'a') as f:
             # Get the traceback content as a string
@@ -1001,24 +1074,103 @@ def find_boundary_and_crop(
         )
 
     #####################################################################################################
+    # Code block: Clean the final MSA
+    #####################################################################################################
+    try:
+        extension_enough = True
+
+        # If the defined final_start or final_end position too close to the edge of the
+        # bed_fasta_mafft_boundary_crop_for_select MSA, label this as extension not enough
+        if final_start <= 5 or final_end >= MSA_length - 5:
+            extension_enough = False
+
+        # Extract MSA based on the defined start and end position
+        bed_fasta_mafft_gap_sim_final_start_to_end, not_use_a, not_use_b = select_start_to_end(
+            bed_fasta_mafft_boundary_crop_for_select, output_dir, final_start, final_end
+        )
+
+        # Define the threshold use for cropping end by similarity to make sure the ends of the MSA are not totally removed
+        # because the boundary of the MSA has been defined.
+        start_pro_mean, end_pro_mean = define_crop_end_simi_thr(
+            bed_fasta_mafft_gap_sim_final_start_to_end
+        )
+
+        if start_pro_mean < crop_end_win * 0.8:
+            # Set crop_end_sim_thr to be smaller than pro_mean to avoid overcropping.
+            start_pro_mean = int(start_pro_mean) - 3
+        else:
+            start_pro_mean = crop_end_win * 0.7
+
+        # Because the divergence for the start and end parts of the MSA can be different, crop separately.
+        if end_pro_mean < crop_end_win * 0.8:
+            end_pro_mean = int(end_pro_mean) - 3
+        else:
+            end_pro_mean = crop_end_win * 0.7
+
+        # Crop end by similarity to clean MSA for left side
+        bed_fasta_mafft_gap_sim_final_start_to_end_left_obj = CropEnd(
+            bed_fasta_mafft_gap_sim_final_start_to_end,
+            threshold=start_pro_mean,
+            window_size=40,
+            crop_l=True,
+            crop_r=False,
+        )
+        bed_fasta_mafft_gap_sim_final_start_to_end_left_obj.crop_alignment()
+        bed_fasta_mafft_gap_sim_final_start_to_end_left = (
+            bed_fasta_mafft_gap_sim_final_start_to_end_left_obj.write_to_file(output_dir)
+        )
+
+        # Crop end by similarity to clean MSA for right side
+        bed_fasta_mafft_gap_sim_final_start_to_end_right_obj = CropEnd(
+            bed_fasta_mafft_gap_sim_final_start_to_end_left,  # Crop right based on the result of left cropping
+            threshold=end_pro_mean,
+            window_size=40,
+            crop_l=False,
+            crop_r=True,
+        )
+        bed_fasta_mafft_gap_sim_final_start_to_end_right_obj.crop_alignment()
+        bed_fasta_mafft_gap_sim_final_start_to_end_cp = bed_fasta_mafft_gap_sim_final_start_to_end_right_obj.write_to_file(
+            output_dir)
+
+        # Remove gaps by similarity again
+        bed_fasta_mafft_gap_sim_final_start_to_end_cp_g, column_mapping = remove_gaps_with_similarity_check(
+            bed_fasta_mafft_gap_sim_final_start_to_end_cp, output_dir, return_map=True
+        )
+
+        cropped_boundary_MSA = bed_fasta_mafft_gap_sim_final_start_to_end_cp_g
+
+    except Exception as e:
+        with open(error_files, 'a') as f:
+            # Get the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write(
+                f'\nFinal MSA cleaning failed for {seq_name} with error:\n{e}'
+            )
+            f.write('\n' + tb_content + '\n\n')
+        logging.error(
+            f'\nFinal MSA cleaning failed for {seq_name} with error:\n{e}\n{tb_content}\n')
+        raise Exception from e
+
+    #####################################################################################################
     # Code block: Select MSA for outer TE boundaries TE-Aid plot
     #####################################################################################################
     try:
         # select_start_to_end will convert out_boundary_msa_start to 0 when it is negative
         # and convert out_boundary_msa_end to the MSA lengh when it is longer than the MSA length
-        out_boundary_msa_start = column_mapping[cropped_boundary.start_post] - 150
-        out_boundary_msa_end = column_mapping[cropped_boundary.end_post] + 150
+        out_boundary_msa_start = final_start - 150
 
-        out_boundary_msa_for_teaid, out_boundary_msa_start_new, out_boundary_msa_end_new = select_star_to_end(
+        out_boundary_msa_end = final_end + 150
+
+        out_boundary_msa_for_teaid, out_boundary_msa_start_new, out_boundary_msa_end_new = select_start_to_end(
             bed_fasta_mafft_boundary_crop_for_select,
             output_dir,
             out_boundary_msa_start,
             out_boundary_msa_end
         )
 
-        start_relate_to_out_boundary_msa_for_teaid = column_mapping[cropped_boundary.start_post] - out_boundary_msa_start_new
+        start_relate_to_out_boundary_msa_for_teaid = final_start - out_boundary_msa_start_new
 
-        end_relate_to_out_boundary_msa_for_teaid = column_mapping[cropped_boundary.end_post] - out_boundary_msa_start_new
+        end_relate_to_out_boundary_msa_for_teaid = final_end - out_boundary_msa_start_new
 
     except Exception as e:
         with open(error_files, 'a') as f:
@@ -1040,7 +1192,7 @@ def find_boundary_and_crop(
         cropped_boundary_manual_MSA_left = select_window_columns(
             bed_fasta_mafft_boundary_crop_for_select,
             output_dir,
-            column_mapping[cropped_boundary.start_post],
+            final_start,
             'left',
             window_size=300,
         )
@@ -1049,7 +1201,7 @@ def find_boundary_and_crop(
         cropped_boundary_manual_MSA_right = select_window_columns(
             bed_fasta_mafft_boundary_crop_for_select,
             output_dir,
-            column_mapping[cropped_boundary.end_post],
+            final_end,
             'right',
             window_size=300,
         )
@@ -1074,20 +1226,16 @@ def find_boundary_and_crop(
         )
 
         #####################################################################################################
-        # Code block: Concatenate beginning and end part of MSA and plot after ORF prediction
+        # Code block: Concatenate beginning and end part of MSA and plot
         #####################################################################################################
 
         # "sequence_len" represent the length of the final cropped MSA
         # Extract the beginning and end columns of the cropped MSA, then join them by "----------" (pseudo-gaps).
         # Return MSA length, which will be used for plotting
-        cropped_boundary_plot_select_start_end_and_joint, sequence_len = (
-            select_start_end_and_join(
-                cropped_alignment_output_file_g,
+        cropped_boundary_plot_select_start_end_and_joint, sequence_len = select_start_end_and_join(
+                cropped_boundary_MSA,
                 output_dir,
-                cropped_boundary.start_post,
-                cropped_boundary.end_post,
             )
-        )
 
         # "column_mapping" is a dictionary, the key represents the cropped nucleotide position and the value represents the
         # original MSA nucleotide position.
@@ -1095,7 +1243,7 @@ def find_boundary_and_crop(
         cropped_boundary_plot_left = select_window_columns(
             bed_fasta_mafft_boundary_crop_for_select,
             output_dir,
-            column_mapping[cropped_boundary.start_post],
+            final_start,
             'left',
             window_size=50,
         )
@@ -1104,7 +1252,7 @@ def find_boundary_and_crop(
         cropped_boundary_plot_right = select_window_columns(
             bed_fasta_mafft_boundary_crop_for_select,
             output_dir,
-            column_mapping[cropped_boundary.end_post],
+            final_end,
             'right',
             window_size=50,
         )
@@ -1486,7 +1634,7 @@ def find_boundary_and_crop(
         raise Exception from e
 
     #####################################################################################################
-    # Code block: Update sequence object (seq_obj)
+    # Code block: Create directories
     #####################################################################################################
     try:
         # Create a folder in the same directory as output_dir to store annotation files
@@ -1674,8 +1822,18 @@ def find_boundary_and_crop(
     # Good          True               Not_required  >=10                   >=2                         Not_required
     # Reco_check    Not_required       Not_required  >=20                   >=2                         Not_required
     # Need_check    Not_required       Not_required  Not_required           Not_required                Not_required
+
+
+    # Perfect
+    # Good
+    # Reco_check
+    # Need_check
+
+
     try:
-        if (
+        if not extension_enough:
+            consi_obj.set_cons_evaluation('Need_ext')
+        elif (
             consi_obj.new_TE_terminal_repeat != 'False'
             and consi_obj.new_TE_type != 'NaN'
             and 'unknown' not in consi_obj.new_TE_type.lower()
@@ -1734,7 +1892,9 @@ def find_boundary_and_crop(
 
         for pattern, new_name in file_copy_pattern:
             try:
-                if consi_obj.cons_evaluation == 'Perfect':
+                if consi_obj.cons_evaluation == 'Need_ext':
+                    destination_dir = more_extension_dir
+                elif consi_obj.cons_evaluation == 'Perfect':
                     destination_dir = perfect_proof
                 elif consi_obj.cons_evaluation == 'Good':
                     destination_dir = good_proof
@@ -1771,17 +1931,20 @@ def find_boundary_and_crop(
                     '>' + uniq_seq_name + '#' + updated_TE_type + '\n' + sequence + '\n'
                 )
 
-        # Write all consensus sequence to final_cons_file.
-        with open(final_con_file, 'a') as f:
-            f.write(
-                '>' + uniq_seq_name + '#' + updated_TE_type + '\n' + sequence + '\n'
-            )
+        # Don't write file to the final_con_file if extension is not enough
 
-        # Write all consensus sequences to final_cons_file_no_low_copy.
-        with open(final_con_file_no_low_copy, 'a') as f:
-            f.write(
-                '>' + uniq_seq_name + '#' + updated_TE_type + '\n' + sequence + '\n'
-            )
+        if extension_enough:
+            # Write all consensus sequence to final_cons_file.
+            with open(final_con_file, 'a') as f:
+                f.write(
+                    '>' + uniq_seq_name + '#' + updated_TE_type + '\n' + sequence + '\n'
+                )
+
+            # Write all consensus sequences to final_cons_file_no_low_copy.
+            with open(final_con_file_no_low_copy, 'a') as f:
+                f.write(
+                    '>' + uniq_seq_name + '#' + updated_TE_type + '\n' + sequence + '\n'
+                )
 
         return files_moved_successfully
 

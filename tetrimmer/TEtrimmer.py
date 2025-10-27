@@ -42,7 +42,7 @@ with open(config_path, 'r') as config_file:
 # Code block: Main functions of TEtrimmer
 #####################################################################################################
 
-TEtrimmer_version = "1.5.4"
+TEtrimmer_version = "1.6.0"
 
 @click.command(
     context_settings={'max_content_width': 120},
@@ -228,7 +228,8 @@ TEtrimmer_version = "1.5.4"
 @click.option(
     '--min_blast_len',
     type=int,
-    help='The minimum sequence length for blast hits to be included for further analysis. Default: 150',
+    help='The minimum sequence length for blast hits to be included for further analysis. Default: 50 for '
+         'SINE and MITE; 150 for others',
 )
 @click.option(
     '--max_cluster_num',
@@ -265,7 +266,7 @@ TEtrimmer_version = "1.5.4"
 @click.option(
     '--max_ext',
     type=int,
-    help='The maximum extension in nucleotides at both ends of the multiple sequence alignment. Default: 7000',
+    help='The maximum extension in nucleotides at each ends of the multiple sequence alignment. Default: 7000',
 )
 @click.option(
     '--gap_thr',
@@ -684,6 +685,7 @@ def main(
             decompressed_genome_file,
             skipped_dir,
             cluster_proof_anno_dir,
+            more_extension_dir
         ) = analyze.create_dir(
             continue_analysis,
             hmm,
@@ -912,6 +914,7 @@ def main(
             error_files,
             plot_skip,
             skipped_dir,
+            more_extension_dir,
             plot_query,
             engine,
             proof_curation_dir,

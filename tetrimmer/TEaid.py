@@ -220,8 +220,7 @@ class TEAid:
             )
         else:
             bed_out_file, blast_hits_count, blast_out_file = blast(
-                self.input_file, self.genome_file, self.blast_database_path,
-                self.mmseqs_database_dir, self.output_dir, search_type=engine
+                self.input_file, self.blast_database_path, self.output_dir, search_type=engine
             )
             all_blast_hit_n, full_length_n = check_blast_full_length(
                 seq_obj,
@@ -255,8 +254,7 @@ class TEAid:
         else:
             try:
                 bed_out_file, blast_hits_count, blast_out_file = blast(
-                    self.input_file, self.genome_file, self.blast_database_path,
-                    self.mmseqs_database_dir, self.output_dir
+                    self.input_file, self.blast_database_path, self.output_dir
                 )
 
                 te_genome_coverage_len = sum_non_overlapping_lengths(blast_out_file, te_aid_blast=False)

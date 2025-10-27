@@ -66,7 +66,7 @@ def con_generater(input_file, output_dir, threshold=0.8, ambiguous='N'):
     )
 
     # Write consensus sequence to a FASTA file
-    output_file = os.path.join(output_dir, f'{os.path.basename(input_file)}_co.fa')
+    output_file = os.path.join(output_dir, f'{os.path.basename(input_file)}_{threshold}_co.fa')
     with open(output_file, 'w') as file:
         SeqIO.write(consensus_record, file, 'fasta')
 
@@ -173,14 +173,15 @@ def fasta_file_to_dict(input_file, separate_name=False):
 
 def blast(
     seq_file,
-    genome_file,
     blast_database_path,
-    mmseqs_database_dir,
     output_dir,
     min_length=150,
     search_type='blast',
     task='blastn',
     seq_obj=None,
+    blast_qcov_hsp_perc=15,
+    evalue='1e-40',
+    mmseqs_database_dir = None,
 ):
     """
     Runs BLAST calling a specified task type and saves the results as a BED file.
@@ -189,7 +190,6 @@ def blast(
     check_blast_full_length
 
     :param seq_file: str, path to input FASTA file
-    :param genome_file: str, path to genome FASTA file
     :param output_dir: str, prefix for output files
     :param min_length: int, minimum alignment length. Default: 150
     :param task: str, BLAST task type ("blastn", "dc-megablast", etc.). Default: "blastn"
@@ -200,6 +200,7 @@ def blast(
     input_file_n = os.path.basename(input_file)
     blast_hits_count = 0
     bed_out_file = None
+
     # define blast outfile
     blast_out_file = os.path.join(output_dir, f'{os.path.basename(input_file)}.b')
 
@@ -213,9 +214,9 @@ def blast(
     if search_type == 'blast':
         # Modify the blast command to include the specified task
         blast_cmd = (
-            f'blastn -max_target_seqs 10000 -task {task} -query {input_file} -db {blast_database_path} '
+            f'blastn -max_target_seqs 10000 -query {input_file} -db {blast_database_path} '
             f'-outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send sstrand evalue qcovhsp" '
-            f'-evalue 1e-40 -qcov_hsp_perc 15 | '
+            f'-evalue {evalue} -qcov_hsp_perc {blast_qcov_hsp_perc} | '
             f'awk -v ml={min_length} \'BEGIN{{OFS="\\t"}} $4 > ml {{print $0}}\' >> {blast_out_file}'
         )
 
@@ -279,8 +280,8 @@ def blast(
         if search_type == 'blast':
             bed_cmd = (
                 f'awk \'BEGIN{{OFS="\\t"; counter=0}} !/^#/ {{counter+=1; '
-                f'if ($11~/plus/){{print $2, $9, $10, counter, $3, "+", $4, $1}} '
-                f'else {{print $2, $10, $9, counter, $3, "-", $4, $1}}}}\' < {blast_out_file} > {bed_out_file}'
+                f'if ($11~/plus/){{print $2, $9, $10, counter, $3, "+", $4, $1, $7, $8}} '
+                f'else {{print $2, $10, $9, counter, $3, "-", $4, $1, $7, $8}}}}\' < {blast_out_file} > {bed_out_file}'
             )
         elif search_type == 'mmseqs':
             bed_cmd = (
@@ -435,6 +436,7 @@ def bed_ave_sequence_len(bed_content, start_rank, end_rank):
     average = sum(selected_lengths) / len(selected_lengths)
 
     return average
+
 
 
 def extract_fasta(
@@ -847,6 +849,8 @@ def remove_gaps(input_file, output_dir, threshold=0.8, min_nucleotide=5):
         if gap_fraction <= threshold:
             keep_list.append(col_idx)
             # Be careful when using len for indexing, because len starts with 1
+            # The key of column_mapping is the column position number of new MSA after cleaning
+            # the value is the column postion number in the old MSA before cleaning
             column_mapping[len(keep_list) - 1] = (
                 col_idx  # Store the mapping of original MSA index to filtered MSA index
             )
@@ -1592,7 +1596,7 @@ def select_gaps_block_with_similarity_check(
 
 
 # Select MSA columns according to the provided start and end position
-def select_star_to_end(input_file, output_dir, start, end):
+def select_start_to_end(input_file, output_dir, start, end):
     alignment = AlignIO.read(input_file, 'fasta')
     MSA_len = alignment.get_alignment_length()
     # Ensure the start position is within the sequence range
@@ -1610,7 +1614,7 @@ def select_star_to_end(input_file, output_dir, start, end):
     return output_file, start, end
 
 
-def select_start_end_and_join(input_file, output_dir, start, end, window_size=50):
+def select_start_end_and_join(input_file, output_dir, start=0, end=None, window_size=50):
     """
     Select start and end columns of MSA
     :param input_file: str, absolute input file path
@@ -1621,6 +1625,8 @@ def select_start_end_and_join(input_file, output_dir, start, end, window_size=50
     :return: Selected MSA object (no file path)
     """
     alignment = AlignIO.read(input_file, 'fasta')
+    if end is None:
+        end = alignment.get_alignment_length()
     sequence_length = end - start
 
     new_alignment = []  # Define a list to store new alignment file

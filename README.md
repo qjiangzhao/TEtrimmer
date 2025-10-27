@@ -1,7 +1,6 @@
 [![Anaconda Version](https://img.shields.io/conda/vn/Bioconda/tetrimmer.svg)](https://anaconda.org/bioconda/tetrimmer)
 [![Singularity Badge](https://img.shields.io/badge/Singularity-available-brightgreen.svg)](https://quay.io/repository/biocontainers/tetrimmer?tab=tags&tag=1.4.0--hdfd78af_0)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
-[![Manual Available](https://img.shields.io/badge/Manual-available-brightgreen.svg)](./docs/TEtrimmerv1.4.0Manual.pdf)
 
 
 
@@ -10,7 +9,6 @@
 - [Installation](#Installation)
 - [Usage](#Usage)
   - [Test](#Test)
-  - [Hardware requirements](#Hardware-requirements)
   - [Inputs](#Inputs) 
   - [Outputs](#Outputs)
   - [Proof curation](#Proof-annotation)
@@ -155,6 +153,15 @@ docker run -it --name TEtrimmer -v <bind_your_path>:/data quay.io/biocontainers/
 # Then you can run TEtrimmer inside TEtrimmer container
 # Please note: Run TEtrimmer via Docker is relatively slower than Conda and Singularity. 
 ```
+### 4. Or simply copy and paste the following command to your terminal to install
+
+```commandline
+mamba create -n TEtrimmer 'python=3.10' aliview 'bedtools>=2.31.1' bioconductor-biostrings blast cd-hit emboss ghostscript hmmer iqtree mafft nseg perl pfam_scan r-base r-rcpp recon repeatmasker repeatmodeler samtools trf pip perl-moose -c conda-forge -c bioconda
+pip install biopython click dataclasses dill joblib matplotlib multiprocess numpy pandas plotly pypdf2 regex requests seaborn scikit-learn tk urllib3
+cpan IPC::Run
+cpan install Moose
+```
+
 
 ## Runtime test
 
@@ -492,15 +499,24 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 ```
 
 ## Update history
+**Oct.27.2025**
+
+Released TEtrimmer 1.6.0.
+Added genome blast coverage to help identify the TE boundary
+Added function to check if extension is enough
+
 **Sep.23.2025**
+
 Fixed LINE poly end bug.
 Change the manual check raw file to the MSA before gappy column cleaning
 
 **TEtrimmer v1.5.4 Released Aug.11.2025**
+
 Add out boundary TE-Aid plot to the final report file.
 Improved TE-Aid plots, strat 0 from the beginning of x-axis. 
 
 **Aug.11.2025**
+
 Add "helitorn_start_patterns" and "helitron_end_patterns" options. 
 Add function to check Helitron element start and end patterns.
 Integrate cluster number and cluster identity into the Summary.txt file.

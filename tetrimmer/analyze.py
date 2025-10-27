@@ -1080,6 +1080,7 @@ def analyze_sequence(
     error_files,
     plot_skip,
     skipped_dir,
+    more_extension_dir,
     plot_query,
     engine,
     proof_curation_dir,
@@ -1142,12 +1143,9 @@ def analyze_sequence(
         # run BLAST search for each FASTA file and return a BED file absolute path
         bed_out_file_dup, blast_hits_count, blast_out_file = blast(
             seq_file,
-            genome_file,
             blast_database_path,
-            mmseqs_database_dir,
             MSA_dir,
             min_length=min_blast_len,
-            task='blastn',
             seq_obj=seq_obj,
             search_type=engine,
         )
@@ -1197,7 +1195,7 @@ def analyze_sequence(
                       f"Main Error: {str(e)}.\nTrace back content: {tb_content}")
 
     #####################################################################################################
-    # Code block: Check
+    # Code block:
     #####################################################################################################
 
     #####################################################################################################
@@ -1450,6 +1448,7 @@ def analyze_sequence(
                         final_con_file,
                         final_con_file_no_low_copy,
                         proof_curation_dir,
+                        more_extension_dir,
                         hmm_dir,
                         poly_patterns,
                         poly_len,
@@ -1557,7 +1556,6 @@ def analyze_sequence(
         return
 
     # After all processing is done, change status to 'process' and write the file name to the progress file
-
     seq_obj.update_status('processed', progress_file)
 
     # If analysis of this sequence has been completed, remove all files contain sequence name
@@ -1694,6 +1692,12 @@ def create_dir(
     ##########################
     low_copy_dir = os.path.join(proof_curation_dir, 'TE_low_copy')
     os.makedirs(low_copy_dir, exist_ok=True)
+
+    ###################################
+    # Define need more extension folder
+    ###################################
+    more_extension_dir = os.path.join(proof_curation_dir, 'TE_more_extension_need')
+    os.makedirs(more_extension_dir, exist_ok=True)
 
     ########################################
     # Define annotation evaluation folders
@@ -1841,4 +1845,5 @@ def create_dir(
         genome_file,
         skipped_dir,
         cluster_proof_anno_dir,
+        more_extension_dir
     )
