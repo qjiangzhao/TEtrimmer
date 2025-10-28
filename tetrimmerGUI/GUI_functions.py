@@ -480,6 +480,57 @@ def extract_fasta_from_bed(genome_fasta, bed_file, output_fasta):
     return output_fasta
 
 
+def align_sequences(input_file, output_file):
+    """
+    Aligns FASTA sequences using MAFFT
+
+    :param input_file: str, input file path
+    :param output_dir: str, output file directory
+    :return: absolute path for multiple sequence alignment file
+    """
+    input_file_n = os.path.basename(input_file)
+
+    # Construct the command as a list of strings
+    mafft_cmd = ['mafft', '--quiet', '--nuc', '--retree', '1', input_file]
+
+    try:
+        # Execute the command
+        result = subprocess.run(
+            mafft_cmd,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+    except FileNotFoundError as e:
+        logging.error(
+            "'mafft' command not found. Please ensure 'mafft' is installed correctly."
+        )
+        raise Exception from e
+
+    except subprocess.CalledProcessError as e:
+        error_message = e.stderr
+        logging.error(f'\nMAFFT failed for {input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
+
+        if (
+            'Killed' in error_message
+            and 'disttbfast' in error_message
+            and 'memopt' in error_message
+        ):
+            logging.error(
+                'It seems insufficient RAM was available for MAFFT multiple sequence alignment. Please assign more '
+                'RAM or reduce the thread number to solve this problem.\n'
+            )
+        raise Exception from e
+
+    # Write the output to the file
+    with open(output_file, 'w') as f:
+        f.write(result.stdout)
+
+    return output_file
+
+
 def printProgressBar(
     iteration, total, prefix='', suffix='', decimals=1, length=50, fill='█', final=False
 ):
