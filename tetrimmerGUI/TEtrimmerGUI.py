@@ -28,7 +28,8 @@ install_and_import(required_packages)
 
 try:
     from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, \
-        Toplevel, simpledialog, Text, Entry, filedialog, END, ttk
+        Toplevel, simpledialog, Text, Entry, filedialog, END, ttk, Menubutton
+
 except ImportError:
     print("tkinter (TK) is not available in your Python installation.")
 
@@ -87,6 +88,18 @@ def get_original_file_path():
         original_file_path = os.path.dirname(os.path.abspath(__file__))
     return original_file_path
 
+# Helper: allow both "bind-style factories" and direct-call functions
+def _invoke(handler_func, *args, **kwargs):
+    """
+    Call handler_func(*args, **kwargs). If it returns a callable (e.g., a Tk bind handler),
+    call it once (with a dummy None event if needed).
+    """
+    res = handler_func(*args, **kwargs)
+    if callable(res):
+        try:
+            res(None)   # many bind-style handlers accept an event
+        except TypeError:
+            res()
 
 # Detect system OS type
 os_type = platform.system()
@@ -503,7 +516,7 @@ def proof_curation(
 
             # Iterate over the children of the button frame
             for button in button_frame.winfo_children():
-                # Get the button text color and background color
+                # Get the button color and background color
                 button_bg = button.cget('bg')
                 button_fg = button.cget('fg')
                 button_list = [button_bg, button_fg]
@@ -2084,9 +2097,8 @@ def proof_curation(
     # canvas is inside current_win
     # frame is inside canvas
     # frame contains child-frames and buttons
-
     # child_load_files can only load 1000 files maximum
-    def child_load_files(
+    def child_load_files_back_up(
         start,
         end,
         frame,
@@ -2216,7 +2228,7 @@ def proof_curation(
             button_frame = Frame(frame, bg='white')
             button_frame.grid(row=i - start, column=2, sticky='e')
 
-            # Create "Consensus" button inside button_frame
+            # Create "Save" button inside button_frame
             copy_button = Button(
                 button_frame, text='Save', bg=save_button_bg, fg=save_button_fg
             )
@@ -2374,6 +2386,209 @@ def proof_curation(
             frame.grid_columnconfigure(1, weight=1)
             frame.grid_columnconfigure(2, weight=0)
 
+    def child_load_files(
+            start,
+            end,
+            frame,
+            canvas,
+            source_dir,
+            current_win,
+            scroll_position=None,
+            button_states=None,
+    ):
+        # Used global variables
+        # chrom_size_g
+        # consensus_folder
+        # temp_folder
+        # genome_file_g
+        # cons_thre_g
+        # others_dir
+
+        # Restore scroll position
+        if scroll_position is not None:
+            canvas.yview_moveto(scroll_position)
+        else:
+            canvas.yview_moveto(0)
+
+        if button_states is None:
+            button_states = {}
+
+        if not os.path.exists(source_dir) or not os.listdir(source_dir):
+            label = Label(frame, text='No files found here, try another folder.', bg='white')
+            label.pack(pady=20)
+            return
+
+        # Sort files and render rows
+        sorted_files = sorted(os.listdir(source_dir))
+        for i, filename in enumerate(sorted_files[start:end], start=start):
+            # Line number
+            line_number = Label(frame, text=str(i + 1), bg='white')
+            line_number.grid(row=i - start, column=0)
+
+            # Default colors
+            file_button_bg = 'white'
+            save_button_bg = 'white'
+            extension_button_bg = 'white'
+            teaid_button_bg = 'white'
+            crop_button_bg = 'white'  # single dropdown color
+            cons_button_bg = 'white'
+            others_button_bg = 'white'
+
+            file_button_fg = 'black'
+            save_button_fg = 'black'
+            extension_button_fg = 'black'
+            teaid_button_fg = 'black'
+            crop_button_fg = 'black'  # single dropdown color
+            cons_button_fg = 'black'
+            others_button_fg = 'black'
+
+            # Restore colors from button_states if present
+            if button_states:
+                if filename in button_states:
+                    states = button_states[filename]
+                    # index map (old layout with 3 crop buttons; len(states)==9):
+                    # 0 file, 1 save, 2 extend, 3 teaid, 4 cropDiv, 5 cropGap, 6 cleanCol, 7 cons, 8 discard
+                    # new layout with 1 crop dropdown (typical len(states)==7):
+                    # 0 file, 1 save, 2 extend, 3 teaid, 4 crop, 5 cons, 6 discard
+
+                    if len(states) >= 1:  # file
+                        file_button_bg, file_button_fg = states[0][0], states[0][1]
+                    if len(states) >= 2:  # save
+                        save_button_bg, save_button_fg = states[1][0], states[1][1]
+                    if len(states) >= 3:  # extend
+                        extension_button_bg, extension_button_fg = states[2][0], states[2][1]
+                    if len(states) >= 4:  # teaid
+                        teaid_button_bg, teaid_button_fg = states[3][0], states[3][1]
+
+                    # Cons
+                    if len(states) >= 6:  # new layout index 5
+                        cons_button_bg, cons_button_fg = states[5][0], states[5][1]
+                    # Discard
+                    if len(states) >= 7:  # new layout index 6
+                        others_button_bg, others_button_fg = states[6][0], states[6][1]
+                else:
+                    # New filename not seen before: make it stand out
+                    file_button_bg = 'white'
+                    file_button_fg = 'blue'
+
+            # Filename button
+            file_button = Button(
+                frame, text=filename, anchor='w', bg=file_button_bg, fg=file_button_fg
+            )
+            file_button.grid(row=i - start, column=1, sticky='ew')
+
+            # Open file on double-click
+            file_button.bind('<Double-Button-1>', open_file(filename, file_button, source_dir))
+
+            # Per-file action buttons container
+            button_frame = Frame(frame, bg='white')
+            button_frame.grid(row=i - start, column=2, sticky='e')
+
+            # Save
+            copy_button = Button(button_frame, text='Save', bg=save_button_bg, fg=save_button_fg)
+            copy_button.grid(row=0, column=0, padx=1)
+            copy_button.bind(
+                '<Button-1>',
+                copy_file(filename, copy_button, consensus_folder, source_dir, current_win),
+            )
+
+            # Extend
+            more_extend_button = Button(
+                button_frame, text='Extend', bg=extension_button_bg, fg=extension_button_fg
+            )
+            more_extend_button.grid(row=0, column=1, padx=1)
+            more_extend_button.bind(
+                '<Button-1>',
+                extension_function(
+                    filename,
+                    more_extend_button,
+                    source_dir,
+                    temp_folder,
+                    current_win,
+                    chrom_size_g,
+                    frame,
+                    canvas,
+                    genome_file_g,
+                ),
+            )
+
+            # TEAid
+            plot_button = Button(button_frame, text='TEAid', bg=teaid_button_bg, fg=teaid_button_fg)
+            plot_button.grid(row=0, column=2, padx=1)
+            plot_button.bind(
+                '<Button-1>',
+                teaid_plotter_gui(
+                    filename,
+                    plot_button,
+                    source_dir,
+                    temp_folder,
+                    genome_file_g,
+                    canvas,
+                    current_win,
+                    prepared_cdd_g,
+                ),
+            )
+
+            crop_mb = Menubutton(
+                button_frame, text='Crop', bg=crop_button_bg, fg=crop_button_fg, relief='raised'
+            )
+            crop_mb.grid(row=0, column=3, padx=1)
+
+            crop_menu = Menu(crop_mb, tearoff=0)
+            crop_mb['menu'] = crop_menu
+
+            crop_menu.add_command(
+                label='Crop end by divergence',
+                command=lambda fn=filename: _invoke(
+                    crop_end_div_gui, fn, crop_mb, source_dir, source_dir, current_win, frame, canvas
+                ),
+            )
+            crop_menu.add_command(
+                label='Crop end by gap',
+                command=lambda fn=filename: _invoke(
+                    crop_end_gap_gui, fn, crop_mb, source_dir, source_dir, current_win, frame, canvas
+                ),
+            )
+            crop_menu.add_command(
+                label='Clean gap column',
+                command=lambda fn=filename: _invoke(
+                    remove_gaps_with_similarity_check_gui,
+                    fn, crop_mb, source_dir, source_dir, current_win, frame, canvas
+                ),
+            )
+
+            # Cons
+            cons_button = Button(button_frame, text='Cons', bg=cons_button_bg, fg=cons_button_fg)
+            cons_button.grid(row=0, column=4, padx=1)  # shifted left (was 6)
+            cons_button.bind(
+                '<Button-1>',
+                generate_cons(
+                    filename,
+                    cons_button,
+                    source_dir,
+                    current_win,
+                    frame,
+                    canvas,
+                    cons_thre=cons_thre_g,
+                    ambiguous='N',
+                ),
+            )
+
+            # Discard
+            others_button = Button(button_frame, text='Discard', bg=others_button_bg, fg=others_button_fg)
+            others_button.grid(row=0, column=5, padx=1)  # shifted left (was 7)
+            others_button.bind(
+                '<Button-1>',
+                copy_file(filename, others_button, others_dir, source_dir, current_win),
+            )
+
+            # Layout weights
+            button_frame.grid_columnconfigure(0, weight=1)
+            button_frame.grid_rowconfigure(0, weight=1)
+            frame.grid_columnconfigure(1, weight=1)
+            frame.grid_columnconfigure(2, weight=0)
+
+
     # Build child canvas window and load the files in each cluster
     def open_cluster_folder(folder_n, source_dir):
         # Create a new top-level window
@@ -2404,6 +2619,8 @@ def proof_curation(
         )
 
         # Load file, show maximum 1000 files
+        # This is the first time to show the child canvas, the child canvas will be re-freshed
+        # when click the buttons, because each button connect with function fresh_canvas
         child_load_files(
             0,
             1000,
@@ -2431,7 +2648,7 @@ def proof_curation(
     # canvas is inside current_win
     # frame is inside canvas
     # frame contains child-frames and buttons
-    def other_cons_load_files(
+    def other_cons_load_files_for_back_up(
         start,
         end,
         frame,
@@ -2704,6 +2921,280 @@ def proof_curation(
             )
             cons_button.grid(row=0, column=7, padx=1)
 
+            cons_button.bind(
+                '<Button-1>',
+                generate_cons(
+                    filename,
+                    cons_button,
+                    source_dir,
+                    current_win,
+                    frame,
+                    canvas,
+                    cons_thre=cons_thre_g,
+                    ambiguous='N',
+                    update_child_canvas=False,
+                    file_start=start,
+                    file_end=end,
+                    save_path=save_path,
+                ),
+            )
+
+            button_frame.grid_columnconfigure(0, weight=1)
+            button_frame.grid_rowconfigure(0, weight=1)
+            frame.grid_columnconfigure(1, weight=1)
+            frame.grid_columnconfigure(2, weight=0)
+
+    def other_cons_load_files(
+            start,
+            end,
+            frame,
+            canvas,
+            source_dir,
+            current_win,
+            save_path=None,
+            scroll_position=None,
+            button_states=None,
+            current_canvas='cons_lib',
+    ):
+        # Update global current_canvas_content variable to enable search function
+        global current_canvas_content
+        current_canvas_content = current_canvas
+
+        clear_frame()
+
+        # Restore scroll position
+        if scroll_position is not None:
+            canvas.yview_moveto(scroll_position)  # Set scrollbar to saved position
+        else:
+            canvas.yview_moveto(0)  # Reset scrollbar to top if no position is provided
+
+        if button_states is None:
+            button_states = {}
+
+        if not os.path.exists(source_dir) or not os.listdir(source_dir):
+            label = Label(frame, text='No files found here, try another folder.', bg='white')
+            label.pack(pady=20)
+            return
+
+        # Sort files
+        sorted_files = sorted(os.listdir(source_dir))
+
+        for i, filename in enumerate(sorted_files[start:end], start=start):
+            # Add line number into canvas frame
+            line_number = Label(frame, text=str(i + 1), bg='white')
+            line_number.grid(row=i - start, column=0)
+
+            # --- Default colors ---
+            file_button_bg = 'white'
+            save_button_bg = 'white'
+            blast_button_bg = 'white'
+            extension_button_bg = 'white'
+            teaid_button_bg = 'white'
+            crop_button_bg = 'white'  # NEW: single dropdown color
+            cons_button_bg = 'white'
+
+            file_button_fg = 'black'
+            save_button_fg = 'black'
+            blast_button_fg = 'black'
+            extension_button_fg = 'black'
+            teaid_button_fg = 'black'
+            crop_button_fg = 'black'  # NEW: single dropdown color
+            cons_button_fg = 'black'
+
+            # --- Restore colors from button_states (supports old/new layouts) ---
+            # Old layout (9 items): 0 file, 1 save, 2 blast, 3 extend, 4 teaid, 5 cropDiv, 6 cropGap, 7 cleanCol, 8 cons
+            # New layout (7 items): 0 file, 1 save, 2 blast, 3 extend, 4 teaid, 5 crop, 6 cons
+            if button_states:
+                if filename in button_states:
+                    states = button_states[filename]
+
+                    if len(states) >= 1:  # file
+                        file_button_bg, file_button_fg = states[0][0], states[0][1]
+                    if len(states) >= 2:  # save
+                        save_button_bg, save_button_fg = states[1][0], states[1][1]
+                    if len(states) >= 3:  # blast
+                        blast_button_bg, blast_button_fg = states[2][0], states[2][1]
+                    if len(states) >= 4:  # extend
+                        extension_button_bg, extension_button_fg = states[3][0], states[3][1]
+                    if len(states) >= 5:  # teaid
+                        teaid_button_bg, teaid_button_fg = states[4][0], states[4][1]
+
+                    # Cons
+                    if len(states) >= 7:  # new layout index 6
+                        cons_button_bg, cons_button_fg = states[6][0], states[6][1]
+                else:
+                    file_button_bg = 'white'
+                    file_button_fg = 'blue'
+
+            # Add file name button into canvas frame
+            file_button = Button(
+                frame, text=filename, anchor='w', bg=file_button_bg, fg=file_button_fg
+            )
+            file_button.grid(row=i - start, column=1, sticky='ew')
+            # Bind with open_file function to open file
+            file_button.bind(
+                '<Double-Button-1>', open_file(filename, file_button, source_dir)
+            )
+
+            # Build a child button_frame inside frame
+            button_frame = Frame(frame, bg='white')
+            button_frame.grid(row=i - start, column=2, sticky='e')
+
+            # Create "Save" button inside button_frame
+            copy_button = Button(
+                button_frame, text='Save', bg=save_button_bg, fg=save_button_fg
+            )
+            copy_button.grid(row=0, column=0, padx=1)
+            # Bind "Consensus" button with copy_file function with specific source and destination folder
+            copy_button.bind(
+                '<Button-1>',
+                copy_file(filename, copy_button, save_path, source_dir, current_win),
+            )
+
+            # Define "Blast" button
+            blast_button = Button(
+                button_frame, text='Blast', bg=blast_button_bg, fg=blast_button_fg
+            )
+            blast_button.grid(row=0, column=1, padx=1)
+            # Bind blast button with blast functions
+            blast_button.bind(
+                '<Button-1>',
+                blast_gui(
+                    filename,
+                    blast_button,
+                    source_dir,
+                    other_cons_lib_folder,
+                    current_win,
+                    frame,
+                    canvas,
+                    genome_file_g,
+                    e_value=blast_e_value_g,
+                    update_child_canvas=False,
+                    file_start=start,
+                    file_end=end,
+                    save_path=save_path,
+                ),
+            )
+
+            # Define "Extension" button
+            more_extend_button = Button(
+                button_frame,
+                text='Extend',
+                bg=extension_button_bg,
+                fg=extension_button_fg,
+            )
+            more_extend_button.grid(row=0, column=2, padx=1)
+            # Bind "Extension" button with extension function
+            more_extend_button.bind(
+                '<Button-1>',
+                extension_function(
+                    filename,
+                    more_extend_button,
+                    source_dir,
+                    temp_folder,
+                    current_win,
+                    chrom_size_g,
+                    frame,
+                    canvas,
+                    genome_file_g,
+                    update_child_canvas=False,
+                    file_start=start,
+                    file_end=end,
+                    save_path=save_path,
+                ),
+            )
+
+            # Define "TEAid" button
+            plot_button = Button(
+                button_frame, text='TEAid', bg=teaid_button_bg, fg=teaid_button_fg
+            )
+            plot_button.grid(row=0, column=3, padx=1)
+            # Bind "TEAid" button with teaid_plotter_gui
+            plot_button.bind(
+                '<Button-1>',
+                teaid_plotter_gui(
+                    filename,
+                    plot_button,
+                    source_dir,
+                    temp_folder,
+                    genome_file_g,
+                    canvas,
+                    current_win,
+                    prepared_cdd_g,
+                ),
+            )
+
+            # --- NEW: One "Crop" dropdown replacing CropDiv/CropGap/CleanCol ---
+            crop_mb = Menubutton(
+                button_frame,
+                text='Crop',
+                bg=crop_button_bg,
+                fg=crop_button_fg,
+                relief='raised'
+            )
+            crop_mb.grid(row=0, column=4, padx=1)
+
+            crop_menu = Menu(crop_mb, tearoff=0)
+            crop_mb['menu'] = crop_menu
+
+            crop_menu.add_command(
+                label='Crop end by divergence',
+                command=lambda fn=filename: _invoke(
+                    crop_end_div_gui,
+                    fn,
+                    crop_mb,
+                    source_dir,
+                    source_dir,
+                    current_win,
+                    frame,
+                    canvas,
+                    update_child_canvas=False,
+                    file_start=start,
+                    file_end=end,
+                    save_path=save_path,
+                ),
+            )
+            crop_menu.add_command(
+                label='Crop end by gap',
+                command=lambda fn=filename: _invoke(
+                    crop_end_gap_gui,
+                    fn,
+                    crop_mb,
+                    source_dir,
+                    source_dir,
+                    current_win,
+                    frame,
+                    canvas,
+                    update_child_canvas=False,
+                    file_start=start,
+                    file_end=end,
+                    save_path=save_path,
+                ),
+            )
+            crop_menu.add_command(
+                label='Clean gap column',
+                command=lambda fn=filename: _invoke(
+                    remove_gaps_with_similarity_check_gui,
+                    fn,
+                    crop_mb,
+                    source_dir,
+                    source_dir,
+                    current_win,
+                    frame,
+                    canvas,
+                    update_child_canvas=False,
+                    file_start=start,
+                    file_end=end,
+                    save_path=save_path,
+                ),
+            )
+            # --- end NEW ---
+
+            # Define "Cons" button (shifted left to fill gap)
+            cons_button = Button(
+                button_frame, text='Cons', bg=cons_button_bg, fg=cons_button_fg
+            )
+            cons_button.grid(row=0, column=5, padx=1)  # was column=7 when three crop buttons existed
             cons_button.bind(
                 '<Button-1>',
                 generate_cons(
