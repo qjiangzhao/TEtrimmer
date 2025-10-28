@@ -184,7 +184,7 @@ if os_type == "Windows":
     type=str,
     help='Log level. [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
 )
-@click.version_option("1.5.4", prog_name='TEtrimmerGUI')
+@click.version_option("1.6.0", prog_name='TEtrimmerGUI')
 def proof_curation(
     te_trimmer_proof_curation_dir,
     output_dir,
@@ -372,7 +372,7 @@ def proof_curation(
 
     # Initialize Tk window
     root = Tk()
-    root.title(f'TEtrimmer Proof Curation Tool 1.5.4')
+    root.title(f'TEtrimmer Proof Curation Tool 1.6.0')
     # width * height
     if os_type == 'Windows':
         root.geometry('1000x800')
@@ -2021,7 +2021,7 @@ def proof_curation(
         help_window.update_idletasks()  # Ensure that all widget sizes are calculated
 
     #####################################################################################################
-    # Code block: Define child canvas, which show files in each cluster
+    # Code block: Define parent canvas, which show all cluster folders
     #####################################################################################################
     # Load all clusters
     def load_cluster_files(
@@ -2047,9 +2047,7 @@ def proof_curation(
             file_button.grid(row=i - start, column=1, sticky='ew')
 
             # Bind with open_file function to open file
-            file_button.bind(
-                '<Double-Button-1>', open_file(filename, file_button, source_dir)
-            )
+            file_button.bind('<Double-Button-1>', open_file(filename, file_button, source_dir))
 
             # Build a child button_frame inside frame
             button_frame = Frame(frame, bg='white')
@@ -2827,30 +2825,44 @@ def proof_curation(
             'Clustered_proof_curation',
             'TE_low_copy',
             'TE_skipped',
+            'TE_more_extension_need',
             'Consensus_lib',
         ]
+
+        # Use this to create a drop menu
+        TEtrimmer_others_menu = None
 
         # Create sub-menu
         for i, annotation in enumerate(annotation_folders):
             annotationMenu = Menu(menubar, tearoff=0)
             if i == 0:
                 menubar.add_cascade(label='TEtrimmer_clustered', menu=annotationMenu)
-            elif i == 1:
-                menubar.add_cascade(label='TEtrimmer_low_copy', menu=annotationMenu)
-            elif i == 2:
-                menubar.add_cascade(label='TEtrimmer_skipped', menu=annotationMenu)
-            else:
-                menubar.add_cascade(label=annotation, menu=annotationMenu)
+
+            elif i in (1, 2, 3):
+
+                if TEtrimmer_others_menu is None:
+                    TEtrimmer_others_menu = Menu(menubar, tearoff=0)
+                    menubar.add_cascade(label='TEtrimmer_others', menu=TEtrimmer_others_menu)
+                # add these two as submenus under the parent
+                if i == 1:
+                    TEtrimmer_others_menu.add_cascade(label='TEtrimmer_low_copy', menu=annotationMenu)
+                elif i == 2:
+                    TEtrimmer_others_menu.add_cascade(label='TEtrimmer_skipped', menu=annotationMenu)
+                elif i ==3:
+                    TEtrimmer_others_menu.add_cascade(label='TEtrimmer_need_more_extension', menu=annotationMenu)
+
+            elif i == 4:
+                menubar.add_cascade(label='Consensus_lib', menu=annotationMenu)
 
             annotation_path = None
             # Check which menu button is selected
             if (
-                i <= 2 and te_trimmer_proof_curation_dir_g is not None
+                i <= 3 and te_trimmer_proof_curation_dir_g is not None
             ):  # Means "TE_clustered", "TE_low_copy", "TE_skipped"
                 annotation_path = os.path.join(
                     te_trimmer_proof_curation_dir_g, annotation
                 )
-            elif i == 3:  # Means "Consensus_lib"
+            elif i == 4:  # Means "Consensus_lib"
                 annotation_path = other_cons_lib_single_file_folder
 
             # Give hits when folder isn't found
@@ -2871,6 +2883,8 @@ def proof_curation(
                     annotationMenu.add_command(label='No low copy TEs')
                 elif i == 2:
                     annotationMenu.add_command(label='No skipped TEs')
+                elif i == 3:
+                    annotationMenu.add_command(label='No TE need more extension')
 
                 elif annotation == 'Consensus_lib':
                     annotationMenu.add_command(
@@ -2907,7 +2921,7 @@ def proof_curation(
                                 annotation_path,
                             ),
                         )
-                elif i == 1 or i == 2:  # Means "TE_low_copy", "TE_skipped"
+                elif i in (1, 2, 3):  # Means "TE_low_copy", "TE_skipped", "TE_more_extension_need"
                     for j in range(0, len(sorted_files_annotation), 100):
                         end = min(j + 100, len(sorted_files_annotation))
 
@@ -2945,7 +2959,7 @@ def proof_curation(
                                     current_canvas='tetrimmer_out',
                                 ),
                             )
-                elif i == 3:  # Means "Consensus_lib"
+                elif i == 4:  # Means "Consensus_lib"
 
                     for j in range(0, len(sorted_files_annotation), 100):
                         end = min(j + 100, len(sorted_files_annotation))
