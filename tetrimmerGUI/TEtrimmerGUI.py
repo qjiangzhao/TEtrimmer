@@ -578,6 +578,7 @@ def proof_curation(
         save_path=None,
     ):
         def _extension_function(event, chrom_size=chrom_size):
+            # Define the chrom_size again in the inner function, which allows to globalize this parameter
             global chrom_size_g
 
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
@@ -784,19 +785,40 @@ def proof_curation(
         file_start=0,
         file_end=500,
         save_path=None,
+        num_thread=5
     ):
         def _align_sequences_gui(event):
+
+            if os_type == "Windows":
+
+                logging.error('The alignment function is not available for Windows system.')
+                messagebox.showerror(
+                    'Error',
+                    'The alignment function is not available for Windows system.',
+                    parent=current_win,
+                )
+                return
+
             if input_fasta_n.lower().endswith(('.fa', '.fasta')):
                 try:
                     input_file = os.path.join(source_dir, input_fasta_n)
                     output_file = os.path.join(output_dir_g, f'{input_fasta_n}_msa.fa')
 
-                    logging.info('Mafft is running ......')
+                    logging.info(f'Mafft is running for {input_fasta_n}')
+
+                    '''
+                    _align_sequences = run_func_in_thread(
+                        align_sequences,
+                        input_file,
+                        output_file,
+                        num_thread=num_thread
+                    )
+                    '''
                     align_sequences(
                         input_file,
                         output_file,
+                        num_thread=num_thread
                     )
-                    logging.info('Mafft finished.')
 
                     # if os_type == "Darwin":
                     #     button.config(fg='red')  # Change button text color under macOS system
@@ -821,11 +843,12 @@ def proof_curation(
 
                 except Exception as e:
                     logging.error(
-                        f'An error occurred for multiple sequence alignment: \n {traceback.format_exc()}'
+                        f'An error occurred for multiple sequence alignment. You have to ensure mafft '
+                        f'is installed on your system: \n {traceback.format_exc()}'
                     )
                     messagebox.showerror(
                         'Error',
-                        f'Multiple sequence alignment failed. This function is only for Linux and MacOS: {str(e)}',
+                        f'Multiple sequence alignment failed. Make sure mafft is available on your system: {str(e)}',
                         parent=current_win,
                     )
 
@@ -1098,6 +1121,7 @@ def proof_curation(
                 input_fasta_file = os.path.join(source_dir, input_fasta_n)
 
                 try:
+                    logging.info("Blast is running......")
                     if genome_f is None:
                         messagebox.showerror(
                             'Error',
@@ -1208,7 +1232,7 @@ def proof_curation(
                             os.remove(destination_other_cons_blast_file)
 
                         # Move other_cons_blast to source_dir
-                        shutil.move(other_cons_blast, source_dir)
+                        shutil.copy(other_cons_blast, source_dir)
 
                         # Define check other consensus library fasta file derived from the bed file
                         other_cons_fasta = os.path.join(
@@ -1236,6 +1260,8 @@ def proof_curation(
                             file_end=file_end,
                             fresh_save_path=save_path,
                         )
+
+                    logging.info("Blast is finished.")
 
                 except Exception as e:
                     logging.error(
@@ -1369,49 +1395,56 @@ def proof_curation(
         # te_trimmer_proof_curation_dir
         found_paths = []
 
-        if current_canvas_status_local == 'tetrimmer_out':
-            # direct dir to
-            check_paths = [
-                os.path.join(dirs, 'Clustered_proof_curation'),
-                os.path.join(dirs, 'TE_low_copy'),
-                os.path.join(dirs, 'TE_skipped'),
-            ]
+        try:
 
-            # Define found_path to store search result
-            for directory in check_paths:
-                if not os.path.isdir(directory):
-                    continue
+            if current_canvas_status_local == 'tetrimmer_out':
+                # direct dir to
+                check_paths = [
+                    os.path.join(dirs, 'Clustered_proof_curation'),
+                    os.path.join(dirs, 'TE_low_copy'),
+                    os.path.join(dirs, 'TE_skipped'),
+                ]
 
-                for root, subdirs, files in os.walk(directory):
-                    # Check files in the current directory
-                    for file in files:
-                        if filename_pattern in file:
-                            # Only show the last folder name of root and the file name
-                            found_paths.append(
-                                os.path.join(os.path.basename(root), file)
-                            )
+                # Define found_path to store search result
+                for directory in check_paths:
+                    if not os.path.isdir(directory):
+                        continue
 
-                    # Check files in each subdirectory
-                    # subdir will be a empty directory if no directory is found under root
-                    for subdir in subdirs:
-                        subdir_path = os.path.join(root, subdir)
-                        for subdir_root, _, subdir_files in os.walk(subdir_path):
-                            for subdir_file in subdir_files:
-                                if filename_pattern in subdir_file:
-                                    # Only show the cluster number and the file name
-                                    found_paths.append(
-                                        os.path.join(
-                                            os.path.basename(subdir_root), subdir_file
+                    for root, subdirs, files in os.walk(directory):
+                        # Check files in the current directory
+                        for file in files:
+                            if filename_pattern in file:
+                                # Only show the last folder name of root and the file name
+                                found_paths.append(
+                                    os.path.join(os.path.basename(root), file)
+                                )
+
+                        # Check files in each subdirectory
+                        # subdir will be a empty directory if no directory is found under root
+                        for subdir in subdirs:
+                            subdir_path = os.path.join(root, subdir)
+                            for subdir_root, _, subdir_files in os.walk(subdir_path):
+                                for subdir_file in subdir_files:
+                                    if filename_pattern in subdir_file:
+                                        # Only show the cluster number and the file name
+                                        found_paths.append(
+                                            os.path.join(
+                                                os.path.basename(subdir_root), subdir_file
+                                            )
                                         )
-                                    )
-        else:
-            # Then current_canvas_status is "cons_lib"
-            # The dirs variable should be "other_cons_lib_single_file_folder" to search TE consensus library
-            if os.path.isdir(dirs):
-                sorted_cons_files = sorted(os.listdir(dirs))
-                for index, file in enumerate(sorted_cons_files):
-                    if filename_pattern in file:
-                        found_paths.append((f'Position number {index + 1}', file))
+            else:
+                # Then current_canvas_status is "cons_lib"
+                # The dirs variable should be "other_cons_lib_single_file_folder" to search TE consensus library
+                if os.path.isdir(dirs):
+                    sorted_cons_files = sorted(os.listdir(dirs))
+                    for index, file in enumerate(sorted_cons_files):
+                        if filename_pattern in file:
+                            found_paths.append((f'Position number {index + 1}', file))
+
+        except Exception as e:
+            logging.error(
+                f'An error for searching files: \n {traceback.format_exc()}'
+            )
 
         return found_paths
 
@@ -1975,7 +2008,8 @@ def proof_curation(
             try:
 
                 if type == "delete":
-                    shutil.move(last_copied_file, source_dir)
+                    shutil.copy(last_copied_file, source_dir)
+                    os.remove(last_copied_file)
                 else:
                     os.remove(last_copied_file)
 
@@ -2003,6 +2037,11 @@ def proof_curation(
                         'Info', f"Successfully undo '{last_copied_file}'."
                     )
             except Exception as e:
+
+                logging.error(
+                    f'An error for undo last copy or delete: \n {traceback.format_exc()}'
+                )
+
                 messagebox.showerror(
                     'Error', f'An error occurred while undo the file: {str(e)}'
                 )
@@ -2046,7 +2085,8 @@ def proof_curation(
                 try:
 
                     if delete:
-                        shutil.move(file_path, target_directory)
+                        shutil.copy(file_path, target_directory)
+                        os.remove(file_path)
                         append_content = "delete"
                     else:
                         shutil.copy(file_path, target_directory)
@@ -2086,6 +2126,9 @@ def proof_curation(
                         )
 
                 except Exception as e:
+                    logging.error(
+                        f'An error for copy or delete files: \n {traceback.format_exc()}'
+                    )
                     messagebox.showerror(
                         'Error',
                         f'An error occurred while copying the file: {str(e)}',
@@ -2289,6 +2332,7 @@ def proof_curation(
             crop_button_bg = 'white'  # single dropdown color
             cons_button_bg = 'white'
             delete_button_bg = 'white'
+            align_button_bg = 'white'
 
             file_button_fg = 'black'
             save_button_fg = 'black'
@@ -2297,6 +2341,7 @@ def proof_curation(
             crop_button_fg = 'black'  # single dropdown color
             cons_button_fg = 'black'
             delete_button_fg = 'black'
+            align_button_fg = 'black'
 
             # Restore colors from button_states if present
             if button_states:
@@ -2313,13 +2358,15 @@ def proof_curation(
                         extension_button_bg, extension_button_fg = states[2][0], states[2][1]
                     if len(states) >= 4:  # teaid
                         teaid_button_bg, teaid_button_fg = states[3][0], states[3][1]
-
                     # Cons
                     if len(states) >= 6:  # new layout index 5
                         cons_button_bg, cons_button_fg = states[5][0], states[5][1]
-                    # Discard
+                    # Delete
                     if len(states) >= 7:  # new layout index 6
                         delete_button_bg, delete_button_fg = states[6][0], states[6][1]
+                    # Align
+                    if len(states) >= 8:  # new layout index 6
+                        align_button_bg, align_button_fg = states[7][0], states[7][1]
                 else:
                     # New filename not seen before: make it stand out
                     file_button_bg = 'white'
@@ -2422,7 +2469,7 @@ def proof_curation(
 
             # Cons
             cons_button = Button(button_frame, text='Cons', bg=cons_button_bg, fg=cons_button_fg)
-            cons_button.grid(row=0, column=4, padx=1)  # shifted left (was 6)
+            cons_button.grid(row=0, column=4, padx=1)
             cons_button.bind(
                 '<Button-1>',
                 generate_cons(
@@ -2438,13 +2485,13 @@ def proof_curation(
             )
 
             # Delete
-            others_button = Button(button_frame, text='Delete', bg=delete_button_bg, fg=delete_button_fg)
-            others_button.grid(row=0, column=5, padx=1)  # shifted left (was 7)
-            others_button.bind(
+            delete_button = Button(button_frame, text='Delete', bg=delete_button_bg, fg=delete_button_fg)
+            delete_button.grid(row=0, column=5, padx=1)
+            delete_button.bind(
                 '<Button-1>',
                 copy_file(
                     filename,
-                    copy_button,
+                    delete_button,
                     others_dir,  # others_dir used to store the deleted files
                     source_dir,
                     current_win,
@@ -2453,6 +2500,25 @@ def proof_curation(
                     delete=True
                 )
             )
+
+            '''
+            # Multiple sequence alignment
+            align_button = Button(button_frame, text='Align', bg=align_button_bg, fg=align_button_fg)
+            align_button.grid(row=0, column=6, padx=1)
+            align_button.bind(
+                '<Button-1>',
+                align_sequences_gui(
+                    filename,
+                    align_button,
+                    source_dir,
+                    source_dir,
+                    current_win,
+                    frame,
+                    canvas,
+                    num_thread=10
+                )
+            )
+            '''
 
             # Layout weights
             button_frame.grid_columnconfigure(0, weight=1)
@@ -2813,7 +2879,7 @@ def proof_curation(
 
             # Create "Delete" button inside button_frame
             delete_button = Button(
-                button_frame, text='Save', bg=delete_button_bg, fg=delete_button_fg
+                button_frame, text='Delete', bg=delete_button_bg, fg=delete_button_fg
             )
             delete_button.grid(row=0, column=6, padx=1)
             # Bind "Consensus" button with copy_file function with specific source and destination folder

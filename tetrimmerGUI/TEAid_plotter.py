@@ -800,7 +800,7 @@ def teaid_plotter(
 
     run_succeed = True
 
-    logging.info(f'TEAid running:{os.path.basename(input_file)}')
+    logging.info(f'TEAid is running for:{os.path.basename(input_file)}')
 
     try:
         # Generate consensus sequence
@@ -897,7 +897,7 @@ def teaid_plotter(
                     custom_text='No protein domains found',
                 )
                 num_tracks = 1
-                logging.info('rpstblastn_n_zero')
+                #logging.info('rpstblastn_n_zero')
             else:
                 fig_rpstblastn, num_tracks = plot_rpsblast_hits(
                     rpstblastn_out, cons_len

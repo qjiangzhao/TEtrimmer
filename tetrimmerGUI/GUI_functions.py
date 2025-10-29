@@ -480,7 +480,7 @@ def extract_fasta_from_bed(genome_fasta, bed_file, output_fasta):
     return output_fasta
 
 
-def align_sequences(input_file, output_file):
+def align_sequences(input_file, output_file, num_thread=5):
     """
     Aligns FASTA sequences using MAFFT
 
@@ -490,8 +490,16 @@ def align_sequences(input_file, output_file):
     """
     input_file_n = os.path.basename(input_file)
 
+    logging.info("Mafft is running......")
+
     # Construct the command as a list of strings
-    mafft_cmd = ['mafft', '--quiet', '--nuc', '--retree', '1', input_file]
+    mafft_cmd = ['mafft', 
+                 '--quiet',
+                 '--nuc', 
+                 '--retree', '1', 
+                 '--thread', str(num_thread),
+                 input_file
+                 ]
 
     try:
         # Execute the command
@@ -527,6 +535,8 @@ def align_sequences(input_file, output_file):
     # Write the output to the file
     with open(output_file, 'w') as f:
         f.write(result.stdout)
+
+    logging.info("Mafft is finished.")
 
     return output_file
 
@@ -820,7 +830,7 @@ def rpstblastn(
 
     try:
         # Print the rpstblastn command
-        logging.info(' '.join(rpsblast_cmd))
+        #logging.info(' '.join(rpsblast_cmd))
         # Run the rpstblastn command
         subprocess.run(rpsblast_cmd, check=True, capture_output=True, text=True)
 
