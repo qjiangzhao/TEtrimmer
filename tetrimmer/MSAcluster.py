@@ -60,15 +60,22 @@ class CleanAndSelectColumn:
             # Count the number of each nucleotide in this column
             counts = {'a': 0, 'c': 0, 'g': 0, 't': 0}
             for sequence in sequences:
-                nucleotide = sequence[i]
+                nucleotide = sequence[i].lower()
                 if nucleotide in counts:
                     counts[nucleotide] += 1
 
             # Calculate the proportion of each nucleotide
             total = sum(counts.values())
-            self.proportions[i] = {
-                nucleotide: count / total for nucleotide, count in counts.items()
-            }
+
+            if total > 0:
+                self.proportions[i] = {
+                    nucleotide: count / total for nucleotide, count in counts.items()
+                }
+            else:
+                # Handle empty column (e.g., all gaps)
+                self.proportions[i] = {
+                    nucleotide: 0.0 for nucleotide in counts
+                }
 
     def clean_column(self, output_dir):
         """

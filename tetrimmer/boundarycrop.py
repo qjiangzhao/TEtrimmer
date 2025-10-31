@@ -521,7 +521,10 @@ def final_MSA(
 
     elif poly_a is None:
         if MSA_seq_n >= 25:
-            final_start = start_posit_MSA
+            if seq_obj.old_TE_type.startswith("LINE"):
+                final_start = start_posit_cov
+            else:
+                final_start = start_posit_MSA
             final_end = end_posit_MSA
         else:
             final_start = start_posit_cov
@@ -531,7 +534,10 @@ def final_MSA(
         final_end = poly_a
 
         if MSA_seq_n >= 25:
-            final_start = start_posit_MSA
+            if seq_obj.old_TE_type.startswith("LINE"):
+                final_start = start_posit_cov
+            else:
+                final_start = start_posit_MSA
         else:
             final_start = start_posit_cov
     else:
@@ -1756,7 +1762,7 @@ def find_boundary_and_crop(
     # fast_mode will supress RepeatClassifier step
     # Classification is not mandatory, skip this step if errors are encountered
     try:
-        if classify_all or (classify_unknown and (seq_obj.check_unknown() or (left_ex_total + right_ex_total >= 3000))):
+        if classify_all or (classify_unknown and (seq_obj.check_unknown() or (left_ex_total + right_ex_total >= 5000))):
 
             # Define different folders for each sequence
             # the suffix .fasta is important, this ensures that this folder can be deleted later
