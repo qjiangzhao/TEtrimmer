@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 import traceback
+import json
 
 import pandas as pd
 from Bio import AlignIO, SeqIO
@@ -371,6 +372,14 @@ def final_MSA(
     bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
     start_posit_cov, end_posit_cov = bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
 
+    blast_cov_list = bed_fasta_mafft_gap_sim_con_coverage_obj.coverage_list
+
+    # connect the genome blast coverage number with the file bed_fasta_mafft_with_gap
+    # bed_fasta_mafft_with_gap has the same column index with bed_fasta_mafft_with_gap_column_clean
+    # bed_fasta_mafft_with_gap_column_clean connect to bed_fasta_mafft_gap_sim with column_mapping_initial
+
+
+
     def print_horizontal(lst, cols=8, max_width=20):
         """
         Print list horizontally in 'cols' columns.
@@ -587,8 +596,10 @@ def final_MSA(
         bed_fasta_mafft_gap_sim_final_start_to_end,  # the final MSA file after boundary definition
         bed_fasta_mafft_boundary_crop_for_select, # the raw MSA before boundary definition
         found_match_crop,  # can be False, LTR, or TIR
-        bed_fasta_mafft_with_gap,
-        final_start,
+        bed_fasta_mafft_with_gap,  # the MSA used for the raw file
+        column_mapping_initial,  # this dictionary connect the column bed_fasta_mafft_boundary_crop_for_select with it
+        blast_cov_list,  # list contain genome coverage number
+        final_start,  # the start and end site corresponds to the MSA bed_fasta_mafft_boundary_crop_for_select
         final_end,
         bed_fasta_mafft_gap_sim_cp_con_08_len
     )
@@ -660,6 +671,7 @@ def find_boundary_and_crop(
     perfect_seq_num=30,
     blast_database_path=None,
     mmseqs_database_dir=None,
+    export_coverage=False
 ):
 
     """
@@ -865,6 +877,8 @@ def find_boundary_and_crop(
                     bed_fasta_mafft_boundary_crop_for_select,
                     found_match_crop,
                     bed_fasta_mafft_with_gap,
+                    column_mapping_initial,
+                    blast_cov_list,
                     final_start,
                     final_end,
                     MSA_length
@@ -1139,11 +1153,27 @@ def find_boundary_and_crop(
             output_dir)
 
         # Remove gaps by similarity again
+        # This column_mapping is not used for the following analysis.
         bed_fasta_mafft_gap_sim_final_start_to_end_cp_g, column_mapping = remove_gaps_with_similarity_check(
             bed_fasta_mafft_gap_sim_final_start_to_end_cp, output_dir, return_map=True
         )
 
         cropped_boundary_MSA = bed_fasta_mafft_gap_sim_final_start_to_end_cp_g
+
+        # Define the start and end position of the file bed_fasta_mafft_with_gap
+        # bed_fasta_mafft_with_gap is the raw file in the curation folder
+        # column_mapping_initial connects the column number of bed_fasta_mafft_boundary_crop_for_select and
+        # bed_fasta_mafft_with_gap
+
+        final_raw_start = column_mapping_initial[final_start]
+        final_raw_end = column_mapping_initial[final_end]
+
+        # Define the genome blast coverage for bed_fasta_mafft_boundary_crop_for_select
+        blast_cov_list_dic = {
+            "boundary_start": final_start,
+            "boundary_end": final_end,
+            "coverage":blast_cov_list
+        }
 
     except Exception as e:
         with open(error_files, 'a') as f:
@@ -1162,7 +1192,7 @@ def find_boundary_and_crop(
     #####################################################################################################
     try:
         # select_start_to_end will convert out_boundary_msa_start to 0 when it is negative
-        # and convert out_boundary_msa_end to the MSA lengh when it is longer than the MSA length
+        # and convert out_boundary_msa_end to the MSA length when it is longer than the MSA length
         out_boundary_msa_start = final_start - 150
 
         out_boundary_msa_end = final_end + 150
@@ -1320,93 +1350,81 @@ def find_boundary_and_crop(
                 else:
                     # If the direction is wrong, reverse-complement the consensus sequence and the corresponding MSA.
                     # The reverse-complemented file will overwrite the old file.
-                    orf_cons = reverse_complement_seq_file(
+                    # All r_start and r_end variables are not useful
+                    orf_cons, r_start_0, r_end_0 = reverse_complement_seq_file(
                         input_file=orf_cons, output_file=orf_cons
                     )
 
-                    # Reverse-complement MSA files
-                    cropped_boundary_MSA = reverse_complement_seq_file(
+                    # Reverse-complement MSA files, this is the final MSA for manual curation
+                    cropped_boundary_MSA, r_start_1, r_end_1 = reverse_complement_seq_file(
                         input_file=cropped_boundary_MSA,
                         output_file=f'{cropped_boundary_MSA}_rc.fa',
                     )
-                    # cropped_boundary_manual_MSA_concatenate will be used for the CIAlign plot
-                    cropped_boundary_manual_MSA_concatenate = reverse_complement_seq_file(
-                            input_file=cropped_boundary_manual_MSA_concatenate,
-                            output_file=f'{cropped_boundary_manual_MSA_concatenate}_rc.fa',
-                        )
+
                     # cropped_boundary_plot_concatenate will be used for the first MSA plot
-                    cropped_boundary_plot_concatenate = reverse_complement_seq_file(
+                    # start and end positions need to be modified
+                    cropped_boundary_plot_concatenate, concat_start, concat_end = reverse_complement_seq_file(
                         input_file=cropped_boundary_plot_concatenate,
                         output_file=f'{cropped_boundary_plot_concatenate}_rc.fa',
+                        start=concat_start,
+                        end=concat_end
                     )
-                    # bed_fasta_mafft_boundary_crop_for_select is used as raw for the manual curation
-                    bed_fasta_mafft_boundary_crop_for_select = reverse_complement_seq_file(
+
+                    # cropped_boundary_manual_MSA_concatenate will be used for the CIAlign plot
+                    # start and end positions need to be modified
+                    cropped_boundary_manual_MSA_concatenate, concat_start_man, concat_end_man = reverse_complement_seq_file(
+                        input_file=cropped_boundary_manual_MSA_concatenate,
+                        output_file=f'{cropped_boundary_manual_MSA_concatenate}_rc.fa',
+                        start=concat_start_man,
+                        end=concat_end_man
+                        )
+
+                    # bed_fasta_mafft_boundary_crop_for_select is used as raw for the manual curation before
+                    # now changed to bed_fasta_mafft_with_gap
+                    bed_fasta_mafft_boundary_crop_for_select, final_start, final_end = reverse_complement_seq_file(
                         input_file=bed_fasta_mafft_boundary_crop_for_select,
                         output_file=f'{bed_fasta_mafft_boundary_crop_for_select}_rc.fa',
+                        start=final_start,
+                        end=final_end
                     )
+
+                    blast_cov_list.reverse()
+                    blast_cov_list_dic = {
+                        "boundary_start": final_start,
+                        "boundary_end": final_end,
+                        "coverage": blast_cov_list
+                    }
 
                     # bed_fasta_mafft_with_gap is used as raw for the manual curation in the new version
                     # because this is before the gappy column cleaning and all the TSD information is kept
-                    bed_fasta_mafft_with_gap = reverse_complement_seq_file(
+                    # start and end positions need to be modified
+                    bed_fasta_mafft_with_gap, final_raw_start, final_raw_end = reverse_complement_seq_file(
                         input_file=bed_fasta_mafft_with_gap,
                         output_file=f'{bed_fasta_mafft_with_gap}_rc.fa',
+                        start=final_raw_start,
+                        end=final_raw_end
                     )
 
                     # out_boundary_msa_for_teaid will be used for TEAid plot for the out boundary MSA
-                    out_boundary_msa_for_teaid = reverse_complement_seq_file(
+                    # start and end positons need to be modified
+                    (out_boundary_msa_for_teaid,
+                     start_relate_to_out_boundary_msa_for_teaid,
+                     end_relate_to_out_boundary_msa_for_teaid) = reverse_complement_seq_file(
                         input_file=out_boundary_msa_for_teaid,
                         output_file=f'{out_boundary_msa_for_teaid}_rc.fa',
+                        start=start_relate_to_out_boundary_msa_for_teaid,
+                        end=end_relate_to_out_boundary_msa_for_teaid
                     )
 
                     # Reverse complement input sequence, this will be used for dotplot
                     seq_file_reverse_c_path = os.path.join(
                         output_dir, f'{os.path.basename(seq_name)}.fasta_rc'
                     )
-                    seq_file_reverse_c = reverse_complement_seq_file(
+                    seq_file_reverse_c, r_start_3, r_end_3 = reverse_complement_seq_file(
                         input_file=seq_file, output_file=seq_file_reverse_c_path
                     )
 
                     reverse_complement = True
-
-                    # Define the new start and end points for cropped_boundary_manual_MSA_concatenate
-                    # cropped_boundary_manual_MSA_concatenate will be used for the CIAlign plot
-                    # Get MSA sequence length
-                    cropped_boundary_manual_MSA_concatenate_align = AlignIO.read(
-                        cropped_boundary_manual_MSA_concatenate, 'fasta'
-                    )
-
-                    # get_alignment_length() is a build-in function
-                    cropped_boundary_manual_MSA_concatenate_length = cropped_boundary_manual_MSA_concatenate_align.get_alignment_length()
-
-                    # Use intermediate number to get the new start and end number
-                    concat_start_man_intermediate = (
-                        cropped_boundary_manual_MSA_concatenate_length - concat_end_man - 1
-                    )
-                    concat_end_man_intermediate = (
-                        cropped_boundary_manual_MSA_concatenate_length - concat_start_man - 1
-                    )
-                    concat_start_man = concat_start_man_intermediate
-                    concat_end_man = concat_end_man_intermediate
-
-                    # Define the new start and end points for cropped_boundary_plot_concatenate
-                    # cropped_boundary_plot_concatenate will be used for the te_trimmer plot
-                    # Get MSA sequence length
-                    cropped_boundary_plot_concatenate_align = AlignIO.read(
-                        cropped_boundary_plot_concatenate, 'fasta'
-                    )
-                    cropped_boundary_plot_concatenate_length = (
-                        cropped_boundary_plot_concatenate_align.get_alignment_length()
-                    )
-
-                    # Use intermediate number to get the new start and end points
-                    concat_start_intermediate = (
-                        cropped_boundary_plot_concatenate_length - concat_end - 1
-                    )
-                    concat_end_intermediate = (
-                        cropped_boundary_plot_concatenate_length - concat_start - 1
-                    )
-                    concat_start = concat_start_intermediate
-                    concat_end = concat_end_intermediate
 
                     # Based on the new consensus sequence, predict ORFs and PFAM domains again, then plot
                     orf_domain_plot_object = PlotPfam(
@@ -1426,6 +1444,17 @@ def find_boundary_and_crop(
             else:
                 # If only ORFs but no PFAM domain were found, plot ORFs
                 orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
+
+        # Write the final coverage to a file
+        # Define the genome blast coverage file
+        genome_blast_coverage_file = f"{bed_fasta_mafft_boundary_crop_for_select}_cov.txt"
+
+        with open(genome_blast_coverage_file, "w") as f:
+            f.write(str(blast_cov_list_dic))
+
+        # Update the consi_obj final raw file start and end position
+        consi_obj.set_output_raw_start_and_end(final_raw_start, final_raw_end)
+
     except Exception as e:
         with open(error_files, 'a') as f:
             # Get the traceback content as a string
@@ -1443,12 +1472,15 @@ def find_boundary_and_crop(
     #####################################################################################################
     # Plotting is done after PFAM predictions in case consensus/MSA are in the wrong direction.
     try:
-        # Plot MSA, which can easily verify if the start and end crop points are correct
+        #####################################################################################################
+        # Code block: Plot MSA, which can easily verify if the start and end crop points are correct
+        #####################################################################################################
+
         MSA_plot = process_msa(
             cropped_boundary_plot_concatenate,
             output_dir,
             concat_start,
-            concat_end,
+            concat_end-1,  # The concat_end is 0-based the MSA plot function end arrow point to the last value
             sequence_len,
         )
 
@@ -1466,7 +1498,7 @@ def find_boundary_and_crop(
             cropped_boundary_manual_MSA_concatenate,
             cropped_boundary_manual_MSA_concatenate_plot,
             concat_start_man,
-            concat_end_man,
+            concat_end_man-1  # The concat_end is 0-based the cialign plot function end arrow point to the last value
         )
     except Exception as e:
         with open(error_files, 'a') as f:
@@ -1649,12 +1681,8 @@ def find_boundary_and_crop(
         # Define different levels of proof_curation folder
         perfect_proof = os.path.join(proof_curation_dir, 'Annotations_perfect')
         good_proof = os.path.join(proof_curation_dir, 'Annotations_good')
-        intermediate_proof = os.path.join(
-            proof_curation_dir, 'Annotations_check_recommended'
-        )
-        need_check_proof = os.path.join(
-            proof_curation_dir, 'Annotations_check_required'
-        )
+        intermediate_proof = os.path.join(proof_curation_dir, 'Annotations_check_recommended')
+        need_check_proof = os.path.join(proof_curation_dir, 'Annotations_check_required')
 
         # Create the directory if it does not exist
         os.makedirs(proof_curation_dir, exist_ok=True)
@@ -1893,6 +1921,12 @@ def find_boundary_and_crop(
             (bed_fasta_mafft_with_gap_nm, str(consi_obj.proof_raw)),
             (cluster_msa, str(consi_obj.proof_cluster))
         ]
+
+        if export_coverage:
+            file_copy_pattern.extend([
+                (genome_blast_coverage_file, str(consi_obj.proof_coverage)),
+                (bed_fasta_mafft_boundary_crop_for_select_nm, str(consi_obj.proof_coverage_fasta))
+            ])
 
         files_moved_successfully = True
 

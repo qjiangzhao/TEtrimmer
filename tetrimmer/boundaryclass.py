@@ -414,7 +414,7 @@ class DefineBoundary:
         else:
             # Check the end position
             for i, letter in reversed(list(enumerate(self.consensus_seq))):
-                i = i + 1
+                i = i + 1  # the column selection doesn't include the last number
                 if i - self.check_window >= 0:
                     Xnum = self.consensus_seq[i - self.check_window : i].count(
                         self.ambiguous

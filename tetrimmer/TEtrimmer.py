@@ -381,6 +381,12 @@ TEtrimmer_version = "1.6.0"
     help='Define the minimum copy number that the output TE consensus sequence can be evaluated as "Perfect". Default: 30'
 )
 @click.option(
+    '--export_coverage',
+    default=False,
+    is_flag=True,
+    help='Export the genome blast coverage file.',
+)
+@click.option(
     '--logfile',
     '-l',
     default=None,
@@ -435,6 +441,7 @@ def main(
     poly_patterns,
     poly_len,
     define_perfect,
+    export_coverage,
     logfile,
     loglevel,
 ):
@@ -640,6 +647,7 @@ def main(
         "poly_patterns": poly_patterns,
         "poly_len": poly_len,
         "define_perfect": define_perfect,
+        "export_coverage": export_coverage,
         "logfile": logfile,
         "loglevel": loglevel,
     }
@@ -924,6 +932,7 @@ def main(
             database_dir,
             blast_database_path,
             mmseqs_database_dir,
+            export_coverage,
             loglevel,
             logfile
         )

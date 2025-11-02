@@ -114,10 +114,10 @@ class CleanAndSelectColumn:
         # Delete highly conserved columns
         columns_to_delete = []
         for i in range(self.alignment_length):
-            if any(
-                proportion > dis_col_threshold
-                for proportion in self.proportions[i].values()
+            if (any(proportion > dis_col_threshold for proportion in self.proportions[i].values())
+                    and any(proportion != 0 for proportion in self.proportions[i].values())
             ):
+
                 columns_to_delete.append(i)
 
         columns_to_keep = []

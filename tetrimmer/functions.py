@@ -779,21 +779,36 @@ def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):
             "\nFor traceback text, please refer to 'error_file.txt' in the 'Multiple_sequence_alignment' folder.\n")
 
 
-def reverse_complement_seq_file(input_file, output_file):
+def reverse_complement_seq_file(input_file, output_file, start=None, end=None):
     """
     Takes an MSA FASTA file and writes the reverse complement of the sequences to a new file.
+    Also returns the new start and end positions for the entire MSA.
+
+    start, end: the original coordinates (0-based)
     """
     reverse_complemented_records = []
+    new_start = None
+    new_end = None
 
     for record in SeqIO.parse(input_file, 'fasta'):
-        # Create a new record with the reverse complemented sequence
         rev_comp_seq = record.seq.reverse_complement()
         rev_comp_record = SeqRecord(rev_comp_seq, id=record.id, description='')
         reverse_complemented_records.append(rev_comp_record)
 
     # Write the reverse-complemented sequences to the output file
     SeqIO.write(reverse_complemented_records, output_file, 'fasta')
-    return output_file
+
+    # Change the start and end postions after reverse complementation
+    if start is not None and end is not None:
+        # Assume all sequences are same length (MSA)
+        seq_length = len(reverse_complemented_records[0].seq)
+
+        # Compute new coordinates after reverse complement
+        new_start = seq_length - end
+        new_end = seq_length - start
+
+    return output_file, new_start, new_end
+
 
 
 def remove_short_seq(input_file, output_file, threshold=0.1):
@@ -1722,12 +1737,11 @@ def concatenate_alignments(*alignments, input_file_name, output_dir):
         concatenated_alignment += alignment
 
     # alignments[0].get_alignment_length() will return 50, but python starts with 0
-    # The last position of alignments[0] is alignments[0].get_alignment_length() - 1
+    # The last position of alignments[0] is alignments[0].get_alignment_length()
     concat_start = alignments[0].get_alignment_length()
     concat_end = (
         concatenated_alignment.get_alignment_length()
         - alignments[-1].get_alignment_length()
-        - 1
     )
 
     # Write to a file

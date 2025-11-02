@@ -1090,6 +1090,7 @@ def analyze_sequence(
     database_dir,
     blast_database_path,
     mmseqs_database_dir,
+    export_coverage,
     loglevel,
     logfile
 ):
@@ -1476,7 +1477,8 @@ def analyze_sequence(
                         cluster_msa=fasta_out_flank_mafft_gap_rm_nm,
                         perfect_seq_num = perfect_seq_num,
                         blast_database_path=blast_database_path,
-                        mmseqs_database_dir=mmseqs_database_dir
+                        mmseqs_database_dir=mmseqs_database_dir,
+                        export_coverage=export_coverage
                     )
 
                 except Exception:
@@ -1744,6 +1746,8 @@ def create_dir(
                 'output_TE_type,'
                 'input_terminal_repeat,'
                 'output_terminal_repeat,'
+                'raw_start,'
+                'raw_end,'
                 'TSD,'
                 'start_pattern,'
                 'end_pattern,'

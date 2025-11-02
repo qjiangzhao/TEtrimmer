@@ -91,6 +91,8 @@ class SeqObject:
                             f'{str(consi_obj.get_TE_type_for_file())},'  # output_TE_type
                             f'{str(self.old_terminal_repeat)},'  # input_terminal_repeat
                             f'{str(consi_obj.new_TE_terminal_repeat)},'  # output_terminal_repeat
+                            f'{str(consi_obj.output_raw_start)},'  # output_raw_start
+                            f'{str(consi_obj.output_raw_end)},'  # output_raw_end
                             f'{str(consi_obj.cons_tsd)},'  # TSD
                             f'{str(consi_obj.start_pattern_content)},'  # start_pattern
                             f'{str(consi_obj.end_pattern_content)},'  # end_pattern
@@ -121,6 +123,8 @@ class SeqObject:
                         f'{str(self.old_TE_type)},'  # output_TE_type
                         f'{str(self.old_terminal_repeat)},'  # input_terminal_repeat
                         f'NaN,'  # output_terminal_repeat
+                        f'NaN,'  # output_raw_start
+                        f'NaN,'  # output_raw_end
                         f'NaN,'  # TSD
                         f'NaN,'  # start_pattern
                         f'NaN,'  # end_pattern
@@ -147,6 +151,8 @@ class ConsensusObject:
         self.proof_fasta = 'None'
         self.proof_raw = 'None'
         self.proof_cluster = 'None'
+        self.proof_coverage = 'None'
+        self.proof_coverage_fasta = 'None'
         self.new_length = 'NaN'
         self.new_TE_type = 'NaN'
         self.new_TE_MSA_seq_n = 'NaN'
@@ -163,6 +169,8 @@ class ConsensusObject:
         self.output_coverage = 'NaN'
         self.start_pattern_content = 'NaN'
         self.end_pattern_content = 'NaN'
+        self.output_raw_start = 'NaN'
+        self.output_raw_end = 'NaN'
 
     def set_new_length(self, new_length):
         self.new_length = int(new_length)
@@ -216,6 +224,9 @@ class ConsensusObject:
     def set_end_pattern_content(self, end_pattern_content):
         self.end_pattern_content = end_pattern_content
 
+    def set_output_raw_start_and_end(self, start, end):
+        self.output_raw_start = start
+        self.output_raw_end = end
 
     # Defining get functions
     def get_tsd(self):
@@ -239,6 +250,9 @@ class ConsensusObject:
         self.proof_fasta = f'{self.consensus_name}#{proof_TE_type}.fa'
         self.proof_raw = f'{self.consensus_name}#{proof_TE_type}.raw.fa'
         self.proof_cluster = f'{self.consensus_name}#{proof_TE_type}.cluster.fa'
+        self.proof_coverage = f'{self.consensus_name}#{proof_TE_type}.cov.txt'
+        self.proof_coverage_fasta = f'{self.consensus_name}#{proof_TE_type}.cov.fa'
+
         #self.proof_tsd = f'{self.consensus_name}#{proof_TE_type}.tsd.fa'
 
     def set_hmm_file(self):
