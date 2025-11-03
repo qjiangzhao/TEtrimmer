@@ -953,8 +953,9 @@ def find_boundary_and_crop(
             cropped_boundary_MSA, threshold=0.55, ambiguous='N'
         )
 
+        initial_cons_seq = str(initial_cons.seq)
         # Calculate the proportion of 'N' in the sequence
-        n_proportion = initial_cons.count('N') / len(initial_cons)
+        n_proportion = initial_cons_seq.count('N') / len(initial_cons_seq)
 
         # Check if the proportion is greater than 40%
         # If 40% of this consensus sequence is "N", stop analysis for this MSA
@@ -980,7 +981,7 @@ def find_boundary_and_crop(
             )
 
             # Convert consensus_seq to list
-            ltr_consensus_seq_list = list(ltr_consensus_seq)
+            ltr_consensus_seq_list = list(ltr_consensus_seq.seq)
 
             # start_matched and end_matched are boolen values
             # start_matched_pattern and end_matched_pattern are string
@@ -1044,7 +1045,7 @@ def find_boundary_and_crop(
             )
 
             # Convert consensus_seq to list
-            helitron_consensus_seq_list = list(helitron_consensus_seq)
+            helitron_consensus_seq_list = list(helitron_consensus_seq.seq)
 
             # start_matched and end_matched are boolen values
             # start_matched_pattern and end_matched_pattern are string
@@ -1728,7 +1729,7 @@ def find_boundary_and_crop(
         final_con = con_generater_no_file(
             cropped_boundary_MSA, threshold=cons_threshold
         )
-        sequence = str(final_con).upper()
+        sequence = str(final_con.seq).upper()
 
         #####################################################################################################
         # Code block: Calculate input and output sequence identity and coverage

@@ -335,7 +335,7 @@ class DefineBoundary:
         self.extension_buffer = extension_buffer
         self.polyA_position = polyA_position
         consensus_seq = con_generater_no_file(self.input_file)  # return upper case nucleotide letters
-        self.consensus_seq = list(consensus_seq)  # convert to a list
+        self.consensus_seq = list(consensus_seq.seq)  # convert to a list
         if (
             if_con_generater
         ):  # Default to use standard consensus sequence generation method

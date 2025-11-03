@@ -9,7 +9,8 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
-from Bio import AlignIO, BiopythonDeprecationWarning, SeqIO, Seq
+from Bio import AlignIO, BiopythonDeprecationWarning, SeqIO
+from Bio.Seq import Seq
 from Bio.Align import AlignInfo
 from Bio.SeqRecord import SeqRecord
 from plotly.subplots import make_subplots
