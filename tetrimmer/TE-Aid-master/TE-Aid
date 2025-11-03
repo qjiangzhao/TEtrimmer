@@ -271,7 +271,7 @@ if [ -s $OUTPUT/TE.orfs ]
     if [ -e $DIR/db/RepeatPeps.lib.phr ]
     then
         echo "RepeatPeps is downloaded and formatted, blastp-ing..."
-        blastp -query $OUTPUT/TE.orfs -db $DIR/db/RepeatPeps.lib -outfmt 6 | sort -k1,1 -k12,12nr | sort -u -k1,1 | sed 's/#/--/g' > $OUTPUT/TE.blastp.out
+        blastp -query $OUTPUT/TE.orfs -evalue 5 -db $DIR/db/RepeatPeps.lib -outfmt 6 | sort -k1,1 -k12,12nr | sort -u -k1,1 | sed 's/#/--/g' > $OUTPUT/TE.blastp.out
     else
         echo "RepeatPeps.lib is not found, downloading..."
         mkdir -p $DIR/db
@@ -279,7 +279,7 @@ if [ -s $OUTPUT/TE.orfs ]
         echo "Formating database"
         makeblastdb -in $DIR/db/RepeatPeps.lib -out $DIR/db/RepeatPeps.lib -dbtype 'prot' &>/dev/null
         echo "Blastp-ing..."
-        blastp -query $OUTPUT/TE.orfs -db $DIR/db/RepeatPeps.lib -outfmt 6 | sort -k1,1 -k12,12nr | sort -u -k1,1 | sed 's/#/--/g' > $OUTPUT/TE.blastp.out
+        blastp -query $OUTPUT/TE.orfs -evalue 5 -db $DIR/db/RepeatPeps.lib -outfmt 6 | sort -k1,1 -k12,12nr | sort -u -k1,1 | sed 's/#/--/g' > $OUTPUT/TE.blastp.out
     fi
 
   #join orfs with their prot hit
@@ -288,8 +288,8 @@ if [ -s $OUTPUT/TE.orfs ]
   join -a1 -11 -21 $OUTPUT/file1 $OUTPUT/file2 | \
    sed -E 's/ /\t/g' | \
    sed 's/DNA\/Maverick/MAV\/Maverick/g;s/DNA\/Crypton/CRY\/Crypton/g;s/LINE\/Penelope/PLE\/Penelope/g;s/LTR\/DIRS/DIRS\/DIRS/g;s/DNA/TIR/g' | \
-   awk '{if (NF == 3) {print $0"\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA"} else {print $0}}' | \
-   awk '$NF != "NA" {if ($2 < $3) {print $2"\t"$3"\t"$4"\t"(($2 + (3 * ($9-1)) ))"\t"(($2 + (3 * ($10-1)) ))"\t+"} else {print $2"\t"$3"\t"$4"\t"(($3 + (3 * ($9-1)) ))"\t"(($3 + (3 * ($10-1)) ))"\t-"}};'| \
+   awk '{if (NF == 3) {print $0"\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA"} else {print $0}}' | \
+   awk '$NF != "NA" {if ($2 < $3) {print $2"\t"$3"\t"$4"\t"(($2 + (3 * ($9-1)) ))"\t"(($2 + (3 * ($10-1)) ))"\t+""\t"$13} else {print $2"\t"$3"\t"$4"\t"(($3 + (3 * ($9-1)) ))"\t"(($3 + (3 * ($10-1)) ))"\t-""\t"$13}};'| \
    sed -E 's/--/\t/g' | \
    awk -v LINEcol="3399ff" \
     -v SINEcol="800080" \
@@ -317,7 +317,9 @@ if [ -s $OUTPUT/TE.orfs ]
   /CRY/ {print $0"\t"CRYcols} \
   /MAV/ {print $0"\t"MAVcols} \
   !/LINE\// && !/SINE\// && !/TIR\// && !/LTR\// && !/RC\// && !/Low_complexity/ && !/Satellite/ && !/Simple_repeat/ && !/Penelope/ && !/DIRS/ && !/CRY/ && !/MAV/ {print $0"\t"Unknowncol}' | \
-  cut -f 1-9 | sort -k2,2n | awk '$NF != "NA" {print $0}; $NF == "NA" {if ($3 < $4) {sub(/NA\tNA\tNA\tNA\tNA\tNA/, "NO\tHIT\t0\t0\t+\tFFFFFF", $0); print $0} else {sub(/NA\tNA\tNA\tNA\tNA\tNA/, "NO\tHIT\t0\t0\t-\twhite", $0); print $0}}' > $OUTPUT/orftetable
+  cut -f 1-9 \
+  | sort -k8,8g \
+  | awk '$NF != "NA" {print $0}; $NF == "NA" {if ($3 < $4) {sub(/NA\tNA\tNA\tNA\tNA\tNA/, "NO\tHIT\t0\t0\t+\tFFFFFF", $0); print $0} else {sub(/NA\tNA\tNA\tNA\tNA\tNA/, "NO\tHIT\t0\t0\t-\twhite", $0); print $0}}' > $OUTPUT/orftetable.txt
   #awk '/LINE/ {print $0"\troyalblue"} /DNA/ {print $0"\tsalmon"} /LTR/ {print $0"\green3"} /!LTR/'
   else
     echo "no ORF detected, skipping blastp..."
@@ -325,9 +327,9 @@ fi
 # run R script with user-defined parameters
 if [ $ALLTAB == "TRUE" ]
   then
-  Rscript $DIR/Run-c2g.R $QUERY $GENOME $EVALUE $FL $ALPHA $FULL_ALPHA $AUTO_Y $OUTPUT $OUTPUT/TE.db $OUTPUT/orftetable $MINORF $DIR $TITLE $VERTICAL_X_1 $VERTICAL_X_2 $ALLTAB
+  Rscript $DIR/Run-c2g.R $QUERY $GENOME $EVALUE $FL $ALPHA $FULL_ALPHA $AUTO_Y $OUTPUT $OUTPUT/TE.db $OUTPUT/orftetable.txt $MINORF $DIR $TITLE $VERTICAL_X_1 $VERTICAL_X_2 $ALLTAB
   else
-  Rscript $DIR/Run-c2g.R $QUERY $GENOME $EVALUE $FL $ALPHA $FULL_ALPHA $AUTO_Y $OUTPUT $OUTPUT/TE.db $OUTPUT/orftetable $MINORF $DIR $TITLE $VERTICAL_X_1 $VERTICAL_X_2 $TABLES
+  Rscript $DIR/Run-c2g.R $QUERY $GENOME $EVALUE $FL $ALPHA $FULL_ALPHA $AUTO_Y $OUTPUT $OUTPUT/TE.db $OUTPUT/orftetable.txt $MINORF $DIR $TITLE $VERTICAL_X_1 $VERTICAL_X_2 $TABLES
 fi
 
 # clean-up
@@ -335,7 +337,7 @@ if [ $ALLTAB == "TRUE" ]
   then
   rm $OUTPUT/TE.db* 
   echo -e "orf_start\torf_end\thit_TE_prot\tTE_Class\thit_start\thit_end\tstrand\tcolor" > header
-  cat header $OUTPUT/orftetable > $OUTPUT/$TENAME.orftable.txt &>/dev/null
+  cat $OUTPUT/orftetable.txt > $OUTPUT/$TENAME.orftable.txt &>/dev/null
   #rm header
   #rm $OUTPUT/orftetable
   mv $OUTPUT/TE.self-blast.txt $OUTPUT/$TENAME.self-blast.pairs.txt
@@ -349,7 +351,7 @@ if [ $ALLTAB == "TRUE" ]
     #rm blastn.txt
     rm $OUTPUT/TE.db* 
     echo -e "orf_start\torf_end\thit_TE_prot\tTE_Class\thit_start\thit_end\tstrand\tcolor" > header
-    cat header $OUTPUT/orftetable > $OUTPUT/$TENAME.orftable.txt &>/dev/null
+    cat header $OUTPUT/orftetable.txt > $OUTPUT/$TENAME.orftable.txt &>/dev/null
     #rm header
     #rm $OUTPUT/orftetable
     mv $OUTPUT/TE.self-blast.txt $OUTPUT/$TENAME.self-blast.pairs.txt
@@ -361,7 +363,7 @@ if [ $ALLTAB == "TRUE" ]
     rm $OUTPUT/file1 $OUTPUT/file2 &>/dev/null
     rm $OUTPUT/TE.db* 
     rm $OUTPUT/TE.orfs* &>/dev/null
-    rm $OUTPUT/orftetable &>/dev/null
+    rm $OUTPUT/orftetable.txt &>/dev/null
     rm $OUTPUT/TE.blastp.out &>/dev/null
 fi
 

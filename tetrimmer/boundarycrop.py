@@ -1544,6 +1544,28 @@ def find_boundary_and_crop(
             # found_match could be False LTR or TIR
             found_match = TE_aid_object.teaid_check_termina_repeat()
 
+        # Read the TEAid blastp result and store in the final summary file
+        TE_aid_output_dir_orf_cons_folder = os.path.join(output_dir, f'{os.path.basename(orf_cons)}_TEaid')
+        TE_aid_output_dir_orf_cons_blastp_file = os.path.join(TE_aid_output_dir_orf_cons_folder, "orftetable.txt")
+
+        # Check if the file exists and is not empty
+        if os.path.exists(TE_aid_output_dir_orf_cons_blastp_file) and os.path.getsize(
+                TE_aid_output_dir_orf_cons_blastp_file) > 0:
+            # Read file into a DataFrame
+            TE_aid_output_dir_orf_cons_blastp_file_df = pd.read_csv(
+                TE_aid_output_dir_orf_cons_blastp_file,
+                sep=r"\s+",
+                header=None
+            )
+
+            # Select the first rwo. The orftetable was sorted by the e-value
+            TE_aid_output_dir_orf_cons_blastp_file_df_first_row = TE_aid_output_dir_orf_cons_blastp_file_df.iloc[0]
+            TE_aid_blastp_hit = (f"{TE_aid_output_dir_orf_cons_blastp_file_df_first_row[2]}#"
+                                 f"{TE_aid_output_dir_orf_cons_blastp_file_df_first_row[3]}")
+
+            # Update the sequence object to add the blastp hit
+            consi_obj.set_blastp_hit(TE_aid_blastp_hit)
+
         # Run TE_aid to plot the query sequence, if required. Because one query file can return multiple
         # clusters, TE-Aid will check if a TE-Aid plot has been generated before.
         # Set low_

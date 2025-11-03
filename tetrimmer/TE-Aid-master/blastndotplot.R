@@ -91,8 +91,8 @@ blastdotplot=function(query = NULL, db = NULL, blast = NULL, os = NULL, tables =
 
           ## TE protein hits (blastp) ##
           rect(xleft = orfs$V5[i], xright = orfs$V6[i], 
-               ybottom = -i-0.15, ytop = -i+0.15, lwd = 1, col = as.character(paste("#",orfs$V8[i], sep="")), border = "white") # draw colored rectangle same way as orf
-          text(paste(orfs$V3[i], orfs$V4[i]), x = (min(orfs$V1[i],orfs$V2[i])+max(orfs$V1[i],orfs$V2[i]))/2, y = -i+0.15, pos = 3) # print hit name
+               ybottom = -i-0.13, ytop = -i+0.13, lwd = 1, col = as.character(paste("#",orfs$V9[i], sep="")), border = NA) # draw colored rectangle same way as orf
+          text(paste("(",orfs$V8[i],")", orfs$V3[i], orfs$V4[i]), x = (min(orfs$V1[i],orfs$V2[i])+max(orfs$V1[i],orfs$V2[i]))/2, y = -i+0.15, pos = 3) # print hit name
       
         } # for each segment
       #names(orfs)<-c("orf.start", "orf.end", "hit.TE.prot", "TE.Class", "hit.start", "hit.end", "strand", "color")

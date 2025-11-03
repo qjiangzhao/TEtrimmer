@@ -91,11 +91,12 @@ class SeqObject:
                             f'{str(consi_obj.get_TE_type_for_file())},'  # output_TE_type
                             f'{str(self.old_terminal_repeat)},'  # input_terminal_repeat
                             f'{str(consi_obj.new_TE_terminal_repeat)},'  # output_terminal_repeat
-                            f'{str(consi_obj.output_raw_start)},'  # output_raw_start
-                            f'{str(consi_obj.output_raw_end)},'  # output_raw_end
                             f'{str(consi_obj.cons_tsd)},'  # TSD
                             f'{str(consi_obj.start_pattern_content)},'  # start_pattern
                             f'{str(consi_obj.end_pattern_content)},'  # end_pattern
+                            f'{str(consi_obj.output_raw_start)},'  # output_raw_start
+                            f'{str(consi_obj.output_raw_end)},'  # output_raw_end
+                            f'{str(consi_obj.output_blastp_hit)},'  # output_blastp_hit
                             f'{str(self.low_copy)},'  # low_copy
                             f'{str(consi_obj.get_evaluation())},'  # evaluation
                             f'NaN,'  # cluster  this will be updated after the final clustering step
@@ -123,11 +124,12 @@ class SeqObject:
                         f'{str(self.old_TE_type)},'  # output_TE_type
                         f'{str(self.old_terminal_repeat)},'  # input_terminal_repeat
                         f'NaN,'  # output_terminal_repeat
-                        f'NaN,'  # output_raw_start
-                        f'NaN,'  # output_raw_end
                         f'NaN,'  # TSD
                         f'NaN,'  # start_pattern
                         f'NaN,'  # end_pattern
+                        f'NaN,'  # output_raw_start
+                        f'NaN,'  # output_raw_end
+                        f'NaN,'  # output_blastp_hit
                         f'{str(self.low_copy)},'  # low_copy
                         f'NaN,'  # evaluation
                         f'NaN,'  # cluster  this will be updated after the final clustering step
@@ -171,6 +173,7 @@ class ConsensusObject:
         self.end_pattern_content = 'NaN'
         self.output_raw_start = 'NaN'
         self.output_raw_end = 'NaN'
+        self.output_blastp_hit = 'NaN'
 
     def set_new_length(self, new_length):
         self.new_length = int(new_length)
@@ -227,6 +230,9 @@ class ConsensusObject:
     def set_output_raw_start_and_end(self, start, end):
         self.output_raw_start = start
         self.output_raw_end = end
+
+    def set_blastp_hit(self, blastp_hit):
+        self.output_blastp_hit = blastp_hit
 
     # Defining get functions
     def get_tsd(self):
