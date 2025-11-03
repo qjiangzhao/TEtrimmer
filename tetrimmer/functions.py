@@ -35,7 +35,7 @@ def is_LTR(input_file):
     return 'LTR' in input_file_name
 
 # Generate consensus sequence
-def con_generater_no_file(input_file, threshold=0.8, ambiguous='N'):
+def con_generater_no_file_backup(input_file, threshold=0.8, ambiguous='N'):
     # Read input file
     alignment = AlignIO.read(input_file, 'fasta')
 
@@ -49,8 +49,43 @@ def con_generater_no_file(input_file, threshold=0.8, ambiguous='N'):
 
     return consensus
 
+def con_generater_no_file(input_file, threshold=0.8, ambiguous='N'):
+    """
+    Mimic a 'dumb consensus' without using AlignInfo.dumb_consensus.
+    Counts only A/C/G/T, ignores gaps and other symbols.
+    Returns a Bio.Seq.Seq (uppercased), same as the upper function.
+    """
+    alignment = AlignIO.read(input_file, "fasta")
+    n_cols = alignment.get_alignment_length()
 
-def con_generater(input_file, output_dir, threshold=0.8, ambiguous='N'):
+    consensus_chars = []
+    for i in range(n_cols):
+        col = alignment[:, i].upper()
+        bases = [b for b in col if b in {"A", "C", "G", "T"}]
+
+        if not bases:  # no A/C/G/T at this column
+            consensus_chars.append(ambiguous)
+            continue
+
+        a = bases.count("A")
+        c = bases.count("C")
+        g = bases.count("G")
+        t = bases.count("T")
+        counts = {"A": a, "C": c, "G": g, "T": t}
+
+        winner = max(counts, key=counts.get)
+        freq = counts[winner] / len(bases)  # len(bases) won't be zero
+
+        consensus_chars.append(winner if freq >= threshold else ambiguous)
+
+    consensus_seq = Seq("".join(consensus_chars)).upper()
+
+    consensus_seq_obj = SeqRecord(consensus_seq, id="consensus", description=f"threshold={threshold};amb={ambiguous}")
+
+    return consensus_seq_obj
+
+
+def con_generater_backup(input_file, output_dir, threshold=0.8, ambiguous='N'):
     # Read input file
     alignment = AlignIO.read(input_file, 'fasta')
 
@@ -70,6 +105,48 @@ def con_generater(input_file, output_dir, threshold=0.8, ambiguous='N'):
     with open(output_file, 'w') as file:
         SeqIO.write(consensus_record, file, 'fasta')
 
+    return output_file
+
+
+def con_generater(input_file, output_dir, threshold=0.8, ambiguous='N'):
+    """
+    Mimic a 'dumb consensus' without using AlignInfo.dumb_consensus.
+    Counts only A/C/G/T, ignores gaps and other symbols.
+    Returns a Bio.Seq.Seq (uppercased), same as the upper function.
+    """
+    alignment = AlignIO.read(input_file, "fasta")
+    n_cols = alignment.get_alignment_length()
+
+    consensus_chars = []
+    for i in range(n_cols):
+        col = alignment[:, i].upper()
+        bases = [b for b in col if b in {"A", "C", "G", "T"}]
+
+        if not bases:  # no A/C/G/T at this column
+            consensus_chars.append(ambiguous)
+            continue
+
+        a = bases.count("A")
+        c = bases.count("C")
+        g = bases.count("G")
+        t = bases.count("T")
+        counts = {"A": a, "C": c, "G": g, "T": t}
+
+        winner = max(counts, key=counts.get)
+        freq = counts[winner] / len(bases)
+
+        consensus_chars.append(winner if freq >= threshold else ambiguous)
+
+    consensus_seq = Seq("".join(consensus_chars)).upper()
+
+    consensus_seq_obj = SeqRecord(consensus_seq, id="consensus", description=f"threshold={threshold};amb={ambiguous}")
+
+    # Write consensus sequence to a FASTA file
+    output_file = os.path.join(output_dir, f'{os.path.basename(input_file)}_{threshold}_co.fa')
+    with open(output_file, 'w') as file:
+        SeqIO.write(consensus_seq_obj, file, 'fasta')
+
+    # Return a Bio.Seq.Seq in uppercase (to match the upper function’s output type)
     return output_file
 
 
@@ -733,13 +810,19 @@ def calc_conservation(col):
     nucleotide_counts = {'a': 0, 'c': 0, 'g': 0, 't': 0}
 
     for nucleotide in col:
+        nucleotide = nucleotide.lower()
         if nucleotide in nucleotide_counts:
             nucleotide_counts[nucleotide] += 1
 
     total_nucleotides = sum(nucleotide_counts.values())
     max_count = max(nucleotide_counts.values())
 
-    return max_count / total_nucleotides
+    if total_nucleotides > 0:
+        max_proportion = max_count / total_nucleotides
+    else:
+        max_proportion = 0
+
+    return max_proportion
 
 
 def generate_hmm_from_msa(input_msa_file, output_hmm_file, error_file):

@@ -8,7 +8,7 @@ from Bio.Align import AlignInfo, MultipleSeqAlignment
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-from functions import blast
+from functions import blast, con_generater_no_file
 
 # Suppress all deprecation warnings
 warnings.filterwarnings('ignore', category=BiopythonDeprecationWarning)
@@ -319,7 +319,7 @@ class DefineBoundary:
     ):
         self.threshold = threshold
         self.input_file = input_file
-        self.alignment = None
+        self.alignment = AlignIO.read(self.input_file, 'fasta')
         self.check_window = check_window
         self.max_X = max_X
         self.if_con_generater = True
@@ -334,10 +334,11 @@ class DefineBoundary:
         self.cut_seqs = []
         self.extension_buffer = extension_buffer
         self.polyA_position = polyA_position
+        consensus_seq = con_generater_no_file(self.input_file)  # return upper case nucleotide letters
+        self.consensus_seq = list(consensus_seq)  # convert to a list
         if (
             if_con_generater
         ):  # Default to use standard consensus sequence generation method
-            self.con_generator()
             self.boundary_position()
             self.extension_check()
         else:  # Otherwise, use consensus generation method with minimum sequence requirements for each column
@@ -345,33 +346,13 @@ class DefineBoundary:
             self.boundary_position()
             self.extension_check()
 
-    def con_generator(self):
-        # Read input file
-        self.alignment = AlignIO.read(self.input_file, 'fasta')
-        summary = AlignInfo.SummaryInfo(self.alignment)
-        # Get consensus sequence and convert to a list element to enable single element mutation
-        self.consensus_seq = list(
-            summary.dumb_consensus(
-                threshold=self.threshold, ambiguous=self.ambiguous
-            ).upper()
-        )
-
     # Generate consensus sequences
     def con_generator_select_column(self):
         """
         Generate consensus sequence if the column has more than 5 nucleotides. For columns with less than 5 nucleotides,
         write letter indicating ambiguity.
         """
-        # Read input file
-        self.alignment = AlignIO.read(self.input_file, 'fasta')
-        summary = AlignInfo.SummaryInfo(self.alignment)
-        # Get consensus sequence and convert to a list element to enable single element mutation
-        self.consensus_seq = list(
-            summary.dumb_consensus(
-                threshold=self.threshold, ambiguous=self.ambiguous
-            ).upper()
-        )
-
+        # self.alignment and self.consensus_seq were defined before
         for i in range(len(self.consensus_seq)):  # iterate over columns
             column = self.alignment[:, i]
             # set(column) returns an unordered collection of unique nucleotides in that column
@@ -392,7 +373,7 @@ class DefineBoundary:
         self.consensus_seq = ''.join(self.consensus_seq)
         return self.consensus_seq
 
-    # Check start and end position, consensus_seq from summary_align.dumb_consensus()
+    # Check start and end position
     def boundary_position(self):
         # Check the start position
         for i, letter in enumerate(self.consensus_seq):
