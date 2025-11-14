@@ -271,7 +271,7 @@ def extend_end(
     return bed_dic, ex_total, if_ex
 
 
-# fianl_MSA aims to provide the boundaries
+# final_MSA aims to provide the boundaries
 def final_MSA(
     bed_final_MSA,
     MSA_seq_n,
@@ -325,7 +325,7 @@ def final_MSA(
 
     # Generate consensus sequence before end cropping to perform genome blast coverage calculation
     # this function will write the consensus sequence to a file
-    bed_fasta_mafft_gap_sim_con_02 = con_generater(bed_fasta_mafft_gap_sim, output_dir, threshold=0.2, ambiguous='N')
+    #bed_fasta_mafft_gap_sim_con_02 = con_generater(bed_fasta_mafft_gap_sim, output_dir, threshold=0.2, ambiguous='N')
 
     # Crop end before terminal check, use loose threshold to avoid overhead cropping
     bed_fasta_mafft_gap_sim_cp_object = CropEnd(bed_fasta_mafft_gap_sim, threshold=20, window_size=40)
@@ -364,7 +364,7 @@ def final_MSA(
 
     # Calculate the genome blast coverage list
     bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
-        bed_fasta_mafft_gap_sim_con_02,
+        bed_fasta_mafft_gap_sim_cp_con_045,
         blast_database_path,
         output_dir
     )
@@ -377,8 +377,6 @@ def final_MSA(
     # connect the genome blast coverage number with the file bed_fasta_mafft_with_gap
     # bed_fasta_mafft_with_gap has the same column index with bed_fasta_mafft_with_gap_column_clean
     # bed_fasta_mafft_with_gap_column_clean connect to bed_fasta_mafft_gap_sim with column_mapping_initial
-
-
 
     def print_horizontal(lst, cols=8, max_width=20):
         """
@@ -554,6 +552,13 @@ def final_MSA(
         final_end = end_posit_MSA
 
     #####################################################################################################
+    # Code block: Check the existence of TSD
+    #####################################################################################################
+
+
+
+
+    #####################################################################################################
     # Code block: Slice the MSA
     #####################################################################################################
     # Extract MSA based on the defined start and end position
@@ -601,7 +606,7 @@ def final_MSA(
         blast_cov_list,  # list contain genome coverage number
         final_start,  # the start and end site corresponds to the MSA bed_fasta_mafft_boundary_crop_for_select
         final_end,
-        bed_fasta_mafft_gap_sim_cp_con_08_len
+        bed_fasta_mafft_gap_sim_cp_con_08_len  # the column number of bed_fasta_mafft_boundary_crop_for_select
     )
 
 
@@ -1171,8 +1176,8 @@ def find_boundary_and_crop(
 
         # Define the genome blast coverage for bed_fasta_mafft_boundary_crop_for_select
         blast_cov_list_dic = {
-            "boundary_start": final_start,
-            "boundary_end": final_end,
+            "boundary_start": str(final_start),
+            "boundary_end": str(final_end),
             "coverage":blast_cov_list
         }
 
@@ -1194,9 +1199,12 @@ def find_boundary_and_crop(
     try:
         # select_start_to_end will convert out_boundary_msa_start to 0 when it is negative
         # and convert out_boundary_msa_end to the MSA length when it is longer than the MSA length
-        out_boundary_msa_start = final_start - 150
+        # Use longer extend_len when the sequence is too long
+        extend_len = round(max(150, (final_end - final_start) * 0.05))
 
-        out_boundary_msa_end = final_end + 150
+        out_boundary_msa_start = final_start - extend_len
+
+        out_boundary_msa_end = final_end + extend_len
 
         out_boundary_msa_for_teaid, out_boundary_msa_start_new, out_boundary_msa_end_new = select_start_to_end(
             bed_fasta_mafft_boundary_crop_for_select,
@@ -1204,7 +1212,7 @@ def find_boundary_and_crop(
             out_boundary_msa_start,
             out_boundary_msa_end
         )
-
+        # start_relate_to_out_boundary_msa_for_teaid will be used to draw the blue line in the TE-Aid plot
         start_relate_to_out_boundary_msa_for_teaid = final_start - out_boundary_msa_start_new
 
         end_relate_to_out_boundary_msa_for_teaid = final_end - out_boundary_msa_start_new
@@ -1407,7 +1415,7 @@ def find_boundary_and_crop(
                     )
 
                     # out_boundary_msa_for_teaid will be used for TEAid plot for the out boundary MSA
-                    # start and end positons need to be modified
+                    # start and end positions need to be modified
                     (out_boundary_msa_for_teaid,
                      start_relate_to_out_boundary_msa_for_teaid,
                      end_relate_to_out_boundary_msa_for_teaid) = reverse_complement_seq_file(
@@ -1605,7 +1613,7 @@ def find_boundary_and_crop(
         out_boundary_msa_for_teaid_cons = con_generater(
             out_boundary_msa_for_teaid,
             output_dir,
-            threshold=0.3, ambiguous='N'
+            threshold=0.45, ambiguous='N'
         )
 
         TE_aid_object_out_boundary_msa = TEAid(
