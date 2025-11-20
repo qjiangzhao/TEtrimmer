@@ -463,15 +463,18 @@ def final_MSA(
                                           poly_patterns=poly_patterns,
                                           min_length=poly_len)
 
-        # right 100-nt window of the poly-A tail
-        poly_a_beyond_right_window = clip_con(poly_a, poly_a + 100,
-                                              bed_fasta_mafft_gap_sim_cp_con_08_seq,
-                                              bed_fasta_mafft_gap_sim_cp_con_08_len
-                                              )
-        poly_a_beyond_right_window_Ns = poly_a_beyond_right_window.count('N')
+        poly_a_beyond_right_window_Ns = 1
+
+        if poly_a is not None:
+            # right 100-nt window of the poly-A tail
+            poly_a_beyond_right_window = clip_con(poly_a, poly_a + 100,
+                                                  bed_fasta_mafft_gap_sim_cp_con_08_seq,
+                                                  bed_fasta_mafft_gap_sim_cp_con_08_len
+                                                  )
+            poly_a_beyond_right_window_Ns = poly_a_beyond_right_window.count('N')
 
         # When the N number is too less, mean the beyond region is still conserved.
-        if poly_a_beyond_right_window < 50:
+        if poly_a_beyond_right_window_Ns < 50:
             poly_a = None
     else:
         poly_a = None
@@ -514,7 +517,7 @@ def final_MSA(
         beyond_right_Ns = beyond_right_window.count('N')
 
         # When the N number is too less, mean the beyond region is still conserved.
-        if beyond_left_Ns < 50 and beyond_right_Ns < 50:
+        if beyond_left_Ns < 50 or beyond_right_Ns < 50:
             left_posit_repeat = None
             right_posit_repeat = None
 

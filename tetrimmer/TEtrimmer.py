@@ -42,7 +42,7 @@ with open(config_path, 'r') as config_file:
 # Code block: Main functions of TEtrimmer
 #####################################################################################################
 
-TEtrimmer_version = "1.6.0"
+TEtrimmer_version = "1.6.2"
 
 @click.command(
     context_settings={'max_content_width': 120},

@@ -499,6 +499,10 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 ```
 
 ## Update history
+**Nov.20.2025**
+Fixed LINE poly-A identification error
+
+
 **Oct.27.2025**
 
 Released TEtrimmer 1.6.0.
