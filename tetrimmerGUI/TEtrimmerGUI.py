@@ -1542,9 +1542,10 @@ def proof_curation(
         '7, Click <Cons> to generate consensus sequence and save it by <Save> button.\n\n'
         '##################################################################################\n\n'
         'Please cite: \n'
-        'Qian, J., Xue, H., Ou, S., Storer, J., Fürtauer, L., Wildermuth, M. C., Kusch, S., & Panstruga, R.\n'
-        'bioRxiv (2024) https://doi.org/10.1101/2024.06.27.600963\n'
-        'TEtrimmer: A novel tool to automate the manual curation of transposable elements.\n'
+        'Qian, J., Xue, H., Ou, S., Mann, L., Storer, J., Fürtauer, L., Heitkam, T., \n'
+        'Wildermuth, M. C., Kusch, S., & Panstruga, R. (2025). \n'
+        'TEtrimmer: A tool to automate the manual curation of transposable elements. \n'
+        'Nature Communications, 16(1), 8429. https://doi.org/10.1038/s41467-025-63889-y\n'
     )
     # Display ASCII logo with 'Courier' font
     if os_type == 'Linux':

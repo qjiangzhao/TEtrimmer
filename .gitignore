@@ -6,7 +6,7 @@
 
 # Ignore test files
 tests/test_genome.fa.fai
-tests/test_genome.fa.length
+#tests/test_genome.fa.length
 tests/test_genome.fa.ndb
 tests/test_genome.fa.nhr
 tests/test_genome.fa.nin
