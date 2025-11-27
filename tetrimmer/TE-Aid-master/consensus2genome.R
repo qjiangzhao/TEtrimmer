@@ -81,7 +81,7 @@ for(i in 1:length(blast$V1)){
     removator<-function(covM){
       as.data.frame(covM)->covMT
       covMT$bp=rownames(covMT)
-      plot(covM, type = "l", main = "", xaxs = "i", yaxs = "i",  xlab = "TE consensus genomic coverage plot (bp)", ylab = "coverage (bp)", cex.lab = 2, cex.axis = 1.5)
+      plot(covM, type = "l", main = "", xaxs = "i", yaxs = "i",  xlab = "TE consensus genomic coverage plot (bp)", ylab = "coverage (bp)", cex.lab = 2, cex.axis = 1.5, ylim = c(0, max(covM, na.rm = TRUE)))
 
       # add vertical red line
       if (v_x_line_1 > 0){
