@@ -1992,7 +1992,7 @@ def parse_cd_hit_est_result(input_file):
     return clusters, detailed_clusters
 
 
-def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False):
+def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False, no_low=False):
     """
     Run RepeatMasker with the provided parameters.
     """
@@ -2025,6 +2025,9 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
             '-xm',  # Creates an additional output file in cross_match format (for parsing)
             '-a',  # Writes alignments in .align output file
         ]
+
+        if no_low:
+            command.append('-nolow')
 
     # Set env variable for RepeatMasker
     env = os.environ.copy()
@@ -2174,7 +2177,7 @@ def eliminate_curatedlib_by_repeatmasker(
     # For the repeatmasker_out --input_seq as genome, --curatedlib serves as repeat database
     # Define the directory
     repeatmasker_succeed = repeatmasker(
-        input_seq, curatedlib, curatedlib_dir, thread=num_threads, classify=True
+        input_seq, curatedlib, curatedlib_dir, thread=num_threads, classify=True, no_low=True
     )
 
     if repeatmasker_succeed:

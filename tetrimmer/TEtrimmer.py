@@ -719,6 +719,11 @@ def main(
                     f'User specified curated TE consensus library found: {curatedlib}'
                 )
 
+                logging.info(
+                    f'TEtrimmer is identifying the sequences in --input_file that are identical to the sequences '
+                    f'in --curatedlib. This might take a long time. Please be patient.'
+                )
+
                 # Define path to store curatedlib analysis. Store it to classification_dir
                 curatedlib_dir = os.path.join(
                     classification_dir, 'Filter_input_file_based_on_curatedlib'
