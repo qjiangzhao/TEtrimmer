@@ -57,7 +57,7 @@ blastdotplot=function(query = NULL, db = NULL, blast = NULL, os = NULL, tables =
   #####################################
   ## Annotation graph (bottom right) ##
   #####################################
-  
+
   ## Arrows layer ##
 
   plot(x = 1, type = "n", xlim = c(0,bl$V3[1]),ylim = c(-max(length(orfs$V1),10),length(bl$V1)), col = "white", yaxt="n",

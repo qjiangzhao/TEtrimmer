@@ -286,7 +286,7 @@ if [ -s $OUTPUT/TE.orfs ]
   #join -a1 -11 -21 $OUTPUT/file1 $OUTPUT/file2 | \
   sort -k1,1 $OUTPUT/TE.orfs.R > $OUTPUT/file1
   sort -k1,1 $OUTPUT/TE.blastp.out > $OUTPUT/file2
-  awk 'NR==FNR{key=$1;sub(/^[^[:space:]]+[[:space:]]+/,"",$0);f2[key]=$0;next}{key=$1;print $0 (key in f2 ? " " f2[key] : "")}' $OUTPUT/file2 $OUTPUT/file1 \
+  awk 'NR==FNR{key=$1;sub(/^[^[:space:]]+[[:space:]]+/,"",$0);f2[key]=$0;next}{key=$1;print $0 (key in f2 ? " " f2[key] : "")}' $OUTPUT/file2 $OUTPUT/file1 | \
    sed -E 's/ /\t/g' | \
    sed 's/DNA\/Maverick/MAV\/Maverick/g;s/DNA\/Crypton/CRY\/Crypton/g;s/LINE\/Penelope/PLE\/Penelope/g;s/LTR\/DIRS/DIRS\/DIRS/g;s/DNA/TIR/g' | \
    awk '{if (NF == 3) {print $0"\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA"} else {print $0}}' | \
