@@ -2086,7 +2086,8 @@ def repeatmasker_output_classify(
             sep=r'\s+',
             header=None,
             skiprows=3,
-            error_bad_lines=False,
+            on_bad_lines='skip',
+            engine='python',
             usecols=range(15),
         )
 

@@ -135,10 +135,19 @@ class CleanAndSelectColumn:
 
         # Concatenate columns with high divergence and gap block columns
         if gap_block_to_keep and (len(columns_to_keep) >= 30):
-            divergence_len = len((set(columns_to_keep + gap_block_to_keep)))
+
+            # expand (start, end) tuples into individual columns
+            gap_cols = []
+            for start, end in gap_block_to_keep:
+                gap_cols.extend(range(start, end + 1))
+
+            # merge + deduplicate + keep list
+            columns_to_keep = list(dict.fromkeys(columns_to_keep + gap_cols))
+            divergence_len = len(columns_to_keep)
         else:
             divergence_len = len(columns_to_keep)
-        self.alignment_filtered_len = len(columns_to_keep)
+
+        self.alignment_filtered_len = divergence_len
         columns_to_keep = sorted(columns_to_keep)
 
         """
@@ -523,7 +532,7 @@ def clean_and_cluster_MSA(
             return_map=False,
         )
     else:
-        fasta_out_flank_mafft_file_gap_filter = input_msa
+        fasta_out_flank_mafft_file_gap_filter = input_file
 
     # Extract columns that contain different alignment patter, use this for group separation.
     # This threshold will be used to replace nucleotides that are less than threshold with a gap character
