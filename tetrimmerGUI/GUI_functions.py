@@ -795,7 +795,8 @@ def rpstblastn(
     e_value=0.01,
     os_type='Darwin',
     num_threads=20,
-    use_system_blast = False
+    use_system_blast = False,
+    conduct_cdd = True
 ):
     script_dir = get_original_file_path()
     blast_dir = os.path.join(script_dir, 'blast')
@@ -832,16 +833,19 @@ def rpstblastn(
         # Print the rpstblastn command
         #logging.info(' '.join(rpsblast_cmd))
         # Run the rpstblastn command
-        subprocess.run(rpsblast_cmd, check=True, capture_output=True, text=True)
+        if conduct_cdd:
+            subprocess.run(rpsblast_cmd, check=True, capture_output=True, text=True)
 
 
-        # Check if the blast hit number is 0
-        if (
-            os.path.isfile(rpstblastn_out_file)
-            and os.path.getsize(rpstblastn_out_file) == 0
-        ):
-            logging.warning('rpstblastn hit number is 0.')
-            return 'rpstblastn_n_zero'
+            # Check if the blast hit number is 0
+            if (
+                os.path.isfile(rpstblastn_out_file)
+                and os.path.getsize(rpstblastn_out_file) == 0
+            ):
+                logging.warning('rpstblastn hit number is 0.')
+                return 'rpstblastn_n_zero'
+        else:
+            return 'cdd_not_checked'
 
         return rpstblastn_out_file
 

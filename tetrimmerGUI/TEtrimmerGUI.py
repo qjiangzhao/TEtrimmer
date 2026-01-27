@@ -735,7 +735,8 @@ def proof_curation(
                         prepared_cdd=prepared_cdd,
                         e_value=blast_e_value_g,
                         num_threads=5,
-                        use_system_blast = use_system_blast
+                        use_system_blast=use_system_blast,
+                        conduct_cdd=conduct_cdd.get()
                     )
                     GUI_plotter_succeed = True
 
@@ -1662,6 +1663,7 @@ def proof_curation(
     #####################################################################################################
 
     show_confirmation = BooleanVar(value=True)
+    conduct_cdd = BooleanVar(value=True)
 
     def numerical_sort_key(filename):
         numbers = re.findall(r'\d+', filename)
@@ -3187,6 +3189,12 @@ def proof_curation(
             onvalue=True,
             offvalue=False,
             variable=show_confirmation,
+        )
+        settings_menu.add_checkbutton(
+            label="Perform CDD database checking When Click 'TEAid'",
+            onvalue=True,
+            offvalue=False,
+            variable=conduct_cdd,
         )
         settings_menu.add_command(
             label='Modify Function Parameters', command=show_settings_dialog

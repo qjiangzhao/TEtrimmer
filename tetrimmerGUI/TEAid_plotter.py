@@ -837,7 +837,8 @@ def teaid_plotter(
     prepared_cdd=None,
     e_value=1e-40,
     num_threads=5,
-    use_system_blast = False
+    use_system_blast = False,
+    conduct_cdd = True
 ):
     # Used global variable: os_type
 
@@ -930,7 +931,8 @@ def teaid_plotter(
             e_value=0.01,
             os_type=os_type,
             num_threads=5,
-            use_system_blast=use_system_blast
+            use_system_blast=use_system_blast,
+            conduct_cdd=conduct_cdd
         )
 
         if rpstblastn_out:
@@ -943,6 +945,16 @@ def teaid_plotter(
                 )
                 num_tracks = 1
                 #logging.info('rpstblastn_n_zero')
+            elif rpstblastn_out == 'cdd_not_checked':
+
+                fig_rpstblastn = empty_plot(
+                    cons_len,
+                    width_n=1350,
+                    height_n=60,
+                    custom_text='CDD database not checked',
+                )
+                num_tracks = 1
+
             else:
                 fig_rpstblastn, num_tracks = plot_rpsblast_hits(
                     rpstblastn_out, cons_len
