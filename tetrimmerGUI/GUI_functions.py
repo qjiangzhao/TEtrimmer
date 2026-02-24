@@ -722,7 +722,7 @@ def prepare_cdd_database(cdd_database_dir, os_type='Darwin', use_system_blast = 
 
     try:
         # Check if CDD database downloads and unzipped in target dir
-        if check_and_download(cdd_database_dir, r'Cdd.pn', r'Cdd.tar.gz', cdd_url):
+        if check_and_download(cdd_database_dir, r'Cdd.pn', r'cdd.tar.gz', cdd_url):
             # Create index file for cdd database
             script_dir = get_original_file_path()
             blast_dir = os.path.join(script_dir, "blast")

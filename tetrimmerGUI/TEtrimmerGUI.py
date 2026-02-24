@@ -244,6 +244,7 @@ def proof_curation(
         cdd_dir = cdd_dir_default
         logging.info(f"Checking for CDD in default location: {cdd_dir_default}")
     else:
+        cdd_dir = os.path.abspath(cdd_dir)
         logging.info(f"Checking for CDD user provided path: {cdd_dir}")
 
     # Check if cdd_dir is a valid directory
