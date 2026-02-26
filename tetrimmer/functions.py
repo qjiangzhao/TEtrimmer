@@ -1098,7 +1098,9 @@ def remove_gaps_with_similarity_check(
     )
     MSA_mafft = AlignIO.read(input_file, 'fasta')
 
-    column_mapping = {}  # Stores the mapping of column indices of filtered MSA to original MSA
+    # Stores the mapping of column indices of filtered MSA to original MSA, the key is the position of the new MSA,
+    # the value is the position number of the original MSA
+    column_mapping = {}
 
     # if len(MSA_mafft) < 5:
     # raise ValueError("Number of sequences is less than 5. Cannot remove gaps.")

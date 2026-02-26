@@ -1162,17 +1162,31 @@ def find_boundary_and_crop(
             output_dir)
 
         # Remove gaps by similarity again
-        # This column_mapping is not used for the following analysis.
         bed_fasta_mafft_gap_sim_final_start_to_end_cp_g, column_mapping = remove_gaps_with_similarity_check(
             bed_fasta_mafft_gap_sim_final_start_to_end_cp, output_dir, return_map=True
         )
 
         cropped_boundary_MSA = bed_fasta_mafft_gap_sim_final_start_to_end_cp_g
 
+        # Extract the coverage message for cropped_boundary_MSA
+        updated_column_mapping = {k: v + final_start for k, v in column_mapping.items()}
+
+        cropped_boundary_MSA_blast_cov_list = []
+
+        for new_idx, genomic_idx in updated_column_mapping.items():
+            try:
+                # Accessing the list via the updated genomic index
+                val = blast_cov_list[genomic_idx]
+                cropped_boundary_MSA_blast_cov_list.append(val)
+            except IndexError:
+                # This happens if your mapping points to a position outside the length of your coverage list
+                cropped_boundary_MSA_blast_cov_list.append("Na")
+
         # Define the start and end position of the file bed_fasta_mafft_with_gap
         # bed_fasta_mafft_with_gap is the raw file in the curation folder
         # column_mapping_initial connects the column number of bed_fasta_mafft_boundary_crop_for_select and
         # bed_fasta_mafft_with_gap
+        # the final_raw_start indicates the start boundary position of the raw MSA, which contains column gaps
 
         final_raw_start = column_mapping_initial[final_start]
         final_raw_end = column_mapping_initial[final_end]
@@ -1373,6 +1387,9 @@ def find_boundary_and_crop(
                         output_file=f'{cropped_boundary_MSA}_rc.fa',
                     )
 
+                    # Reverse the coverage data for the final MSA
+                    cropped_boundary_MSA_blast_cov_list.reverse()
+
                     # cropped_boundary_plot_concatenate will be used for the first MSA plot
                     # start and end positions need to be modified
                     cropped_boundary_plot_concatenate, concat_start, concat_end = reverse_complement_seq_file(
@@ -1458,10 +1475,17 @@ def find_boundary_and_crop(
                 orf_domain_plot = orf_domain_plot_object.orf_domain_plot()
 
         # Write the final coverage to a file
-        # Define the genome blast coverage file
-        genome_blast_coverage_file = f"{bed_fasta_mafft_boundary_crop_for_select}_cov.txt"
 
-        with open(genome_blast_coverage_file, "w") as f:
+        # Define the genome blast coverage file for
+        genome_blast_coverage_file_final_msa = f"{cropped_boundary_MSA}_cov.txt"
+
+        with open(genome_blast_coverage_file_final_msa, "w") as f:
+            f.write(str(cropped_boundary_MSA_blast_cov_list))
+
+        # Define the genome blast coverage file for bed_fasta_mafft_boundary_crop_for_select
+        genome_blast_coverage_file_select_msa = f"{bed_fasta_mafft_boundary_crop_for_select}_cov.txt"
+
+        with open(genome_blast_coverage_file_select_msa, "w") as f:
             f.write(str(blast_cov_list_dic))
 
         # Update the consi_obj final raw file start and end position
@@ -1958,8 +1982,9 @@ def find_boundary_and_crop(
 
         if export_coverage:
             file_copy_pattern.extend([
-                (genome_blast_coverage_file, str(consi_obj.proof_coverage)),
-                (bed_fasta_mafft_boundary_crop_for_select_nm, str(consi_obj.proof_coverage_fasta))
+                (genome_blast_coverage_file_select_msa, str(consi_obj.proof_coverage)),
+                (bed_fasta_mafft_boundary_crop_for_select_nm, str(consi_obj.proof_coverage_fasta)),
+                (genome_blast_coverage_file_final_msa, str(consi_obj.proof_coverage_coverage_final_msa))
             ])
 
         files_moved_successfully = True

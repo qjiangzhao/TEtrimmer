@@ -155,6 +155,7 @@ class ConsensusObject:
         self.proof_cluster = 'None'
         self.proof_coverage = 'None'
         self.proof_coverage_fasta = 'None'
+        self.proof_coverage_coverage_final_msa = 'None'
         self.new_length = 'NaN'
         self.new_TE_type = 'NaN'
         self.new_TE_MSA_seq_n = 'NaN'
@@ -254,10 +255,11 @@ class ConsensusObject:
         proof_TE_type = self.new_TE_type.replace('/', '__')
         self.proof_pdf = f'{self.consensus_name}#{proof_TE_type}.pdf'
         self.proof_fasta = f'{self.consensus_name}#{proof_TE_type}.fa'
-        self.proof_raw = f'{self.consensus_name}#{proof_TE_type}.raw.fa'
+        self.proof_raw = f'{self.consensus_name}#{proof_TE_type}.raw.fa'  # raw MSA contains gappy columns
         self.proof_cluster = f'{self.consensus_name}#{proof_TE_type}.cluster.fa'
-        self.proof_coverage = f'{self.consensus_name}#{proof_TE_type}.cov.txt'
-        self.proof_coverage_fasta = f'{self.consensus_name}#{proof_TE_type}.cov.fa'
+        self.proof_coverage = f'{self.consensus_name}#{proof_TE_type}.full_cov.txt'
+        self.proof_coverage_fasta = f'{self.consensus_name}#{proof_TE_type}.full_cov.fa'
+        self.proof_coverage_coverage_final_msa = f'{self.consensus_name}#{proof_TE_type}.cov.txt'
 
         #self.proof_tsd = f'{self.consensus_name}#{proof_TE_type}.tsd.fa'
 
