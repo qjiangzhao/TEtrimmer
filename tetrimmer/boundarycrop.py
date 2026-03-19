@@ -354,8 +354,15 @@ def final_MSA(
 
     # Generate consensus sequence, use low threshold to reduce number of N's in the consensus sequence
     # for LTR/TIR checking
+
     bed_fasta_mafft_gap_sim_cp_con_045 = con_generater(
         bed_fasta_mafft_gap_sim_cp, output_dir, threshold=0.45, ambiguous='N'
+    )
+
+    # 0.45 threshold is too low for LTR and TIR boundary definition, which always can not generate the precise boundary
+    # increase the threshold
+    bed_fasta_mafft_gap_sim_cp_con_070 = con_generater(
+        bed_fasta_mafft_gap_sim_cp, output_dir, threshold=0.7, ambiguous='N'
     )
 
     #####################################################################################################
@@ -485,10 +492,10 @@ def final_MSA(
 
     # Check terminal repeats
     # Define the output folder to store the temporary BLAST database
-    check_terminal_repeat_output = f'{bed_fasta_mafft_gap_sim_cp_con_045}_tem'
+    check_terminal_repeat_output = f'{bed_fasta_mafft_gap_sim_cp_con_070}_tem'
 
     LTR_boundary, TIR_boundary, found_match_crop = check_terminal_repeat(
-        bed_fasta_mafft_gap_sim_cp_con_045, check_terminal_repeat_output
+        bed_fasta_mafft_gap_sim_cp_con_070, check_terminal_repeat_output
     )
 
     left_posit_repeat = None
@@ -1984,7 +1991,9 @@ def find_boundary_and_crop(
             file_copy_pattern.extend([
                 (genome_blast_coverage_file_select_msa, str(consi_obj.proof_coverage)),
                 (bed_fasta_mafft_boundary_crop_for_select_nm, str(consi_obj.proof_coverage_fasta)),
-                (genome_blast_coverage_file_final_msa, str(consi_obj.proof_coverage_coverage_final_msa))
+                (genome_blast_coverage_file_final_msa, str(consi_obj.proof_coverage_coverage_final_msa)),
+                (TE_aid_object.TE_aid_output_dir, str(consi_obj.proof_teaid_final_msa)),
+                (TE_aid_object_out_boundary_msa.TE_aid_output_dir, str(consi_obj.proof_teaid_extended_boundary_msa)),
             ])
 
         files_moved_successfully = True
@@ -2004,7 +2013,11 @@ def find_boundary_and_crop(
 
                 # Copy the file to the new location with the new unique name
                 if pattern:
-                    shutil.copy(pattern, os.path.join(destination_dir, new_name))
+                    if os.path.isdir(pattern):
+                        shutil.copytree(pattern, os.path.join(destination_dir, new_name))
+                    # If pattern is a file
+                    else:
+                        shutil.copy(pattern, os.path.join(destination_dir, new_name))
 
             except Exception as e:
                 with open(error_files, 'a') as f:

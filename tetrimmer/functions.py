@@ -2477,7 +2477,12 @@ def copy_files_with_start_pattern(
             else:
                 output_file = os.path.join(output_dir, file)
             # Copy file to the output directory
-            shutil.copy(full_file_path, output_file)
+
+            if os.path.isdir(full_file_path):
+                shutil.copytree(full_file_path, output_file)
+            # If pattern is a file
+            else:
+                shutil.copy(full_file_path, output_file)
 
 
 # Define a function to handle sequence skipping and removal of files

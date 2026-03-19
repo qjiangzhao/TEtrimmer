@@ -156,6 +156,8 @@ class ConsensusObject:
         self.proof_coverage = 'None'
         self.proof_coverage_fasta = 'None'
         self.proof_coverage_coverage_final_msa = 'None'
+        self.proof_teaid_final_msa = 'None'
+        self.proof_teaid_extended_boundary_msa = 'None'
         self.new_length = 'NaN'
         self.new_TE_type = 'NaN'
         self.new_TE_MSA_seq_n = 'NaN'
@@ -260,6 +262,8 @@ class ConsensusObject:
         self.proof_coverage = f'{self.consensus_name}#{proof_TE_type}.full_cov.txt'
         self.proof_coverage_fasta = f'{self.consensus_name}#{proof_TE_type}.full_cov.fa'
         self.proof_coverage_coverage_final_msa = f'{self.consensus_name}#{proof_TE_type}.cov.txt'
+        self.proof_teaid_final_msa = f'{self.consensus_name}#{proof_TE_type}_TEAid'
+        self.proof_teaid_extended_boundary_msa = f'{self.consensus_name}#{proof_TE_type}_extend_boundary_TEAid'
 
         #self.proof_tsd = f'{self.consensus_name}#{proof_TE_type}.tsd.fa'
 
