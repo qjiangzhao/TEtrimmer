@@ -2723,7 +2723,7 @@ def check_terminal_repeat(
         blast_cmd = (
             f'blastn -query {input_file} -db {database_file} '
             f'-outfmt "6 qseqid qstart qend sstart send " '
-            f'-evalue 0.05 -word_size 11 -gapopen 5 -gapextend 2 -reward 2 -penalty -3'
+            f'-evalue 0.05 -word_size 11 -gapopen 10 -gapextend 6 -reward 2 -penalty -10'
         )  # Set less stringent e-value for self-BLAST
 
         try:

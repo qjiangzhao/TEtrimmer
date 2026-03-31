@@ -4,6 +4,7 @@ import os.path
 import re
 import subprocess
 from collections import Counter
+from unittest import skipIf
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -538,17 +539,29 @@ def clean_and_cluster_MSA(
     # This threshold will be used to replace nucleotides that are less than threshold with a gap character
     # for each column
     # CleanAndSelectColumn removes sequences that have too many gaps along the sequence
-    pattern_alignment = CleanAndSelectColumn(
-        fasta_out_flank_mafft_file_gap_filter, threshold=clean_column_threshold
-    )
 
-    # Clean_column() function will help MSA cluster and return the absolute path of column cleaned alignment file
-    pattern_alignment.clean_column(output_dir)
+    select_divergent_columns = False
+    if_cluster = False
 
-    # Select_divergent_column() function will return a boolean value, true represents need cluster step
-    if pattern_alignment.select_divergent_column(
-        cluster_col_thr=cluster_col_thr, dis_col_threshold=div_column_thr
-    ):
+    # Only select the divergent columns when the sequence number in the MSA is larger than 20
+    filtered_alignment = AlignIO.read(fasta_out_flank_mafft_file_gap_filter, "fasta")
+    num_sequences = len(filtered_alignment)
+
+    if num_sequences >= 20:
+
+        pattern_alignment = CleanAndSelectColumn(
+            fasta_out_flank_mafft_file_gap_filter, threshold=clean_column_threshold
+        )
+        # Clean_column() function will help MSA cluster and return the absolute path of column cleaned alignment file
+        pattern_alignment.clean_column(output_dir)
+
+        # Select_divergent_column() function will return a boolean value, true represents need cluster step
+
+        select_divergent_columns = pattern_alignment.select_divergent_column(
+            cluster_col_thr=cluster_col_thr, dis_col_threshold=div_column_thr
+        )
+
+    if select_divergent_columns:
         # write_alignment_filtered() function return pattern_alignment absolute path
         pattern_alignment = pattern_alignment.write_alignment_filtered(output_dir)
         """
@@ -560,8 +573,22 @@ def clean_and_cluster_MSA(
         filtered_cluster_records, if_cluster = cluster_msa_iqtree_DBSCAN(
             pattern_alignment, min_cluster_size=min_length_num, max_cluster=cluster_num
         )
-        # Turn on the next line of code when need the separated MSA
-        # subset_alignment_dis(filtered_cluster_records, output_dir, pattern_alignment)
+
+        # After DBSCAN clustering, if the biggest MSA contain less than 18 sequences, don't use the
+        # clustering result based on the divergent columns pattern
+        if if_cluster:
+            max_cluster_size = max(len(cluster) for cluster in filtered_cluster_records)
+
+            if max_cluster_size < 18:
+                if_cluster = False
+
+
+    if select_divergent_columns and if_cluster:
+        # This is the SUCCESS block for divergent pattern clustering
+        bed_dfs = process_labels(bed_file, filtered_cluster_records)
+        cluster_bed_files_list = subset_bed_file(bed_file, bed_dfs, output_dir)
+        return cluster_bed_files_list, fasta_out_flank_mafft_file_gap_filter
+
     # if false, meaning no enough divergent column for cluster
     # Do full length alignment cluster and only keep the biggest cluster. The reason for this is the MSA is consistent
     # In the other word, the divergent columns is less. It is not necessary to do clustering.

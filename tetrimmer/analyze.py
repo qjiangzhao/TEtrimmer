@@ -788,8 +788,6 @@ def cluster_proof_anno_file(
                 logging.warning(f'Add cluster to Summary.txt failed for sequence {seq_name_proof_anno}\n'
                                 f'This do not affect the final TE library but only the Summery.txt cluster column.\n')
 
-
-
             # Copy sequence files into cluster folder
             # if not, set evaluation_level to "Need_check". The "get" method will return the default value
             # when the key does not exist.

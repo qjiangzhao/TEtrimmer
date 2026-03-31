@@ -558,5 +558,3 @@ class GenomeBlastCoverage:
                     break
 
         return self.start_point, self.end_point
-
-

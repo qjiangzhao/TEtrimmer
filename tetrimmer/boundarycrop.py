@@ -272,6 +272,7 @@ def extend_end(
 
 
 # final_MSA aims to provide the boundaries
+# MSA_seq_n the sequence number in the multiple sequence alignment
 def final_MSA(
     bed_final_MSA,
     MSA_seq_n,
@@ -323,7 +324,21 @@ def final_MSA(
     # Code block: Generate consensus sequences
     #####################################################################################################
 
-    # Generate consensus sequence before end cropping to perform genome blast coverage calculation
+    # Use more stringent threshold for poly A identification when terminal is not found.
+    bed_fasta_mafft_gap_sim_con_08 = con_generater(
+        bed_fasta_mafft_gap_sim, output_dir, threshold=0.8, ambiguous='N'
+    )
+
+    # read sequence and convert to plain upper-case string
+    bed_fasta_mafft_gap_sim_con_08_record = SeqIO.read(bed_fasta_mafft_gap_sim_con_08, "fasta")
+    bed_fasta_mafft_gap_sim_con_08_seq = str(bed_fasta_mafft_gap_sim_con_08_record.seq).upper()
+    bed_fasta_mafft_gap_sim_con_08_len = len(bed_fasta_mafft_gap_sim_con_08_seq)
+
+
+    bed_fasta_mafft_gap_sim_con_07 = con_generater(
+        bed_fasta_mafft_gap_sim, output_dir, threshold=0.7, ambiguous='N'
+    )
+
     # this function will write the consensus sequence to a file
     #bed_fasta_mafft_gap_sim_con_02 = con_generater(bed_fasta_mafft_gap_sim, output_dir, threshold=0.2, ambiguous='N')
 
@@ -332,16 +347,6 @@ def final_MSA(
     bed_fasta_mafft_gap_sim_cp_object.crop_alignment()
     bed_fasta_mafft_gap_sim_cp = bed_fasta_mafft_gap_sim_cp_object.write_to_file(output_dir)
 
-    # Generate consensus sequence, use low threshold to reduce number of N's in the consensus sequence
-    # Use more stringent threshold for poly A identification when terminal is not found.
-    bed_fasta_mafft_gap_sim_cp_con_08 = con_generater(
-        bed_fasta_mafft_gap_sim_cp, output_dir, threshold=0.8, ambiguous='N'
-    )
-
-    # read sequence and convert to plain upper-case string
-    bed_fasta_mafft_gap_sim_cp_con_08_record = SeqIO.read(bed_fasta_mafft_gap_sim_cp_con_08, "fasta")
-    bed_fasta_mafft_gap_sim_cp_con_08_seq = str(bed_fasta_mafft_gap_sim_cp_con_08_record.seq).upper()
-    bed_fasta_mafft_gap_sim_cp_con_08_len = len(bed_fasta_mafft_gap_sim_cp_con_08_seq)
 
     # helper: clip coordinates so they stay inside the sequence
     def clip_con(start, stop, seq, seq_len):
@@ -351,13 +356,6 @@ def final_MSA(
         start = max(0, start)
         stop = min(seq_len, stop)
         return seq[start:stop]
-
-    # Generate consensus sequence, use low threshold to reduce number of N's in the consensus sequence
-    # for LTR/TIR checking
-
-    bed_fasta_mafft_gap_sim_cp_con_045 = con_generater(
-        bed_fasta_mafft_gap_sim_cp, output_dir, threshold=0.45, ambiguous='N'
-    )
 
     # 0.45 threshold is too low for LTR and TIR boundary definition, which always can not generate the precise boundary
     # increase the threshold
@@ -370,11 +368,21 @@ def final_MSA(
     #####################################################################################################
 
     # Calculate the genome blast coverage list
-    bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
-        bed_fasta_mafft_gap_sim_cp_con_045,
-        blast_database_path,
-        output_dir
-    )
+    # For LINE elements, crop the MSA end, which will help to identify the boundary of 5' end
+
+    if seq_obj.old_TE_type.startswith("LINE"):
+        bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
+            bed_fasta_mafft_gap_sim_cp_con_070,
+            blast_database_path,
+            output_dir
+        )
+    # For other elements use more stringent condition
+    else:
+        bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
+            bed_fasta_mafft_gap_sim_con_07,
+            blast_database_path,
+            output_dir
+        )
 
     bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
     start_posit_cov, end_posit_cov = bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
@@ -466,7 +474,7 @@ def final_MSA(
     if seq_obj.old_TE_type.startswith("LINE") or seq_obj.old_TE_type.startswith("SINE"):
 
         # Poly_a will be None if poly A is not found
-        poly_a = find_poly_a_end_position(bed_fasta_mafft_gap_sim_cp_con_08,
+        poly_a = find_poly_a_end_position(bed_fasta_mafft_gap_sim_con_08,
                                           poly_patterns=poly_patterns,
                                           min_length=poly_len)
 
@@ -475,8 +483,8 @@ def final_MSA(
         if poly_a is not None:
             # right 100-nt window of the poly-A tail
             poly_a_beyond_right_window = clip_con(poly_a, poly_a + 100,
-                                                  bed_fasta_mafft_gap_sim_cp_con_08_seq,
-                                                  bed_fasta_mafft_gap_sim_cp_con_08_len
+                                                  bed_fasta_mafft_gap_sim_con_08_seq,
+                                                  bed_fasta_mafft_gap_sim_con_08_len
                                                   )
             poly_a_beyond_right_window_Ns = poly_a_beyond_right_window.count('N')
 
@@ -512,25 +520,31 @@ def final_MSA(
 
         # left 100-nt window
         beyond_left_window = clip_con(left_posit_repeat - 100, left_posit_repeat,
-                               bed_fasta_mafft_gap_sim_cp_con_08_seq,
-                               bed_fasta_mafft_gap_sim_cp_con_08_len)
+                               bed_fasta_mafft_gap_sim_con_08_seq,
+                               bed_fasta_mafft_gap_sim_con_08_len)
         beyond_left_Ns = beyond_left_window.count('N')
 
         # right 100-nt window
         beyond_right_window = clip_con(right_posit_repeat, right_posit_repeat + 100,
-                                       bed_fasta_mafft_gap_sim_cp_con_08_seq,
-                                       bed_fasta_mafft_gap_sim_cp_con_08_len
+                                       bed_fasta_mafft_gap_sim_con_08_seq,
+                                       bed_fasta_mafft_gap_sim_con_08_len
                                        )
         beyond_right_Ns = beyond_right_window.count('N')
 
         # When the N number is too less, mean the beyond region is still conserved.
-        if beyond_left_Ns < 50 or beyond_right_Ns < 50:
+        if beyond_left_Ns < 40 or beyond_right_Ns < 40:
             left_posit_repeat = None
             right_posit_repeat = None
 
     #####################################################################################################
     # Code block: Evaluate boundary result and choose the final_start and final_end
     #####################################################################################################
+    """
+    print(bed_final_MSA)
+    print(f"LTR TIR {left_posit_repeat}, {right_posit_repeat}")
+    print(f"coverage {start_posit_cov}, {end_posit_cov}")
+    print(f"MSA {start_posit_MSA}, {end_posit_MSA}")
+    """
 
     if left_posit_repeat is not None and right_posit_repeat is not None:
         final_start = left_posit_repeat
@@ -616,7 +630,7 @@ def final_MSA(
         blast_cov_list,  # list contain genome coverage number
         final_start,  # the start and end site corresponds to the MSA bed_fasta_mafft_boundary_crop_for_select
         final_end,
-        bed_fasta_mafft_gap_sim_cp_con_08_len  # the column number of bed_fasta_mafft_boundary_crop_for_select
+        bed_fasta_mafft_gap_sim_con_08_len  # the column number of bed_fasta_mafft_boundary_crop_for_select
     )
 
 
