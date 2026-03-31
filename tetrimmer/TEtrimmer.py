@@ -246,7 +246,7 @@ TEtrimmer_version = "1.6.2"
     help='The threshold to call “N” at a position. For example, if the most conserved nucleotide in a MSA column'
     'has proportion smaller than <ext_thr>, a “N” will be called at this position. Used with <ext_check_win>. '
     'The lower the value of <ext_thr>, the more likely to get longer the extensions on both ends. '
-    'You can try reducing <ext_thr> if TEtrimmer fails to find full-length TEs. Default: 0.7',
+    'You can try reducing <ext_thr> if TEtrimmer fails to find full-length TEs. Default: 0.65',
 )
 @click.option(
     '--ext_check_win',

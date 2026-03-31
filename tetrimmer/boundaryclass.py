@@ -381,7 +381,7 @@ class DefineBoundary:
                 Xnum = self.consensus_seq[i : i + self.check_window].count(
                     self.ambiguous
                 )
-                # Check if the number of ambiguous sites is smaller than 30% of check_window
+                # Check if the number of ambiguous sites is smaller than max_X% of check_window
                 if Xnum <= (self.max_X * self.check_window):
                     self.start_post = i
                     break
@@ -466,6 +466,7 @@ class GenomeBlastCoverage:
         self.coverage_list = None
         self.start_point = None
         self.end_point = None
+        self.blast_df = None
 
     def calculate_blast_coverage(self):
         """
@@ -497,16 +498,16 @@ class GenomeBlastCoverage:
             "sseqid", "sstart", "send", "hit_id", "pident", "strand",
             "alnlen", "qseqid", "qstart", "qend"
         ]
-        df = pd.read_csv(bed_file, sep="\t", header=None, names=col_names, comment="#")
+        self.blast_df = pd.read_csv(bed_file, sep="\t", header=None, names=col_names, comment="#")
 
         # No HSPs -> zero coverage everywhere
-        if df.empty:
+        if self.blast_df.empty:
             return [0] * query_length
 
         # Normalize to (start <= end) and clip to query bounds [1, query_length]
         # The qstart and qend are 1 based not 0 based
-        qstart = df["qstart"].clip(lower=1, upper=query_length).astype(int).to_numpy()
-        qend = df["qend"].clip(lower=1, upper=query_length).astype(int).to_numpy()
+        qstart = self.blast_df["qstart"].clip(lower=1, upper=query_length).astype(int).to_numpy()
+        qend = self.blast_df["qend"].clip(lower=1, upper=query_length).astype(int).to_numpy()
 
         # Build the difference array (length+1 so we can subtract at 'end')
         diff = np.zeros(query_length + 1, dtype=int)
@@ -557,4 +558,53 @@ class GenomeBlastCoverage:
                 if self.end_point is not None:
                     break
 
-        return self.start_point, self.end_point
+        # Check for a >5x jump to trim low-coverage tails
+
+        # Refine Start: Scan from start_point to start_point + 20
+        if self.start_point is not None:
+            start_limit = min(self.start_point + 20, cov_len - 1)
+            for i in range(self.start_point, start_limit):
+                # Use max(1, val) to prevent 0 * 5 = 0 bugs
+                current_cov = max(1, self.coverage_list[i])
+                next_cov = self.coverage_list[i + 1]
+
+                # If the next position jumps by 5x or more, reset start
+                if next_cov >= (current_cov * 5):
+                    self.start_point = i + 1
+                    break
+
+        # Refine End: Scan backwards from end_point - 1 down to end_point - 10
+        if self.end_point is not None:
+            # self.end_point is exclusive, so the last sequence index is self.end_point - 1
+            # Check requires looking at i - 1, so i must be >= 1
+            end_limit = max(1, self.end_point - 10)
+            for i in range(self.end_point - 1, end_limit - 1, -1):
+                current_cov_outer = max(1, self.coverage_list[i])
+                next_cov_inner = self.coverage_list[i - 1]
+
+                # If moving one step inward (left) jumps by 5x or more, reset end
+                if next_cov_inner >= (current_cov_outer * 5):
+                    self.end_point = i  # i is the new exclusive boundary (i-1 is included)
+                    break
+
+        # Count Full-Length BLAST Hits spanning the boundary
+
+        full_length_hit_count = 0
+        if self.start_point is not None and self.end_point is not None and self.blast_df is not None:
+            # Convert 0-based python indices to 1-based sequence coordinates
+            # start_point + 1 is the physical start nucleotide.
+            # end_point is already exclusive in python, meaning it represents the exact physical end nucleotide.
+            seq_start = self.start_point + 1
+            seq_end = self.end_point
+
+            # Allow a small buffer (e.g., 5bp) so hits that are almost full-length are still counted
+            buffer = 10
+
+            # Count hits where the blast alignment starts before/at our boundary and ends after/at our boundary
+            spanning_hits = self.blast_df[
+                (self.blast_df['qstart'] <= (seq_start + buffer)) &
+                (self.blast_df['qend'] >= (seq_end - buffer))
+                ]
+            full_length_hit_count = len(spanning_hits)
+
+        return self.start_point, self.end_point, full_length_hit_count

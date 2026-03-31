@@ -212,7 +212,7 @@ def extend_end(
             bed_fasta_mafft_cop_end_gap,
             threshold=ext_threshold,
             check_window=define_boundary_win,
-            max_X=0.3,
+            max_X=0.35,
             if_con_generater=False,
             extension_buffer=ext_buffer,
         )
@@ -385,39 +385,14 @@ def final_MSA(
         )
 
     bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
-    start_posit_cov, end_posit_cov = bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
+    start_posit_cov, end_posit_cov, full_length_hit_count = bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
 
     blast_cov_list = bed_fasta_mafft_gap_sim_con_coverage_obj.coverage_list
 
-    # connect the genome blast coverage number with the file bed_fasta_mafft_with_gap
-    # bed_fasta_mafft_with_gap has the same column index with bed_fasta_mafft_with_gap_column_clean
-    # bed_fasta_mafft_with_gap_column_clean connect to bed_fasta_mafft_gap_sim with column_mapping_initial
+    # Use the genome blast coverage to define if the extension is enough
+    # Based on the zero coverage region, decide if splice the MSA
 
-    def print_horizontal(lst, cols=8, max_width=20):
-        """
-        Print list horizontally in 'cols' columns.
-        Each line is prefixed with the index of its first element.
-        Elements are truncated to max_width chars for readability.
-        """
-        n = len(lst)
-        if n == 0:
-            print("[empty]")
-            return
 
-        # width for the left label like "[123]:"
-        label_w = len(str(n - 1)) + 3
-
-        def short(x):
-            s = str(x)
-            return s if len(s) <= max_width else s[:max_width - 1] + "…"
-
-        for start in range(0, n, cols):
-            end = min(start + cols, n)
-            row = [short(lst[i]) for i in range(start, end)]
-            print(f"[{start}]".ljust(label_w), "  ".join(row))
-
-    # usage
-    #print_horizontal(bed_fasta_mafft_gap_sim_con_coverage_obj.coverage_list, cols=20, max_width=25)
 
     #####################################################################################################
     # Code block: TE boundary definition by MSA conservation
@@ -462,6 +437,7 @@ def final_MSA(
         max_X=0
     )
 
+    print(cropped_boundary_obj_MSA.start_post)
     start_posit_MSA = column_mapping_MSA[cropped_boundary_obj_MSA.start_post]
     end_posit_MSA = column_mapping_MSA[cropped_boundary_obj_MSA.end_post]
 
@@ -539,12 +515,12 @@ def final_MSA(
     #####################################################################################################
     # Code block: Evaluate boundary result and choose the final_start and final_end
     #####################################################################################################
-    """
+
     print(bed_final_MSA)
     print(f"LTR TIR {left_posit_repeat}, {right_posit_repeat}")
     print(f"coverage {start_posit_cov}, {end_posit_cov}")
     print(f"MSA {start_posit_MSA}, {end_posit_MSA}")
-    """
+
 
     if left_posit_repeat is not None and right_posit_repeat is not None:
         final_start = left_posit_repeat
@@ -555,8 +531,11 @@ def final_MSA(
             if seq_obj.old_TE_type.startswith("LINE"):
                 final_start = start_posit_cov
             else:
-                final_start = start_posit_MSA
-            final_end = end_posit_MSA
+                # Set all to coverage and test
+                #final_start = start_posit_MSA
+                final_start = start_posit_cov
+            #final_end = end_posit_MSA
+            final_end = end_posit_cov
         else:
             final_start = start_posit_cov
             final_end = end_posit_cov
@@ -568,12 +547,31 @@ def final_MSA(
             if seq_obj.old_TE_type.startswith("LINE"):
                 final_start = start_posit_cov
             else:
-                final_start = start_posit_MSA
+                # final_start = start_posit_MSA
+                final_start = start_posit_cov
         else:
-            final_start = start_posit_cov
+            # final_end = end_posit_MSA
+            final_end = end_posit_cov
     else:
-        final_start = start_posit_MSA
-        final_end = end_posit_MSA
+        final_start = start_posit_cov
+        final_end = end_posit_cov
+
+    #####################################################################################################
+    # Code block: Evaluate if the boundary definition is great
+    #####################################################################################################
+    evaluation_level = "Need_check"
+
+    diff_start = abs(start_posit_MSA - start_posit_cov)
+    diff_end = abs(end_posit_MSA - end_posit_cov)
+    print(f"full_length_hit_count {full_length_hit_count}")
+
+    if (diff_start <= 10 and diff_end <= 10 and full_length_hit_count >=3 and start_posit_cov >=40 and
+            end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40)):
+        evaluation_level = "Perfect"
+    elif full_length_hit_count >=3 and start_posit_cov >=40 and end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40):
+        evaluation_level = "Good"
+    elif MSA_seq_n >=40:
+        evaluation_level = "Reco_check"
 
     #####################################################################################################
     # Code block: Check the existence of TSD
@@ -630,7 +628,8 @@ def final_MSA(
         blast_cov_list,  # list contain genome coverage number
         final_start,  # the start and end site corresponds to the MSA bed_fasta_mafft_boundary_crop_for_select
         final_end,
-        bed_fasta_mafft_gap_sim_con_08_len  # the column number of bed_fasta_mafft_boundary_crop_for_select
+        bed_fasta_mafft_gap_sim_con_08_len,  # the column number of bed_fasta_mafft_boundary_crop_for_select
+        evaluation_level
     )
 
 
@@ -910,7 +909,8 @@ def find_boundary_and_crop(
                     blast_cov_list,
                     final_start,
                     final_end,
-                    MSA_length
+                    MSA_length,
+                    evaluation_level
                 ) = final_msa_result
 
         except Exception as e:
@@ -1131,7 +1131,7 @@ def find_boundary_and_crop(
 
         # If the defined final_start or final_end position too close to the edge of the
         # bed_fasta_mafft_boundary_crop_for_select MSA, label this as extension not enough
-        if final_start <= 5 or final_end >= MSA_length - 5:
+        if final_start <= 10 or final_end >= MSA_length - 10:
             extension_enough = False
 
         # Extract MSA based on the defined start and end position
@@ -1942,7 +1942,8 @@ def find_boundary_and_crop(
     # Reco_check
     # Need_check
 
-
+    # Try to use the new evaluation system
+    """
     try:
         if not extension_enough:
             consi_obj.set_cons_evaluation('Need_ext')
@@ -1971,6 +1972,12 @@ def find_boundary_and_crop(
 
         else:
             consi_obj.set_cons_evaluation('Need_check')
+        """
+    try:
+        if not extension_enough:
+            consi_obj.set_cons_evaluation('Need_ext')
+        else:
+            consi_obj.set_cons_evaluation(evaluation_level)
 
         #####################################################################################################
         # Code block: Code block: Move file for manual inspection

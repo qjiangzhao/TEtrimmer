@@ -1105,7 +1105,7 @@ def analyze_sequence(
         seq_file = seq_obj.get_input_fasta()  # Return complete file path
 
         # extension_buffer is used in class DefineBoundary
-        extension_buffer = 300
+        extension_buffer = 400
 
         # Since DNA element are significantly shorter than LTR and LINE elements, adjust default parameters
         if seq_type.startswith("DNA"):
@@ -1131,13 +1131,6 @@ def analyze_sequence(
             min_blast_len = min(min_blast_len, 50)
             check_extension_win = 50
             extension_buffer = 100
-
-        if "Helitron" in seq_type or "helitron" in seq_type:
-            ex_step = 500
-            max_extension = 7000
-            crop_end_gap_win = 100
-            check_extension_win = 50
-            extension_buffer = 150
 
         # run BLAST search for each FASTA file and return a BED file absolute path
         bed_out_file_dup, blast_hits_count, blast_out_file = blast(
