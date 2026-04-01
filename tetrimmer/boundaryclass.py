@@ -544,6 +544,10 @@ class GenomeBlastCoverage:
             evalue='1e-8'  # Use less stringent blast
         )
 
+        # When no blast hit available skip this element
+        if blast_hits_count == 0:
+            return False
+
         # Calculate input fasta sequence length
         record = SeqIO.read(self.input_file, "fasta")  # raises if 0 or >1 records
         query_length = len(record.seq)
@@ -556,6 +560,7 @@ class GenomeBlastCoverage:
             "sseqid", "sstart", "send", "hit_id", "pident", "strand",
             "alnlen", "qseqid", "qstart", "qend"
         ]
+
         self.blast_df = pd.read_csv(bed_file, sep="\t", header=None, names=col_names, comment="#")
 
         # No HSPs -> zero coverage everywhere
@@ -595,7 +600,7 @@ class GenomeBlastCoverage:
         coverage = np.cumsum(diff[:-1])  # drop the extra tail cell
         self.coverage_list = coverage.tolist()
 
-        return self.coverage_list
+        return True
 
 
     def find_boundary_blast_coverage(self, window_size=20, threshold=100, left_begin=None, right_begin=None):

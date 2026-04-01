@@ -434,10 +434,15 @@ def final_MSA(
 
         # User lower threshold for the consensus sequence when the MSA define boundary has a big difference with
         # the blast coverage defined boundary
-        bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
+        have_blast_hit = bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
+
+        if not have_blast_hit:
+            return False
+
         start_posit_cov, end_posit_cov, full_length_hit_count = (
             bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
         )
+
 
         diff_MSA_minus_cov_start = start_posit_cov - start_posit_MSA
         diff_MSA_minus_cov_end = end_posit_MSA - end_posit_cov
@@ -449,7 +454,11 @@ def final_MSA(
                 output_dir
             )
 
-    bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
+    have_blast_hit = bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
+
+    if not have_blast_hit:
+        return False
+
     start_posit_cov, end_posit_cov, full_length_hit_count = (
         bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
     )
