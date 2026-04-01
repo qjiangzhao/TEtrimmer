@@ -468,7 +468,7 @@ class GenomeBlastCoverage:
         self.end_point = None
         self.blast_df = None
 
-    def calculate_blast_coverage(self):
+    def calculate_blast_coverage_old(self):
         """
         The .b.bed is expected to have these columns (no header):
           1 sseqid   2 sstart  3 send  4 hit_id  5 pident  6 strand
@@ -519,6 +519,79 @@ class GenomeBlastCoverage:
         # Example to understand cumsum
         # a = np.array([2, 3, 5, -1])
         # np.cumsum(a)         # -> array([ 2,  5, 10,  9])
+        coverage = np.cumsum(diff[:-1])  # drop the extra tail cell
+        self.coverage_list = coverage.tolist()
+
+        return self.coverage_list
+
+
+
+    def calculate_blast_coverage(self):
+        """
+        The .b.bed is expected to have these columns (no header):
+          1 sseqid   2 sstart  3 send  4 hit_id  5 pident  6 strand
+          7 alnlen   8 qseqid  9 qstart 10 qend
+        qstart/qend are 1-based, inclusive.
+        """
+
+        # Perform blast search and generate the bed file
+        bed_file, blast_hits_count, blast_out_file = blast(
+            self.input_file,
+            self.blast_database_path,
+            self.output_dir,
+            min_length=50,
+            blast_qcov_hsp_perc=1,
+            evalue='1e-8'  # Use less stringent blast
+        )
+
+        # Calculate input fasta sequence length
+        record = SeqIO.read(self.input_file, "fasta")  # raises if 0 or >1 records
+        query_length = len(record.seq)
+
+        if query_length <= 0:
+            return []
+
+        # Read the BED; only need qstart and qend
+        col_names = [
+            "sseqid", "sstart", "send", "hit_id", "pident", "strand",
+            "alnlen", "qseqid", "qstart", "qend"
+        ]
+        self.blast_df = pd.read_csv(bed_file, sep="\t", header=None, names=col_names, comment="#")
+
+        # No HSPs -> zero coverage everywhere
+        if self.blast_df.empty:
+            return [0] * query_length
+
+        # --- NEW LOGIC: Assign weights based on alignment length ---
+        # Default weight is 1
+        self.blast_df['weight'] = 1
+
+        # Identify the indices of the top 10 hits with the largest 'alnlen'
+        top_10_indices = self.blast_df.nlargest(10, 'alnlen').index
+
+        # Update the weight to 3 for these top 10 hits
+        self.blast_df.loc[top_10_indices, 'weight'] = 3
+        # -----------------------------------------------------------
+
+        # Normalize to (start <= end) and clip to query bounds [1, query_length]
+        # The qstart and qend are 1 based not 0 based
+        qstart = self.blast_df["qstart"].clip(lower=1, upper=query_length).astype(int).to_numpy()
+        qend = self.blast_df["qend"].clip(lower=1, upper=query_length).astype(int).to_numpy()
+        weights = self.blast_df["weight"].astype(int).to_numpy()
+
+        # Build the difference array (length+1 so we can subtract at 'end')
+        diff = np.zeros(query_length + 1, dtype=int)
+
+        # Iterate through start, end, and the newly assigned weights
+        for s, e, w in zip(qstart, qend, weights):
+            # Safety check to ensure s <= e (in case coordinates are reversed)
+            s_idx = min(s, e) - 1
+            e_idx = max(s, e)
+
+            diff[s_idx] += w  # add the specific weight (1 or 3) instead of just 1
+            diff[e_idx] -= w  # subtract the specific weight at the end
+
+        # Cumulative sum yields per-position coverage
         coverage = np.cumsum(diff[:-1])  # drop the extra tail cell
         self.coverage_list = coverage.tolist()
 
@@ -598,7 +671,7 @@ class GenomeBlastCoverage:
             seq_end = self.end_point
 
             # Allow a small buffer (e.g., 5bp) so hits that are almost full-length are still counted
-            buffer = 10
+            buffer = 20
 
             # Count hits where the blast alignment starts before/at our boundary and ends after/at our boundary
             spanning_hits = self.blast_df[

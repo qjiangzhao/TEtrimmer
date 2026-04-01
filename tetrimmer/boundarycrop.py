@@ -334,9 +334,11 @@ def final_MSA(
     bed_fasta_mafft_gap_sim_con_08_seq = str(bed_fasta_mafft_gap_sim_con_08_record.seq).upper()
     bed_fasta_mafft_gap_sim_con_08_len = len(bed_fasta_mafft_gap_sim_con_08_seq)
 
-
     bed_fasta_mafft_gap_sim_con_07 = con_generater(
         bed_fasta_mafft_gap_sim, output_dir, threshold=0.7, ambiguous='N'
+    )
+    bed_fasta_mafft_gap_sim_con_06 = con_generater(
+        bed_fasta_mafft_gap_sim, output_dir, threshold=0.6, ambiguous='N'
     )
 
     # this function will write the consensus sequence to a file
@@ -362,37 +364,6 @@ def final_MSA(
     bed_fasta_mafft_gap_sim_cp_con_070 = con_generater(
         bed_fasta_mafft_gap_sim_cp, output_dir, threshold=0.7, ambiguous='N'
     )
-
-    #####################################################################################################
-    # Code block: Define boundary by the genome blast coverage
-    #####################################################################################################
-
-    # Calculate the genome blast coverage list
-    # For LINE elements, crop the MSA end, which will help to identify the boundary of 5' end
-
-    if seq_obj.old_TE_type.startswith("LINE"):
-        bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
-            bed_fasta_mafft_gap_sim_cp_con_070,
-            blast_database_path,
-            output_dir
-        )
-    # For other elements use more stringent condition
-    else:
-        bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
-            bed_fasta_mafft_gap_sim_con_07,
-            blast_database_path,
-            output_dir
-        )
-
-    bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
-    start_posit_cov, end_posit_cov, full_length_hit_count = bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
-
-    blast_cov_list = bed_fasta_mafft_gap_sim_con_coverage_obj.coverage_list
-
-    # Use the genome blast coverage to define if the extension is enough
-    # Based on the zero coverage region, decide if splice the MSA
-
-
 
     #####################################################################################################
     # Code block: TE boundary definition by MSA conservation
@@ -437,9 +408,56 @@ def final_MSA(
         max_X=0
     )
 
-    print(cropped_boundary_obj_MSA.start_post)
     start_posit_MSA = column_mapping_MSA[cropped_boundary_obj_MSA.start_post]
     end_posit_MSA = column_mapping_MSA[cropped_boundary_obj_MSA.end_post]
+
+    #####################################################################################################
+    # Code block: Define boundary by the genome blast coverage
+    #####################################################################################################
+
+
+    # Calculate the genome blast coverage list
+    # For LINE elements, crop the MSA end, which will help to identify the boundary of 5' end
+    if seq_obj.old_TE_type.startswith("LINE"):
+        bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
+            bed_fasta_mafft_gap_sim_cp_con_070,
+            blast_database_path,
+            output_dir
+        )
+    # For other elements use more stringent condition
+    else:
+        bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
+            bed_fasta_mafft_gap_sim_con_07,
+            blast_database_path,
+            output_dir
+        )
+
+        # User lower threshold for the consensus sequence when the MSA define boundary has a big difference with
+        # the blast coverage defined boundary
+        bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
+        start_posit_cov, end_posit_cov, full_length_hit_count = (
+            bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
+        )
+
+        diff_MSA_minus_cov_start = start_posit_cov - start_posit_MSA
+        diff_MSA_minus_cov_end = end_posit_MSA - end_posit_cov
+
+        if diff_MSA_minus_cov_start >= 50 or diff_MSA_minus_cov_end >= 50:
+            bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
+                bed_fasta_mafft_gap_sim_con_06,
+                blast_database_path,
+                output_dir
+            )
+
+    bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
+    start_posit_cov, end_posit_cov, full_length_hit_count = (
+        bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
+    )
+
+    blast_cov_list = bed_fasta_mafft_gap_sim_con_coverage_obj.coverage_list
+
+    # Based on the zero coverage region, decide if splice the MSA
+
 
     #####################################################################################################
     # Code block: TE right boundary definition by poly-A
@@ -508,19 +526,19 @@ def final_MSA(
         beyond_right_Ns = beyond_right_window.count('N')
 
         # When the N number is too less, mean the beyond region is still conserved.
-        if beyond_left_Ns < 40 or beyond_right_Ns < 40:
+        if beyond_left_Ns < 30 or beyond_right_Ns < 30:
             left_posit_repeat = None
             right_posit_repeat = None
 
     #####################################################################################################
     # Code block: Evaluate boundary result and choose the final_start and final_end
     #####################################################################################################
-
+    """
     print(bed_final_MSA)
     print(f"LTR TIR {left_posit_repeat}, {right_posit_repeat}")
     print(f"coverage {start_posit_cov}, {end_posit_cov}")
     print(f"MSA {start_posit_MSA}, {end_posit_MSA}")
-
+    """
 
     if left_posit_repeat is not None and right_posit_repeat is not None:
         final_start = left_posit_repeat
@@ -551,7 +569,7 @@ def final_MSA(
                 final_start = start_posit_cov
         else:
             # final_end = end_posit_MSA
-            final_end = end_posit_cov
+            final_start = start_posit_cov
     else:
         final_start = start_posit_cov
         final_end = end_posit_cov
@@ -563,14 +581,14 @@ def final_MSA(
 
     diff_start = abs(start_posit_MSA - start_posit_cov)
     diff_end = abs(end_posit_MSA - end_posit_cov)
-    print(f"full_length_hit_count {full_length_hit_count}")
+
 
     if (diff_start <= 10 and diff_end <= 10 and full_length_hit_count >=3 and start_posit_cov >=40 and
             end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40)):
         evaluation_level = "Perfect"
     elif full_length_hit_count >=3 and start_posit_cov >=40 and end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40):
         evaluation_level = "Good"
-    elif MSA_seq_n >=40:
+    elif MSA_seq_n >=40 and start_posit_cov >=40 and end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40):
         evaluation_level = "Reco_check"
 
     #####################################################################################################
@@ -590,7 +608,6 @@ def final_MSA(
         final_start,
         final_end
     )
-
 
 
     '''
@@ -928,7 +945,13 @@ def find_boundary_and_crop(
         # Plotting is done after PFAM predictions in case consensus/MSA are in the wrong direction.
         # Don't do second round MSA clustering after boundary definition when LTR or TIR is found.
         try:
+
+            if evaluation_level in ("Perfect", "Good"):
+                break
+
             if msa_loop_n <= 1:
+                # Do not do the divergent alignment pattern selection for the second round clustering
+                # this round aims to eliminate the divergent sequences
                 final_msa_consistency = clean_and_cluster_MSA(
                     cropped_boundary_MSA,
                     bed_out_flank_file,
@@ -938,6 +961,7 @@ def find_boundary_and_crop(
                     min_length_num=10,
                     cluster_num=2,
                     cluster_col_thr=500,
+                    skip_pattern_selection=True
                 )
 
                 # final_msa_consistency will be false if no cluster available. In this case, use the original MSA
@@ -951,8 +975,8 @@ def find_boundary_and_crop(
                 if len(cluster_bed_files_list) == 1:
                     df_new = pd.read_csv(cluster_bed_files_list[0], sep='\t', header=None)
 
-                    # Check if only less than 2 sequence was eliminated
-                    if len(df_new) >= len(df) - 2:
+                    # Check if only less than 3 sequence was eliminated
+                    if len(df_new) >= len(df) - 3:
                         break
                     else:
                         bed_file = cluster_bed_files_list[0]
@@ -1661,7 +1685,7 @@ def find_boundary_and_crop(
         out_boundary_msa_for_teaid_cons = con_generater(
             out_boundary_msa_for_teaid,
             output_dir,
-            threshold=0.45, ambiguous='N'
+            threshold=0.5, ambiguous='N'
         )
 
         TE_aid_object_out_boundary_msa = TEAid(
@@ -1837,6 +1861,19 @@ def find_boundary_and_crop(
         # Store full length sequence number from BLAST search into consi_obj
         # check_blast_full_n is a function in TE_Aid class. TEtrimmer will use the blast result of TE Aid
         all_blast_hit_n_con, blast_full_length_n = TE_aid_object.check_blast_full_n(consi_obj, check_query= False, engine=engine)
+
+        # TEAid for the output used different threshold for the consensus generation, 0.5
+        # in the final_MSA() function, the used threshold is 0.7 or 0.6
+        # check the blast full length copy again here.
+
+        if (evaluation_level == "Recon_check" and blast_full_length_n >= 3):
+            evaluation_level = "Good"
+
+
+        if (evaluation_level == "Need_check" and final_start >= 40 and
+                abs(MSA_length - final_end) >= 40 and blast_full_length_n >= 3):
+            evaluation_level = "Reco_check"
+
         output_genome_cov_len = TE_aid_object.te_genome_coverage()
 
         # Set output sequence object informations
