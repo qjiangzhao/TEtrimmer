@@ -415,7 +415,6 @@ def final_MSA(
     # Code block: Define boundary by the genome blast coverage
     #####################################################################################################
 
-
     # Calculate the genome blast coverage list
     # For LINE elements, crop the MSA end, which will help to identify the boundary of 5' end
     if seq_obj.old_TE_type.startswith("LINE"):
@@ -534,20 +533,25 @@ def final_MSA(
                                        )
         beyond_right_Ns = beyond_right_window.count('N')
 
+        print(f"beyond left and right {beyond_left_Ns} {beyond_right_Ns}")
         # When the N number is too less, mean the beyond region is still conserved.
         if beyond_left_Ns < 30 or beyond_right_Ns < 30:
             left_posit_repeat = None
             right_posit_repeat = None
 
+        # Skip LTR or TIR boundary definition section
+        left_posit_repeat = None
+        right_posit_repeat = None
+
     #####################################################################################################
     # Code block: Evaluate boundary result and choose the final_start and final_end
     #####################################################################################################
-    """
+
     print(bed_final_MSA)
     print(f"LTR TIR {left_posit_repeat}, {right_posit_repeat}")
     print(f"coverage {start_posit_cov}, {end_posit_cov}")
     print(f"MSA {start_posit_MSA}, {end_posit_MSA}")
-    """
+
 
     if left_posit_repeat is not None and right_posit_repeat is not None:
         final_start = left_posit_repeat
