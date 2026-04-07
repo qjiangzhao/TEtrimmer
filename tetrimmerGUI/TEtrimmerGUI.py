@@ -28,7 +28,7 @@ install_and_import(required_packages)
 
 try:
     from tkinter import Tk, Frame, Button, messagebox, Scrollbar, Canvas, Label, Menu, BooleanVar, \
-        Toplevel, simpledialog, Text, Entry, filedialog, END, ttk, Menubutton
+        Toplevel, simpledialog, Text, Entry, filedialog, END, ttk, Menubutton, simpledialog
 
 except ImportError:
     print("tkinter (TK) is not available in your Python installation.")
@@ -2061,11 +2061,11 @@ def proof_curation(
             child_frame,
             child_canvas,
             delete=False,
+            rename=False,
             update_child_canvas=True,
             file_start=0,
             file_end=500,
             save_path=None,
-
     ):
         def _copy_file(event):
             if target_directory is None or not os.path.isdir(target_directory):
@@ -2074,36 +2074,52 @@ def proof_curation(
                 )
                 return
 
-            file_path = os.path.join(source_dir, filename)
+            source_file_path = os.path.join(source_dir, filename)
+            destination_filename = filename  # Default to old name
 
+            # --- Rename Logic ---
+            if rename:
+                # Open a dialog to ask for the new filename
+                new_name = simpledialog.askstring(
+                    "Rename File",
+                    f"Enter new name for '{filename}':",
+                    initialvalue=filename,
+                    parent=current_win
+                )
+
+                # If user cancels or leaves it empty, abort the operation
+                if not new_name:
+                    return
+                destination_filename = new_name
+
+            destination_path = os.path.join(target_directory, destination_filename)
+
+            # --- Confirmation Logic ---
             if delete:
-                messagebox_info = f"Do you want to delete '{filename}'"
+                messagebox_info = f"Do you want to delete '{filename}'?"
             else:
                 messagebox_info = f"Do you want to copy '{filename}' to '{target_directory}'?"
 
-            if not show_confirmation.get() or messagebox.askokcancel(
-                'Confirmation', messagebox_info,
-                parent=current_win,
+            if not show_confirmation.get() or rename or messagebox.askokcancel(
+                    'Confirmation', messagebox_info,
+                    parent=current_win,
             ):
                 os.makedirs(target_directory, exist_ok=True)
                 try:
+                    # Perform the copy/move
+                    # shutil.copy can take a full file path as the destination to rename during copy
+                    shutil.copy(source_file_path, destination_path)
 
                     if delete:
-                        shutil.copy(file_path, target_directory)
-                        os.remove(file_path)
-                        append_content = "delete"
+                        os.remove(source_file_path)
+                        append_content = "delete/rename" if rename else "delete"
                     else:
-                        shutil.copy(file_path, target_directory)
-                        append_content = "copy"
+                        append_content = "rename" if rename else "copy"
 
-                    # if os_type == "Darwin":
-                    #     button.config(fg='red')  # Change button text color under macOS system
-                    #     button.update_idletasks()  # Update UI immediately
-                    # else:
-                    #     button.config(bg='light green')  # Change button color
-                    #     button.update_idletasks()  # Update UI immediately
+                    # UI Feedback
                     button.config(fg='red')
                     button.update_idletasks()
+
                     if len(copy_history) >= 100:
                         copy_history.pop(0)
 
@@ -2111,13 +2127,13 @@ def proof_curation(
                         (
                             append_content,
                             source_dir,
-                            os.path.join(target_directory, filename),
+                            destination_path,
                             button,
                         )
                     )
 
-                    if delete:
-                        # Fresh child canvas
+                    if delete or rename:
+                        # Refresh child canvas only if the source file was deleted
                         fresh_canvas(
                             child_frame,
                             child_canvas,
@@ -2131,11 +2147,11 @@ def proof_curation(
 
                 except Exception as e:
                     logging.error(
-                        f'An error for copy or delete files: \n {traceback.format_exc()}'
+                        f'An error for copy/rename: \n {traceback.format_exc()}'
                     )
                     messagebox.showerror(
                         'Error',
-                        f'An error occurred while copying the file: {str(e)}',
+                        f'An error occurred: {str(e)}',
                         parent=current_win,
                     )
 
@@ -2337,6 +2353,7 @@ def proof_curation(
             cons_button_bg = 'white'
             delete_button_bg = 'white'
             align_button_bg = 'white'
+            copy_and_rename_bg = 'white'
 
             file_button_fg = 'black'
             save_button_fg = 'black'
@@ -2346,6 +2363,7 @@ def proof_curation(
             cons_button_fg = 'black'
             delete_button_fg = 'black'
             align_button_fg = 'black'
+            copy_and_rename_fg = 'black'
 
             # Restore colors from button_states if present
             if button_states:
@@ -2368,9 +2386,9 @@ def proof_curation(
                     # Delete
                     if len(states) >= 7:  # new layout index 6
                         delete_button_bg, delete_button_fg = states[6][0], states[6][1]
-                    # Align
-                    if len(states) >= 8:  # new layout index 6
-                        align_button_bg, align_button_fg = states[7][0], states[7][1]
+                    # Copy and rename
+                    if len(states) >= 8:  # new layout index 7
+                        copy_and_rename_bg, copy_and_rename_fg = states[7][0], states[7][1]
                 else:
                     # New filename not seen before: make it stand out
                     file_button_bg = 'white'
@@ -2503,6 +2521,25 @@ def proof_curation(
                     canvas,
                     delete=True
                 )
+            )
+
+            # Copy and rename
+            copy_and_rename_button = Button(button_frame, text='Rename', bg=copy_and_rename_bg, fg=copy_and_rename_fg)
+            copy_and_rename_button.grid(row=0, column=6, padx=1)
+            copy_and_rename_button.bind(
+                '<Button-1>',
+                copy_file(
+                    filename,
+                    copy_and_rename_button,
+                    source_dir,
+                    # consensus_folder is used to store the processed elements. The folder name is "TEtrimmer_saved"
+                    source_dir,
+                    current_win,
+                    frame,
+                    canvas,
+                    delete=False,
+                    rename=True
+                ),
             )
 
             '''

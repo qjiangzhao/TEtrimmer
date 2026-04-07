@@ -442,7 +442,7 @@ def final_MSA(
             bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
         )
 
-        print(f"full_length_blast {full_length_hit_count}")
+        #print(f"full_length_blast {full_length_hit_count}")
 
         diff_MSA_minus_cov_start = start_posit_cov - start_posit_MSA
         diff_MSA_minus_cov_end = end_posit_MSA - end_posit_cov
@@ -536,7 +536,6 @@ def final_MSA(
                                        )
         beyond_right_Ns = beyond_right_window.count('N')
 
-        print(f"beyond left and right {beyond_left_Ns} {beyond_right_Ns}")
         # When the N number is too less, mean the beyond region is still conserved.
         if beyond_left_Ns < 30 or beyond_right_Ns < 30:
             left_posit_repeat = None
@@ -549,12 +548,12 @@ def final_MSA(
     #####################################################################################################
     # Code block: Evaluate boundary result and choose the final_start and final_end
     #####################################################################################################
-
+    """
     print(bed_final_MSA)
     print(f"LTR TIR {left_posit_repeat}, {right_posit_repeat}")
     print(f"coverage {start_posit_cov}, {end_posit_cov}")
     print(f"MSA {start_posit_MSA}, {end_posit_MSA}")
-
+    """
 
     if left_posit_repeat is not None and right_posit_repeat is not None:
         final_start = left_posit_repeat
