@@ -337,8 +337,8 @@ def final_MSA(
     bed_fasta_mafft_gap_sim_con_07 = con_generater(
         bed_fasta_mafft_gap_sim, output_dir, threshold=0.7, ambiguous='N'
     )
-    bed_fasta_mafft_gap_sim_con_06 = con_generater(
-        bed_fasta_mafft_gap_sim, output_dir, threshold=0.6, ambiguous='N'
+    bed_fasta_mafft_gap_sim_con_05 = con_generater(
+        bed_fasta_mafft_gap_sim, output_dir, threshold=0.5, ambiguous='N'
     )
 
     # this function will write the consensus sequence to a file
@@ -442,13 +442,16 @@ def final_MSA(
             bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
         )
 
+        print(f"full_length_blast {full_length_hit_count}")
 
         diff_MSA_minus_cov_start = start_posit_cov - start_posit_MSA
         diff_MSA_minus_cov_end = end_posit_MSA - end_posit_cov
 
-        if diff_MSA_minus_cov_start >= 50 or diff_MSA_minus_cov_end >= 50:
+        # When the difference between the MSA and coverage based TE boundary definition is too big
+        # use lower threshold consensus sequence for the coverage TE boundary definition
+        if diff_MSA_minus_cov_start >= 100 or diff_MSA_minus_cov_end >= 100:
             bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
-                bed_fasta_mafft_gap_sim_con_06,
+                bed_fasta_mafft_gap_sim_con_05,
                 blast_database_path,
                 output_dir
             )
@@ -596,10 +599,10 @@ def final_MSA(
     diff_end = abs(end_posit_MSA - end_posit_cov)
 
 
-    if (diff_start <= 10 and diff_end <= 10 and full_length_hit_count >=3 and start_posit_cov >=40 and
+    if (diff_start <= 15 and diff_end <= 15 and full_length_hit_count >=3 and start_posit_cov >=40 and
             end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40)):
         evaluation_level = "Perfect"
-    elif full_length_hit_count >=3 and start_posit_cov >=40 and end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40):
+    elif full_length_hit_count >=2 and start_posit_cov >=40 and end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40):
         evaluation_level = "Good"
     elif MSA_seq_n >=40 and start_posit_cov >=40 and end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40):
         evaluation_level = "Reco_check"
@@ -796,7 +799,9 @@ def find_boundary_and_crop(
 
     msa_loop_n = 1
 
-    while msa_loop_n <= 2:
+    extral_extension = 1
+
+    while msa_loop_n <= 2 or extral_extension <= 2:
         # TEtrimmer will do the second round clustering and extension. The MSA has been extensively extended during
         # the first time of loop, reduce the max_extension to 2000 for the second round, which can prevent to generate
         # very long sequence especially for tandem repeats.
@@ -959,8 +964,20 @@ def find_boundary_and_crop(
         # Don't do second round MSA clustering after boundary definition when LTR or TIR is found.
         try:
 
-            if evaluation_level in ("Perfect", "Good"):
+            if evaluation_level in ("Perfect"):
                 break
+
+            # Also check here if the extension is enough
+            # When the extension is not enough, extend again
+            if final_start <= 20 or final_end >= (MSA_length - 20) and extral_extension == 1:
+                bed_file = bed_out_flank_file
+
+                # reduce the max_extension for another round MSA extension
+                max_extension = 2 * ex_step_size
+                continue
+
+            extral_extension += 1
+
 
             if msa_loop_n <= 1:
                 # Do not do the divergent alignment pattern selection for the second round clustering
@@ -973,7 +990,6 @@ def find_boundary_and_crop(
                     clean_column_threshold=0.01,
                     min_length_num=10,
                     cluster_num=2,
-                    cluster_col_thr=500,
                     skip_pattern_selection=True
                 )
 
@@ -996,6 +1012,7 @@ def find_boundary_and_crop(
                 else:
                     # Only use the top 1 cluster for further analysis
                     bed_file = cluster_bed_files_list[0]
+
         except Exception as e:
             with open(error_files, 'a') as f:
                 # Get the traceback content as a string
