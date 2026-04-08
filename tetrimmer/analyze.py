@@ -99,7 +99,7 @@ def calculate_genome_length(genome_file, outfile=None):
                 if current_seq is not None:
                     genome_lengths[current_seq] = current_length
                 # If chromosome header contains empty spaces, only consider the content before the first space
-                current_seq = line[1:].split(' ')[0]
+                current_seq = line[1:].split( )[0]
                 current_length = 0
             else:
                 current_length += len(line)

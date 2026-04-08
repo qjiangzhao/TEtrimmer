@@ -424,7 +424,7 @@ def proof_curation(
                     if current_seq is not None:
                         genome_lengths[current_seq] = current_length
                     # If chromosome header contains empty spaces, only consider the content before the first space
-                    current_seq = line[1:].split(' ')[0]
+                    current_seq = line[1:].split( )[0]
                     current_length = 0
                 else:
                     current_length += len(line)
@@ -2380,6 +2380,8 @@ def proof_curation(
                         extension_button_bg, extension_button_fg = states[2][0], states[2][1]
                     if len(states) >= 4:  # teaid
                         teaid_button_bg, teaid_button_fg = states[3][0], states[3][1]
+
+                    # The Crop occupies the 5th position
                     # Cons
                     if len(states) >= 6:  # new layout index 5
                         cons_button_bg, cons_button_fg = states[5][0], states[5][1]
@@ -2679,6 +2681,7 @@ def proof_curation(
             crop_button_bg = 'white'  # NEW: single dropdown color
             cons_button_bg = 'white'
             delete_button_bg = 'white'
+            copy_and_rename_bg = 'white'
 
             file_button_fg = 'black'
             save_button_fg = 'black'
@@ -2688,6 +2691,7 @@ def proof_curation(
             crop_button_fg = 'black'  # NEW: single dropdown color
             cons_button_fg = 'black'
             delete_button_fg = 'black'
+            copy_and_rename_fg = 'black'
 
             # --- Restore colors from button_states (supports old/new layouts) ---
             # New layout (7 items): 0 file, 1 save, 2 blast, 3 extend, 4 teaid, 5 crop, 6 cons
@@ -2706,11 +2710,14 @@ def proof_curation(
                     if len(states) >= 5:  # teaid
                         teaid_button_bg, teaid_button_fg = states[4][0], states[4][1]
 
+                    # The Crop occupies the 5th position
                     # Cons
                     if len(states) >= 7:  # new layout index 6
                         cons_button_bg, cons_button_fg = states[6][0], states[6][1]
                     if len(states) >= 8:  # new layout index 6
-                        delete_button_bg, delete_button_fg = states[6][0], states[6][1]
+                        delete_button_bg, delete_button_fg = states[7][0], states[7][1]
+                    if len(states) >= 9:  # new layout index 7
+                        copy_and_rename_bg, copy_and_rename_fg = states[8][0], states[8][1]
                 else:
                     file_button_bg = 'white'
                     file_button_fg = 'blue'
@@ -2923,8 +2930,7 @@ def proof_curation(
                 button_frame, text='Delete', bg=delete_button_bg, fg=delete_button_fg
             )
             delete_button.grid(row=0, column=6, padx=1)
-            # Bind "Consensus" button with copy_file function with specific source and destination folder
-            # Save button
+
             delete_button.bind(
                 '<Button-1>',
                 copy_file(
@@ -2939,6 +2945,29 @@ def proof_curation(
                     frame,
                     canvas,
                     delete=True,
+                    update_child_canvas=False,
+                    file_start=start,
+                    file_end=end,
+                    save_path=save_path
+                ),
+            )
+
+            # Copy and rename
+            copy_and_rename_button = Button(button_frame, text='Rename', bg=copy_and_rename_bg, fg=copy_and_rename_fg)
+            copy_and_rename_button.grid(row=0, column=7, padx=1)
+            copy_and_rename_button.bind(
+                '<Button-1>',
+                copy_file(
+                    filename,
+                    copy_and_rename_button,
+                    source_dir,
+                    # consensus_folder is used to store the processed elements. The folder name is "TEtrimmer_saved"
+                    source_dir,
+                    current_win,
+                    frame,
+                    canvas,
+                    delete=False,
+                    rename=True,
                     update_child_canvas=False,
                     file_start=start,
                     file_end=end,
