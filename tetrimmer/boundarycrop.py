@@ -541,9 +541,6 @@ def final_MSA(
             left_posit_repeat = None
             right_posit_repeat = None
 
-        # Skip LTR or TIR boundary definition section
-        left_posit_repeat = None
-        right_posit_repeat = None
 
     #####################################################################################################
     # Code block: Evaluate boundary result and choose the final_start and final_end
@@ -555,11 +552,8 @@ def final_MSA(
     print(f"MSA {start_posit_MSA}, {end_posit_MSA}")
     """
 
-    if left_posit_repeat is not None and right_posit_repeat is not None:
-        final_start = left_posit_repeat
-        final_end = right_posit_repeat
-
-    elif poly_a is None:
+    # Don't use LTR or TIR for the TE boundary definition
+    if poly_a is None:
         if MSA_seq_n >= 25:
             if seq_obj.old_TE_type.startswith("LINE"):
                 final_start = start_posit_cov
@@ -601,7 +595,8 @@ def final_MSA(
     if (diff_start <= 15 and diff_end <= 15 and full_length_hit_count >=3 and start_posit_cov >=40 and
             end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40)):
         evaluation_level = "Perfect"
-    elif full_length_hit_count >=2 and start_posit_cov >=40 and end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40):
+    elif ((full_length_hit_count >=2 or (left_posit_repeat and right_posit_repeat is not None))
+          and start_posit_cov >=40 and end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40)):
         evaluation_level = "Good"
     elif MSA_seq_n >=40 and start_posit_cov >=40 and end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40):
         evaluation_level = "Reco_check"
