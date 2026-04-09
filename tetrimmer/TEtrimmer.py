@@ -530,6 +530,8 @@ def main(
     # fasta_rc reverse complementary fasta file
     # _nm.fa fasta header name modified
     #_ob100.fa out boundary 100 bp
+    #_rl.fa right long
+    #_ll.fa left long
 
     #####################################################################################################
     # Code block: Change permissions of Aliview and TE_Aid

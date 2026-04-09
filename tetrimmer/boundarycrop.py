@@ -90,10 +90,10 @@ def reset_bed(input_file, output_dir):
 
     # write new BED file
     reset_right_long_bed = os.path.join(
-        output_dir, f'{os.path.basename(input_file)}_reset_right_long.bed'
+        output_dir, f'{os.path.basename(input_file)}_rl.bed'
     )
     reset_left_long_bed = os.path.join(
-        output_dir, f'{os.path.basename(input_file)}_reset_left_long.bed'
+        output_dir, f'{os.path.basename(input_file)}_ll.bed'
     )
     reset_right_filtered_df.to_csv(
         reset_right_long_bed, sep='\t', index=False, header=None
@@ -130,7 +130,7 @@ def extend_end(
     reset_left_long_bed, reset_right_long_bed = reset_bed(input_file, output_dir)
 
     # adjust is the overlap region length between adjacent extended MSAs.
-    adjust = ex_step_size / 10
+    adjust = round(ex_step_size / 10)
     ite = 1
     reset_left_long_bed_copy = reset_left_long_bed
     reset_right_long_bed_copy = reset_right_long_bed
@@ -963,15 +963,15 @@ def find_boundary_and_crop(
 
             # Also check here if the extension is enough
             # When the extension is not enough, extend again
-            if final_start <= 20 or final_end >= (MSA_length - 20) and extral_extension == 1:
+            if (final_start <= 20 or final_end >= (MSA_length - 20)) and extral_extension == 1:
                 bed_file = bed_out_flank_file
 
                 # reduce the max_extension for another round MSA extension
                 max_extension = 2 * ex_step_size
+
+                extral_extension += 1
+
                 continue
-
-            extral_extension += 1
-
 
             if msa_loop_n <= 1:
                 # Do not do the divergent alignment pattern selection for the second round clustering
