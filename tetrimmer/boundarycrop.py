@@ -449,7 +449,7 @@ def final_MSA(
 
         # When the difference between the MSA and coverage based TE boundary definition is too big
         # use lower threshold consensus sequence for the coverage TE boundary definition
-        if diff_MSA_minus_cov_start >= 100 or diff_MSA_minus_cov_end >= 100:
+        if diff_MSA_minus_cov_start >= 20 or diff_MSA_minus_cov_end >= 20:
             bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
                 bed_fasta_mafft_gap_sim_con_05,
                 blast_database_path,
@@ -545,12 +545,12 @@ def final_MSA(
     #####################################################################################################
     # Code block: Evaluate boundary result and choose the final_start and final_end
     #####################################################################################################
-    """
+
     print(bed_final_MSA)
     print(f"LTR TIR {left_posit_repeat}, {right_posit_repeat}")
     print(f"coverage {start_posit_cov}, {end_posit_cov}")
     print(f"MSA {start_posit_MSA}, {end_posit_MSA}")
-    """
+
 
     # Don't use LTR or TIR for the TE boundary definition
     if poly_a is None:
