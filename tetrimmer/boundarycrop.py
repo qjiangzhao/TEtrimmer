@@ -437,6 +437,12 @@ def final_MSA(
         bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
     )
 
+    if start_posit_cov is None or end_posit_cov is None:
+        return False
+
+    if start_posit_cov >= end_posit_cov:
+        return False
+
     # Check if we need to switch to a lower threshold (Only for non-LINEs)
     if not seq_obj.old_TE_type.startswith("LINE"):
         diff_MSA_minus_cov_start = start_posit_cov - start_posit_MSA
@@ -456,6 +462,12 @@ def final_MSA(
             start_posit_cov, end_posit_cov, full_length_hit_count, lower_percent_hit_count = (
                 bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
             )
+
+    if start_posit_cov is None or end_posit_cov is None:
+        return False
+
+    if start_posit_cov >= end_posit_cov:
+        return False
 
     # Final Data Retrieval
     blast_cov_list = bed_fasta_mafft_gap_sim_con_coverage_obj.coverage_list
