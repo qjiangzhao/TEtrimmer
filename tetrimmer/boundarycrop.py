@@ -538,13 +538,13 @@ def final_MSA(
     #####################################################################################################
     # Code block: Evaluate boundary result and choose the final_start and final_end
     #####################################################################################################
-
+    """
     print(bed_final_MSA)
     print(f"LTR TIR {left_posit_repeat}, {right_posit_repeat}")
     print(f"coverage {start_posit_cov}, {end_posit_cov}")
     print(f"MSA {start_posit_MSA}, {end_posit_MSA}")
     print(f"full length blast {full_length_hit_count}")
-
+    """
 
     # Don't use LTR or TIR for the TE boundary definition
     if poly_a is None:
@@ -613,7 +613,7 @@ def final_MSA(
         evaluation_level = "Good"
 
     elif (
-            MSA_seq_n >=25
+            MSA_seq_n >=20
             and start_posit_cov >=40
             and end_posit_cov <= end_boundary_buffer
             and lower_percent_hit_count >= 2
