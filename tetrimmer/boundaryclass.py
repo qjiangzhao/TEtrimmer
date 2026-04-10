@@ -668,6 +668,9 @@ class GenomeBlastCoverage:
         # Count Full-Length BLAST Hits spanning the boundary
 
         full_length_hit_count = 0
+        lower_percent_hit_count = 0
+
+
         if self.start_point is not None and self.end_point is not None and self.blast_df is not None:
             # Convert 0-based python indices to 1-based sequence coordinates
             # start_point + 1 is the physical start nucleotide.
@@ -676,13 +679,22 @@ class GenomeBlastCoverage:
             seq_end = self.end_point
 
             # Allow a small buffer (e.g., 5bp) so hits that are almost full-length are still counted
-            buffer = 20
+            full_length_buffer = 20
+
+            # Use 15%
+            lower_percent_length_buffer = max(20, int(abs(seq_end - seq_start) * 0.15))
 
             # Count hits where the blast alignment starts before/at our boundary and ends after/at our boundary
-            spanning_hits = self.blast_df[
-                (self.blast_df['qstart'] <= (seq_start + buffer)) &
-                (self.blast_df['qend'] >= (seq_end - buffer))
+            full_length_spanning_hits = self.blast_df[
+                (self.blast_df['qstart'] <= (seq_start + full_length_buffer)) &
+                (self.blast_df['qend'] >= (seq_end - full_length_buffer))
                 ]
-            full_length_hit_count = len(spanning_hits)
+            full_length_hit_count = len(full_length_spanning_hits)
 
-        return self.start_point, self.end_point, full_length_hit_count
+            lower_percent_spanning_hits = self.blast_df[
+                (self.blast_df['qstart'] <= (seq_start + lower_percent_length_buffer)) &
+                (self.blast_df['qend'] >= (seq_end - lower_percent_length_buffer))
+                ]
+            lower_percent_hit_count = len(lower_percent_spanning_hits)
+
+        return self.start_point, self.end_point, full_length_hit_count, lower_percent_hit_count

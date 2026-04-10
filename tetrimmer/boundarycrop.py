@@ -337,8 +337,8 @@ def final_MSA(
     bed_fasta_mafft_gap_sim_con_07 = con_generater(
         bed_fasta_mafft_gap_sim, output_dir, threshold=0.7, ambiguous='N'
     )
-    bed_fasta_mafft_gap_sim_con_05 = con_generater(
-        bed_fasta_mafft_gap_sim, output_dir, threshold=0.5, ambiguous='N'
+    bed_fasta_mafft_gap_sim_con_055 = con_generater(
+        bed_fasta_mafft_gap_sim, output_dir, threshold=0.55, ambiguous='N'
     )
 
     # this function will write the consensus sequence to a file
@@ -417,54 +417,47 @@ def final_MSA(
 
     # Calculate the genome blast coverage list
     # For LINE elements, crop the MSA end, which will help to identify the boundary of 5' end
+
+    # Determine Initial Consensus Threshold
     if seq_obj.old_TE_type.startswith("LINE"):
-        bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
-            bed_fasta_mafft_gap_sim_cp_con_070,
-            blast_database_path,
-            output_dir
-        )
-    # For other elements use more stringent condition
+        initial_con = bed_fasta_mafft_gap_sim_cp_con_070
     else:
-        bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
-            bed_fasta_mafft_gap_sim_con_07,
-            blast_database_path,
-            output_dir
-        )
+        initial_con = bed_fasta_mafft_gap_sim_con_07
 
-        # User lower threshold for the consensus sequence when the MSA define boundary has a big difference with
-        # the blast coverage defined boundary
-        have_blast_hit = bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
+    bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
+        initial_con, blast_database_path, output_dir
+    )
 
-        if not have_blast_hit:
-            return False
-
-        start_posit_cov, end_posit_cov, full_length_hit_count = (
-            bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
-        )
-
-        #print(f"full_length_blast {full_length_hit_count}")
-
-        diff_MSA_minus_cov_start = start_posit_cov - start_posit_MSA
-        diff_MSA_minus_cov_end = end_posit_MSA - end_posit_cov
-
-        # When the difference between the MSA and coverage based TE boundary definition is too big
-        # use lower threshold consensus sequence for the coverage TE boundary definition
-        if diff_MSA_minus_cov_start >= 20 or diff_MSA_minus_cov_end >= 20:
-            bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
-                bed_fasta_mafft_gap_sim_con_05,
-                blast_database_path,
-                output_dir
-            )
-
+    # Perform Initial Calculation
     have_blast_hit = bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
-
     if not have_blast_hit:
         return False
 
-    start_posit_cov, end_posit_cov, full_length_hit_count = (
+    start_posit_cov, end_posit_cov, full_length_hit_count, lower_percent_hit_count = (
         bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
     )
 
+    # Check if we need to switch to a lower threshold (Only for non-LINEs)
+    if not seq_obj.old_TE_type.startswith("LINE"):
+        diff_MSA_minus_cov_start = start_posit_cov - start_posit_MSA
+        diff_MSA_minus_cov_end = end_posit_MSA - end_posit_cov
+
+        if diff_MSA_minus_cov_start >= 30 or diff_MSA_minus_cov_end >= 30:
+            # Re-initialize with lower threshold
+            bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
+                bed_fasta_mafft_gap_sim_con_055, blast_database_path, output_dir
+            )
+
+            # Re-calculate with the new object
+            have_blast_hit = bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
+            if not have_blast_hit:
+                return False
+
+            start_posit_cov, end_posit_cov, full_length_hit_count, lower_percent_hit_count = (
+                bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
+            )
+
+    # Final Data Retrieval
     blast_cov_list = bed_fasta_mafft_gap_sim_con_coverage_obj.coverage_list
 
     # Based on the zero coverage region, decide if splice the MSA
@@ -550,6 +543,7 @@ def final_MSA(
     print(f"LTR TIR {left_posit_repeat}, {right_posit_repeat}")
     print(f"coverage {start_posit_cov}, {end_posit_cov}")
     print(f"MSA {start_posit_MSA}, {end_posit_MSA}")
+    print(f"full length blast {full_length_hit_count}")
 
 
     # Don't use LTR or TIR for the TE boundary definition
@@ -591,20 +585,45 @@ def final_MSA(
     diff_start = abs(start_posit_MSA - start_posit_cov)
     diff_end = abs(end_posit_MSA - end_posit_cov)
 
+    end_boundary_buffer = bed_fasta_mafft_gap_sim_con_08_len - 40
 
-    if (diff_start <= 15 and diff_end <= 15 and full_length_hit_count >=3 and start_posit_cov >=40 and
-            end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40)):
+
+    if (
+            diff_start <= 15
+            and diff_end <= 15
+            and full_length_hit_count >=3
+            and start_posit_cov >=40
+            and end_posit_cov <= end_boundary_buffer
+    ):
+
         evaluation_level = "Perfect"
-    elif ((full_length_hit_count >=2 or (left_posit_repeat and right_posit_repeat is not None))
-          and start_posit_cov >=40 and end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40)):
+
+    elif (
+            start_posit_cov >= 40
+            and end_posit_cov <= end_boundary_buffer
+            and (
+                    full_length_hit_count >= 2
+                    or (
+                            (left_posit_repeat is not None and (left_posit_repeat - start_posit_cov <= 40))
+                            and (right_posit_repeat is not None and (right_posit_repeat - end_posit_cov <= 40))
+                    )
+            )
+    ):
+
         evaluation_level = "Good"
-    elif MSA_seq_n >=40 and start_posit_cov >=40 and end_posit_cov <= (bed_fasta_mafft_gap_sim_con_08_len - 40):
+
+    elif (
+            MSA_seq_n >=25
+            and start_posit_cov >=40
+            and end_posit_cov <= end_boundary_buffer
+            and lower_percent_hit_count >= 2
+    ):
+
         evaluation_level = "Reco_check"
 
     #####################################################################################################
     # Code block: Check the existence of TSD
     #####################################################################################################
-
 
 
 
