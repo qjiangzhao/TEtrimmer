@@ -499,13 +499,20 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 ```
 
 ## Update history
+**April.10.2026**
+
+Released TEtrimmer 1.7.1
+Changed result evaluation method
+Only use genome blast coverage for the TE boundary definition
+Add extral extension when it is not enough
+
+
 **Nov.20.2025**
 Fixed LINE poly-A identification error
 
-
 **Oct.27.2025**
 
-Released TEtrimmer 1.6.0.
+Released TEtrimmer 1.6.0
 Added genome blast coverage to help identify the TE boundary
 Added function to check if extension is enough
 

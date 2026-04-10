@@ -973,6 +973,8 @@ def find_boundary_and_crop(
 
                 continue
 
+            extral_extension += 1
+
             if msa_loop_n <= 1:
                 # Do not do the divergent alignment pattern selection for the second round clustering
                 # this round aims to eliminate the divergent sequences
