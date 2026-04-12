@@ -1838,7 +1838,7 @@ def concatenate_alignments(*alignments, input_file_name, output_dir):
 
 
 def cd_hit_est(
-    input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9, thread=10
+    input_file, output_file, identity_thr=0.8, aL=0.9, aS=0.9, s=0.9, thread=10, g=0
 ):
     """
     -l int, length of throw_away_sequences. Default: 10
@@ -1858,6 +1858,7 @@ def cd_hit_est(
         '-i', input_file,
         '-o', output_file,
         '-c', str(identity_thr),
+        '-G', '0',
         '-aL', str(aL),
         '-aS', str(aS),
         '-M',
@@ -1867,6 +1868,7 @@ def cd_hit_est(
         '-d', '0',
         '-s', str(s),
         '-sc', '1',
+        '-g', str(g)
     ]
 
     try:

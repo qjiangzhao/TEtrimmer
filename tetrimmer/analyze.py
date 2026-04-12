@@ -725,6 +725,7 @@ def cluster_proof_anno_file(
         aL=0,
         aS=0.9,
         s=0,
+        g=1,
         thread=num_threads,
     )
 
