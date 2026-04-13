@@ -732,7 +732,7 @@ def find_boundary_and_crop(
     hmm_dir,
     poly_patterns, 
     poly_len,    
-    cons_threshold=0.8,
+    cons_threshold=0.7,
     ext_threshold=0.7,
     ex_step_size=1000,
     max_extension=7000,

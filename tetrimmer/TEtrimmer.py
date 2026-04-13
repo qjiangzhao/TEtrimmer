@@ -199,7 +199,7 @@ TEtrimmer_version = "1.7.1"
 @click.option(
     '--cons_thr',
     type=float,
-    help='Threshold used to generate final consensus sequences from MSAs. Default: 0.8',
+    help='Threshold used to generate final consensus sequences from MSAs. Default: 0.7',
 )
 @click.option(
     '--mini_orf',
