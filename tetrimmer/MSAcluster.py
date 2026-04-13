@@ -275,7 +275,7 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=2):
     """
     # if all cluster size < 10, there is no meaningful cluster, if_cluster = False, skip this sequence
     # When no -1 cluster number is greater or equal to max_cluster, use no -1 cluster for further analysis
-    # otherwise, check if -1 cluster have more than or equal 15 sequence and the sequence number more than 60% of the
+    # otherwise, check if -1 cluster have more than or equal 12 sequence and the sequence number more than 60% of the
     # total sequence, if so count -1 cluster into the further analysis process.
     # Use Counter to count occurrences
     -1 cluster has to be treated carefully.
@@ -306,13 +306,13 @@ def cluster_msa_iqtree_DBSCAN(alignment, min_cluster_size=10, max_cluster=2):
             if element in filter_cluster and element != -1
         }
     ).most_common
-    if negative_n >= 15 and negative_n >= 0.6 * len(sequence_names):
+    if negative_n >= 12 and negative_n >= 0.6 * len(sequence_names):
         # top_cluster_obj() returns all elements sorted by frequency
         if len(top_cluster_obj()) >= max_cluster:
             # top_cluster is assigned to be a list
             top_cluster = top_cluster_obj(max_cluster)
         else:
-            # Add -1 cluster when it has more than 15 sequences and the total sequence inside this cluster occupy
+            # Add -1 cluster when it has more than 12 sequences and the total sequence inside this cluster occupy
             # more than 60% of the total sequence
             top_cluster = top_cluster_obj(max_cluster)
             top_cluster.append((-1, negative_n))

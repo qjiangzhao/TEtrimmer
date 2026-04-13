@@ -2546,6 +2546,7 @@ def handle_sequence_skipped(
     debug,
     MSA_dir,
     classification_dir,
+    blast_full_length_n=None,
     plot_skip=True,
     te_aid_plot=None,
     orf_plot=None,
@@ -2557,6 +2558,7 @@ def handle_sequence_skipped(
     input_fasta = seq_obj.get_input_fasta()
 
     try:
+        seq_obj.set_old_blast_full_n(blast_full_length_n)
         seq_obj.update_status('skipped', progress_file)
 
         if plot_skip and skip_proof_dir is not None:

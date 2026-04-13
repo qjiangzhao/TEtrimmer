@@ -1082,12 +1082,17 @@ def main(
                 row['output_TE_type'] if pd.notna(row['output_TE_type']) else 0
             )
 
+            output_low_copy = (
+                row['low_copy'] if pd.notna(row['low_copy']) else False
+            )
+
             summary_sequence_info[sequence_name] = {
                 'evaluation': evaluation,
                 'te_type': te_type,
                 'length': length,
                 'output_genome_cov_len': output_genome_cov_len,
                 'output_TE_type' : output_te_type,
+                'if_low_copy' : output_low_copy,
                 'cluster' : 'NaN',  # Define cluster key, which will be used to write cluster number back to the summary
                 'cluster_identity' : 'NaN'
             }

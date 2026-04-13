@@ -575,22 +575,36 @@ def merge_cons(
     for cluster_name, sequences in clusters.items():
         perfect_sequences = []
         good_sequences = []
+        reco_check_sequences = []
+        low_copy_sequences = []
         best_seq = None
 
         for seq in sequences:
             if seq in sequence_info:
                 evaluation = sequence_info[seq]['evaluation']
                 length = sequence_info[seq]['length']
+                if_low_copy = sequence_info[seq]['if_low_copy']
                 if evaluation == 'Perfect':
                     perfect_sequences.append((seq, length))
                 elif evaluation == 'Good':
                     good_sequences.append((seq, length))
+                elif evaluation == 'Reco_check':
+                    reco_check_sequences.append((seq, length))
+                elif if_low_copy:
+                    low_copy_sequences.append((seq, length))
+
         # Choose the longest "Perfect" sequence, if have Perfect
         if perfect_sequences:
             best_seq = max(perfect_sequences, key=lambda x: x[1])[0]
         # If no "Perfect", choose the longest "Good" sequence
         elif good_sequences:
             best_seq = max(good_sequences, key=lambda x: x[1])[0]
+
+        elif reco_check_sequences:
+            best_seq = max(reco_check_sequences, key=lambda x: x[1])[0]
+
+        elif low_copy_sequences:
+            best_seq = max(low_copy_sequences, key=lambda x: x[1])[0]
 
         if best_seq:
             best_sequences.append(best_seq)
@@ -613,9 +627,8 @@ def merge_cons(
     )
 
     # Write sequences to files
-    with open(temp_consensus_round1, 'w') as high_quality_file, open(
-        temp_consensus_round2_input, 'w'
-    ) as round2_file:
+    with (open(temp_consensus_round1, 'w') as high_quality_file,
+          open(temp_consensus_round2_input, 'w') as round2_file):
         for seq_record in consensus_sequences:
             # Sequence names in best_sequences and sequence_for_round2 do not contain classification
             seq_id = seq_record.id.split('#')[0]
@@ -643,9 +656,9 @@ def merge_cons(
     )
 
     # Combine the two files into a merged file
-    with open(temp_consensus_round1, 'r') as file1, open(
-        cd_hit_merge_output_round2, 'r'
-    ) as file2, open(cd_hit_est_final_merged, 'w') as combined_file:
+    with (open(temp_consensus_round1, 'r') as file1,
+          open(cd_hit_merge_output_round2, 'r') as file2,
+          open(cd_hit_est_final_merged, 'w') as combined_file):
         # Write contents of the first file
         for line in file1:
             combined_file.write(line)
