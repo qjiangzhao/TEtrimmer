@@ -1287,6 +1287,7 @@ def analyze_sequence(
                     debug,
                     MSA_dir,
                     classification_dir,
+                    blast_full_length_n=blast_full_length_n,
                     plot_skip=plot_skip,
                     te_aid_plot=TE_aid_plot,
                     skip_proof_dir=skipped_dir,
@@ -1443,6 +1444,7 @@ def analyze_sequence(
                     debug,
                     MSA_dir,
                     classification_dir,
+                    blast_full_length_n=blast_full_length_n,
                     plot_skip=plot_skip,
                     te_aid_plot=TE_aid_plot,
                     skip_proof_dir=skipped_dir,
@@ -1534,6 +1536,8 @@ def analyze_sequence(
                 all_inner_skipped = False
 
             # Write the original input sequence into the final consensus file
+            # The sequence evaluated as Need_check is not writen into the final consensus file
+            # update_skip_and_need_check_cons_file this function will change the summary file
             if all_inner_need_check:
                 update_skip_and_need_check_cons_file(
                     seq_obj,
@@ -1584,6 +1588,7 @@ def analyze_sequence(
                         debug,
                         MSA_dir,
                         classification_dir,
+                        blast_full_length_n=blast_full_length_n,
                         plot_skip=plot_skip,
                         te_aid_plot=TE_aid_plot,
                         skip_proof_dir=skipped_dir,

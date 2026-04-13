@@ -2546,7 +2546,7 @@ def handle_sequence_skipped(
     debug,
     MSA_dir,
     classification_dir,
-    blast_full_length_n=None,
+    blast_full_length_n=0,
     plot_skip=True,
     te_aid_plot=None,
     orf_plot=None,
