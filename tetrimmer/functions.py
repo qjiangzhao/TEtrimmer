@@ -2637,6 +2637,24 @@ def update_low_copy_cons_file(
     # shutil.copy(te_aid_pdf, low_copy_te_aid_pdf_file)
 
 
+def update_skip_and_need_check_cons_file(seq_obj, consensus_file):
+    seq_name = seq_obj.get_seq_name()
+    te_type = seq_obj.get_old_TE_type()
+    input_fasta = seq_obj.get_input_fasta()
+    input_full_len_blast = seq_obj.get_input_blast_full_n()
+
+    # Only write the input sequence to the final consensus sequence if there are more than 2 intact copies
+    if type(input_full_len_blast) is int:
+        if input_full_len_blast >= 2:
+
+            record = SeqIO.read(input_fasta, 'fasta')
+            sequence = str(record.seq)
+
+                # Write all consensus sequences to final_cons_file.
+            with open(consensus_file, 'a') as f:
+                f.write('>' + seq_name + '#' + te_type + '\n' + sequence + '\n')
+
+
 # Classify single FASTA file
 def classify_single(consensus_fasta):
     """

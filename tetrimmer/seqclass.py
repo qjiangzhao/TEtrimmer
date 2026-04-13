@@ -32,6 +32,9 @@ class SeqObject:
     def get_input_fasta(self):
         return self.input_fasta
 
+    def get_input_blast_full_n(self):
+        return self.old_blast_full_n
+
 
     def set_old_terminal_repeat(self, terminal_repeat):
         self.old_terminal_repeat = terminal_repeat

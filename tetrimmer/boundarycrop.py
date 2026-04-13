@@ -169,7 +169,7 @@ def extend_end(
             logging.error(
                 f'{input_file} encountered a problem during the MAFFT extension step.'
             )
-            return False
+            return False, False
 
         # Remove nucleotide whose proportion is smaller than threshold
         bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(
@@ -304,7 +304,7 @@ def final_MSA(
         logging.error(
             f'{bed_final_MSA} encountered a problem during the final MAFFT extension step.'
         )
-        return False
+        return False, False
 
     # Remove nucleotides whose proportion is smaller than threshold
     bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(
@@ -398,7 +398,7 @@ def final_MSA(
 
     # This means the sequence length after gap removal is shorter than 50
     if not cropped_MSA_output_file_gs:
-        return False
+        return False, False
 
     # Use DefineBoundary to define start position.
     cropped_boundary_obj_MSA = DefineBoundary(
@@ -431,17 +431,17 @@ def final_MSA(
     # Perform Initial Calculation
     have_blast_hit = bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
     if not have_blast_hit:
-        return False
+        return False, False
 
     start_posit_cov, end_posit_cov, full_length_hit_count, lower_percent_hit_count = (
         bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
     )
 
     if start_posit_cov is None or end_posit_cov is None:
-        return False
+        return False, False
 
     if start_posit_cov >= end_posit_cov:
-        return False
+        return False, False
 
     # Check if we need to switch to a lower threshold (Only for non-LINEs)
     if not seq_obj.old_TE_type.startswith("LINE"):
@@ -457,17 +457,17 @@ def final_MSA(
             # Re-calculate with the new object
             have_blast_hit = bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
             if not have_blast_hit:
-                return False
+                return False, False
 
             start_posit_cov, end_posit_cov, full_length_hit_count, lower_percent_hit_count = (
                 bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
             )
 
     if start_posit_cov is None or end_posit_cov is None:
-        return False
+        return False, False
 
     if start_posit_cov >= end_posit_cov:
-        return False
+        return False, False
 
     # Final Data Retrieval
     blast_cov_list = bed_fasta_mafft_gap_sim_con_coverage_obj.coverage_list
@@ -956,7 +956,7 @@ def find_boundary_and_crop(
             # Check if final_msa_result returned 'False', indicating an error or specific condition
             if not final_msa_result:
                 # Handle the error or specific condition
-                return False
+                return False, False
             else:
                 # Unpack the returned values if the function executed normally
                 (
@@ -1070,7 +1070,7 @@ def find_boundary_and_crop(
         # Check if the proportion is greater than 40%
         # If 40% of this consensus sequence is "N", stop analysis for this MSA
         if n_proportion > 0.4:
-            return False
+            return False, False
 
         #####################################################################################################
         # Code block: For LTR elements, check if the cropped MSA starts with given patterns like TGA ACA
@@ -2024,6 +2024,8 @@ def find_boundary_and_crop(
     # Code block: Output evaluation (perfect, good, Reco_check, need_check)
     ###############################################################################################################
 
+    # This is the old evaluation system, not used anymore
+
     #               Terminal_repeat    Classified    MSA_sequence_number    Blast_full_length_number    if_PFAM
     # Perfect       True               True          >=30                   >=5                         True
     # Good          True               Not_required  >=10                   >=2                         Not_required
@@ -2036,42 +2038,17 @@ def find_boundary_and_crop(
     # Reco_check
     # Need_check
 
-    # Try to use the new evaluation system
-    """
-    try:
-        if not extension_enough:
-            consi_obj.set_cons_evaluation('Need_ext')
-        elif (
-            consi_obj.new_TE_terminal_repeat != 'False'
-            and consi_obj.new_TE_type != 'NaN'
-            and 'unknown' not in consi_obj.new_TE_type.lower()
-            and consi_obj.new_TE_MSA_seq_n >= perfect_seq_num
-            and consi_obj.new_TE_blast_full_length_n >= 5
-            and consi_obj.cons_pfam
-        ):
-            consi_obj.set_cons_evaluation('Perfect')
-
-        elif (
-            consi_obj.new_TE_terminal_repeat != 'False'
-            and consi_obj.new_TE_MSA_seq_n >= 10
-            and consi_obj.new_TE_blast_full_length_n >= 2
-        ):
-            consi_obj.set_cons_evaluation('Good')
-
-        elif (
-            consi_obj.new_TE_MSA_seq_n >= 20
-            and consi_obj.new_TE_blast_full_length_n >= 2
-        ):
-            consi_obj.set_cons_evaluation('Reco_check')
-
-        else:
-            consi_obj.set_cons_evaluation('Need_check')
-        """
     try:
         if not extension_enough:
             consi_obj.set_cons_evaluation('Need_ext')
         else:
             consi_obj.set_cons_evaluation(evaluation_level)
+
+        # Define the variable to see if the evaluation is "Perfect", "Good", or "Reco_check"
+        if not extension_enough or evaluation_level == "Need_check":
+            accepted_evaluation = False
+        else:
+            accepted_evaluation = True
 
         #####################################################################################################
         # Code block: Code block: Move file for manual inspection
@@ -2141,27 +2118,30 @@ def find_boundary_and_crop(
                     f.write(f'Copy file error for {pattern}\n')
                     f.write(tb_content + '\n\n')
                 logging.error(f'Error copying {pattern} to {new_name}: {e}')
-                files_moved_successfully = False
+                raise Exception from e
 
         if hmm:  # Generate HMM files
             consi_obj.set_hmm_file()
             hmm_output_file = os.path.join(hmm_dir, consi_obj.hmm_file)
             generate_hmm_from_msa(cropped_boundary_MSA, hmm_output_file, error_files)
 
-        # Classification of unknown consensus TEs will be attempted again later by using successfully classified sequences
-        if 'Unknown' in updated_TE_type:
-            with open(final_unknown_con_file, 'a') as f:  # 'a' mode for appending
-                f.write('>' + uniq_seq_name + '\n' + sequence + '\n')
-        else:
-            with open(final_classified_con_file, 'a') as f:
-                f.write(
-                    '>' + uniq_seq_name + '#' + updated_TE_type + '\n' + sequence + '\n'
-                )
+        if accepted_evaluation:
 
-        # Don't write file to the final_con_file if extension is not enough
+            # Classification of unknown consensus TEs will be attempted again later by using successfully classified sequences
+            if 'Unknown' in updated_TE_type:
+                with open(final_unknown_con_file, 'a') as f:  # 'a' mode for appending
+                    f.write('>' + uniq_seq_name + '\n' + sequence + '\n')
+            else:
+                with open(final_classified_con_file, 'a') as f:
+                    f.write(
+                        '>' + uniq_seq_name + '#' + updated_TE_type + '\n' + sequence + '\n'
+                    )
 
-        if extension_enough:
-            # Write all consensus sequence to final_cons_file.
+            # Don't write file to the final_con_file if extension is not enough or the evaluation is Need_check
+            # if all clustered results are evaluated as Need_ext or Need_check, the original sequence will be writen
+            # into the final_con_file
+
+            # Write consensus sequence to final_cons_file.
             with open(final_con_file, 'a') as f:
                 f.write(
                     '>' + uniq_seq_name + '#' + updated_TE_type + '\n' + sequence + '\n'
@@ -2173,7 +2153,7 @@ def find_boundary_and_crop(
                     '>' + uniq_seq_name + '#' + updated_TE_type + '\n' + sequence + '\n'
                 )
 
-        return files_moved_successfully
+        return files_moved_successfully, accepted_evaluation
 
     except Exception as e:
         with open(error_files, 'a') as f:

@@ -34,6 +34,7 @@ from functions import (
     repeatmasker,
     repeatmasker_output_classify,
     update_low_copy_cons_file,
+    update_skip_and_need_check_cons_file,
     init_logging
 )
 from MSAcluster import clean_and_cluster_MSA
@@ -527,6 +528,11 @@ def repeatmasker_classification(
         logging.warning(
             '\nThis does not affect the final TE consensus sequences You can choose to ignore this error.\n'
         )
+
+
+# Generate the final consensus library that only use the good output of TEtrimmer. For the not analyzed sequences
+# include them into the final library but make sure each of them have at least 2 intact copies
+
 
 
 def merge_cons(
@@ -1208,6 +1214,12 @@ def analyze_sequence(
                 classification_dir,
                 skip_proof_dir=skipped_dir,
             )
+
+            update_skip_and_need_check_cons_file(
+                seq_obj,
+                final_con_file
+            )
+
             return
 
         # Check if BLAST hit number is smaller than "min_seq_num"; do not include "min_seq_num"
@@ -1268,6 +1280,11 @@ def analyze_sequence(
                     orf_plot=input_orf_domain_plot,
                 )
 
+                update_skip_and_need_check_cons_file(
+                    seq_obj,
+                    final_con_file
+                )
+
             return  # if BLAST hit number is smaller than 10, code will execute next FASTA file
 
     except Exception as e:
@@ -1280,6 +1297,12 @@ def analyze_sequence(
             classification_dir,
             skip_proof_dir=skipped_dir,
         )
+
+        update_skip_and_need_check_cons_file(
+            seq_obj,
+            final_con_file
+        )
+
         with open(error_files, 'a') as f:
             # Return the traceback content as a string
             tb_content = traceback.format_exc()
@@ -1412,6 +1435,12 @@ def analyze_sequence(
                     skip_proof_dir=skipped_dir,
                     orf_plot=input_orf_domain_plot,
                 )
+
+                update_skip_and_need_check_cons_file(
+                    seq_obj,
+                    final_con_file
+                )
+
             return
         else:
             cluster_bed_files_list, fasta_out_flank_mafft_gap_rm = cluster_MSA_result
@@ -1425,9 +1454,12 @@ def analyze_sequence(
 
             # cluster_pattern_alignment_list has the same index as cluster_bed_files_list
             all_inner_skipped = True
+
+            all_inner_need_check = True
+
             for i in range(len(cluster_bed_files_list)):
                 try:
-                    find_boundary_result = find_boundary_and_crop(
+                    seq_not_skipped, accepted_evaluation  = find_boundary_and_crop(
                         cluster_bed_files_list[i],
                         genome_file,
                         MSA_dir,
@@ -1477,10 +1509,23 @@ def analyze_sequence(
                 except Exception:
                     return
 
-                if not find_boundary_result:
-                    all_inner_skipped = True
-                elif find_boundary_result:
+                if  seq_not_skipped:
                     all_inner_skipped = False
+
+                if accepted_evaluation:
+                    all_inner_need_check = False
+
+            # In theory all_inner_skipped and all_inner_need_check will not be True at the same time
+            # but add this to make sure that
+            if all_inner_skipped and all_inner_need_check:
+                all_inner_skipped = False
+
+            # Write the original input sequence into the final consensus file
+            if all_inner_need_check:
+                update_skip_and_need_check_cons_file(
+                    seq_obj,
+                    final_con_file
+                )
 
             # Check the flag after the loop. If all inner clusters were skipped, write the progress file.
             if all_inner_skipped:
@@ -1533,6 +1578,11 @@ def analyze_sequence(
                     )
                     logging.info(
                         f'{seq_name} was skipped because sequence is too short and check_low_copy is {check_low_copy}.'
+                    )
+
+                    update_skip_and_need_check_cons_file(
+                        seq_obj,
+                        final_con_file
                     )
                 return
 
