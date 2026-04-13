@@ -551,6 +551,7 @@ def merge_cons(
         aL=0,
         aS=0.9,
         s=0,
+        g=1,
         thread=num_threads,
     )
 
@@ -629,9 +630,9 @@ def merge_cons(
         temp_consensus_round2_input,
         cd_hit_merge_output_round2,
         identity_thr=0.85,
-        aL=0.8,
-        aS=0.8,
-        s=0.8,
+        aL=0.85,
+        aS=0.85,
+        s=0.85,
         thread=num_threads,
     )
 

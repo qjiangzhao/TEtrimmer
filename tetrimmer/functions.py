@@ -1850,6 +1850,19 @@ def cd_hit_est(
     Default: 0.0
     -aS	float, alignment coverage for the shorter sequence; if set to 0.9, the alignment must cover 90% of the sequence.
     Default: 0.0
+
+    -G  use global sequence identity, default 1
+ 	if set to 0, then use local sequence identity, calculated as :
+ 	number of identical amino acids or bases in alignment divided by the length of the alignment
+ 	NOTE!!! don't use -G 0 unless you use alignment coverage controls
+
+ 	-g	1 or 0, default 0
+ 	by cd-hit's default algorithm, a sequence is clustered to the first
+ 	cluster that meet the threshold (fast cluster). If set to 1, the program
+ 	will cluster it into the most similar cluster that meet the threshold
+ 	(accurate but slow mode)
+ 	but either 1 or 0 won't change the representatives of final clusters
+
     Note: -s only considers length, but -aL and -aS considers alignment
     Note: -sc sort cluster according sequence numbers in the cluster
     """
@@ -1919,20 +1932,19 @@ def parse_cd_hit_est_result(input_file):
             else:
                 """
                 This is an example of part of cd-hit-est output
+                
                 >Cluster 0
-                0	4770nt, >TE_00000650_INT#LTR/Copia... *
-                1	4770nt, >TE_00000650_INT_01#LTR/Copia... at +/100.00%
+                0	6479nt, >rnd_1_family_188_rc#LTR/Gypsy... *
+                1	6467nt, >rnd_1_family_188#LTR/Gypsy... at 1:6467:5:6471/+/100.00%
                 >Cluster 1
-                0	5028nt, >TE_00000657_INT_01#LTR/Copia... *
-                1	5028nt, >LTRRT_1328_01#LTR/Copia... at +/99.94%
+                0	3217nt, >rnd_1_family_588#DNA/MULE-MuDR... *
                 >Cluster 2
-                0	3605nt, >TE_00000657_INT#LTR/Copia... at +/90.65%
-                1	3656nt, >LTRRT_1328#LTR/Copia... *
+                0	399nt, >rnd_5_family_182#Unknown... *
                 >Cluster 3
-                0	5335nt, >TE_00000658_INT#LTR/Gypsy... *
-                1	5331nt, >TE_00000658_INT_01#LTR/Gypsy... at +/99.72%
+                0	5847nt, >rnd_1_family_470#Unknown... *
                 >Cluster 4
-                0	5112nt, >scaffold_4_860061..865175#LTR/Copia... *
+                0	5366nt, >rnd_1_family_667#Unknown... *
+                
                 """
                 seq_name = line.split('>')[1].split('...')[0].split('#')[0].strip()
                 try:
@@ -1941,8 +1953,8 @@ def parse_cd_hit_est_result(input_file):
                     seq_length = None
                 if '... at' in line:
                     seq_per_and_direction = line.split('... at')[1].strip()
-                    seq_per = seq_per_and_direction.split('/')[1].strip()
-                    seq_direction = seq_per_and_direction.split('/')[0].strip()
+                    seq_per = seq_per_and_direction.split('/')[2].strip()
+                    seq_direction = seq_per_and_direction.split('/')[1].strip()
 
                     if seq_direction != '+' and seq_direction != '-':
                         seq_direction = None
