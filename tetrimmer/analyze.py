@@ -635,7 +635,7 @@ def merge_cons(
 
             if seq_id in best_sequences:
                 # Append a tab and 'TEtrimmer' to the existing description
-                seq_record.description += "\tTEtrimmer"
+                # seq_record.description += "\tTEtrimmer"
                 SeqIO.write(seq_record, high_quality_file, 'fasta')
             elif seq_id in sequence_for_round2:
                 SeqIO.write(seq_record, round2_file, 'fasta')
@@ -1106,8 +1106,7 @@ def analyze_sequence(
     engine,
     proof_curation_dir,
     poly_patterns, 
-    poly_len, 
-    perfect_seq_num,
+    poly_len,
     database_dir,
     blast_database_path,
     mmseqs_database_dir,
@@ -1513,7 +1512,6 @@ def analyze_sequence(
                         input_orf_pfam=input_orf_domain_plot,
                         debug=debug,
                         cluster_msa=fasta_out_flank_mafft_gap_rm_nm,
-                        perfect_seq_num = perfect_seq_num,
                         blast_database_path=blast_database_path,
                         mmseqs_database_dir=mmseqs_database_dir,
                         export_coverage=export_coverage

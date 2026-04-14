@@ -2625,7 +2625,7 @@ def update_low_copy_cons_file(
 
         # Write all consensus sequences to final_cons_file.
     with open(consensus_file, 'a') as f:
-        f.write('>' + seq_name + '#' + te_type + '\n' + sequence + '\n')
+        f.write('>' + seq_name + '#' + te_type + '\tTEtrimmer' + "\tLow_copy" + '\n' + sequence + '\n')
 
     low_copy_single_fasta_file = os.path.join(
         proof_dir, f'{seq_name}#{te_type_modified}.fa'

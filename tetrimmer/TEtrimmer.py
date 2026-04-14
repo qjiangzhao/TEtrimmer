@@ -375,12 +375,6 @@ TEtrimmer_version = "1.7.1"
     help='Define the minimum length requirement of the poly pattern from the parameter --poly_patterns. Default: 10'
 )
 @click.option(
-    '--define_perfect',
-    type=int,
-    default = 30,
-    help='Define the minimum copy number that the output TE consensus sequence can be evaluated as "Perfect". Default: 30'
-)
-@click.option(
     '--export_coverage',
     default=False,
     is_flag=True,
@@ -440,12 +434,10 @@ def main(
     curatedlib,
     poly_patterns,
     poly_len,
-    define_perfect,
     export_coverage,
     logfile,
     loglevel,
 ):
-    perfect_seq_num = define_perfect
 
     # Add this to click options if mmseq2 has been fully tested
     engine = 'blast'
@@ -935,7 +927,6 @@ def main(
             proof_curation_dir,
             poly_patterns, 
             poly_len,
-            perfect_seq_num,
             database_dir,
             blast_database_path,
             mmseqs_database_dir,

@@ -754,7 +754,6 @@ def find_boundary_and_crop(
     input_orf_pfam=False,
     debug=False,
     cluster_msa=None,
-    perfect_seq_num=30,
     blast_database_path=None,
     mmseqs_database_dir=None,
     export_coverage=False
@@ -2144,7 +2143,7 @@ def find_boundary_and_crop(
             # Write consensus sequence to final_cons_file.
             with open(final_con_file, 'a') as f:
                 f.write(
-                    '>' + uniq_seq_name + '#' + updated_TE_type + '\tTEtrimmer' + '\n' + sequence + '\n'
+                    '>' + uniq_seq_name + '#' + updated_TE_type + '\tTEtrimmer\t' + evaluation_level + '\n' + sequence + '\n'
                 )
 
             # Write all consensus sequences to final_cons_file_no_low_copy.
