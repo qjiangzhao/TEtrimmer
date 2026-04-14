@@ -27,7 +27,7 @@ def low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
         seq_obj,
         blast_out_file,
         identity=75,
-        coverage=0.8,
+        coverage=0.9,
         min_hit_length=50,
         te_aid_blast=False,
         check_query=True

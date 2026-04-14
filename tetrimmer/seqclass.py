@@ -168,7 +168,7 @@ class ConsensusObject:
         self.new_TE_blast_full_length_n = 'NaN'
         self.cons_seq = 'NaN'
         self.cons_pfam = False
-        self.cons_evaluation = 'Need_check'
+        self.cons_evaluation = 'NaN'
         self.cons_tsd = 'NaN'
         self.output_genome_cov_len = 'NaN'
         self.cons_blast_n = 'NaN'

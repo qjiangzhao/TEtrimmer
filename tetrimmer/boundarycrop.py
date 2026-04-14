@@ -304,7 +304,7 @@ def final_MSA(
         logging.error(
             f'{bed_final_MSA} encountered a problem during the final MAFFT extension step.'
         )
-        return False, False
+        return False
 
     # Remove nucleotides whose proportion is smaller than threshold
     bed_fasta_mafft_with_gap_column_clean_object = CleanAndSelectColumn(
@@ -398,7 +398,7 @@ def final_MSA(
 
     # This means the sequence length after gap removal is shorter than 50
     if not cropped_MSA_output_file_gs:
-        return False, False
+        return False
 
     # Use DefineBoundary to define start position.
     cropped_boundary_obj_MSA = DefineBoundary(
@@ -431,17 +431,17 @@ def final_MSA(
     # Perform Initial Calculation
     have_blast_hit = bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
     if not have_blast_hit:
-        return False, False
+        return False
 
     start_posit_cov, end_posit_cov, full_length_hit_count, lower_percent_hit_count = (
         bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
     )
 
     if start_posit_cov is None or end_posit_cov is None:
-        return False, False
+        return False
 
     if start_posit_cov >= end_posit_cov:
-        return False, False
+        return False
 
     # Check if we need to switch to a lower threshold (Only for non-LINEs)
     if not seq_obj.old_TE_type.startswith("LINE"):
@@ -457,17 +457,17 @@ def final_MSA(
             # Re-calculate with the new object
             have_blast_hit = bed_fasta_mafft_gap_sim_con_coverage_obj.calculate_blast_coverage()
             if not have_blast_hit:
-                return False, False
+                return False
 
             start_posit_cov, end_posit_cov, full_length_hit_count, lower_percent_hit_count = (
                 bed_fasta_mafft_gap_sim_con_coverage_obj.find_boundary_blast_coverage()
             )
 
     if start_posit_cov is None or end_posit_cov is None:
-        return False, False
+        return False
 
     if start_posit_cov >= end_posit_cov:
-        return False, False
+        return False
 
     # Final Data Retrieval
     blast_cov_list = bed_fasta_mafft_gap_sim_con_coverage_obj.coverage_list
@@ -998,7 +998,7 @@ def find_boundary_and_crop(
                 bed_file = bed_out_flank_file
 
                 # reduce the max_extension for another round MSA extension
-                max_extension = 2 * ex_step_size
+                max_extension = ex_step_size
 
                 extral_extension += 1
 
@@ -2144,7 +2144,7 @@ def find_boundary_and_crop(
             # Write consensus sequence to final_cons_file.
             with open(final_con_file, 'a') as f:
                 f.write(
-                    '>' + uniq_seq_name + '#' + updated_TE_type + '\n' + sequence + '\n'
+                    '>' + uniq_seq_name + '#' + updated_TE_type + '\tTEtrimmer' + '\n' + sequence + '\n'
                 )
 
             # Write all consensus sequences to final_cons_file_no_low_copy.

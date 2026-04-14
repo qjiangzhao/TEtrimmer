@@ -616,7 +616,7 @@ def merge_cons(
     # Read the original consensus file
     consensus_sequences = SeqIO.parse(final_con_file, 'fasta')
 
-    # Define temporary file to store "Perfect" and "Good" sequences
+    # Define temporary file to store "Perfect" "Good", "Reoc_check", and "Low_copy" sequences
     temp_consensus_round1 = os.path.join(
         classification_dir, 'temp_consensus_round1.fasta'
     )
@@ -634,6 +634,8 @@ def merge_cons(
             seq_id = seq_record.id.split('#')[0]
 
             if seq_id in best_sequences:
+                # Append a tab and 'TEtrimmer' to the existing description
+                seq_record.description += "\tTEtrimmer"
                 SeqIO.write(seq_record, high_quality_file, 'fasta')
             elif seq_id in sequence_for_round2:
                 SeqIO.write(seq_record, round2_file, 'fasta')
@@ -1228,11 +1230,6 @@ def analyze_sequence(
                 skip_proof_dir=skipped_dir,
             )
 
-            update_skip_and_need_check_cons_file(
-                seq_obj,
-                final_con_file
-            )
-
             return
 
         # Check if BLAST hit number is smaller than "min_seq_num"; do not include "min_seq_num"
@@ -1457,6 +1454,7 @@ def analyze_sequence(
                 )
 
             return
+
         else:
             cluster_bed_files_list, fasta_out_flank_mafft_gap_rm = cluster_MSA_result
 
@@ -1530,21 +1528,15 @@ def analyze_sequence(
                 if accepted_evaluation:
                     all_inner_need_check = False
 
-            # In theory all_inner_skipped and all_inner_need_check will not be True at the same time
-            # but add this to make sure that
-            if all_inner_skipped and all_inner_need_check:
-                all_inner_skipped = False
 
-            # Write the original input sequence into the final consensus file
-            # The sequence evaluated as Need_check is not writen into the final consensus file
-            # update_skip_and_need_check_cons_file this function will change the summary file
-            if all_inner_need_check:
-                update_skip_and_need_check_cons_file(
-                    seq_obj,
-                    final_con_file
-                )
 
-            # Check the flag after the loop. If all inner clusters were skipped, write the progress file.
+            # The sequence evaluated as Need_check or Need_ext is not writen into the final consensus file
+            # in the function find_boundary_and_crop
+
+            # When all the clustered sequences are skipped or all are evaluated as Need_check or Need_ext
+            # writing the original input sequence into the TE consensus library.
+            # Only check if input sequence is low copy element when all_inner_skipped is True
+
             if all_inner_skipped:
                 check_low_copy, blast_full_length_n, found_match, TE_aid_plot = (
                     low_copy_full_blast_and_terminal_check_plus_teaid_plotting(
@@ -1602,7 +1594,16 @@ def analyze_sequence(
                         seq_obj,
                         final_con_file
                     )
+
                 return
+
+            # Don't return when all_inner_need_check, only write the input sequence into the TE consensus library
+            # the later seq_obj.update_status('processed', progress_file) will update the summary.txt file
+            elif all_inner_need_check:
+                update_skip_and_need_check_cons_file(
+                    seq_obj,
+                    final_con_file
+                )
 
     except Exception as e:
         with open(error_files, 'a') as f:

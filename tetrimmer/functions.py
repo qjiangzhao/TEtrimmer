@@ -2639,6 +2639,8 @@ def update_low_copy_cons_file(
     # shutil.copy(te_aid_pdf, low_copy_te_aid_pdf_file)
 
 
+# If TEtrimmer output is evaluated as Need_check, don't write the TEtrimmer processed sequence into the
+# final TE consensus library but use the originla TE input sequence.
 def update_skip_and_need_check_cons_file(seq_obj, consensus_file):
     seq_name = seq_obj.get_seq_name()
     te_type = seq_obj.get_old_TE_type()
