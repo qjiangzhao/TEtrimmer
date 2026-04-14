@@ -1665,6 +1665,7 @@ def proof_curation(
 
     show_confirmation = BooleanVar(value=True)
     conduct_cdd = BooleanVar(value=True)
+    single_click_to_open = BooleanVar(value=False)
 
     def numerical_sort_key(filename):
         numbers = re.findall(r'\d+', filename)
@@ -2267,7 +2268,10 @@ def proof_curation(
             file_button.grid(row=i - start, column=1, sticky='ew')
 
             # Bind with open_file function to open file
-            file_button.bind('<Double-Button-1>', open_file(filename, file_button, source_dir))
+            if single_click_to_open.get():
+                file_button.bind('<Button-1>', open_file(filename, file_button, source_dir))
+            else:
+                file_button.bind('<Double-Button-1>', open_file(filename, file_button, source_dir))
 
             # Build a child button_frame inside frame
             button_frame = Frame(frame, bg='white')
@@ -2403,7 +2407,10 @@ def proof_curation(
             file_button.grid(row=i - start, column=1, sticky='ew')
 
             # Open file on double-click
-            file_button.bind('<Double-Button-1>', open_file(filename, file_button, source_dir))
+            if single_click_to_open.get():
+                file_button.bind('<Button-1>', open_file(filename, file_button, source_dir))
+            else:
+                file_button.bind('<Double-Button-1>', open_file(filename, file_button, source_dir))
 
             # Per-file action buttons container
             button_frame = Frame(frame, bg='white')
@@ -2728,9 +2735,10 @@ def proof_curation(
             )
             file_button.grid(row=i - start, column=1, sticky='ew')
             # Bind with open_file function to open file
-            file_button.bind(
-                '<Double-Button-1>', open_file(filename, file_button, source_dir)
-            )
+            if single_click_to_open.get():
+                file_button.bind('<Button-1>', open_file(filename, file_button, source_dir))
+            else:
+                file_button.bind('<Double-Button-1>', open_file(filename, file_button, source_dir))
 
             # Build a child button_frame inside frame
             button_frame = Frame(frame, bg='white')
@@ -3080,7 +3088,11 @@ def proof_curation(
             'TE_low_copy',
             'TE_skipped',
             'TE_more_extension_need',
-            'Consensus_lib',
+            'Annotations_perfect',
+            'Annotations_good',
+            'Annotations_check_recommended',
+            'Annotations_check_required',
+            'Consensus_lib'
         ]
 
         # Use this to create a drop menu
@@ -3092,7 +3104,7 @@ def proof_curation(
             if i == 0:
                 menubar.add_cascade(label='TEtrimmer_clustered', menu=annotationMenu)
 
-            elif i in (1, 2, 3):
+            elif i in (1, 2, 3, 4, 5, 6, 7):
 
                 if TEtrimmer_others_menu is None:
                     TEtrimmer_others_menu = Menu(menubar, tearoff=0)
@@ -3102,21 +3114,29 @@ def proof_curation(
                     TEtrimmer_others_menu.add_cascade(label='TEtrimmer_low_copy', menu=annotationMenu)
                 elif i == 2:
                     TEtrimmer_others_menu.add_cascade(label='TEtrimmer_skipped', menu=annotationMenu)
-                elif i ==3:
+                elif i == 3:
                     TEtrimmer_others_menu.add_cascade(label='TEtrimmer_need_more_extension', menu=annotationMenu)
+                elif i == 4:
+                    TEtrimmer_others_menu.add_cascade(label='Annotation_Perfect', menu=annotationMenu)
+                elif i == 5:
+                    TEtrimmer_others_menu.add_cascade(label='Annotation_Good', menu=annotationMenu)
+                elif i == 6:
+                    TEtrimmer_others_menu.add_cascade(label='Annotation_Reco_Check', menu=annotationMenu)
+                elif i == 7:
+                    TEtrimmer_others_menu.add_cascade(label='Annotation_Need_Check', menu=annotationMenu)
 
-            elif i == 4:
+            elif i == 8:
                 menubar.add_cascade(label='Consensus_lib', menu=annotationMenu)
 
             annotation_path = None
             # Check which menu button is selected
             if (
-                i <= 3 and te_trimmer_proof_curation_dir_g is not None
+                i <= 7 and te_trimmer_proof_curation_dir_g is not None
             ):  # Means "TE_clustered", "TE_low_copy", "TE_skipped"
                 annotation_path = os.path.join(
                     te_trimmer_proof_curation_dir_g, annotation
                 )
-            elif i == 4:  # Means "Consensus_lib"
+            elif i == 8:  # Means "Consensus_lib"
                 annotation_path = other_cons_lib_single_file_folder
 
             # Give hits when folder isn't found
@@ -3134,11 +3154,19 @@ def proof_curation(
                         ),
                     )
                 elif i == 1:
-                    annotationMenu.add_command(label='No low copy TEs')
+                    annotationMenu.add_command(label='No low copy TE')
                 elif i == 2:
-                    annotationMenu.add_command(label='No skipped TEs')
+                    annotationMenu.add_command(label='No skipped TE')
                 elif i == 3:
                     annotationMenu.add_command(label='No TE need more extension')
+                elif i == 4:
+                    annotationMenu.add_command(label='No Perfect TE')
+                elif i == 5:
+                    annotationMenu.add_command(label='No Good TE')
+                elif i == 6:
+                    annotationMenu.add_command(label='No Recommend_Check TE')
+                elif i == 7:
+                    annotationMenu.add_command(label='No Need_Check TE')
 
                 elif annotation == 'Consensus_lib':
                     annotationMenu.add_command(
@@ -3175,7 +3203,7 @@ def proof_curation(
                                 annotation_path,
                             ),
                         )
-                elif i in (1, 2, 3):  # Means "TE_low_copy", "TE_skipped", "TE_more_extension_need"
+                elif i in (1, 2, 3, 4, 5, 6, 7):  # Means "TE_low_copy", "TE_skipped", "TE_more_extension_need"
                     for j in range(0, len(sorted_files_annotation), 100):
                         end = min(j + 100, len(sorted_files_annotation))
 
@@ -3213,7 +3241,7 @@ def proof_curation(
                                     current_canvas='tetrimmer_out',
                                 ),
                             )
-                elif i == 4:  # Means "Consensus_lib"
+                elif i == 8:  # Means "Consensus_lib"
 
                     for j in range(0, len(sorted_files_annotation), 100):
                         end = min(j + 100, len(sorted_files_annotation))
@@ -3252,19 +3280,27 @@ def proof_curation(
         # Set confirm_menu child menu
         # Initialize the BooleanVar to store "Show Confirmation Window" status
         settings_menu.add_checkbutton(
-            label="Show Confirmation Window When Click 'Save'",
+            label="Show confirmation window when click 'Save'",
             onvalue=True,
             offvalue=False,
             variable=show_confirmation,
         )
         settings_menu.add_checkbutton(
-            label="Perform CDD database checking When Click 'TEAid'",
+            label="Perform CDD database checking when click 'TEAid'",
             onvalue=True,
             offvalue=False,
             variable=conduct_cdd,
         )
+
+        settings_menu.add_checkbutton(
+            label="Use single-click to open folder and file",
+            onvalue=True,
+            offvalue=False,
+            variable=single_click_to_open,
+        )
+
         settings_menu.add_command(
-            label='Modify Function Parameters', command=show_settings_dialog
+            label='Modify function parameters', command=show_settings_dialog
         )
         settings_menu.add_command(
             label='Define input and output path', command=define_paths
@@ -3274,7 +3310,7 @@ def proof_curation(
         # Add Undo button
         undo_menu = Menu(menubar, tearoff=0)
         # Add Undo child menu
-        undo_menu.add_command(label='undo last delete or save action', command=undo_last_copy)
+        undo_menu.add_command(label='Undo last delete or save action', command=undo_last_copy)
         menubar.add_cascade(label='Undo', menu=undo_menu)
 
         # Add the Search button to the menu
