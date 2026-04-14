@@ -640,7 +640,6 @@ def main(
         "curatedlib": curatedlib,
         "poly_patterns": poly_patterns,
         "poly_len": poly_len,
-        "define_perfect": define_perfect,
         "export_coverage": export_coverage,
         "logfile": logfile,
         "loglevel": loglevel,
