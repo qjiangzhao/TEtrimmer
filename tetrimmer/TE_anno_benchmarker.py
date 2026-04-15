@@ -382,6 +382,7 @@ def read_rm_out(
 
     # Rename columns
     df.columns = ['chro', 'start', 'end', 'strand', 'type']
+    df = df[df['start'] < df['end']]
 
     df['length'] = df['end'] - df['start']
     # Reorder columns by specifying the order explicitly

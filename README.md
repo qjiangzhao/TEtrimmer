@@ -356,7 +356,7 @@ Options:
                                   PFAM database or the automatic download fails.
 
   --cons_thr FLOAT                The minimum level of agreement required at a given position in the
-                                  alignment for a consensus character to be called. Default: 0.8
+                                  alignment for a consensus character to be called. Default: 0.7
 
   --mini_orf INTEGER              Define the minimum ORF length to be predicted by TEtrimmer. Default:
                                   200
@@ -479,9 +479,6 @@ Options:
                                   
   --poly_len INTEGER              Define the minimum length requirement of the poly pattern from the parameter
                                   --poly_patterns. Default: 10
-                                  
-  --define_perfect INTEGER        Define the minimum copy number that the output TE consensus sequence can be
-                                  evaluated as "Perfect". Default: 30
 
   --help                          Show this message and exit.
 ```
@@ -499,6 +496,16 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 ```
 
 ## Update history
+
+**April.15.2026**
+Released TEtrimmer 1.7.2
+Don't use TEtrimmer results classified as "Need_check" for the final TE consensus library
+Added TEtrimmer evaluation level to the final TE consensus library
+Increased the final TE library reliability
+
+TEtrimmerGUI
+Added option to enable single-click to open folder and files
+
 **April.10.2026**
 
 Released TEtrimmer 1.7.1
