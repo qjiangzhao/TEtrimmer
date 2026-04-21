@@ -195,7 +195,7 @@ class CropEndByGap:
         self.input_file = input_file  # Path to the multiple sequence alignment file
         self.alignment = AlignIO.read(self.input_file, 'fasta')  # Read the alignment file in FASTA format
         self.gap_threshold = gap_threshold  # Threshold for gap proportion. Default is 0.05
-        self.window_size = window_size  # The size of the window to check for gaps. Default is 50
+        self.window_size = window_size  # The size of the window to check for gaps. Default is 300
         self.crop_left = crop_left
         self.crop_right = crop_right
 
@@ -221,8 +221,9 @@ class CropEndByGap:
                     # the start position of the sliding window and break the loop
                     if gap_proportion <= self.gap_threshold:
                         start_position = i
+                        self.position_dict[record.id][0] = start_position
                         break
-                self.position_dict[record.id][0] = start_position
+
             # don't crop the left position when self.crop_left is false
             else:
                 self.position_dict[record.id][0] = 0
@@ -235,13 +236,15 @@ class CropEndByGap:
                     gap_proportion = window.count('-') / self.window_size
                     if gap_proportion <= self.gap_threshold:
                         end_position = i + 1  # Note: add 1 to make the position 1-indexed
+
+                        # Ensure end position is not smaller than the start position
+                        if end_position <= self.position_dict[record.id][0]:
+                            self.position_dict[record.id][1] = self.position_dict[
+                                record.id
+                            ][0]
+                        else:
+                            self.position_dict[record.id][1] = end_position
                         break
-                # Ensure end >= start
-                if end_position <= self.position_dict[record.id][0]:
-                    end_position = self.position_dict[record.id][0]
-                self.position_dict[record.id][1] = end_position
-            else:
-                self.position_dict[record.id][1] = len_seq
 
     # New method to find sequences with cropped region > 90% of the alignment length
     def find_large_crops(self):

@@ -20,11 +20,6 @@ blastdotplot <- function(query = NULL,
   
   # Order from left to right
   bl <- bl[order(bl$V2, decreasing = FALSE), ]
-
-  # ONLY take the top 17 hits
-  if (nrow(bl) > 17) {
-    bl <- bl[1:17, ]
-  }
   
   # Test if there are ORF detected; will later store in orf if TRUE
   if (exists("blast") && file.exists(as.character(blast))) {
@@ -66,6 +61,11 @@ blastdotplot <- function(query = NULL,
   #####################################
   ## Annotation graph (bottom right) ##
   #####################################
+
+  # ONLY take the top 17 hits
+  if (nrow(orfs) > 18) {
+    orfs <- orfs[1:18, ]
+  }
   
   plot_te_structure <- function(orfs, bl) {
     # FIX: Ensure V2 exists to prevent "argument is of length zero" error

@@ -742,7 +742,7 @@ def find_boundary_and_crop(
     crop_end_thr=0.8,
     crop_end_win=40,
     crop_end_gap_thr=0.1,
-    crop_end_gap_win=150,
+    crop_end_gap_win=250,
     ltr_start_patterns=None,
     ltr_end_patterns=None,
     helitron_start_patterns=None,
@@ -775,8 +775,8 @@ def find_boundary_and_crop(
     :param gap_threshold: float, columns with a greater gap proportion than <gap_threshold>, and if the highest
     nucleotide proportion in this column is less than <gap_nul_thr>, will be removed. Default: 0.4
     :param gap_nul_thr: float, set nucleotide proportion threshold to decide if the column should be removed. Default: 0.07
-    :param crop_end_gap_thr: float, set gap threshold to crop end by gap. Default: 0.05
-    :param crop_end_gap_win: int, set window size used to crop end by gap. Default: 300.
+    :param crop_end_gap_thr: float, set gap threshold to crop end by gap. Default: 0.1
+    :param crop_end_gap_win: int, set window size used to crop end by gap. Default: 250
     :param ltr_start_patterns: str, patterns to check for start points. Default: None
     :param ltr_end_patterns: str, patterns to check for end points. Default: None
     :param min_orf: int, set minimum ORF length for ORF prediction. Default: 200
