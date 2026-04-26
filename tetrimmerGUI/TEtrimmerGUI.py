@@ -1405,6 +1405,11 @@ def proof_curation(
                     os.path.join(dirs, 'Clustered_proof_curation'),
                     os.path.join(dirs, 'TE_low_copy'),
                     os.path.join(dirs, 'TE_skipped'),
+                    os.path.join(dirs, 'TE_more_extension_need'),
+                    os.path.join(dirs, 'Annotations_perfect'),
+                    os.path.join(dirs, 'Annotations_good'),
+                    os.path.join(dirs, 'Annotations_check_recommended'),
+                    os.path.join(dirs, 'Annotations_check_required')
                 ]
 
                 # Define found_path to store search result
@@ -1422,7 +1427,7 @@ def proof_curation(
                                 )
 
                         # Check files in each subdirectory
-                        # subdir will be a empty directory if no directory is found under root
+                        # subdir will be an empty directory if no directory is found under root
                         for subdir in subdirs:
                             subdir_path = os.path.join(root, subdir)
                             for subdir_root, _, subdir_files in os.walk(subdir_path):

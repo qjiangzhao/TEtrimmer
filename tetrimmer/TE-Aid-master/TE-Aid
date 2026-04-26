@@ -271,7 +271,7 @@ if [ -s $OUTPUT/TE.orfs ]
     if [ -e $DIR/db/RepeatPeps.lib.phr ]
     then
         echo "RepeatPeps is downloaded and formatted, blastp-ing..."
-        blastp -query $OUTPUT/TE.orfs -evalue 5 -db $DIR/db/RepeatPeps.lib -outfmt 6 | sort -k1,1 -k12,12nr | sort -u -k1,1 | sed 's/#/--/g' | sed 's/,//g' > $OUTPUT/TE.blastp.out
+        blastp -query $OUTPUT/TE.orfs -evalue 1 -db $DIR/db/RepeatPeps.lib -outfmt 6 | sort -k1,1 -k12,12nr | sort -u -k1,1 | sed 's/#/--/g' | sed 's/,//g' > $OUTPUT/TE.blastp.out
     else
         echo "RepeatPeps.lib is not found, downloading..."
         mkdir -p $DIR/db
