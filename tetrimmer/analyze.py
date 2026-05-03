@@ -14,6 +14,8 @@ from Bio.SeqRecord import SeqRecord
 
 from boundarycrop import find_boundary_and_crop
 
+from functions import sanitize_genome_for_tetrimmer
+
 # Local imports
 from functions import (
     blast,
@@ -81,16 +83,17 @@ def change_permissions_recursive(input_dir, mode):
         return False
     return True
 
-
 def calculate_genome_length(genome_file, outfile=None):
     """
     Calculate the length of each sequence in a genome file in FASTA format
     and write the lengths to an output file.
 
     :param genome_file: str, path to genome file in FASTA format
-    :return: str, path to the output file containing sequence names and lengths
+    :return: tuple (str, int), path to the output file and the total genome length
     """
     genome_lengths = {}
+    total_genome_length = 0  # NEW FEATURE: Total length accumulator
+
     with open(genome_file, 'r') as f:
         current_seq = None
         current_length = 0
@@ -99,14 +102,16 @@ def calculate_genome_length(genome_file, outfile=None):
             if line.startswith('>'):
                 if current_seq is not None:
                     genome_lengths[current_seq] = current_length
+                    total_genome_length += current_length  # NEW FEATURE: Add to total
                 # If chromosome header contains empty spaces, only consider the content before the first space
-                current_seq = line[1:].split( )[0]
+                current_seq = line[1:].split()[0]
                 current_length = 0
             else:
                 current_length += len(line)
         # Add length of last sequence to dictionary
         if current_seq is not None:
             genome_lengths[current_seq] = current_length
+            total_genome_length += current_length  # NEW FEATURE: Add last sequence to total
 
     # Write lengths to output file
     if not outfile:
@@ -118,7 +123,7 @@ def calculate_genome_length(genome_file, outfile=None):
         for seq_name, length in genome_lengths.items():
             out.write(f'{seq_name}\t{length}\n')
 
-    return output_file
+    return output_file, total_genome_length
 
 
 def check_database(genome_file, idx_dir=None, search_type='blast'):
@@ -237,9 +242,9 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
 
         # Check if genome length files exist, otherwise create them in the same folder with genome file
         length_file = genome_file + '.length'
-        if not os.path.isfile(length_file):
-            logging.info(f'Creating genome lengths file: {length_file}')
-            calculate_genome_length(genome_file, outfile=length_file)
+
+        logging.info(f'Creating genome lengths file: {length_file}')
+        genome_length_file, total_genome_length_n = calculate_genome_length(genome_file, outfile=length_file)
 
         # Check if .fai index file exists, otherwise create it using samtools faidx
         # Index gzip file directly if available
@@ -279,7 +284,7 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
         logging.error(f'Error:\n{e}')
         exit(1)
 
-    return (mmseqs_database_dir, database_dir, database_name , length_file, fai_file)
+    return (mmseqs_database_dir, database_dir, database_name , length_file, fai_file, total_genome_length_n)
 
 # Print iterations progress
 def printProgressBar(
@@ -321,7 +326,7 @@ def printProgressBar(
         click.echo()
 
 
-def separate_sequences(input_file, output_dir, continue_analysis=False):
+def separate_sequences(input_file, output_dir, continue_analysis=False, de_novo_TE_anno=False):
     """
     Separates input file into single separate FASTA files and creates objects for each input sequence
     """
@@ -335,11 +340,18 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
             return open(file_path, 'r')
 
     if not continue_analysis:
-        logging.info(
-            "TE Trimmer is modifying sequence names; any occurrence of '/', '-', ':', '...', '|' and empty spaces before '#' "
-            "will be converted to '_'.\n"
-            "You can find the original and modified names in the 'Sequence_name_mapping.txt' file in the output directory.\n"
-        )
+
+        if not de_novo_TE_anno:
+            logging.info(
+                "TEtrimmer is modifying sequence names; any occurrence of '/', '-', ':', '...', '|' and empty spaces before '#' "
+                "will be converted to '_'.\n"
+                "You can find the original and modified names in the 'Sequence_name_mapping.txt' file in the output directory.\n"
+            )
+        else:
+            logging.info(
+                "TEtrimmer is modifying RepeatModeler generated sequence names.\n"
+                "You can find the original and modified names in the 'Sequence_name_mapping.txt' file in the output directory.\n"
+            )
         # Initialize the name mapping file
         name_mapping_file = os.path.join(
             os.path.dirname(output_dir), 'Sequence_name_mapping.txt'
@@ -419,10 +431,11 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                     SeqIO.write(record, output_file, 'fasta')
 
             if detected_pound:
-                logging.info(
-                    "TEtrimmer detected instances of '#' in your input FASTA sequence headers. The string before "
-                    "'#' is denoted as the seq_name, and the string after '#' is denoted as the TE type.\n"
-                )
+                if not de_novo_TE_anno:
+                    logging.info(
+                        "TEtrimmer detected instances of '#' in your input FASTA sequence headers. The string before "
+                        "'#' is denoted as the seq_name, and the string after '#' is denoted as the TE type.\n"
+                    )
         logging.info('Finished generating single sequence files.\n')
 
     elif continue_analysis:
@@ -442,7 +455,7 @@ def separate_sequences(input_file, output_dir, continue_analysis=False):
                     )
                     seq_list.append(seq_obj)
         logging.info(
-            '\nFinished to read single sequence files generated by previous analysis.\n'
+            'Finished to read single sequence files generated by previous analysis.\n'
         )
 
     single_fasta_n = len(seq_list)
@@ -1645,16 +1658,15 @@ def analyze_sequence(
 
 
 def create_dir(
-    continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file, plot_skip
+    continue_analysis, hmm, pfam_dir, output_dir, input_file, genome_file, plot_skip,
 ):
     #####################################################
     # Check if input TE lib file exists
     #####################################################
-    if not os.path.isfile(input_file):
-        logging.error(
-            f'The input TE lib FASTA file does not exist: {input_file}'
+    if input_file is None:
+        logging.info(
+            f"\nTE consensus library not provided, TEtrimmer will do the de novo TE annotation.\n"
         )
-        raise FileNotFoundError
     else:
         # Get absolute path for input file
         input_file = os.path.abspath(input_file)
@@ -1696,7 +1708,7 @@ def create_dir(
         os.makedirs(new_output_dir, exist_ok=True)
         output_dir = new_output_dir
         logging.warning(
-            f'Results will be stored into folder: {output_dir}'
+            f'Results will be stored into folder: {output_dir}\n'
         )
 
     #################################################
@@ -1886,6 +1898,26 @@ def create_dir(
         classification_dir, 'TEtrimmer_consensus_no_low_copy.fasta'
     )
 
+    ###################################################
+    # Define cleaned genome folder and clean the genome
+    ###################################################
+
+    genome_cleaned_dir = os.path.join(
+        output_dir, 'Genome_cleaned'
+    )
+
+    try:
+        cleaned_genome_file = sanitize_genome_for_tetrimmer(genome_file, genome_cleaned_dir)
+
+    except Exception as e:
+        with open(error_files, 'a') as f:
+            # Return the traceback content as a string
+            tb_content = traceback.format_exc()
+            f.write('Genome cleaning error\n')
+            f.write(tb_content + '\n\n')
+
+        raise FileNotFoundError
+
     return (
         bin_py_path,
         output_dir,
@@ -1907,7 +1939,7 @@ def create_dir(
         final_classified_con_file,
         error_files,
         input_file,
-        genome_file,
+        cleaned_genome_file,
         skipped_dir,
         cluster_proof_anno_dir,
         more_extension_dir

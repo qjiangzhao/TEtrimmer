@@ -22,7 +22,7 @@ from functions import (
     repeatmasker,
     check_tools,
     init_logging,
-    get_genome_length
+    run_repeatmodeler
 )
 
 # Suppress all deprecation warnings
@@ -63,7 +63,7 @@ TEtrimmer_version = "1.7.2"
 
                 Github: https://github.com/qjiangzhao/TEtrimmer
 
-                Developers:
+                Main developers:
 
                 Jiangzhao Qian;      RWTH Aachen University;                Email: jqian@bio1.rwth-aachen.de
 
@@ -74,24 +74,21 @@ TEtrimmer_version = "1.7.2"
                 Funding source:
                 Ralph Panstruga Lab; RWTH Aachen University;                Email: panstruga@bio1.rwth-aachen.de
                 Website: https://www.bio1.rwth-aachen.de/PlantMolCellBiology/index.html
+                
+                Tony Heitkam lab; RWTH Aachen University;                   Email: heitkam@bio1.rwth-aachen.de
 
                 ##########################################################################################
-
+                # Do de novo TE annotation
+                python ./path_to_TEtrimmer_folder/TEtrimmer.py -g <genome_file>
+                # Curate provided TE consensus library
                 python ./path_to_TEtrimmer_folder/TEtrimmer.py -i <TE_consensus_file> -g <genome_file>
 
-                TEtrimmer is designed to automate the manual curation of transposable elements (TEs).
-
-                Two mandatory arguments are required, including
-                <genome file>, the genome FASTA file, and
-                <TE consensus file> from TE discovery software like RepeatModeler, EDTA, or REPET.
-                TEtrimmer can do BLAST, sequence extension, multiple sequence alignment (MSA), MSA clustering,
-                MSA cleaning, TE boundaries definition, and MSA visualization.
 """,
 )
 @click.option(
     '--input_file',
     '-i',
-    required=True,
+    default=None,
     type=str,
     help='Path to TE consensus library file (FASTA format). Use the output from RepeatModeler, EDTA, REPET, et al.',
 )
@@ -683,7 +680,7 @@ def main(
             final_classified_con_file,
             error_files,
             input_file,
-            decompressed_genome_file,
+            cleaned_genome_file,
             skipped_dir,
             cluster_proof_anno_dir,
             more_extension_dir
@@ -702,9 +699,59 @@ def main(
     #####################################################################################################
     # Code block: Remove duplications in input file if required, generate single FASTA file and check BLAST database
     #####################################################################################################
+    repeatmodeler_out_dir = os.path.join(output_dir, "RepeatModeler_output")
+
+    de_novo_TE_anno = False
+
+    # This file should exist if the repeatmodeler is finished
+    repeatmodeler_out_lib_expect = os.path.join(repeatmodeler_out_dir, f"{os.path.basename(cleaned_genome_file)}_families.fa")
+
+    if continue_analysis and input_file is None:
+
+        # Check if the separated single sequence file is empty
+        # If this is not empty, it means the RepeatModeler is finished
+        if not os.listdir(single_file_dir):
+            # Check if the RepeatModeler finished
+            if os.path.isfile(repeatmodeler_out_lib_expect):
+                input_file = repeatmodeler_out_lib_expect
+
+                continue_analysis = False
+                de_novo_TE_anno = True
+
+            else:
+                # If the RepeatModeler is still not finished, continue to finish it
+                repeatmodeler_out_lib = run_repeatmodeler(
+                    cleaned_genome_file,
+                    repeatmodeler_out_dir,
+                    threads=num_threads,
+                    continue_analysis=continue_analysis
+                )
+
+                if repeatmodeler_out_lib:
+                    input_file = repeatmodeler_out_lib
+                    continue_analysis = False
+                    de_novo_TE_anno = True
 
     # Generate single files when continue_analysis is false
     if not continue_analysis:
+
+        # When the input_file TE consensus library is not provided, use RepeatModeler to do the de novo
+        # TE annotation
+        if input_file is None:
+
+            # Create RepeatModeler output folder
+            os.makedirs(repeatmodeler_out_dir, exist_ok=True)
+
+            repeatmodeler_out_lib = run_repeatmodeler(cleaned_genome_file, repeatmodeler_out_dir, threads=num_threads)
+
+            if repeatmodeler_out_lib:
+                input_file = repeatmodeler_out_lib
+
+                de_novo_TE_anno = True
+
+            else:
+                return
+
         # When --curatedlib is not None, check if the provided file exist.
         if curatedlib is not None:
             if os.path.isfile(curatedlib):
@@ -712,10 +759,16 @@ def main(
                     f'User specified curated TE consensus library found: {curatedlib}'
                 )
 
-                logging.info(
-                    f'TEtrimmer is identifying the sequences in --input_file that are identical to the sequences '
-                    f'in --curatedlib. This might take a long time. Please be patient.'
-                )
+                if not de_novo_TE_anno:
+                    logging.info(
+                        f'TEtrimmer is identifying the sequences in --input_file that are identical to the sequences '
+                        f'in --curatedlib. This might take a long time. Please be patient.'
+                    )
+                else:
+                    logging.info(
+                        f'TEtrimmer is identifying the RepeatModeler generated TE library that are identical to the sequences '
+                        f'in --curatedlib. This might take a long time. Please be patient.'
+                    )
 
                 # Define path to store curatedlib analysis. Store it to classification_dir
                 curatedlib_dir = os.path.join(
@@ -783,10 +836,13 @@ def main(
         # Separate FASTA into single files; if FASTA headers contain "/", " " or ":" convert to "_"
         # Call this function to separate to single FASTA files and create objects from input file
         seq_list, single_fasta_n = analyze.separate_sequences(
-            input_file, single_file_dir, continue_analysis=False
+            input_file, single_file_dir, continue_analysis=False, de_novo_TE_anno=de_novo_TE_anno
         )
 
-        logging.info(f'{single_fasta_n} TE sequences are detected from the input file')
+        if not de_novo_TE_anno:
+            logging.info(f'{single_fasta_n} TE sequences are detected from the input file\n')
+        else:
+            logging.info(f'{single_fasta_n} TE sequences are detected from the RepeatModeler generated TE library\n')
 
         # Check if BLAST database and genome length files are available, otherwise create these in the
         # same dir as the genome or the output directory specified by the user
@@ -798,8 +854,9 @@ def main(
             database_name,
             length_file,
             fai_file,
+            genome_total_length
         ) = analyze.check_database(
-            decompressed_genome_file, idx_dir=None, search_type=engine
+            cleaned_genome_file, idx_dir=None, search_type=engine
         )
 
         blast_database_path = os.path.join(database_dir, database_name)
@@ -813,6 +870,7 @@ def main(
             length=50
         )
 
+    # Do the continue analysis
     else:
         # Check if it can perform continue analysis
         if not os.listdir(single_file_dir):
@@ -823,7 +881,7 @@ def main(
             exit(1)
 
         else:
-            logging.info('TEtrimmer will continue analysis based on previous results.')
+            logging.info('TEtrimmer will continue analysis based on previous results.\n')
 
             (
                 mmseqs_database_dir,
@@ -831,8 +889,9 @@ def main(
                 database_name,
                 length_file,
                 fai_file,
+                genome_total_length
             ) = analyze.check_database(
-                decompressed_genome_file, idx_dir=None, search_type=engine
+                cleaned_genome_file, idx_dir=None, search_type=engine
             )
 
             blast_database_path = os.path.join(database_dir, database_name)
@@ -853,23 +912,6 @@ def main(
                 f'{single_fasta_n - len(seq_list)} sequences have been processed previously.'
             )
 
-    #####################################################################################################
-    # Code block: Calculate genome length
-    #####################################################################################################
-    try:
-        genome_length = get_genome_length(decompressed_genome_file)
-    
-    except Exception as e:
-        with open(error_files, 'a') as f:
-            # Get the traceback content as a string
-            tb_content = traceback.format_exc()
-            f.write('\nFailed to calculate genome length file.\n')
-            f.write(tb_content + '\n\n')
-        logging.warning(
-            'This does not affect the final TE consensus sequences '
-            'Failed to calculate genome length. This will only affect one column of the Summary.txt'
-        )
-        genome_length = None
 
     #####################################################################################################
     # Code block: Enable multiple threads
@@ -878,7 +920,7 @@ def main(
     analyze_sequence_params = [
         (
             seq,
-            decompressed_genome_file,
+            cleaned_genome_file,
             MSA_dir,
             min_blast_len,
             min_seq_num,
@@ -1162,7 +1204,7 @@ def main(
             good_proof,
             intermediate_proof,
             need_check_proof,
-            genome_length
+            genome_total_length
         )
         # clear remove_files_with_start_pattern folder
         if not debug and os.path.exists(multi_dotplot_dir):
@@ -1247,7 +1289,7 @@ def main(
             if not os.path.exists(repeatmasker_dir):
                 os.mkdir(repeatmasker_dir)
             genome_anno_result = repeatmasker(
-                decompressed_genome_file,
+                cleaned_genome_file,
                 repeatmakser_lib,
                 repeatmasker_dir,
                 thread=num_threads,

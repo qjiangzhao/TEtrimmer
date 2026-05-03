@@ -8,6 +8,8 @@ import traceback
 import warnings
 import logging
 import sys
+import re
+import glob
 
 import click
 import numpy as np
@@ -2715,6 +2717,210 @@ def classify_single(consensus_fasta):
     return seq_TE_type
 
 
+def process_genome_record(header, seq_chunks, seq_id, f_out, f_dict, regex):
+    """Process a single FASTA record and write outputs."""
+
+    seq_id += 1
+
+    original_name = header.split( )[0][1:]
+    new_name = f"chr_{seq_id}"
+
+    # Clean sequence
+    # Join the sequence list to one element
+    sequence = "".join(seq_chunks).upper()
+    sequence = regex.sub("N", sequence)
+
+    # Write FASTA
+    f_out.write(f">{new_name}\n")
+    for i in range(0, len(sequence), 60):
+        f_out.write(sequence[i:i+60] + "\n")
+
+    # Write mapping
+    f_dict.write(f"{original_name}\t{new_name}\n")
+
+    return seq_id
+
+
+def sanitize_genome_for_tetrimmer(input_fasta, outdir):
+    """
+    Standardize a genome FASTA file for TE discovery tools.
+
+    Steps:
+    1. Rename sequence headers to chr_1, chr_2, ...
+    2. Convert sequences to uppercase
+    3. Replace non-ACGT characters with 'N'
+    4. Save mapping between original and new names
+    """
+
+    os.makedirs(outdir, exist_ok=True)
+
+    basename = os.path.basename(input_fasta)
+    clean_fasta_path = os.path.join(outdir, f"{basename}.clean.fa")
+    name_mapping_file_path = os.path.join(outdir, f"{basename}_seq_name_mapping.txt")
+
+    non_acgt_re = re.compile(r"[^ACGT]")
+
+    logging.info(f"Cleaning the genome file...")
+
+    try:
+        with open(input_fasta) as f_in, \
+             open(clean_fasta_path, "w") as f_out, \
+             open(name_mapping_file_path, "w") as f_dict:
+
+            f_dict.write("original_genome_seq_name\tTEtrimmer_modified_genome_seq_name\n")
+
+            seq_id = 0
+            header = None
+            seq_chunks = []
+
+            for line in f_in:
+                line = line.strip()
+                if not line:
+                    continue
+
+                if line.startswith(">"):
+                    # Process previous record
+                    if header:
+                        seq_id = process_genome_record(
+                            header, seq_chunks, seq_id,
+                            f_out, f_dict, non_acgt_re
+                        )
+
+                    # Start new record
+                    header = line
+                    seq_chunks = []
+                else:
+                    seq_chunks.append(line)
+
+            # Process last record
+            if header:
+                process_genome_record(header, seq_chunks, seq_id,
+                                      f_out, f_dict, non_acgt_re)
+
+        logging.info(f"The cleaned genome file was stored at {clean_fasta_path}.\n")
+        return clean_fasta_path
+
+    except Exception as e:
+        logging.error(f"Failed to sanitize genome name: {e}")
+        raise
+
+
+# This code was modified based EarlGrey RepeatModeler code
+def run_repeatmodeler(genome_fasta, outdir, threads, continue_analysis=False):
+    """
+    Executes RepeatModeler with a fallback mechanism and optional automatic recovery.
+    1. Defines a database name prefixed with 'RM_'.
+    2. Checks if the database exists; if not, creates it.
+    3. If continue_analysis is True, detects the most recent RM_ folder to resume.
+    """
+    # Define the database name
+    db_path = f"{genome_fasta}_rmdb"
+
+    # 1. Setup paths
+    expected_output = f"{db_path}-families.fa"
+    repeatmodeler_out_file = os.path.join(outdir, f"{os.path.basename(genome_fasta)}_families.fa")
+    db_check_file = f"{db_path}.translation"
+
+    os.makedirs(outdir, exist_ok=True)
+    tool_log_path = os.path.join(outdir, "repeatmodeler_run.log")
+
+    # --- Database Check/Creation ---
+    if not os.path.exists(db_check_file):
+        if genome_fasta and os.path.exists(genome_fasta):
+            logging.info(f"RepeatModeler genome indexing database not found. Running BuildDatabase...")
+            try:
+                build_cmd = ["BuildDatabase", "-name", db_path, genome_fasta]
+                with open(tool_log_path, "a") as log_file:
+                    log_file.flush()
+                    subprocess.run(
+                        build_cmd,
+                        check=True,
+                        stdout=log_file,
+                        stderr=log_file,
+                        text=True,
+                        cwd=outdir
+                    )
+                logging.info("RepeatModeler genome indexing database successfully created.\n")
+            except subprocess.CalledProcessError as e:
+                logging.error(f"BuildDatabase failed: {e}")
+                return False
+        else:
+            logging.error(f"Genome file not found.\n")
+            return False
+
+    # --- NEW FEATURE: Conditional Continue Analysis ---
+    latest_rm_dir = None
+    if continue_analysis:
+        # Search for any directory starting with "RM_" inside outdir
+        rm_directories = glob.glob(os.path.join(outdir, "RM_*"))
+        if rm_directories:
+            # Pick the one with the latest modification time
+            latest_rm_dir = max([d for d in rm_directories if os.path.isdir(d)], key=os.path.getmtime, default=None)
+            if latest_rm_dir:
+                logging.info(f"continue_analysis is True. Found existing directory: {latest_rm_dir}\n")
+
+    # 2. RepeatModeler Logic (Original structure preserved)
+    attempts = [
+        {"name": "Attempt1", "size": None},
+        {"name": "Attempt2", "size": "81000000"},
+        {"name": "Attempt3", "size": "27000000"}
+    ]
+
+    for attempt in attempts:
+        try:
+            command = ["RepeatModeler", "-threads", str(threads), "-database", db_path, "-LTRStruct"]
+
+            # Add -recoverDir only if continue_analysis found a directory
+            if latest_rm_dir:
+                command.extend(["-recoverDir", latest_rm_dir])
+
+            logging.info(f"Running RepeatModeler... This could take a very long time, please be patient.\n"
+                         f"The used RepeatModeler command is {' '.join(command)}\n")
+
+            logging.info(f"You can check the RepeatModeler running status from the log file: \n"
+                         f"{tool_log_path}")
+
+            if attempt["size"]:
+                command.extend(["-genomeSampleSizeMax", attempt["size"]])
+
+            with open(tool_log_path, "a") as log_file:
+                log_file.flush()
+                subprocess.run(
+                    command,
+                    check=True,
+                    stdout=log_file,
+                    stderr=log_file,
+                    text=True,
+                    cwd=outdir
+                )
+
+            if os.path.exists(expected_output):
+                logging.info(f"RepeatModeler finished. Library generated at {expected_output}")
+                shutil.copy2(expected_output, repeatmodeler_out_file)
+                return repeatmodeler_out_file
+
+            else:
+
+                if latest_rm_dir:
+                    logging.warning(f"RepeatModeler continue analysis is failed. Restart to run RepeatModeler from the beginning.\n")
+                else:
+                    logging.warning(f"RepeatModeler {attempt['name']} failed. Retrying...")
+                latest_rm_dir = None # Reset recovery for fallback attempts
+                continue
+
+        except FileNotFoundError:
+            logging.error("RepeatModeler command not found.")
+            return False
+
+        except subprocess.CalledProcessError:
+            logging.warning(f"RepeatModeler {attempt['name']} failed. Check {tool_log_path}")
+            latest_rm_dir = None # Reset recovery for fallback attempts
+            continue
+
+    logging.error(f"All attempts for running RepeatModeler failed. Logs: {tool_log_path}\n")
+    return False
+
+
 def check_terminal_repeat(
     input_file, output_dir, teaid_blast_out=None, TIR_adj=2000, LTR_adj=3000
 ):
@@ -3031,7 +3237,7 @@ def multi_seq_dotplot(input_file, output_dir, title):
         'polydot',
         str(input_file),
         '-wordsize',
-        str(40),
+        str(20),
         '-gtitle',
         str(title),
         '-gdirectory',
@@ -3537,7 +3743,3 @@ def sum_non_overlapping_lengths(blast_file, te_aid_blast=False, pident_min=80, e
             f'but only the summary.txt file.\n'
         )
         raise
-
-def get_genome_length(fasta_file):
-    total_length = sum(len(record.seq) for record in SeqIO.parse(fasta_file, "fasta"))
-    return total_length
