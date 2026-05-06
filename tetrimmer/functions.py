@@ -2717,91 +2717,93 @@ def classify_single(consensus_fasta):
     return seq_TE_type
 
 
-def process_genome_record(header, seq_chunks, seq_id, f_out, f_dict, regex):
-    """Process a single FASTA record and write outputs."""
-
-    seq_id += 1
-
-    original_name = header.split( )[0][1:]
-    new_name = f"chr_{seq_id}"
-
-    # Clean sequence
-    # Join the sequence list to one element
-    sequence = "".join(seq_chunks).upper()
-    sequence = regex.sub("N", sequence)
-
-    # Write FASTA
-    f_out.write(f">{new_name}\n")
-    for i in range(0, len(sequence), 60):
-        f_out.write(sequence[i:i+60] + "\n")
-
-    # Write mapping
-    f_dict.write(f"{original_name}\t{new_name}\n")
-
-    return seq_id
-
-
 def sanitize_genome_for_tetrimmer(input_fasta, outdir):
-    """
-    Standardize a genome FASTA file for TE discovery tools.
-
-    Steps:
-    1. Rename sequence headers to chr_1, chr_2, ...
-    2. Convert sequences to uppercase
-    3. Replace non-ACGT characters with 'N'
-    4. Save mapping between original and new names
-    """
-
+    # 1. Setup Paths and Regex
     os.makedirs(outdir, exist_ok=True)
-
     basename = os.path.basename(input_fasta)
     clean_fasta_path = os.path.join(outdir, f"{basename}.clean.fa")
-    name_mapping_file_path = os.path.join(outdir, f"{basename}_seq_name_mapping.txt")
+    mapping_path = os.path.join(outdir, f"{basename}_seq_name_mapping.txt")
 
+    # Regex: Finds anything NOT A, C, G, or T (to be replaced by N)
     non_acgt_re = re.compile(r"[^ACGT]")
 
-    logging.info(f"Cleaning the genome file...")
+    # --- STEP 1: Pre-scan Headers ---
+    # We check the entire file first to decide if WE MUST rename everything.
+    # Rules: Length <= 35 AND only Alphanumeric/Underscore.
+    all_names_safe = True
+    logging.info("Scanning chromosome name for length and special characters...")
 
+    with open(input_fasta, "r") as f:
+        for line in f:
+            if line.startswith(">"):
+                # Get first word, strip '>', and check safety
+                name = line.strip().split()[0][1:]
+                if len(name) > 35 or not re.match(r"^[a-zA-Z0-9_]+$", name):
+                    logging.warning(f"The chromosome name '{name}' is too long or containes special characters."
+                                    f" Standardizing all chromosome names to chr_N.")
+                    logging.info(f"You can find the original and modified chromosome names in the file {mapping_path}\n")
+
+                    all_names_safe = False
+                    break
+
+    if all_names_safe:
+        logging.info("The original genome chromosome names are used.\n")
+    # --- STEP 2: Main Processing ---
     try:
-        with open(input_fasta) as f_in, \
-             open(clean_fasta_path, "w") as f_out, \
-             open(name_mapping_file_path, "w") as f_dict:
+        with open(input_fasta, "r") as f_in, \
+                open(clean_fasta_path, "w") as f_out, \
+                open(mapping_path, "w") as f_dict:
 
-            f_dict.write("original_genome_seq_name\tTEtrimmer_modified_genome_seq_name\n")
+            # Write header for the translation mapping file
+            f_dict.write("original_chromosome_name\tmodified_chromosome_name\n")
 
             seq_id = 0
-            header = None
-            seq_chunks = []
+            current_header = None
+            current_seq_chunks = []
 
+            # Define the "Write" logic in one place to avoid repeating code
+            def save_current_record(header, chunks, sid):
+                # header is the chromosome name
+                sid += 1
+                # Extract original ID (first word after >)
+                orig_id = header.strip().split()[0][1:]
+
+                # Determine name based on pre-scan results
+                new_id = orig_id if all_names_safe else f"chr_{sid}"
+
+                # Clean Sequence: Merge -> Uppercase -> Replace non-ACGT with 'N'
+                sequence = "".join(chunks).upper()
+                sequence = non_acgt_re.sub("N", sequence)
+
+                # Write FASTA with 60bp line wrapping
+                f_out.write(f">{new_id}\n")
+                for i in range(0, len(sequence), 60):
+                    f_out.write(sequence[i:i + 60] + "\n")
+
+                # Write to mapping dictionary
+                f_dict.write(f"{orig_id}\t{new_id}\n")
+                return sid
+
+            # Iterate through the file
             for line in f_in:
                 line = line.strip()
-                if not line:
-                    continue
+                if not line: continue
 
                 if line.startswith(">"):
-                    # Process previous record
-                    if header:
-                        seq_id = process_genome_record(
-                            header, seq_chunks, seq_id,
-                            f_out, f_dict, non_acgt_re
-                        )
-
-                    # Start new record
-                    header = line
-                    seq_chunks = []
+                    if current_header:
+                        seq_id = save_current_record(current_header, current_seq_chunks, seq_id)
+                    current_header = line
+                    current_seq_chunks = []
                 else:
-                    seq_chunks.append(line)
+                    current_seq_chunks.append(line)
 
-            # Process last record
-            if header:
-                process_genome_record(header, seq_chunks, seq_id,
-                                      f_out, f_dict, non_acgt_re)
-
-        logging.info(f"The cleaned genome file was stored at {clean_fasta_path}.\n")
+            # Finalize the last chromosome in the file
+            if current_header:
+                save_current_record(current_header, current_seq_chunks, seq_id)
         return clean_fasta_path
 
     except Exception as e:
-        logging.error(f"Failed to sanitize genome name: {e}")
+        logging.error(f"Process genome cleaning failed: {e}")
         raise
 
 
