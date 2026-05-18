@@ -42,7 +42,7 @@ with open(config_path, 'r') as config_file:
 # Code block: Main functions of TEtrimmer
 #####################################################################################################
 
-TEtrimmer_version = "1.7.2"
+TEtrimmer_version = "1.7.3"
 
 @click.command(
     context_settings={'max_content_width': 120},
@@ -71,17 +71,18 @@ TEtrimmer_version = "1.7.2"
 
                 Stefan Kusch;        Research Center Juelich;               Email: s.kusch@fz-juelich.de
 
-                Funding source:
-                Ralph Panstruga Lab; RWTH Aachen University;                Email: panstruga@bio1.rwth-aachen.de
-                Website: https://www.bio1.rwth-aachen.de/PlantMolCellBiology/index.html
+                Funding source:                                                                                                                                                    
+                Ralph Panstruga Lab; RWTH Aachen University;                Email: panstruga@bio1.rwth-aachen.de                                             
                 
+                Website: https://www.bio1.rwth-aachen.de/PlantMolCellBiology/index.html                                                                                                
+                                 
                 Tony Heitkam lab; RWTH Aachen University;                   Email: heitkam@bio1.rwth-aachen.de
 
-                ##########################################################################################
-                # Do de novo TE annotation
-                python ./path_to_TEtrimmer_folder/TEtrimmer.py -g <genome_file>
-                # Curate provided TE consensus library
-                python ./path_to_TEtrimmer_folder/TEtrimmer.py -i <TE_consensus_file> -g <genome_file>
+                ##########################################################################################                                                      
+                # Do de novo TE annotation                                                                                                                                                        
+                python ./path_to_TEtrimmer_folder/TEtrimmer.py -g <genome_file>                                                                   
+                # Curate provided TE consensus library                                                                                                             
+                python ./path_to_TEtrimmer_folder/TEtrimmer.py -i <TE_consensus_file> -g <genome_file>                                                          
 
 """,
 )

@@ -2,7 +2,12 @@
 [![Singularity Badge](https://img.shields.io/badge/Singularity-available-brightgreen.svg)](https://quay.io/repository/biocontainers/tetrimmer?tab=tags&tag=1.4.0--hdfd78af_0)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
 
+##  TEtrimmer (v1.7.3 or later) supports de-novo TE annotation without the need for a TE consensus library.
 
+- Try it with: 
+```commandline
+TEtrimmer --genome_file <path to test_genome.fasta>              
+```
 
 ## Contents
 - [Introduction](#Introduction)
@@ -194,6 +199,14 @@ python <path to TEtrimmer>/TEtrimmer.py --help
 ```
 - Download the test files [test_input.fa](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_input.fa) and [test_genome.fa](https://github.com/qjiangzhao/TEtrimmer/blob/main/tests/test_genome.fa).
 
+- Test the de-novo TE anntaotion mode.
+```commandline
+TEtrimmer --genome_file <path to test_genome.fasta> \
+          --output_dir <output directory> \
+          --num_threads 20
+          --classify_all                                          
+```
+- Test the mode with a user specified TE consensus library.
 ```commandline
 TEtrimmer --input_file <path to test_input.fa> \
           --genome_file <path to test_genome.fasta> \
@@ -203,22 +216,17 @@ TEtrimmer --input_file <path to test_input.fa> \
 ```
 ## Inputs
 - **Genome file**: The genome sequence in FASTA format (.fa or .fasta).
+- **Starting with version 1.7.3, TEtrimmer allows you to run de-novo TE annotations without requiring the following TE consensus library.**
 - **TE consensus library**: TEtrimmer uses the TE consensus library from *de novo* TE annotation tools, like `RepeatModeler` or `EDTA`, as input. 
 For this reason, you have to run `RepeatModeler` or other TE annotation software first.
 
-```commandline
-# TEtrimmer package already includes RepeatModeler. Below is an exmpale command of running RepeatModeler.
-# Build genome database index files
-BuildDatabase -name <genome_file_database_name> <genome_file.fa>
-
-# Run RepeatModeler
-RepeatModeler -database <genome_file_database_name> \
-              -threads 20 \
-              -LTRStruct
-# Then you will get the TE_consensus_library.fa file
-```
-
 Example:
+```commandline
+TEtrimmer --genome_file <genome_file.fa> \
+          --output_dir <output_directory> \
+          --num_threads 20 \
+          --classify_all                       
+```
 
 ```commandline
 TEtrimmer --input_file <TE_consensus_library.fa> \
@@ -320,7 +328,7 @@ We provided tutorial video to introduce the TEtrimmer parameters.
 ```commandline
 Options:
   -i, --input_file TEXT           Path to TE consensus file (FASTA format). Use the output from
-                                  RepeatModeler, EDTA, REPET, et al.  [required]
+                                  RepeatModeler, EDTA, REPET, et al. [optional]
 
   -g, --genome_file TEXT          Path to genome FASTA file (FASTA format).  [required]
 
@@ -487,7 +495,7 @@ The TEtrimmer GUI can also be used to check other TE consensus libraries like th
 RepeatModeler2, REPET, and other tools. 
 ```commandline
 # Use --help to see all options
-python <path_to_folder_tetrimmerGUI>/annoGUI.py --help
+python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py --help
 
 # Open your Linux, macOS, or Windows terminal and type
 python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <TE_consensus_library.fa>
@@ -496,9 +504,16 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 ```
 
 ## Update history
+**May.18.2026**
+Released TEtrimmer 1.7.3
+
+TEtrimmer can do de-novo TE annotation
+
 
 **April.15.2026**
+
 Released TEtrimmer 1.7.2
+
 Don't use TEtrimmer results classified as "Need_check" for the final TE consensus library
 Added TEtrimmer evaluation level to the final TE consensus library
 Increased the final TE library reliability
