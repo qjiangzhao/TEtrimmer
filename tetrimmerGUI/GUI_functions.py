@@ -480,6 +480,54 @@ def extract_fasta_from_bed(genome_fasta, bed_file, output_fasta):
     return output_fasta
 
 
+
+def run_flexidot(input_file, output_dir, wordsize=10, mode='0'):
+    """
+    Generates dotplots using FlexiDot.
+
+    :param input_file: str, path to the input FASTA file
+    :param output_dir: str, directory where results will be saved
+    :param wordsize: int, k-mer length (-k)
+    :param mode: str, plotting mode ('0'=self, '1'=paired, '2'=poly)
+    """
+
+
+    logging.info(f"FlexiDot is running for {os.path.basename(input_file)}...")
+
+    # Construct the command
+    # -i: input, -m: mode, -k: wordsize, -x: LCS shading
+    # --outdir: Specify where the files go
+    flexidot_cmd = [
+        'flexidot',
+        '-i', str(input_file),
+        '-m', str(mode),
+        '-k', str(wordsize),
+        '--outdir', str(output_dir),
+        '-x'  # Longest Common Subsequence shading
+    ]
+
+    try:
+        subprocess.run(
+            flexidot_cmd,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        logging.info("FlexiDot finished successfully.")
+
+    except FileNotFoundError:
+        logging.error("FlexiDot command not found. Please ensure it is installed in your PATH.")
+        raise
+    except subprocess.CalledProcessError as e:
+        logging.error(f"FlexiDot failed: {e.stderr}")
+        raise e
+
+    return output_dir
+
+
+
+
 def align_sequences(input_file, output_file, num_thread=5):
     """
     Aligns FASTA sequences using MAFFT
@@ -951,3 +999,7 @@ def init_logging(loglevel="DEBUG", logfile=None):
         handlers.append(handler_file)
 
     logging.basicConfig(level=numeric_level, handlers=handlers)
+
+
+def TE_divergence_plot():
+    pass

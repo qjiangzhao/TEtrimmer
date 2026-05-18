@@ -81,7 +81,9 @@ def identify_tsds_with_boundary_logic(file_path, left_boundary, right_boundary,
         record_unique_hits = set()
 
         # store temporary hits first
-        record_hits = []
+        record_hits = defaultdict(list)
+
+        record_hits_back = defaultdict(list)
 
         # Search & Extend in Right Window
         for j in range(len(r_nt_pos_map) - k + 1):
@@ -142,102 +144,44 @@ def identify_tsds_with_boundary_logic(file_path, left_boundary, right_boundary,
                                 if len(final_kmer_seq) >= 5 and len(set(final_kmer_seq.lower())) == 1:
                                     continue
 
-                                record_hits.append(
+                                record_hits[record.id].append(
                                     ((te_start_col, te_end_col),
-                                     record.id,
                                      final_kmer_seq)
                                 )
 
-        # Keep longest hit first
-        record_hits.sort(key=lambda x: len(x[2]), reverse=True)
+                                record_hits_back[(te_start_col, te_end_col)].append(
+                                    (record.id,
+                                    final_kmer_seq)
+                                )
 
-        filtered_hits = []
+        # Loop through each record and its list of hits in the dictionary
+        for rec_id, hits in record_hits.items():
 
-        for hit in record_hits:
-            coords, rec_id, seq = hit
-            keep = True
+            # Dictionary to track the longest hit for each specific coordinate pair
+            longest_hits_tracker = {}
 
-            for kept_hit in filtered_hits:
-                kept_coords, kept_id, kept_seq = kept_hit
+            for hit in hits:
+                coords = hit[0]  # Assuming coords is the first item: (te_start_col, te_end_col)
+                seq = hit[1]  # Assuming the sequence is the second item
 
-                # same record + same TE end + shorter sequence covered by longer one
-                if (rec_id == kept_id and
-                    coords[1] == kept_coords[1] and
-                    seq in kept_seq):
-                    keep = False
-                    break
+                # If we haven't seen these coords yet, OR if the current sequence
+                # is longer than the one we already saved for these coords:
+                if coords not in longest_hits_tracker or len(seq) > len(longest_hits_tracker[coords][1]):
+                    longest_hits_tracker[coords] = hit
 
-            if keep:
-                filtered_hits.append(hit)
+            # Replace the old list with our new, filtered list of longest hits
+            record_hits[rec_id] = list(longest_hits_tracker.values())
 
-        # save final non-redundant hits
-        for coords, rec_id, seq in filtered_hits:
-            location_hits[coords].append((rec_id, seq))
+        # save final non-redundant hits safely
+        for rec_id, hits in record_hits.items():
+            for coords, seq in hits:
+                location_hits[coords].append((rec_id, seq))
 
     return location_hits
 
+
+
 # --- 4. ENTIRE FILTERING PIPELINE (K-mer Profile + Nucleotide Cleaning) ---
-def process_tsd_hits_old(hits, max_sim_threshold=0.35, nt_threshold=0.9):
-    """
-    1. Diversity Filtering: Ensures TSDs at a location are diverse.
-    2. Nucleotide Cleaning: Trims homopolymer-like boundaries (poly-A/poly-T).
-    """
-    final_processed_hits = defaultdict(list)
-
-    for (te_start, te_end), matches in hits.items():
-        if not matches: continue
-
-        # --- PHASE 1: Diversity Filtering ---
-        kmers = [m[1].upper() for m in matches]
-
-        hit_n = len(kmers)
-
-        if hit_n >= 2:
-            sim_scores = [calculate_jaccard_similarity(s1, s2) for s1, s2 in combinations(kmers, 2)]
-            avg_similarity = sum(sim_scores) / len(sim_scores)
-
-            # If similarity is too high, skip this location entirely
-            if avg_similarity > max_sim_threshold:
-                continue
-
-        # --- PHASE 2: Nucleotide Cleaning (Poly-N Detection) ---
-        first_letters = [k[0] for k in kmers if len(k) > 0]
-        last_letters = [k[-1] for k in kmers if len(k) > 0]
-
-        shift_start = 0
-        shift_end = 0
-
-        if hit_n >= 5:
-            # Check if start column is > 90% same nucleotide
-            if first_letters:
-                counts_f = collections.Counter(first_letters)
-                _, freq_f = counts_f.most_common(1)[0]
-                if (freq_f / hit_n) >= nt_threshold:
-                    shift_end = 1  # Adjust coordinate
-
-            # Check if end column is > 85% same nucleotide
-            if last_letters:
-                counts_l = collections.Counter(last_letters)
-                _, freq_l = counts_l.most_common(1)[0]
-                if (freq_l / hit_n) >= nt_threshold:
-                    shift_start = -1  # Adjust coordinate
-
-            # Recalculate coordinates and trim the TSD strings
-            new_loc = (te_start + shift_start, te_end + shift_end)
-            cleaned_matches = []
-            for rec_id, seq in matches:
-                t_seq = seq
-                if shift_start != 0: t_seq = t_seq[1:]
-                if shift_end != 0: t_seq = t_seq[:-1]
-                cleaned_matches.append((rec_id, t_seq))
-
-            final_processed_hits[new_loc].extend(cleaned_matches)
-
-        else:
-            final_processed_hits[te_start, te_end].extend(matches)
-
-    return final_processed_hits
-
 
 def process_tsd_hits(hits, max_sim_threshold=0.35, nt_threshold=0.9, complexity_threshold=0.8):
     """
@@ -292,7 +236,7 @@ def process_tsd_hits(hits, max_sim_threshold=0.35, nt_threshold=0.9, complexity_
         shift_start = 0
         shift_end = 0
 
-        if hit_n >= 5:
+        if hit_n >= 4:
             # Check if start column is > 90% same nucleotide
             if first_letters:
                 counts_f = collections.Counter(first_letters)
@@ -325,7 +269,7 @@ def process_tsd_hits(hits, max_sim_threshold=0.35, nt_threshold=0.9, complexity_
     return final_processed_hits
 
 
-def cluster_tsds_ml(filtered_hits, eps=1.1):
+def cluster_tsds_ml(filtered_hits, eps=1):
     """
     DBSCAN with Euclidean distance.
     - eps=1.1: Groups hits if coordinates differ by 1 in one direction.
@@ -366,16 +310,38 @@ def cluster_tsds_ml(filtered_hits, eps=1.1):
     return results
 
 
-def TSD_identifier(left_n, right_n, extend_n, input_file):
+def TSD_identifier(left_n, right_n, extend_n, input_file, output_file):
     location_hits = identify_tsds_with_boundary_logic(input_file, left_n, right_n, nt_radius=extend_n)
 
     filtered_location_hits = process_tsd_hits(location_hits, max_sim_threshold=0.3, nt_threshold=0.95)
 
-
     final_clusters = cluster_tsds_ml(filtered_location_hits, eps=1)
 
-# desired output format
+    with open(output_file, "w") as f:
+        for i, group in enumerate(final_clusters):
+            f.write(f"### CLUSTER {i + 1} ###\n")
+            f.write(
+                f"Unique Sequences: {group['unique_count']} | Locations in Cluster: {len(group['all_locations'])}\n")
+            f.write("All Elements:\n")
 
-# if there are TSD near the defined boundary
-# if possible to use TSD for the boundary definition?
-# Give the TSD position
+            for item in group['hits']:
+                start, end = item['coords']
+                f.write(f" TE_Start: {start:<6} | TE_End: {end:<6} | ID: {item['id']:<25} |  TSD: {item['seq']}\n")
+
+            f.write("-" * 90 + "\n\n")
+
+    left_pos, right_pos = [], []
+    # Return coordinates from all identified clusters
+    for group in final_clusters:
+        for l_coord, r_coord in group['all_locations']:
+            left_pos.append(l_coord)
+            right_pos.append(r_coord)
+
+    return [left_pos, right_pos]
+
+# input_file = "/Users/panstrugamacbook/Documents/TE_Trimmer/Boundary_model_development/test_TSD_candidates/Bianca0003909_Beta_vulgaris#LTR__Copia.fa"
+# output_file = "/Users/panstrugamacbook/Documents/TE_Trimmer/Boundary_model_development/test_TSD_candidates/Bianca0003479_Beta_vulgaris#LTR__Copia.raw_out.txt"
+#
+# final_test = TSD_identifier(2140, 9470, 100, input_file, output_file)
+#
+# print(final_test)

@@ -44,6 +44,7 @@ from TEAid_plotter import teaid_plotter, con_generater
 from crop_end_divergence import crop_end_div
 from crop_end_gap import crop_end_gap
 from remove_gap import remove_gaps_with_similarity_check
+from TSD_search import TSD_identifier
 
 from GUI_functions import (
     separate_sequences,
@@ -58,8 +59,9 @@ from GUI_functions import (
     check_cdd_index_files,
     init_logging,
     decompress_gzip,
-    align_sequences
+    align_sequences,
 )
+
 from cialign_plot import drawMiniAlignment
 
 
@@ -198,7 +200,7 @@ if os_type == "Windows":
     type=str,
     help='Log level. [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
 )
-@click.version_option("1.7.2", prog_name='TEtrimmerGUI')
+@click.version_option("1.7.3", prog_name='TEtrimmerGUI')
 def proof_curation(
     te_trimmer_proof_curation_dir,
     output_dir,
@@ -387,7 +389,7 @@ def proof_curation(
 
     # Initialize Tk window
     root = Tk()
-    root.title(f'TEtrimmer Proof Curation Tool 1.7.2')
+    root.title(f'TEtrimmer Proof Curation Tool 1.7.3')
     # width * height
     if os_type == 'Windows':
         root.geometry('1000x800')
@@ -424,7 +426,7 @@ def proof_curation(
                     if current_seq is not None:
                         genome_lengths[current_seq] = current_length
                     # If chromosome header contains empty spaces, only consider the content before the first space
-                    current_seq = line[1:].split( )[0]
+                    current_seq = line[1:].split()[0]
                     current_length = 0
                 else:
                     current_length += len(line)
@@ -539,6 +541,7 @@ def proof_curation(
                 child_canvas,
                 child_source_dir,
                 current_win,
+                save_path=fresh_save_path,
                 scroll_position=scroll_position,
                 button_states=button_states,
             )
@@ -1375,8 +1378,18 @@ def proof_curation(
         return _generate_cons
 
     #####################################################################################################
-    # Code block: Define the magic function
+    # Code block: Define the TSD search function
     #####################################################################################################
+
+
+
+
+
+    #####################################################################################################
+    # Code block: Define the flexidot function
+    #####################################################################################################
+
+
 
 
 
@@ -2176,6 +2189,7 @@ def proof_curation(
             button.config(fg='red')
             button.update_idletasks()
 
+            # When the type is a path, use open_cluster_folder to load all the files
             if os.path.isdir(filepath):
                 open_cluster_folder(filename, source_dir)
             else:
@@ -2321,8 +2335,9 @@ def proof_curation(
             canvas,
             source_dir,
             current_win,
+            save_path=None,
             scroll_position=None,
-            button_states=None,
+            button_states=None
     ):
         # Used global variables
         # chrom_size_g
@@ -2356,6 +2371,7 @@ def proof_curation(
             # Default colors
             file_button_bg = 'white'
             save_button_bg = 'white'
+            blast_button_bg = 'white'
             extension_button_bg = 'white'
             teaid_button_bg = 'white'
             crop_button_bg = 'white'  # single dropdown color
@@ -2366,6 +2382,7 @@ def proof_curation(
 
             file_button_fg = 'black'
             save_button_fg = 'black'
+            blast_button_fg = 'black'
             extension_button_fg = 'black'
             teaid_button_fg = 'black'
             crop_button_fg = 'black'  # single dropdown color
@@ -2385,21 +2402,23 @@ def proof_curation(
                         file_button_bg, file_button_fg = states[0][0], states[0][1]
                     if len(states) >= 2:  # save
                         save_button_bg, save_button_fg = states[1][0], states[1][1]
-                    if len(states) >= 3:  # extend
-                        extension_button_bg, extension_button_fg = states[2][0], states[2][1]
-                    if len(states) >= 4:  # teaid
-                        teaid_button_bg, teaid_button_fg = states[3][0], states[3][1]
+                    if len(states) >= 3: # blast
+                        blast_button_bg, blast_button_fg = states[2][0], states[2][1]
+                    if len(states) >= 4:  # extend
+                        extension_button_bg, extension_button_fg = states[3][0], states[3][1]
+                    if len(states) >= 5:  # teaid
+                        teaid_button_bg, teaid_button_fg = states[4][0], states[4][1]
 
                     # The Crop occupies the 5th position
                     # Cons
-                    if len(states) >= 6:  # new layout index 5
-                        cons_button_bg, cons_button_fg = states[5][0], states[5][1]
+                    if len(states) >= 7:  # new layout index 5
+                        cons_button_bg, cons_button_fg = states[6][0], states[6][1]
                     # Delete
-                    if len(states) >= 7:  # new layout index 6
-                        delete_button_bg, delete_button_fg = states[6][0], states[6][1]
+                    if len(states) >= 8:  # new layout index 6
+                        delete_button_bg, delete_button_fg = states[7][0], states[7][1]
                     # Copy and rename
-                    if len(states) >= 8:  # new layout index 7
-                        copy_and_rename_bg, copy_and_rename_fg = states[7][0], states[7][1]
+                    if len(states) >= 9:  # new layout index 7
+                        copy_and_rename_bg, copy_and_rename_fg = states[8][0], states[8][1]
                 else:
                     # New filename not seen before: make it stand out
                     file_button_bg = 'white'
@@ -2438,11 +2457,34 @@ def proof_curation(
                 ),
             )
 
+            # Define "Blast" button
+            blast_button = Button(button_frame, text='Blast', bg=blast_button_bg, fg=blast_button_fg)
+            blast_button.grid(row=0, column=1, padx=1)
+            # Bind blast button with blast functions
+            blast_button.bind(
+                '<Button-1>',
+                blast_gui(
+                    filename,
+                    blast_button,
+                    source_dir,
+                    other_cons_lib_folder,
+                    current_win,
+                    frame,
+                    canvas,
+                    genome_file_g,
+                    e_value=blast_e_value_g,
+                    update_child_canvas=True,
+                    file_start=start,
+                    file_end=end,
+                    save_path=save_path,
+                ),
+            )
+
             # Extend
             more_extend_button = Button(
                 button_frame, text='Extend', bg=extension_button_bg, fg=extension_button_fg
             )
-            more_extend_button.grid(row=0, column=1, padx=1)
+            more_extend_button.grid(row=0, column=2, padx=1)
             more_extend_button.bind(
                 '<Button-1>',
                 extension_function(
@@ -2460,7 +2502,7 @@ def proof_curation(
 
             # TEAid
             plot_button = Button(button_frame, text='TEAid', bg=teaid_button_bg, fg=teaid_button_fg)
-            plot_button.grid(row=0, column=2, padx=1)
+            plot_button.grid(row=0, column=3, padx=1)
             plot_button.bind(
                 '<Button-1>',
                 teaid_plotter_gui(
@@ -2478,7 +2520,7 @@ def proof_curation(
             crop_mb = Menubutton(
                 button_frame, text='Crop', bg=crop_button_bg, fg=crop_button_fg, relief='raised'
             )
-            crop_mb.grid(row=0, column=3, padx=1)
+            crop_mb.grid(row=0, column=4, padx=1)
 
             crop_menu = Menu(crop_mb, tearoff=0)
             crop_mb['menu'] = crop_menu
@@ -2505,7 +2547,7 @@ def proof_curation(
 
             # Cons
             cons_button = Button(button_frame, text='Cons', bg=cons_button_bg, fg=cons_button_fg)
-            cons_button.grid(row=0, column=4, padx=1)
+            cons_button.grid(row=0, column=5, padx=1)
             cons_button.bind(
                 '<Button-1>',
                 generate_cons(
@@ -2522,7 +2564,7 @@ def proof_curation(
 
             # Delete
             delete_button = Button(button_frame, text='Delete', bg=delete_button_bg, fg=delete_button_fg)
-            delete_button.grid(row=0, column=5, padx=1)
+            delete_button.grid(row=0, column=6, padx=1)
             delete_button.bind(
                 '<Button-1>',
                 copy_file(
@@ -2539,7 +2581,7 @@ def proof_curation(
 
             # Copy and rename
             copy_and_rename_button = Button(button_frame, text='Rename', bg=copy_and_rename_bg, fg=copy_and_rename_fg)
-            copy_and_rename_button.grid(row=0, column=6, padx=1)
+            copy_and_rename_button.grid(row=0, column=7, padx=1)
             copy_and_rename_button.bind(
                 '<Button-1>',
                 copy_file(
@@ -2988,6 +3030,40 @@ def proof_curation(
                 ),
             )
 
+            # # --- "Tools" dropdown for TSD_finder and Flexidot ---
+            # tools_mb = Menubutton(
+            #     button_frame,
+            #     text='More',
+            #     bg='white',
+            #     fg='black',
+            #     relief='raised'
+            # )
+            # tools_mb.grid(row=0, column=8, padx=1)  # Adjust column index as needed
+            #
+            # tools_menu = Menu(tools_mb, tearoff=0)
+            # tools_mb['menu'] = tools_menu
+            #
+            # # TSD_finder command
+            # tools_menu.add_command(
+            #     label='TSD finder',
+            #     command=lambda fn=filename: print(f"Run TSD_finder on {fn}")  # Placeholder
+            #     # command=lambda fn=filename: _invoke(tsd_finder_gui, fn, tools_mb, ...)
+            # )
+            #
+            # # Flexidot command
+            # tools_menu.add_command(
+            #     label='Flexidot',
+            #     command=lambda fn=filename: print(f"Run Flexidot on {fn}")  # Placeholder
+            #     # command=lambda fn=filename: _invoke(flexidot_gui, fn, tools_mb, ...)
+            # )
+            #
+            # # Flexidot command
+            # tools_menu.add_command(
+            #     label='TE_divergent',
+            #     command=lambda fn=filename: print(f"Run Flexidot on {fn}")  # Placeholder
+            #     # command=lambda fn=filename: _invoke(flexidot_gui, fn, tools_mb, ...)
+            # )
+
 
             button_frame.grid_columnconfigure(0, weight=1)
             button_frame.grid_rowconfigure(0, weight=1)
@@ -3311,6 +3387,19 @@ def proof_curation(
             label='Define input and output path', command=define_paths
         )
         menubar.add_cascade(label='Setting', menu=settings_menu)
+
+        # 1. Define the 'Function' menu object
+        #function_menu = Menu(menubar, tearoff=0)
+
+        # # 2. Add the individual commands (the dropdown items)
+        # function_menu.add_command(label='Perform TE benchmarking', command=undo_last_copy)
+        # function_menu.add_command(label='Generate TE divergency plot', command=undo_last_copy)
+
+        # 3. Add a separator if you want a visual line between them (optional)
+        # function_menu.add_separator()
+
+        # 4. Cascade the entire menu under the name "Function"
+        #menubar.add_cascade(label='Function', menu=function_menu)
 
         # Add Undo button
         undo_menu = Menu(menubar, tearoff=0)
