@@ -378,6 +378,12 @@ TEtrimmer_version = "1.7.2"
     help='Export the genome blast coverage file.',
 )
 @click.option(
+    '--compress_output',
+    default=False,
+    is_flag=True,
+    help='Zip the output files to reduce the output file number.'
+)
+@click.option(
     '--logfile',
     '-l',
     default=None,
@@ -432,6 +438,7 @@ def main(
     poly_patterns,
     poly_len,
     export_coverage,
+    compress_output,
     logfile,
     loglevel,
 ):
@@ -638,6 +645,7 @@ def main(
         "poly_patterns": poly_patterns,
         "poly_len": poly_len,
         "export_coverage": export_coverage,
+        "compress_output": compress_output,
         "logfile": logfile,
         "loglevel": loglevel,
     }
@@ -662,7 +670,7 @@ def main(
         (
             bin_py_path,
             output_dir,
-            single_file_dir,
+            single_file_dir,  # single_file_dir won't be created here but in the function separated_sequences
             MSA_dir,
             classification_dir,
             hmm_dir,
@@ -710,7 +718,9 @@ def main(
 
         # Check if the separated single sequence file is empty
         # If this is not empty, it means the RepeatModeler is finished
-        if not os.listdir(single_file_dir):
+        # if the single_file_dir directory exists, it means the repeatmodeler is finished
+        if not os.path.isdir(single_file_dir):
+
             # Check if the RepeatModeler finished
             if os.path.isfile(repeatmodeler_out_lib_expect):
                 input_file = repeatmodeler_out_lib_expect
@@ -731,6 +741,11 @@ def main(
                     input_file = repeatmodeler_out_lib
                     continue_analysis = False
                     de_novo_TE_anno = True
+                else:
+                    logging.error(
+                        f'Failed to generate TE consensus library with RepeatModeler2.'
+                    )
+                    return
 
     # Generate single files when continue_analysis is false
     if not continue_analysis:
@@ -750,6 +765,9 @@ def main(
                 de_novo_TE_anno = True
 
             else:
+                logging.error(
+                    f'Failed to generate TE consensus library with RepeatModeler2.'
+                )
                 return
 
         # When --curatedlib is not None, check if the provided file exist.
@@ -835,6 +853,7 @@ def main(
 
         # Separate FASTA into single files; if FASTA headers contain "/", " " or ":" convert to "_"
         # Call this function to separate to single FASTA files and create objects from input file
+        # seq_list contains SeqObject elements
         seq_list, single_fasta_n = analyze.separate_sequences(
             input_file, single_file_dir, continue_analysis=False, de_novo_TE_anno=de_novo_TE_anno
         )
@@ -873,7 +892,7 @@ def main(
     # Do the continue analysis
     else:
         # Check if it can perform continue analysis
-        if not os.listdir(single_file_dir):
+        if not os.path.isdir(single_file_dir):
             logging.error(
                 'TEtrimmer cannot continue analysis. Please make sure the output directory is '
                 'the same as in the previous interrupted run.'
@@ -881,6 +900,19 @@ def main(
             exit(1)
 
         else:
+            # if proof_curation_dir.zip exit unzip it
+            zipped_proof_file = f"{proof_curation_dir}.zip"
+            os.makedirs(proof_curation_dir, exist_ok=True)
+
+            if os.path.exists(zipped_proof_file):
+                shutil.unpack_archive(
+                    filename=zipped_proof_file,
+                    extract_dir=proof_curation_dir,
+                    format='zip'
+                )
+
+                os.remove(zipped_proof_file)
+
             logging.info('TEtrimmer will continue analysis based on previous results.\n')
 
             (
@@ -897,6 +929,8 @@ def main(
             blast_database_path = os.path.join(database_dir, database_name)
 
             # Create seq_list, which contains sequence objects using the single FASTA files.
+            # Finished separated fasta sequence will be deleted, so for the continue analysis, the
+            # single_fasta_n number can't correctly represent the total sequence number
             seq_list, single_fasta_n = analyze.separate_sequences(
                 input_file, single_file_dir, continue_analysis=True
             )
@@ -909,8 +943,11 @@ def main(
             # Filter out already complete sequences
             seq_list = [seq for seq in seq_list if seq.name not in complete_sequences]
             logging.warning(
-                f'{single_fasta_n - len(seq_list)} sequences have been processed previously.'
+                f'{len(complete_sequences)} sequences have been processed previously.'
             )
+
+            # Add the left (single_fasta_n) and finished (complete_sequences)
+            single_fasta_n = len(seq_list) + len(complete_sequences)
 
 
     #####################################################################################################
@@ -972,6 +1009,7 @@ def main(
             blast_database_path,
             mmseqs_database_dir,
             export_coverage,
+            compress_output,
             loglevel,
             logfile
         )
@@ -1020,8 +1058,9 @@ def main(
     #####################################################################################################
 
     # Final RepeatMasker classification is not necessary, skip in case of errors
+    # Don't perform the final TE classification the compress_output is on
     try:
-        if 0.3 <= classified_pro < 0.99:
+        if 0.3 <= classified_pro < 0.99 and not compress_output:
             logging.info(
                 'TEtrimmer is doing the final classification. It uses the classified TE to classify '
                 'Unknown elements.'
@@ -1204,11 +1243,25 @@ def main(
             good_proof,
             intermediate_proof,
             need_check_proof,
-            genome_total_length
+            genome_total_length,
+            debug
         )
-        # clear remove_files_with_start_pattern folder
-        if not debug and os.path.exists(multi_dotplot_dir):
-            shutil.rmtree(multi_dotplot_dir)
+
+        # Compress all the element in the folder proof_curation_dir
+        if compress_output:
+
+            # This will create 'proof_curation_dir.zip' in the current working directory
+            zip_output_filename = proof_curation_dir
+
+            shutil.make_archive(
+                base_name=zip_output_filename,  # Name of the output file (without extension)
+                format='zip',  # Can be 'zip', 'tar', 'gztar', etc.
+                root_dir=proof_curation_dir  # The directory you want to compress
+            )
+            logging.info(f"Successfully compressed folder TEtrimmer_for_proof_curation")
+
+            # Clean the proof_curation_dir
+            shutil.rmtree(proof_curation_dir)
 
     except Exception as e:
         with open(error_files, 'a') as f:

@@ -3,6 +3,7 @@ import os
 import shutil
 import traceback
 import json
+import zipfile
 
 import pandas as pd
 from Bio import AlignIO, SeqIO
@@ -756,7 +757,8 @@ def find_boundary_and_crop(
     cluster_msa=None,
     blast_database_path=None,
     mmseqs_database_dir=None,
-    export_coverage=False
+    export_coverage=False,
+    compress_output=False
 ):
 
     """
@@ -2070,6 +2072,15 @@ def find_boundary_and_crop(
             bed_out_flank_file, bed_fasta_mafft_with_gap
         )
 
+        # Map evaluations to their respective destination directories
+        evaluation_map = {
+            'Need_ext': more_extension_dir,
+            'Perfect': perfect_proof,
+            'Good': good_proof,
+            'Reco_check': intermediate_proof
+        }
+        destination_dir = evaluation_map.get(consi_obj.cons_evaluation, need_check_proof)
+
         # Define file name for inspection file
         file_copy_pattern = [
             (merged_pdf_path, str(consi_obj.proof_pdf)),
@@ -2089,35 +2100,95 @@ def find_boundary_and_crop(
 
         files_moved_successfully = True
 
-        for pattern, new_name in file_copy_pattern:
-            try:
-                if consi_obj.cons_evaluation == 'Need_ext':
-                    destination_dir = more_extension_dir
-                elif consi_obj.cons_evaluation == 'Perfect':
-                    destination_dir = perfect_proof
-                elif consi_obj.cons_evaluation == 'Good':
-                    destination_dir = good_proof
-                elif consi_obj.cons_evaluation == 'Reco_check':
-                    destination_dir = intermediate_proof
-                else:
-                    destination_dir = need_check_proof
+        if compress_output:
+            # Build archive straight to the final directory path
+            zip_filename = f"{consi_obj.proof_fasta}.zip"
 
-                # Copy the file to the new location with the new unique name
-                if pattern:
-                    if os.path.isdir(pattern):
-                        shutil.copytree(pattern, os.path.join(destination_dir, new_name))
-                    # If pattern is a file
-                    else:
-                        shutil.copy(pattern, os.path.join(destination_dir, new_name))
+            zip_file_path = os.path.join(destination_dir, zip_filename)
+
+            try:
+                with zipfile.ZipFile(zip_file_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    for src_path, target_name in file_copy_pattern:
+                        if not src_path or not os.path.exists(src_path):
+                            logging.warning(f"{target_name} report file missing.")
+                            continue
+
+                        if os.path.isdir(src_path):
+                            # Walk directory recursively and bundle contents inside target_name namespace
+                            for root, _, files in os.walk(src_path):
+                                for file in files:
+                                    full_path = os.path.join(root, file)
+                                    rel_path = os.path.relpath(full_path, start=src_path)
+                                    archive_alias = os.path.join(target_name, rel_path)
+                                    zipf.write(full_path, archive_alias)
+                        else:
+                            zipf.write(src_path, target_name)
 
             except Exception as e:
                 with open(error_files, 'a') as f:
                     # Get the traceback content as a string
                     tb_content = traceback.format_exc()
-                    f.write(f'Copy file error for {pattern}\n')
+                    f.write(f'Copy file error for {target_name}\n')
                     f.write(tb_content + '\n\n')
-                logging.error(f'Error copying {pattern} to {new_name}: {e}')
+                logging.error(f'Error copying {target_name}: {e}')
                 raise Exception from e
+
+        else:
+            # Run the standard clean file/directory placement routine
+            for src_path, target_name in file_copy_pattern:
+                if not src_path or not os.path.exists(src_path):
+                    print(f"Warning: Source missing, skipping copy routine -> {src_path}")
+                    continue
+
+                try:
+                    destination_path = os.path.join(destination_dir, target_name)
+                    os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+
+                    if os.path.isdir(src_path):
+                        if os.path.exists(destination_path):
+                            shutil.rmtree(destination_path)
+                        shutil.copytree(src_path, destination_path)
+                    else:
+                        shutil.copy(src_path, destination_path)
+
+                except Exception as e:
+                    with open(error_files, 'a') as f:
+                        # Get the traceback content as a string
+                        tb_content = traceback.format_exc()
+                        f.write(f'Copy file error for {target_name}\n')
+                        f.write(tb_content + '\n\n')
+                    logging.error(f'Error copying {target_name}: {e}')
+                    raise Exception from e
+
+        # for pattern, new_name in file_copy_pattern:
+        #     try:
+        #         if consi_obj.cons_evaluation == 'Need_ext':
+        #             destination_dir = more_extension_dir
+        #         elif consi_obj.cons_evaluation == 'Perfect':
+        #             destination_dir = perfect_proof
+        #         elif consi_obj.cons_evaluation == 'Good':
+        #             destination_dir = good_proof
+        #         elif consi_obj.cons_evaluation == 'Reco_check':
+        #             destination_dir = intermediate_proof
+        #         else:
+        #             destination_dir = need_check_proof
+        #
+        #         # Copy the file to the new location with the new unique name
+        #         if pattern:
+        #             if os.path.isdir(pattern):
+        #                 shutil.copytree(pattern, os.path.join(destination_dir, new_name))
+        #             # If pattern is a file
+        #             else:
+        #                 shutil.copy(pattern, os.path.join(destination_dir, new_name))
+        #
+        #     except Exception as e:
+        #         with open(error_files, 'a') as f:
+        #             # Get the traceback content as a string
+        #             tb_content = traceback.format_exc()
+        #             f.write(f'Copy file error for {pattern}\n')
+        #             f.write(tb_content + '\n\n')
+        #         logging.error(f'Error copying {pattern} to {new_name}: {e}')
+        #         raise Exception from e
 
         if hmm:  # Generate HMM files
             consi_obj.set_hmm_file()
