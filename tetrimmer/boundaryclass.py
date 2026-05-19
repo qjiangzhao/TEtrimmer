@@ -461,7 +461,8 @@ class GenomeBlastCoverage:
             self,
             input_file,
             blast_database_path,
-            output_dir
+            output_dir,
+            max_thread_time=3600
     ):
         self.input_file = input_file
         self.blast_database_path = blast_database_path
@@ -470,63 +471,7 @@ class GenomeBlastCoverage:
         self.start_point = None
         self.end_point = None
         self.blast_df = None
-
-    def calculate_blast_coverage_old(self):
-        """
-        The .b.bed is expected to have these columns (no header):
-          1 sseqid   2 sstart  3 send  4 hit_id  5 pident  6 strand
-          7 alnlen   8 qseqid  9 qstart 10 qend
-        qstart/qend are 1-based, inclusive.
-        """
-
-        # Perform blast search and generate the bed file
-        bed_file, blast_hits_count, blast_out_file = blast(
-            self.input_file,
-            self.blast_database_path,
-            self.output_dir,
-            min_length=50,
-            blast_qcov_hsp_perc=1,
-            evalue='1e-8'  # Use less stringent blast
-        )
-
-        # Calculate input fasta sequence length
-        record = SeqIO.read(self.input_file, "fasta")  # raises if 0 or >1 records
-        query_length = len(record.seq)
-
-        if query_length <= 0:
-            return []
-
-        # Read the BED; only need qstart and qend
-        col_names = [
-            "sseqid", "sstart", "send", "hit_id", "pident", "strand",
-            "alnlen", "qseqid", "qstart", "qend"
-        ]
-        self.blast_df = pd.read_csv(bed_file, sep="\t", header=None, names=col_names, comment="#")
-
-        # No HSPs -> zero coverage everywhere
-        if self.blast_df.empty:
-            return [0] * query_length
-
-        # Normalize to (start <= end) and clip to query bounds [1, query_length]
-        # The qstart and qend are 1 based not 0 based
-        qstart = self.blast_df["qstart"].clip(lower=1, upper=query_length).astype(int).to_numpy()
-        qend = self.blast_df["qend"].clip(lower=1, upper=query_length).astype(int).to_numpy()
-
-        # Build the difference array (length+1 so we can subtract at 'end')
-        diff = np.zeros(query_length + 1, dtype=int)
-        for s, e in zip(qstart, qend):
-            diff[s - 1] += 1  # convert to 0-based
-            diff[e] -= 1  # inclusive end -> subtract at e
-
-        # Cumulative sum yields per-position coverage
-        # Example to understand cumsum
-        # a = np.array([2, 3, 5, -1])
-        # np.cumsum(a)         # -> array([ 2,  5, 10,  9])
-        coverage = np.cumsum(diff[:-1])  # drop the extra tail cell
-        self.coverage_list = coverage.tolist()
-
-        return self.coverage_list
-
+        self.max_thread_time = 3600
 
 
     def calculate_blast_coverage(self):
@@ -544,7 +489,8 @@ class GenomeBlastCoverage:
             self.output_dir,
             min_length=50,
             blast_qcov_hsp_perc=1,
-            evalue='1e-8'  # Use less stringent blast
+            evalue='1e-8',  # Use less stringent blast
+            max_run_time=self.max_thread_time
         )
 
         # When no blast hit available skip this element

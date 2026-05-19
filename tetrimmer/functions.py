@@ -261,6 +261,7 @@ def blast(
     blast_qcov_hsp_perc=15,
     evalue='1e-40',
     mmseqs_database_dir = None,
+    max_run_time=3600
 ):
     """
     Runs BLAST calling a specified task type and saves the results as a BED file.
@@ -310,6 +311,7 @@ def blast(
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                timeout=max_run_time
             )
 
         except FileNotFoundError as e:
@@ -321,6 +323,10 @@ def blast(
         except subprocess.CalledProcessError as e:
             logging.error(f'\nBLAST failed for {input_file_n} with error code {e.returncode}\n{e.stdout}\n{e.stderr}\n')
             raise Exception from e
+
+        except subprocess.TimeoutExpired as e:
+            logging.error(f"BLAST execution timed out after {max_run_time} seconds for {os.path.basename(input_file)}!")
+            raise e
 
     elif search_type == 'mmseqs':
         # MMseqs2 search
@@ -646,7 +652,7 @@ def extract_fasta(
     return fasta_out_flank_file_nucleotide_clean, bed_out_flank_file_dup
 
 
-def align_sequences(input_file, output_dir):
+def align_sequences(input_file, output_dir, max_run_time=3600):
     """
     Aligns FASTA sequences using MAFFT
 
@@ -684,6 +690,8 @@ def align_sequences(input_file, output_dir):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            timeout=max_run_time
+
         )
 
     except FileNotFoundError as e:
@@ -706,6 +714,10 @@ def align_sequences(input_file, output_dir):
                 'RAM or reduce the thread number to solve this problem.\n'
             )
         raise Exception from e
+
+    except subprocess.TimeoutExpired as e:
+        logging.error(f"Mafft execution timed out after {max_run_time} seconds for {os.path.basename(input_file)}!")
+        raise e
 
     # Write the output to the file
     with open(fasta_out_flank_mafft_file, 'w') as f:

@@ -14,8 +14,6 @@ from Bio.SeqRecord import SeqRecord
 
 from boundarycrop import find_boundary_and_crop
 
-from functions import sanitize_genome_for_tetrimmer
-
 # Local imports
 from functions import (
     blast,
@@ -37,7 +35,8 @@ from functions import (
     repeatmasker_output_classify,
     update_low_copy_cons_file,
     update_skip_and_need_check_cons_file,
-    init_logging
+    init_logging,
+    sanitize_genome_for_tetrimmer
 )
 from MSAcluster import clean_and_cluster_MSA
 from orfdomain import PlotPfam, prepare_pfam_database
@@ -1133,6 +1132,7 @@ def analyze_sequence(
     mmseqs_database_dir,
     export_coverage,
     compress_output,
+    max_thread_time,
     loglevel,
     logfile
 ):
@@ -1184,6 +1184,7 @@ def analyze_sequence(
             min_length=min_blast_len,
             seq_obj=seq_obj,
             search_type=engine,
+            max_run_time=max_thread_time
         )
 
         seq_obj.update_blast_hit_n(blast_hits_count)
@@ -1401,6 +1402,7 @@ def analyze_sequence(
             cluster_num=max_cluster_num,
             cluster_col_thr=100,
             fast_mode=fast_mode,
+            max_thread_time=max_thread_time
         )
     except Exception as e:
         with open(error_files, 'a') as f:
@@ -1545,7 +1547,8 @@ def analyze_sequence(
                         blast_database_path=blast_database_path,
                         mmseqs_database_dir=mmseqs_database_dir,
                         export_coverage=export_coverage,
-                        compress_output=compress_output
+                        compress_output=compress_output,
+                        max_thread_time=max_thread_time
                     )
 
                 except Exception:

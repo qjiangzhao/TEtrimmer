@@ -119,6 +119,7 @@ def extend_end(
     ext_buffer,
     define_boundary_win,
     bed_dic,
+    max_thread_time=3600
 ):
     # end: left or right extension
     if_ex = True
@@ -164,7 +165,7 @@ def extend_end(
             )
 
         # align_sequences() will return extended MSA in absolute file
-        bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
+        bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir, max_run_time=max_thread_time)
 
         if not os.path.isfile(bed_fasta_mafft_with_gap):
             logging.error(
@@ -290,7 +291,8 @@ def final_MSA(
     seq_obj,
     poly_patterns, 
     poly_len,
-    blast_database_path
+    blast_database_path,
+    max_thread_time=3600
 ):
 
     bed_fasta, bed_out_flank_file = extract_fasta(
@@ -299,7 +301,7 @@ def final_MSA(
 
     # Align extended TE sequences
     # align_sequences() will return extended MSA in absolute file
-    bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir)
+    bed_fasta_mafft_with_gap = align_sequences(bed_fasta, output_dir, max_run_time=max_thread_time)
 
     if not os.path.isfile(bed_fasta_mafft_with_gap):
         logging.error(
@@ -426,7 +428,7 @@ def final_MSA(
         initial_con = bed_fasta_mafft_gap_sim_con_07
 
     bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
-        initial_con, blast_database_path, output_dir
+        initial_con, blast_database_path, output_dir, max_thread_time=max_thread_time
     )
 
     # Perform Initial Calculation
@@ -452,7 +454,7 @@ def final_MSA(
         if diff_MSA_minus_cov_start >= 30 or diff_MSA_minus_cov_end >= 30:
             # Re-initialize with lower threshold
             bed_fasta_mafft_gap_sim_con_coverage_obj = GenomeBlastCoverage(
-                bed_fasta_mafft_gap_sim_con_055, blast_database_path, output_dir
+                bed_fasta_mafft_gap_sim_con_055, blast_database_path, output_dir, max_thread_time=max_thread_time
             )
 
             # Re-calculate with the new object
@@ -758,7 +760,8 @@ def find_boundary_and_crop(
     blast_database_path=None,
     mmseqs_database_dir=None,
     export_coverage=False,
-    compress_output=False
+    compress_output=False,
+    max_thread_time=3600
 ):
 
     """
@@ -896,6 +899,7 @@ def find_boundary_and_crop(
                 extension_buffer,
                 define_boundary_win,
                 bed_dict,
+                max_thread_time=max_thread_time
             )
 
             # Extend MSA right end
@@ -912,6 +916,7 @@ def find_boundary_and_crop(
                 extension_buffer,
                 define_boundary_win,
                 left_bed_dic,
+                max_thread_time=max_thread_time
             )
         except Exception as e:
             with open(error_files, 'a') as f:
@@ -951,7 +956,8 @@ def find_boundary_and_crop(
                 seq_obj,
                 poly_patterns,
                 poly_len,
-                blast_database_path
+                blast_database_path,
+                max_thread_time=max_thread_time
             )
 
             # Check if final_msa_result returned 'False', indicating an error or specific condition
@@ -1018,7 +1024,8 @@ def find_boundary_and_crop(
                     clean_column_threshold=0.01,
                     min_length_num=10,
                     cluster_num=2,
-                    skip_pattern_selection=True
+                    skip_pattern_selection=True,
+                    max_thread_time=max_thread_time
                 )
 
                 # final_msa_consistency will be false if no cluster available. In this case, use the original MSA
@@ -1674,6 +1681,7 @@ def find_boundary_and_crop(
             mmseqs_database_dir,
             error_file=error_files,
             TE_aid_dir=TE_aid_path,
+            max_thread_time=max_thread_time
         )
         TE_aid_plot = TE_aid_object.run(title="after")
 
@@ -1718,6 +1726,7 @@ def find_boundary_and_crop(
                 mmseqs_database_dir,
                 error_file=error_files,
                 TE_aid_dir=TE_aid_path,
+                max_thread_time=max_thread_time
             )
             TE_aid_plot_query = TE_aid_object_query.run(title="before")
 
@@ -1754,6 +1763,7 @@ def find_boundary_and_crop(
             mmseqs_database_dir,
             error_file=error_files,
             TE_aid_dir=TE_aid_path,
+            max_thread_time=max_thread_time
         )
 
         TE_aid_object_out_boundary_msa_plot = TE_aid_object_out_boundary_msa.run(

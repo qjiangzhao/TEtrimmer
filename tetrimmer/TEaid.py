@@ -85,6 +85,7 @@ class TEAid:
         error_file=None,
         min_orf=200,
         full_length_threshold=0.9,
+        max_thread_time=3600
     ):
         """
         TE-Aid class offer functions to use TE-Aid sequence blast or self-blast result to check full length blast
@@ -105,6 +106,7 @@ class TEAid:
         self.error_file = error_file
         self.min_orf = min_orf
         self.full_length_threshold = full_length_threshold
+        self.max_thread_time = max_thread_time
         # Make a folder to store TE-Aid result.
         self.TE_aid_output_dir = os.path.join(self.output_dir, f'{os.path.basename(self.input_file)}_TEaid')
         os.makedirs(self.TE_aid_output_dir, exist_ok=True)
@@ -149,6 +151,7 @@ class TEAid:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                timeout=self.max_thread_time
             )
 
             if te_aid_result.stderr:
@@ -169,6 +172,18 @@ class TEAid:
                     )
                     f.write(f'\n{e.stdout}')
                     f.write(f'\n{e.stderr}\n')
+
+        except subprocess.TimeoutExpired as e:
+            if self.error_file is not None:
+                with open(self.error_file, 'a') as f:
+                    f.write(
+                        f'\nTE Aid error for {os.path.basename(self.input_file)} with error {e}'
+                    )
+                    f.write(f'\n{e.stdout}')
+                    f.write(f'\n{e.stderr}\n')
+
+            logging.error(f"TEAid execution timed out after {self.max_thread_time} seconds for {os.path.basename(self.input_file)}!")
+            raise e
 
     #####################################################################################################
     # Code block: Check terminal repeat
@@ -220,7 +235,7 @@ class TEAid:
             )
         else:
             bed_out_file, blast_hits_count, blast_out_file = blast(
-                self.input_file, self.blast_database_path, self.output_dir, search_type=engine
+                self.input_file, self.blast_database_path, self.output_dir, search_type=engine, max_run_time=self.max_thread_time
             )
             all_blast_hit_n, full_length_n = check_blast_full_length(
                 seq_obj,
@@ -254,7 +269,7 @@ class TEAid:
         else:
             try:
                 bed_out_file, blast_hits_count, blast_out_file = blast(
-                    self.input_file, self.blast_database_path, self.output_dir
+                    self.input_file, self.blast_database_path, self.output_dir, max_run_time=self.max_thread_time
                 )
 
                 te_genome_coverage_len = sum_non_overlapping_lengths(blast_out_file, te_aid_blast=False)

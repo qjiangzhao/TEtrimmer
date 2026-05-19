@@ -384,6 +384,19 @@ TEtrimmer_version = "1.7.2"
     help='Zip the output files to reduce the output file number.'
 )
 @click.option(
+    '--max_thread_time',
+    type=int,
+    default=3600,
+    help='Time in second. Define the allowed longest time for each thread to run.',
+)
+@click.option(
+    '--skip_rest_seq',
+    default=False,
+    is_flag=True,
+    help='If TEtrimmer hangs or gets stuck processing the final sequences, you can bypass them using this option. '
+         'Combine with --continue_analysis option.'
+)
+@click.option(
     '--logfile',
     '-l',
     default=None,
@@ -439,6 +452,8 @@ def main(
     poly_len,
     export_coverage,
     compress_output,
+    max_thread_time,
+    skip_rest_seq,
     logfile,
     loglevel,
 ):
@@ -646,6 +661,8 @@ def main(
         "poly_len": poly_len,
         "export_coverage": export_coverage,
         "compress_output": compress_output,
+        "max_thread_time" : max_thread_time,
+        "skip_rest_seq" : skip_rest_seq,
         "logfile": logfile,
         "loglevel": loglevel,
     }
@@ -949,6 +966,10 @@ def main(
             # Add the left (single_fasta_n) and finished (complete_sequences)
             single_fasta_n = len(seq_list) + len(complete_sequences)
 
+            if skip_rest_seq:
+                logging.info("Skipping the problematic sequences......")
+                seq_list = []
+
 
     #####################################################################################################
     # Code block: Enable multiple threads
@@ -1010,6 +1031,7 @@ def main(
             mmseqs_database_dir,
             export_coverage,
             compress_output,
+            max_thread_time,
             loglevel,
             logfile
         )
