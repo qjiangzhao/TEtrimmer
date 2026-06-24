@@ -504,7 +504,20 @@ python <path_to_folder_tetrimmerGUI>/TEtrimmerGUI.py -g <genome_file.fa> -clib <
 ```
 
 ## Update history
+**June.24.2026**
+
+Released TEtrimmer 1.7.4
+
+Add --compress_output option
+
+Add --max_thread_time option
+
+Add --skip_rest_seq option
+
+
+
 **May.18.2026**
+
 Released TEtrimmer 1.7.3
 
 TEtrimmer can do de-novo TE annotation
@@ -519,6 +532,7 @@ Added TEtrimmer evaluation level to the final TE consensus library
 Increased the final TE library reliability
 
 TEtrimmerGUI
+
 Added option to enable single-click to open folder and files
 
 **April.10.2026**
@@ -530,6 +544,7 @@ Add extral extension when it is not enough
 
 
 **Nov.20.2025**
+
 Fixed LINE poly-A identification error
 
 **Oct.27.2025**

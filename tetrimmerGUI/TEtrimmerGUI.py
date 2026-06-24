@@ -389,7 +389,7 @@ def proof_curation(
 
     # Initialize Tk window
     root = Tk()
-    root.title(f'TEtrimmer Proof Curation Tool 1.7.3')
+    root.title(f'TEtrimmer Proof Curation Tool 1.7.4')
     # width * height
     if os_type == 'Windows':
         root.geometry('1000x800')
