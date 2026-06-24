@@ -492,7 +492,8 @@ def clean_and_cluster_MSA(
     muscle_ite_times=4,
     fast_mode=False,
     input_msa=None,
-    skip_pattern_selection=False
+    skip_pattern_selection=False,
+    max_thread_time=3600
 ):
     """
     This function will cluster multiple sequence alignment files.
@@ -521,7 +522,7 @@ def clean_and_cluster_MSA(
 
         # When muscle goes wrong, use mafft
         if not fasta_out_flank_mafft_file:
-            fasta_out_flank_mafft_file = align_sequences(input_file, output_dir)
+            fasta_out_flank_mafft_file = align_sequences(input_file, output_dir, max_run_time=max_thread_time)
 
         # Remove gaps. Return absolute path for gap removed alignment file
         fasta_out_flank_mafft_file_gap_filter = remove_gaps_with_similarity_check(

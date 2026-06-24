@@ -14,8 +14,6 @@ from Bio.SeqRecord import SeqRecord
 
 from boundarycrop import find_boundary_and_crop
 
-from functions import sanitize_genome_for_tetrimmer
-
 # Local imports
 from functions import (
     blast,
@@ -37,7 +35,8 @@ from functions import (
     repeatmasker_output_classify,
     update_low_copy_cons_file,
     update_skip_and_need_check_cons_file,
-    init_logging
+    init_logging,
+    sanitize_genome_for_tetrimmer
 )
 from MSAcluster import clean_and_cluster_MSA
 from orfdomain import PlotPfam, prepare_pfam_database
@@ -172,7 +171,7 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
                         f'makeblastdb -in {genome_file} -dbtype nucl -out {output_database_path} '
                     )
 
-                    logging.info(f'Creating BLAST database: {makeblastdb_cmd}')
+                    logging.info(f'Creating BLAST database......')
 
                     subprocess.run(
                         makeblastdb_cmd,
@@ -185,6 +184,7 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
 
                 except subprocess.CalledProcessError as e:
                     logging.error(f'makeblastdb failed with exit code {e.returncode}\n{e.stdout}\n{e.stderr}')
+                    logging.info(f'Used makeblastdb code is {makeblastdb_cmd}')
                     exit(1)
 
         elif search_type == 'mmseqs':
@@ -243,7 +243,8 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
         # Check if genome length files exist, otherwise create them in the same folder with genome file
         length_file = genome_file + '.length'
 
-        logging.info(f'Creating genome lengths file: {length_file}')
+
+        logging.info(f'Creating genome length file......')
         genome_length_file, total_genome_length_n = calculate_genome_length(genome_file, outfile=length_file)
 
         # Check if .fai index file exists, otherwise create it using samtools faidx
@@ -254,8 +255,7 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
         if not os.path.isfile(fai_file):
 
             faidx_cmd = f'samtools faidx {genome_file} -o {fai_file}'
-
-            logging.info(f'Creating genome index with samtools: {faidx_cmd}')
+            logging.info(f'Creating genome index with samtools......\n')
 
             try:
                 subprocess.run(
@@ -271,6 +271,7 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
                 logging.error(
                     "'samtools' command not found. Please ensure 'samtools' is correctly installed."
                 )
+                logging.info(f'The used samtools command is {faidx_cmd}')
                 exit(1)
 
             except subprocess.CalledProcessError as e:
@@ -733,7 +734,8 @@ def cluster_proof_anno_file(
     good_proof,  # directory
     intermediate_proof,  # directory
     need_check_proof,  # directory
-    genome_length
+    genome_length,
+    debug
 ):
     # Load fasta file to a dictionary, key is record.id, value is record project
     # When separate_name is true, the key of the dictionary will be the sequence name separated by '#'
@@ -810,6 +812,7 @@ def cluster_proof_anno_file(
             except Exception:
                 seq_per_proof_anno = None
             try:
+                # The sequence direction information is derivied from cd-hit-est result
                 seq_direction_proof_anno = seq_info_proof_anno[i][3]
             except Exception:
                 seq_direction_proof_anno = None
@@ -833,7 +836,7 @@ def cluster_proof_anno_file(
                 seq_name_proof_anno, {'evaluation': 'Need_check'}
             )['evaluation']
 
-            # Add '#' to the end of seq_name_proof_anno, this can avoid to delete 140 when the id is 14
+            # Add '#' to the end of seq_name_proof_anno, this can avoid to copy 140 when the id is 14
             seq_name_proof_anno_m = f'{seq_name_proof_anno}#'
             if evaluation_level == 'Perfect':
                 copy_files_with_start_pattern(
@@ -910,6 +913,10 @@ def cluster_proof_anno_file(
                 shutil.copy(multi_dotplot_pdf, cluster_folder)
 
         cluster_n += 1
+
+    # clean the multi_dotplot_dir to reduce the output file number
+    if not debug and os.path.exists(multi_dotplot_dir):
+        shutil.rmtree(multi_dotplot_dir)
 
     return summary_sequence_info
 
@@ -1124,6 +1131,8 @@ def analyze_sequence(
     blast_database_path,
     mmseqs_database_dir,
     export_coverage,
+    compress_output,
+    max_thread_time,
     loglevel,
     logfile
 ):
@@ -1175,6 +1184,7 @@ def analyze_sequence(
             min_length=min_blast_len,
             seq_obj=seq_obj,
             search_type=engine,
+            max_run_time=max_thread_time
         )
 
         seq_obj.update_blast_hit_n(blast_hits_count)
@@ -1242,6 +1252,9 @@ def analyze_sequence(
                 skip_proof_dir=skipped_dir,
             )
 
+            # When the analysis is finished for the file, delete the separated input file
+            os.remove(seq_file)
+
             return
 
         # Check if BLAST hit number is smaller than "min_seq_num"; do not include "min_seq_num"
@@ -1307,6 +1320,9 @@ def analyze_sequence(
                     seq_obj,
                     final_con_file
                 )
+
+            # When the analysis is finished for the file, delete the separated input file
+            os.remove(seq_file)
 
             return  # if BLAST hit number is smaller than 10, code will execute next FASTA file
 
@@ -1386,6 +1402,7 @@ def analyze_sequence(
             cluster_num=max_cluster_num,
             cluster_col_thr=100,
             fast_mode=fast_mode,
+            max_thread_time=max_thread_time
         )
     except Exception as e:
         with open(error_files, 'a') as f:
@@ -1465,6 +1482,8 @@ def analyze_sequence(
                     final_con_file
                 )
 
+            # When the analysis is finished for the file, delete the separated input file
+            os.remove(seq_file)
             return
 
         else:
@@ -1527,7 +1546,9 @@ def analyze_sequence(
                         cluster_msa=fasta_out_flank_mafft_gap_rm_nm,
                         blast_database_path=blast_database_path,
                         mmseqs_database_dir=mmseqs_database_dir,
-                        export_coverage=export_coverage
+                        export_coverage=export_coverage,
+                        compress_output=compress_output,
+                        max_thread_time=max_thread_time
                     )
 
                 except Exception:
@@ -1606,6 +1627,9 @@ def analyze_sequence(
                         final_con_file
                     )
 
+                # When the analysis is finished for the file, delete the separated input file
+                os.remove(seq_file)
+
                 return
 
             # Don't return when all_inner_need_check, only write the input sequence into the TE consensus library
@@ -1628,6 +1652,11 @@ def analyze_sequence(
             f'\nError during boundary finding and cropping for sequence: {seq_name}. Error: {str(e)}\n'
         )
         logging.error(tb_content + '\n')
+
+        # To reduce the file number, delete the files generated by the sequence with error happened
+        if compress_output:
+            remove_files_with_start_pattern(MSA_dir, f'{seq_name}.fasta')
+
         return
 
     # After all processing is done, change status to 'process' and write the file name to the progress file
@@ -1636,6 +1665,9 @@ def analyze_sequence(
     # If analysis of this sequence has been completed, remove all files contain sequence name
     if not debug:
         remove_files_with_start_pattern(MSA_dir, f'{seq_name}.fasta')
+
+    # When the analysis is finished for the file, delete the separated input file
+    os.remove(seq_file)
 
     # Read and count sequences from Finished_sequence_name.txt
     completed_sequence, skipped_count, low_copy_count, classified_pro = (
@@ -1715,7 +1747,7 @@ def create_dir(
     # Create a new folder for single FASTA sequences
     #################################################
     single_file_dir = os.path.join(output_dir, 'Single_fasta_files')
-    os.makedirs(single_file_dir, exist_ok=True)
+    #os.makedirs(single_file_dir, exist_ok=True)
 
     #################################################
     # Create a new folder for MSA
