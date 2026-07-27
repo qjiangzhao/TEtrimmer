@@ -2056,8 +2056,8 @@ def repeatmasker(genome_file, library_file, output_dir, thread=1, classify=False
             '-a',  # Writes alignments in .align output file
         ]
 
-        if no_low:
-            command.append('-nolow')
+    if no_low:
+        command.append('-nolow')
 
     # Set env variable for RepeatMasker
     env = os.environ.copy()
@@ -2203,7 +2203,7 @@ def repeatmasker_output_classify(
 
 
 def eliminate_curatedlib_by_repeatmasker(
-    curatedlib, input_seq, curatedlib_dir, min_iden=95, min_cov=95, num_threads=10
+    curatedlib, input_seq, curatedlib_dir, min_iden=80, min_cov=80, num_threads=10
 ):
     # For the repeatmasker_out --input_seq as genome, --curatedlib serves as repeat database
     # Define the directory
@@ -2338,9 +2338,28 @@ def eliminate_curatedlib_by_repeatmasker(
         return False
 
     try:
-        # Filter dataframe according to the percentage of coverage
-        df = df[df['cov_query_perc'] >= min_cov]
-        #df = df[df['cov_repeat_perc'] >= min_cov]
+        # Merge overlapping intervals per query to get total unique coverage
+        df = df.sort_values(['query_name', 'query_start'])
+
+        def merge_intervals(group):
+            intervals = sorted(zip(group['query_start'], group['query_end']))
+            merged = []
+            for start, end in intervals:
+                if merged and start <= merged[-1][1]:
+                    merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+                else:
+                    merged.append((start, end))
+            total_cov = sum(end - start for start, end in merged)
+            best = group.loc[group['cov_query_len'].idxmax(), 'repeat_name']
+            return pd.Series({
+                'total_cov_len': total_cov,
+                'query_len': group['query_len'].iloc[0],
+                'longest_curated_match': best,
+            })
+
+        grouped = df.groupby('query_name', sort=False).apply(merge_intervals, include_groups=False)
+        grouped['cov_query_perc'] = grouped['total_cov_len'] / grouped['query_len'] * 100
+        grouped = grouped[grouped['cov_query_perc'] >= min_cov]
 
     except Exception:
         logging.warning(
@@ -2349,7 +2368,7 @@ def eliminate_curatedlib_by_repeatmasker(
         return False
 
     try:
-        if df.empty:
+        if grouped.empty:
             logging.warning(
                 'No sequences are found in --input_file that are identical to the sequences in --curatedlib'
             )
@@ -2361,10 +2380,10 @@ def eliminate_curatedlib_by_repeatmasker(
                 curatedlib_dir,
                 f'{os.path.basename(input_seq)}_curatedlib_filtered_RepeatMasker.txt',
             )
-            df.to_csv(df_file, sep='\t', index=False)
+            grouped.reset_index().to_csv(df_file, sep='\t', index=False)
 
             # Group dataframe by 'query_name' and extract unique query names
-            unique_query_names = df['query_name'].unique().tolist()
+            unique_query_names = grouped.index.tolist()
             # print(unique_query_names)
 
             logging.info(
@@ -2910,6 +2929,20 @@ def run_repeatmodeler(genome_fasta, outdir, threads, continue_analysis=False):
 
             if os.path.exists(expected_output):
                 logging.info(f"RepeatModeler finished. Library generated at {expected_output}")
+
+                # After successful RepeatModeler run, clean up orphaned RM_* temp directories
+                rm_dirs = sorted(
+                    [d for d in glob.glob(os.path.join(outdir, "RM_*")) if os.path.isdir(d)],
+                    key=os.path.getmtime
+                )
+                if rm_dirs:
+                    # Keep the most recent one (the successful run), remove the rest
+                    for stale_dir in rm_dirs[:-1]:
+                        shutil.rmtree(stale_dir, ignore_errors=True)
+                    logging.info(
+                        f"Cleaned up {len(rm_dirs) - 1} stale RM_* directories from failed RepeatModeler attempts."
+                    )
+
                 shutil.copy2(expected_output, repeatmodeler_out_file)
                 return repeatmodeler_out_file
 
@@ -2933,6 +2966,36 @@ def run_repeatmodeler(genome_fasta, outdir, threads, continue_analysis=False):
 
     logging.error(f"All attempts for running RepeatModeler failed. Logs: {tool_log_path}\n")
     return False
+
+def clean_ltr_type_sequences(input_fasta):
+    """
+    Remove FASTA entries with 'Type=LTR' in the header.
+    Writes a new file named <input>_LTR_cleaned.fa next to the original.
+    """
+    base, ext = os.path.splitext(input_fasta)
+    output_fasta = f"{base}_LTR_cleaned{ext}"
+
+    removed = 0
+    kept = 0
+    skip = False
+
+    with open(input_fasta) as f_in, open(output_fasta, "w") as f_out:
+        for line in f_in:
+            if line.startswith(">"):
+                skip = "Type=LTR" in line
+                if skip:
+                    removed += 1
+                else:
+                    kept += 1
+                    f_out.write(line)
+            elif not skip:
+                f_out.write(line)
+
+    logging.info(
+        f"Removed {removed} LTR-type sequences, kept {kept} sequences."
+        f"Cleaned file: {output_fasta}"
+    )
+    return output_fasta
 
 
 def check_terminal_repeat(

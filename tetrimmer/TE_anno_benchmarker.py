@@ -352,7 +352,7 @@ def calculate_genome_length(genome_file):
                 if current_seq is not None:
                     genome_lengths[current_seq] = current_length
                     total_genome_length += current_length  # Update total genome length
-                current_seq = line[1:].split(' ')[0]
+                current_seq = line[1:].split()[0]
                 current_length = 0
             else:
                 current_length += len(line)
