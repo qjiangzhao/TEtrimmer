@@ -3074,7 +3074,8 @@ def check_terminal_repeat(
             LTR_boundary = None
 
         # Return directly if LTR was found
-        return LTR_boundary, TIR_boundary, found_match
+        if found_match == 'LTR':
+            return LTR_boundary, TIR_boundary, found_match
 
     df_TIR = df[
         (df.iloc[:, 2] - df.iloc[:, 1] >= 50)
