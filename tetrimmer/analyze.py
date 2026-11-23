@@ -164,7 +164,8 @@ def check_database(genome_file, idx_dir=None, search_type='blast'):
     try:
         if search_type == 'blast':
             blast_database_file = output_database_path + '.nin'
-            if not os.path.isfile(blast_database_file):
+            blast_database_alias = output_database_path + '.nal'
+            if not os.path.isfile(blast_database_file) and not os.path.isfile(blast_database_alias):
                 #logging.info(f"Pre-built blast database not found at: {output_database_path}")
                 try:
                     makeblastdb_cmd = (

@@ -21,6 +21,7 @@ from functions import (
     eliminate_curatedlib_by_repeatmasker,
     repeatmasker,
     check_tools,
+    file_exists_and_not_empty,
     init_logging,
     run_repeatmodeler
 )
@@ -500,10 +501,9 @@ def main(
     # Initialize the logging system
     init_logging(loglevel=loglevel, logfile=logfile)
 
-    # Set plot_query, plot_skip, and fast_mode to true
+    # Set plot_query and plot_skip to true
     plot_query = True
     plot_skip = True
-    fast_mode = True
     start_time = datetime.now()
     logging.info(f'TEtrimmer {TEtrimmer_version} started at {start_time.strftime("%Y-%m-%d %H:%M:%S")}.\n')
 
@@ -834,7 +834,9 @@ def main(
             )
 
             # Define the output file
-            merge_output = os.path.join(output_dir, f'{input_file}_cd_hit.fa')
+            merge_output = os.path.join(
+                output_dir, f'{os.path.basename(input_file)}_cd_hit.fa'
+            )
 
             # Remove duplicates
             try:
@@ -1213,63 +1215,81 @@ def main(
         output_dir, 'TEtrimmer_consensus_merged.fasta'
     )
 
-    try:
-        logging.info(
-            'TEtrimmer is removing sequence duplications. This might take long time when many sequences'
-            'are included into the final consensus library. Please be patient!'
-        )
-        analyze.merge_cons(
-            classification_dir,
-            final_con_file,
-            summary_sequence_info,
-            cd_hit_est_final_merged,
-            num_threads,
-        )  # Do first round of CD-HIT-EST
+    consensus_available = file_exists_and_not_empty(final_con_file)
 
-    except Exception as e:
+    if not consensus_available:
         final_merge_success = False
-        with open(error_files, 'a') as f:
-            # Get the traceback content as a string
-            tb_content = traceback.format_exc()
-            f.write('\nFinal CD-HIT-EST deduplication error.\n')
-            f.write(tb_content + '\n')
-        logging.error(
-            'The final CD-HIT-EST merge step cannot be performed. Final TE consensus library redundancy can '
-            f'be higher but the sensitivity is not affected. You can remove duplicated sequence by yourself.\n Error: {e}'
-        )
         logging.warning(
-            "You can choose to ignore CD-HIT-EST error. For traceback output, please refer to 'error_file.txt' "
-            "in the 'Multiple_sequence_alignment' directory.\n"
+            'No consensus sequence was accepted into the final TE consensus library, so '
+            "'TEtrimmer_consensus.fasta' is empty and the de-duplication step is skipped.\n"
+            "Sequences that need manual inspection are in the 'Annotations_check_required' and 'TE_skipped' "
+            "folders inside 'TEtrimmer_for_proof_curation'. The 'evaluation' and 'status' columns of "
+            "'summary.txt' show what happened to each input sequence.\n"
         )
-        exit(1)
+
+    else:
+        try:
+            logging.info(
+                'TEtrimmer is removing sequence duplications. This might take long time when many sequences'
+                'are included into the final consensus library. Please be patient!'
+            )
+            analyze.merge_cons(
+                classification_dir,
+                final_con_file,
+                summary_sequence_info,
+                cd_hit_est_final_merged,
+                num_threads,
+            )  # Do first round of CD-HIT-EST
+
+        except Exception as e:
+            final_merge_success = False
+            with open(error_files, 'a') as f:
+                # Get the traceback content as a string
+                tb_content = traceback.format_exc()
+                f.write('\nFinal CD-HIT-EST deduplication error.\n')
+                f.write(tb_content + '\n')
+            logging.error(
+                'The final CD-HIT-EST merge step cannot be performed. Final TE consensus library redundancy can '
+                f'be higher but the sensitivity is not affected. You can remove duplicated sequence by yourself.\n Error: {e}'
+            )
+            logging.warning(
+                "You can choose to ignore CD-HIT-EST error. For traceback output, please refer to 'error_file.txt' "
+                "in the 'Multiple_sequence_alignment' directory.\n"
+            )
 
     #####################################################################################################
     # Code block: Cluster proof curation files
     #####################################################################################################
 
     try:
-        logging.info(
-            'TEtrimmer is clustering TE consensus library. This can potentially take long time when many '
-            'sequences exist in the consensus library. Please be patient!'
-        )
-        multi_dotplot_dir = os.path.join(
-            classification_dir, 'Multiple_sequence_dotplot'
-        )
-        os.makedirs(multi_dotplot_dir, exist_ok=True)
-        summary_sequence_info = analyze.cluster_proof_anno_file(
-            multi_dotplot_dir,
-            final_con_file_no_low_copy,
-            continue_analysis,
-            cluster_proof_anno_dir,
-            num_threads,
-            summary_sequence_info,
-            perfect_proof,
-            good_proof,
-            intermediate_proof,
-            need_check_proof,
-            genome_total_length,
-            debug
-        )
+        if file_exists_and_not_empty(final_con_file_no_low_copy):
+            logging.info(
+                'TEtrimmer is clustering TE consensus library. This can potentially take long time when many '
+                'sequences exist in the consensus library. Please be patient!'
+            )
+            multi_dotplot_dir = os.path.join(
+                classification_dir, 'Multiple_sequence_dotplot'
+            )
+            os.makedirs(multi_dotplot_dir, exist_ok=True)
+            summary_sequence_info = analyze.cluster_proof_anno_file(
+                multi_dotplot_dir,
+                final_con_file_no_low_copy,
+                continue_analysis,
+                cluster_proof_anno_dir,
+                num_threads,
+                summary_sequence_info,
+                perfect_proof,
+                good_proof,
+                intermediate_proof,
+                need_check_proof,
+                genome_total_length,
+                debug
+            )
+        else:
+            logging.warning(
+                'No accepted consensus sequence is available for clustering. The clustering of proof '
+                'curation files is skipped.\n'
+            )
 
         # Compress all the element in the folder proof_curation_dir
         if compress_output:
@@ -1350,7 +1370,12 @@ def main(
         # if processed_count >= single_fasta_n * 0.9:
 
         # Run RepeatMasker
-        if genome_anno:
+        if genome_anno and not consensus_available:
+            logging.warning(
+                'Whole-genome TE annotation is skipped because the final TE consensus library is empty.\n'
+            )
+
+        elif genome_anno:
             logging.info(
                 'TEtrimmer is performing whole-genome TE annotation by RepeatMasker. This could take a '
                 'long time. \nThe final TE consensus library has been completed. You can use it now.'

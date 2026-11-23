@@ -285,7 +285,9 @@ def blast(
     blast_out_file = os.path.join(output_dir, f'{os.path.basename(input_file)}.b')
 
     # Check that blast_database_path contains blast_database_path.nhr
-    if not os.path.exists(f'{blast_database_path}.nhr'):
+    if not os.path.exists(f'{blast_database_path}.nhr') and not os.path.exists(
+        f'{blast_database_path}.nal'
+    ):
         logging.error(
             f'BLAST database files not found in {blast_database_path}. Please ensure the database is correctly formatted.'
         )
