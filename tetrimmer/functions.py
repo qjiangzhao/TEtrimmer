@@ -285,7 +285,9 @@ def blast(
     blast_out_file = os.path.join(output_dir, f'{os.path.basename(input_file)}.b')
 
     # Check that blast_database_path contains blast_database_path.nhr
-    if not os.path.exists(f'{blast_database_path}.nhr'):
+    if not os.path.exists(f'{blast_database_path}.nhr') and not os.path.exists(
+        f'{blast_database_path}.nal'
+    ):
         logging.error(
             f'BLAST database files not found in {blast_database_path}. Please ensure the database is correctly formatted.'
         )
@@ -297,7 +299,7 @@ def blast(
             f'blastn -max_target_seqs 10000 -query {input_file} -db {blast_database_path} '
             f'-outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send sstrand evalue qcovhsp" '
             f'-evalue {evalue} -qcov_hsp_perc {blast_qcov_hsp_perc} | '
-            f'awk -v ml={min_length} \'BEGIN{{OFS="\\t"}} $4 > ml {{print $0}}\' >> {blast_out_file}'
+            f'awk -v ml={min_length} \'BEGIN{{OFS="\\t"}} $4 > ml {{print $0}}\' > {blast_out_file}'
         )
 
         try:
@@ -2447,35 +2449,41 @@ def rename_files_based_on_dict(directory, reclassified_dict, seq_name=False):
 
     # For each file, check and rename if necessary
     for filename in files:
+        if '#' not in filename:
+            continue
+
         # Extract the part before '#'
-        consensus_name = filename.split('#')[0]
-        for key, value in reclassified_dict.items():
-            if consensus_name == key:
-                # Extract the part after # and before the first .
-                te_type = filename.split('#')[1].split('.')[0].replace('__', '/')
+        consensus_name, type_and_suffix = filename.split('#', 1)
+        if consensus_name not in reclassified_dict:
+            continue
+        value = reclassified_dict[consensus_name]
 
-                # If file name does not match the value in the dictionary, rename the file
-                if te_type != value:
-                    new_te_type = value.replace('/', '__')
-                    new_filename = filename.replace(
-                        te_type.replace('/', '__'), new_te_type
-                    )
-                    old_file_path = os.path.join(directory, filename)
-                    new_file_path = os.path.join(directory, new_filename)
+        # The TE type ends at the first '.' or at the '_merged.pdf' suffix of merged plots
+        match = re.match(r'(.+?)(_merged\.pdf|\..*)$', type_and_suffix)
+        if match is None:
+            continue
+        te_type, suffix = match.groups()
+        new_te_type = value.replace('/', '__')
 
-                    # If seq_name is 'True', rename the sequence header in the FASTA file
-                    if seq_name:
-                        record = SeqIO.read(old_file_path, 'fasta')
-                        record.id = f'{seq_name}#{value}'
-                        record.description = (
-                            ''  # Clear the description to avoid duplication
-                        )
-                        SeqIO.write(record, new_file_path, 'fasta')
-                        # Delete the old file
-                        os.remove(old_file_path)
-                    else:
-                        # Use shutil.move to rename the file
-                        shutil.move(old_file_path, new_file_path)
+        # If file name does not match the value in the dictionary, rename the file
+        if te_type != new_te_type:
+            new_filename = f'{consensus_name}#{new_te_type}{suffix}'
+            old_file_path = os.path.join(directory, filename)
+            new_file_path = os.path.join(directory, new_filename)
+
+            # If seq_name is 'True', rename the sequence header in the FASTA file
+            if seq_name and suffix == '.fa':
+                record = SeqIO.read(old_file_path, 'fasta')
+                record.id = f'{consensus_name}#{value}'
+                record.description = (
+                    ''  # Clear the description to avoid duplication
+                )
+                SeqIO.write(record, new_file_path, 'fasta')
+                # Delete the old file
+                os.remove(old_file_path)
+            else:
+                # Use shutil.move to rename the file
+                shutil.move(old_file_path, new_file_path)
 
 
 def remove_files_with_start_pattern(input_dir, start_pattern=None):
@@ -3072,7 +3080,8 @@ def check_terminal_repeat(
             LTR_boundary = None
 
         # Return directly if LTR was found
-        return LTR_boundary, TIR_boundary, found_match
+        if found_match == 'LTR':
+            return LTR_boundary, TIR_boundary, found_match
 
     df_TIR = df[
         (df.iloc[:, 2] - df.iloc[:, 1] >= 50)

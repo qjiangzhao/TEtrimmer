@@ -619,8 +619,8 @@ def final_MSA(
             and (
                     full_length_hit_count >= 2
                     or (
-                            (left_posit_repeat is not None and (left_posit_repeat - start_posit_cov <= 40))
-                            and (right_posit_repeat is not None and (right_posit_repeat - end_posit_cov <= 40))
+                            (left_posit_repeat is not None and (abs(left_posit_repeat - start_posit_cov) <= 40))
+                            and (right_posit_repeat is not None and (abs(right_posit_repeat - end_posit_cov) <= 40))
                     )
             )
     ):
@@ -1934,7 +1934,7 @@ def find_boundary_and_crop(
         # in the final_MSA() function, the used threshold is 0.7 or 0.6
         # check the blast full length copy again here.
 
-        if (evaluation_level == "Recon_check" and blast_full_length_n >= 3):
+        if (evaluation_level == "Reco_check" and blast_full_length_n >= 3):
             evaluation_level = "Good"
 
 
